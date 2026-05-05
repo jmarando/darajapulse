@@ -14,6 +14,7 @@ import CampaignDetail from "./pages/app/CampaignDetail";
 import Influencers from "./pages/app/Influencers";
 import Stub from "./pages/app/Stub";
 import PublicReport from "./pages/PublicReport";
+import ConnectTikTok from "./pages/ConnectTikTok";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,8 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/r/:token" element={<PublicReport />} />
+            <Route path="/connect/tiktok/:influencerId" element={<ConnectTikTok />} />
+            <Route path="/connect/tiktok/done" element={<ConnectTikTok />} />
             <Route path="/app" element={<AppShell />}>
               <Route index element={<Overview />} />
               <Route path="clients" element={<Clients />} />
