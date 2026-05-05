@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Sparkles } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logo from "@/assets/logo-pulse-mark.png";
 
 const nav = [
   { to: "/app", icon: LayoutDashboard, label: "Overview", end: true },
@@ -23,16 +24,8 @@ const AppShell = () => {
   return (
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
-        <div className="p-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-gradient-warm flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <div>
-              <div className="font-display text-lg leading-none">Daraja <span className="text-accent">Pulse</span></div>
-              <div className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60">Influence OS</div>
-            </div>
-          </div>
+        <div className="p-6 border-b border-sidebar-border bg-white">
+          <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-12 w-auto mx-auto" />
         </div>
         <nav className="flex-1 p-3 space-y-1">
           {nav.map(({ to, icon: Icon, label, end }) => (

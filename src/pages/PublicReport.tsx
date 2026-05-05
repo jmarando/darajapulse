@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Heart, MessageCircle, Share2, TrendingUp, Sparkles, MapPin } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
+import logo from "@/assets/logo-pulse-mark.png";
 
 type PostWithMetrics = any;
 
@@ -82,7 +83,7 @@ const PublicReport = () => {
       <header className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-md bg-gradient-warm" />
+            <img src={logo} alt="Daraja Pulse" className="h-9 w-auto" />
             <div>
               <div className="text-xs uppercase tracking-widest text-muted-foreground">{client?.name ?? "Client"}</div>
               <div className="font-display text-lg leading-none">{campaign.name}</div>
