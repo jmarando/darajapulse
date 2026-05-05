@@ -28,7 +28,7 @@
     --muted-foreground: 20 8% 40%;
 
     /* Daraja accent — warm Kenyan ochre */
-    --accent: 24 78% 50%;
+    --accent: 0 99% 57%;
     --accent-foreground: 36 30% 97%;
 
     --highlight: 38 92% 56%;
@@ -75,7 +75,7 @@
     --secondary-foreground: 36 20% 92%;
     --muted: 22 14% 16%;
     --muted-foreground: 36 10% 62%;
-    --accent: 24 78% 55%;
+    --accent: 0 99% 57%;
     --accent-foreground: 22 16% 8%;
     --border: 22 12% 20%;
     --input: 22 12% 20%;
