@@ -46,7 +46,7 @@ const Auth = () => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
             <div className="w-9 h-9 rounded-md bg-gradient-warm" />
-            <span className="font-display text-2xl font-semibold">Daraja Plus</span>
+            <span className="font-display text-2xl font-semibold">Daraja Pulse</span>
           </div>
           <h1 className="font-display text-3xl font-semibold text-balance">Influence, accounted for.</h1>
           <p className="text-muted-foreground mt-2">Sign in to the agency console.</p>

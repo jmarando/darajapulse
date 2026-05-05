@@ -194,7 +194,7 @@ const PublicReport = () => {
       </section>
 
       <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        Powered by <span className="font-display text-foreground">Daraja Plus</span> · Influence Operating System
+        Powered by <span className="font-display text-foreground">Daraja Pulse</span> · Influence Operating System
       </footer>
     </div>
   );
