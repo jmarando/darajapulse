@@ -1,14 +1,12 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Wallet, Users, Sparkles } from "lucide-react";
+import logo from "@/assets/logo-pulse-mark.png";
 
 const Landing = () => (
   <div className="min-h-screen bg-gradient-paper">
     <header className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-md bg-gradient-warm" />
-        <span className="font-display text-xl font-semibold">Daraja Pulse</span>
-      </div>
+      <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-10 w-auto" />
       <Link to="/auth"><Button variant="ghost">Sign in</Button></Link>
     </header>
     <section className="max-w-5xl mx-auto px-6 pt-16 pb-24 text-center">
