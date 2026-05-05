@@ -32,7 +32,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/" element={<LandingDashboard />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/landing" element={<LandingPicker />} />
             <Route path="/landing/editorial" element={<LandingEditorial />} />
