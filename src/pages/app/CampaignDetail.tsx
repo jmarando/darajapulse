@@ -167,6 +167,7 @@ const CampaignDetail = () => {
                 </form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
           {posts.length === 0 ? <p className="text-sm text-muted-foreground">No posts captured yet.</p> : (
             <ul className="space-y-2">
