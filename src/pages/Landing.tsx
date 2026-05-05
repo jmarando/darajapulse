@@ -7,7 +7,7 @@ const Landing = () => (
     <header className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-md bg-gradient-warm" />
-        <span className="font-display text-xl font-semibold">Daraja Plus</span>
+        <span className="font-display text-xl font-semibold">Daraja Pulse</span>
       </div>
       <Link to="/auth"><Button variant="ghost">Sign in</Button></Link>
     </header>
@@ -19,7 +19,7 @@ const Landing = () => (
         Run influencer campaigns the way <span className="italic text-accent">brands</span> already wish you did.
       </h1>
       <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto text-balance">
-        Discover, brief, approve, publish, measure and pay — across TikTok, Instagram, YouTube and X. M-Pesa native. KRA aware. Built for Daraja Plus and the brands you serve.
+        Discover, brief, approve, publish, measure and pay — across TikTok, Instagram, YouTube and X. M-Pesa native. KRA aware. Built for Daraja Pulse and the brands you serve.
       </p>
       <div className="mt-8 flex items-center justify-center gap-3">
         <Link to="/auth"><Button size="lg" className="bg-primary">Open the console <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>

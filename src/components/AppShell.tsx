@@ -29,7 +29,7 @@ const AppShell = () => {
               <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
             <div>
-              <div className="font-display text-lg leading-none">Daraja<span className="text-accent">+</span></div>
+              <div className="font-display text-lg leading-none">Daraja <span className="text-accent">Pulse</span></div>
               <div className="text-[10px] uppercase tracking-widest text-sidebar-foreground/60">Influence OS</div>
             </div>
           </div>

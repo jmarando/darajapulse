@@ -41,7 +41,7 @@ const ConnectTikTok = () => {
           </div>
         ) : (
           <>
-            <p className="text-muted-foreground mt-3">{name ? `Hi ${name.split(" ")[0]} — ` : ""}Daraja Plus needs read-only access to your post stats so we can report performance to the brand. We never post on your behalf.</p>
+            <p className="text-muted-foreground mt-3">{name ? `Hi ${name.split(" ")[0]} — ` : ""}Daraja Pulse needs read-only access to your post stats so we can report performance to the brand. We never post on your behalf.</p>
             <Button onClick={start} className="mt-6 w-full bg-primary" disabled={!influencerId}>Continue with TikTok</Button>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-4">Scopes: basic profile · video list</p>
           </>
