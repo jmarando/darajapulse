@@ -16,6 +16,11 @@ import Stub from "./pages/app/Stub";
 import PublicReport from "./pages/PublicReport";
 import ConnectTikTok from "./pages/ConnectTikTok";
 import NotFound from "./pages/NotFound.tsx";
+import LandingPicker from "./pages/landings/LandingPicker";
+import LandingEditorial from "./pages/landings/LandingEditorial";
+import LandingCinematic from "./pages/landings/LandingCinematic";
+import LandingDashboard from "./pages/landings/LandingDashboard";
+import LandingBento from "./pages/landings/LandingBento";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +34,11 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/landing" element={<LandingPicker />} />
+            <Route path="/landing/editorial" element={<LandingEditorial />} />
+            <Route path="/landing/cinematic" element={<LandingCinematic />} />
+            <Route path="/landing/dashboard" element={<LandingDashboard />} />
+            <Route path="/landing/bento" element={<LandingBento />} />
             <Route path="/r/:token" element={<PublicReport />} />
             <Route path="/connect/tiktok/:influencerId" element={<ConnectTikTok />} />
             <Route path="/connect/tiktok/done" element={<ConnectTikTok />} />
