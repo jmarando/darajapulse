@@ -55,7 +55,7 @@ const CampaignDetail = () => {
   };
 
   const setStatus = async (status: string) => {
-    await supabase.from("campaigns").update({ status }).eq("id", id);
+    await supabase.from("campaigns").update({ status: status as any }).eq("id", id);
     load();
   };
 
