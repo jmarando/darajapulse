@@ -45,7 +45,7 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-paper flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-16 w-auto mx-auto mb-4" />
+          <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-24 w-auto mx-auto mb-4" />
           <h1 className="font-display text-3xl font-semibold text-balance">Influence, accounted for.</h1>
           <p className="text-muted-foreground mt-2">Sign in to the agency console.</p>
         </div>

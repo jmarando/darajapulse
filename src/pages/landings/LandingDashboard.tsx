@@ -16,7 +16,7 @@ const LandingDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-paper">
       <header className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-        <img src={logo} alt="Daraja Pulse" className="h-9 w-auto" />
+        <img src={logo} alt="Daraja Pulse" className="h-20 w-auto" />
         <Link to="/auth"><Button variant="ghost">Sign in</Button></Link>
       </header>
 

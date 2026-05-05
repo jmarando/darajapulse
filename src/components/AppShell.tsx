@@ -25,7 +25,7 @@ const AppShell = () => {
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
         <div className="p-6 border-b border-sidebar-border bg-white">
-          <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-12 w-auto mx-auto" />
+          <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-20 w-auto mx-auto" />
         </div>
         <nav className="flex-1 p-3 space-y-1">
           {nav.map(({ to, icon: Icon, label, end }) => (
