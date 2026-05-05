@@ -1,1 +1,10 @@
 project_id = "ucxlveehobmeywkiynpy"
+
+[functions.tiktok-oauth-start]
+verify_jwt = false
+
+[functions.tiktok-oauth-callback]
+verify_jwt = false
+
+[functions.tiktok-poll]
+verify_jwt = false

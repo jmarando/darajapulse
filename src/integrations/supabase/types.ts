@@ -359,6 +359,7 @@ export type Database = {
           posted_at: string | null
           status: Database["public"]["Enums"]["post_status"]
           thumbnail_url: string | null
+          tiktok_video_id: string | null
         }
         Insert: {
           campaign_id: string
@@ -371,6 +372,7 @@ export type Database = {
           posted_at?: string | null
           status?: Database["public"]["Enums"]["post_status"]
           thumbnail_url?: string | null
+          tiktok_video_id?: string | null
         }
         Update: {
           campaign_id?: string
@@ -383,6 +385,7 @@ export type Database = {
           posted_at?: string | null
           status?: Database["public"]["Enums"]["post_status"]
           thumbnail_url?: string | null
+          tiktok_video_id?: string | null
         }
         Relationships: [
           {
@@ -456,6 +459,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tiktok_accounts: {
+        Row: {
+          access_token: string
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          expires_at: string
+          id: string
+          influencer_id: string
+          open_id: string
+          refresh_expires_at: string | null
+          refresh_token: string
+          scope: string | null
+          union_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          expires_at: string
+          id?: string
+          influencer_id: string
+          open_id: string
+          refresh_expires_at?: string | null
+          refresh_token: string
+          scope?: string | null
+          union_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          expires_at?: string
+          id?: string
+          influencer_id?: string
+          open_id?: string
+          refresh_expires_at?: string | null
+          refresh_token?: string
+          scope?: string | null
+          union_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tiktok_oauth_states: {
+        Row: {
+          created_at: string
+          influencer_id: string
+          state: string
+        }
+        Insert: {
+          created_at?: string
+          influencer_id: string
+          state: string
+        }
+        Update: {
+          created_at?: string
+          influencer_id?: string
+          state?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
