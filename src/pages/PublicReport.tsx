@@ -63,7 +63,19 @@ const PublicReport = () => {
 
   const er = totals.reach > 0 ? ((totals.likes + totals.comments + totals.shares) / totals.reach * 100) : 0;
   const emv = Math.round(totals.impressions * 0.012); // rough KES per impression benchmark
-  const trend = Array.from({ length: 12 }, (_, i) => ({ d: i, v: Math.round((totals.views/12) * (0.4 + Math.random() * 1.2)) }));
+  // Build a real velocity series by bucketing post_metrics history into 12 hourly buckets
+  const allHistory = posts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: h.views || 0 })));
+  let trend: { d: number; v: number }[] = [];
+  if (allHistory.length > 1) {
+    const min = Math.min(...allHistory.map(h => h.t));
+    const max = Math.max(...allHistory.map(h => h.t));
+    const span = Math.max(max - min, 1);
+    const buckets = Array.from({ length: 12 }, () => 0);
+    allHistory.forEach(h => { const i = Math.min(11, Math.floor(((h.t - min) / span) * 12)); buckets[i] = Math.max(buckets[i], h.v); });
+    trend = buckets.map((v, d) => ({ d, v }));
+  } else {
+    trend = Array.from({ length: 12 }, (_, d) => ({ d, v: Math.round((totals.views / 12) * (d + 1) / 12) }));
+  }
 
   return (
     <div className="min-h-screen bg-gradient-paper">
