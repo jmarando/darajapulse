@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, Search, ShieldCheck } from "lucide-react";
+import { Plus, Users, Search, ShieldCheck, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 const platforms = ["tiktok", "instagram", "youtube", "twitter", "facebook"] as const;
@@ -100,6 +100,11 @@ const Influencers = () => {
                 <div><div className="font-display text-lg">{r.region?.slice(0, 4) ?? "—"}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Region</div></div>
               </div>
               {r.niche && <div className="mt-3 text-xs text-muted-foreground">{r.niche}</div>}
+              <Button variant="outline" size="sm" className="w-full mt-3" onClick={() => {
+                const link = `${window.location.origin}/connect/tiktok/${r.id}`;
+                navigator.clipboard.writeText(link);
+                toast.success("TikTok invite link copied");
+              }}><Link2 className="w-3 h-3 mr-1" /> Copy TikTok invite link</Button>
             </Card>
           ))}
         </div>

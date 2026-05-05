@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink } from "lucide-react";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 const CampaignDetail = () => {
@@ -134,6 +134,14 @@ const CampaignDetail = () => {
         <Card className="p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-2xl">Posts</h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={async () => {
+                toast.loading("Refreshing TikTok metrics…", { id: "tt" });
+                const { data, error } = await supabase.functions.invoke("tiktok-poll", { body: { campaign_id: id } });
+                if (error) return toast.error(error.message, { id: "tt" });
+                toast.success(`Polled ${(data?.results ?? []).reduce((a: number, r: any) => a + (r.polled ?? 0), 0)} posts`, { id: "tt" });
+                load();
+              }}><RefreshCw className="w-3 h-3 mr-1" /> Refresh TikTok</Button>
             <Dialog open={postOpen} onOpenChange={setPostOpen}>
               <DialogTrigger asChild><Button variant="outline" size="sm" disabled={ci.length === 0}><Plus className="w-3 h-3 mr-1" /> Add post</Button></DialogTrigger>
               <DialogContent>
