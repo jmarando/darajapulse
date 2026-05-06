@@ -49,15 +49,13 @@ const Influencers = () => {
                 <div><Label>Full name</Label><Input required value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} /></div>
                 <div><Label>Handle</Label><Input value={form.handle} onChange={e => setForm({ ...form, handle: e.target.value })} placeholder="@..." /></div>
               </div>
+              <div className="col-span-2">
+                <Label>Platform</Label>
+                <PlatformPicker value={form.primary_platform} onChange={v => setForm({ ...form, primary_platform: v })} />
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Platform</Label>
-                  <Select value={form.primary_platform} onValueChange={v => setForm({ ...form, primary_platform: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{platforms.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
                 <div><Label>Niche</Label><Input value={form.niche} onChange={e => setForm({ ...form, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
+                <div><Label>Followers</Label><Input type="number" value={form.follower_count} onChange={e => setForm({ ...form, follower_count: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Followers</Label><Input type="number" value={form.follower_count} onChange={e => setForm({ ...form, follower_count: e.target.value })} /></div>
