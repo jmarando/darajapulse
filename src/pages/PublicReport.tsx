@@ -85,7 +85,7 @@ const PublicReport = () => {
 
   // Per-creator aggregated metrics
   const byCreator = new Map<string, { views: number; likes: number; comments: number; shares: number; saves: number; posts: number }>();
-  for (const p of posts) {
+  for (const p of filteredPosts) {
     const key = p.influencer_id;
     const cur = byCreator.get(key) ?? { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, posts: 0 };
     cur.views += p.metrics.views || 0;
@@ -106,7 +106,7 @@ const PublicReport = () => {
   // Per-platform breakdown
   const platformMap = new Map<string, { posts: number; creators: Set<string>; views: number; reach: number; followers: number; }>();
   const seenCreatorPerPlatform = new Map<string, Set<string>>();
-  for (const p of posts) {
+  for (const p of filteredPosts) {
     const key = p.platform || "other";
     const cur = platformMap.get(key) ?? { posts: 0, creators: new Set<string>(), views: 0, reach: 0, followers: 0 };
     cur.posts += 1;
@@ -120,7 +120,7 @@ const PublicReport = () => {
     platformMap.set(key, cur);
   }
   const platformRows = Array.from(platformMap.entries()).sort((a,b) => b[1].views - a[1].views);
-  const allHistory = posts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: h.views || 0 })));
+  const allHistory = filteredPosts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: h.views || 0 })));
   let trend: { d: number; v: number }[] = [];
   if (allHistory.length > 1) {
     const min = Math.min(...allHistory.map(h => h.t));
