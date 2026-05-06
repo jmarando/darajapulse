@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -58,8 +58,8 @@
     --shadow-elegant: 0 30px 60px -30px hsl(20 14% 10% / 0.25);
     --shadow-soft: 0 4px 16px -8px hsl(20 14% 10% / 0.12);
 
-    --font-display: 'Instrument Serif', Georgia, serif;
-    --font-body: 'Inter Tight', 'Inter', system-ui, sans-serif;
+    --font-display: 'Geist', system-ui, sans-serif;
+    --font-body: 'Geist', system-ui, sans-serif;
   }
 
   .dark {
