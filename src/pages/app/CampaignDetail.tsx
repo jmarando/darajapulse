@@ -127,6 +127,13 @@ const CampaignDetail = () => {
     return { views, likes, comments, shares, er };
   }, [latestByPost]);
 
+  const rosterTotals = useMemo(() => {
+    const fees = ci.reduce((a, x) => a + Number(x.fee_kes || 0), 0);
+    const deliv = ci.reduce((a, x) => a + Number(x.deliverables_count || 0), 0);
+    const confirmed = ci.filter(x => ["confirmed","live","completed"].includes(x.status)).length;
+    return { fees, deliv, confirmed };
+  }, [ci]);
+
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const reportUrl = link ? `${window.location.origin}/r/${link.token}` : "";
   const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`;
