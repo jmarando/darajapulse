@@ -343,7 +343,7 @@ const CampaignDetail = () => {
               </thead>
               <tbody>
                 {ci.map(x => {
-                  const briefUrl = `${window.location.origin}/b/${x.brief_token}`;
+                  const briefUrl = `${window.location.origin}${slugPath}/brief/${x.brief_token}`;
                   const statusDot: Record<string,string> = {
                     invited: "bg-muted-foreground/40",
                     negotiating: "bg-highlight",
