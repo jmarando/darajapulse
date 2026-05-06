@@ -23,6 +23,9 @@ const PublicReport = () => {
   const [influencers, setInfluencers] = useState<any[]>([]);
   const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
   const [notFound, setNotFound] = useState(false);
+  const [from, setFrom] = useState<string>("");
+  const [to, setTo] = useState<string>("");
+  const [exporting, setExporting] = useState(false);
 
   const load = async () => {
     const { data: link } = await supabase.from("report_links").select("campaign_id").eq("token", token).eq("is_active", true).maybeSingle();
