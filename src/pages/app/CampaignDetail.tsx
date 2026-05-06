@@ -119,16 +119,49 @@ const CampaignDetail = () => {
   }, [metrics]);
 
   const totals = useMemo(() => {
-    let views = 0, likes = 0, comments = 0, shares = 0;
+    let views = 0, likes = 0, comments = 0, shares = 0, saves = 0, reach = 0, impressions = 0;
     for (const m of latestByPost.values()) {
       views += Number(m.views || 0);
       likes += Number(m.likes || 0);
       comments += Number(m.comments || 0);
       shares += Number(m.shares || 0);
+      saves += Number(m.saves || 0);
+      reach += Number(m.reach || 0);
+      impressions += Number(m.impressions || 0);
     }
-    const er = views ? ((likes + comments + shares) / views) * 100 : 0;
-    return { views, likes, comments, shares, er };
+    const er = views ? ((likes + comments + shares + saves) / views) * 100 : 0;
+    const emv = Math.round((impressions || views) * 0.012);
+    return { views, likes, comments, shares, saves, reach, impressions, er, emv };
   }, [latestByPost]);
+
+  // Per-influencer aggregated metrics
+  const byInfluencer = useMemo(() => {
+    const map = new Map<string, { views: number; likes: number; comments: number; shares: number; saves: number; posts: number }>();
+    for (const p of posts) {
+      const m = latestByPost.get(p.id);
+      if (!m) continue;
+      const key = p.influencer_id;
+      const cur = map.get(key) ?? { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, posts: 0 };
+      cur.views += Number(m.views || 0);
+      cur.likes += Number(m.likes || 0);
+      cur.comments += Number(m.comments || 0);
+      cur.shares += Number(m.shares || 0);
+      cur.saves += Number(m.saves || 0);
+      cur.posts += 1;
+      map.set(key, cur);
+    }
+    return map;
+  }, [posts, latestByPost]);
+
+  const topPerformer = useMemo(() => {
+    let best: { ci: any; views: number } | null = null;
+    for (const x of ci) {
+      const s = byInfluencer.get(x.influencer_id);
+      if (!s) continue;
+      if (!best || s.views > best.views) best = { ci: x, views: s.views };
+    }
+    return best;
+  }, [ci, byInfluencer]);
 
   const rosterTotals = useMemo(() => {
     const fees = ci.reduce((a, x) => a + Number(x.fee_kes || 0), 0);
