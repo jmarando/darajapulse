@@ -395,13 +395,13 @@ const PublicReport = () => {
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Activity</div>
               <h2 className="font-display text-2xl">Posts</h2>
             </div>
-            {posts.length === 0 ? (
+            {filteredPosts.length === 0 ? (
               <div className="text-center py-10 border border-dashed border-border rounded-md">
                 <p className="text-sm text-muted-foreground">No posts published yet — check back soon.</p>
               </div>
             ) : (
               <ul className="space-y-2">
-                {posts.map(p => (
+                {filteredPosts.map(p => (
                   <li key={p.id} className="p-3 rounded-md border border-border hover:bg-secondary/30 transition-colors">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm min-w-0 truncate">
