@@ -243,6 +243,51 @@ const PublicReport = () => {
           </div>
         )}
 
+        {/* Platform breakdown */}
+        {platformRows.length > 0 && (
+          <Card className="p-5 mb-6 overflow-hidden">
+            <div className="mb-4">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">By platform</div>
+              <h2 className="font-display text-2xl">Channel mix</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                    <th className="text-left font-medium py-2 pr-3">Platform</th>
+                    <th className="text-right font-medium py-2 px-3">Posts</th>
+                    <th className="text-right font-medium py-2 px-3">Creators</th>
+                    <th className="text-right font-medium py-2 px-3">Views</th>
+                    <th className="text-right font-medium py-2 px-3">Reach</th>
+                    <th className="text-right font-medium py-2 pl-3">Followers</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {platformRows.map(([k, v]) => (
+                    <tr key={k} className="border-b border-border last:border-0">
+                      <td className="py-2 pr-3 capitalize">{k}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">{v.posts}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">{v.creators.size}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">{fmt(v.views)}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">{fmt(v.reach)}</td>
+                      <td className="py-2 pl-3 text-right tabular-nums">{fmt(v.followers)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
+        {/* Learnings & Recommendations */}
+        {campaign.learnings && (
+          <Card className="p-6 mb-6">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Narrative</div>
+            <h2 className="font-display text-2xl mt-1 mb-3">Learnings & recommendations</h2>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{campaign.learnings}</p>
+          </Card>
+        )}
+
         {/* Roster + Posts — mirrors CampaignDetail */}
         <div className="grid lg:grid-cols-5 gap-6">
           <Card className="p-5 lg:col-span-2">
