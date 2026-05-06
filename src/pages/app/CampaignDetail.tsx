@@ -611,10 +611,7 @@ const CampaignDetail = () => {
                   </div>
                   <div>
                     <Label>Platform</Label>
-                    <Select value={post.platform} onValueChange={v => setPost({ ...post, platform: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{["tiktok","instagram","youtube","twitter","facebook"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <PlatformPicker value={post.platform} onChange={v => setPost({ ...post, platform: v })} />
                   </div>
                   <div><Label>Post URL</Label><Input required value={post.post_url} onChange={e => setPost({ ...post, post_url: e.target.value })} /></div>
                   <div><Label>Caption</Label><Input value={post.caption} onChange={e => setPost({ ...post, caption: e.target.value })} /></div>
