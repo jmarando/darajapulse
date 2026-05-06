@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet } from "lucide-react";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
 
 const CampaignDetail = () => {
@@ -25,6 +25,11 @@ const CampaignDetail = () => {
   const [creating, setCreating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
+  const [addFee, setAddFee] = useState<string>("");
+  const [addDeliv, setAddDeliv] = useState<string>("1");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFee, setEditFee] = useState<string>("");
+  const [editDeliv, setEditDeliv] = useState<string>("1");
 
   const load = async () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name)").eq("id", id).single();
@@ -46,9 +51,22 @@ const CampaignDetail = () => {
   useEffect(() => { load(); }, [id]);
 
   const addInfl = async (influencer_id: string) => {
-    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id });
+    const fee = Number(addFee) || 0;
+    const deliv = Number(addDeliv) || 1;
+    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id, fee_kes: fee, deliverables_count: deliv });
     if (error) return toast.error(error.message);
-    toast.success("Added"); load();
+    toast.success("Added"); setAddFee(""); setAddDeliv("1"); load();
+  };
+
+  const updateCi = async (ciId: string, patch: any) => {
+    const { error } = await supabase.from("campaign_influencers").update(patch).eq("id", ciId);
+    if (error) return toast.error(error.message);
+    load();
+  };
+
+  const saveEdit = async (ciId: string) => {
+    await updateCi(ciId, { fee_kes: Number(editFee) || 0, deliverables_count: Number(editDeliv) || 1 });
+    setEditingId(null);
   };
 
   const createAndAddInfl = async (e: React.FormEvent) => {
@@ -61,10 +79,11 @@ const CampaignDetail = () => {
         follower_count: Number(newInfl.follower_count) || 0,
       }).select().single();
       if (error) { toast.error(error.message); return; }
-      const { error: e2 } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: data.id });
+      const { error: e2 } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: data.id, fee_kes: Number(addFee) || 0, deliverables_count: Number(addDeliv) || 1 });
       if (e2) { toast.error(e2.message); return; }
       toast.success("Influencer created and added");
       setNewInfl({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
+      setAddFee(""); setAddDeliv("1");
       setCreating(false); setRosterOpen(false); load();
     } finally {
       setSubmitting(false);
@@ -108,6 +127,13 @@ const CampaignDetail = () => {
     return { views, likes, comments, shares, er };
   }, [latestByPost]);
 
+  const rosterTotals = useMemo(() => {
+    const fees = ci.reduce((a, x) => a + Number(x.fee_kes || 0), 0);
+    const deliv = ci.reduce((a, x) => a + Number(x.deliverables_count || 0), 0);
+    const confirmed = ci.filter(x => ["confirmed","live","completed"].includes(x.status)).length;
+    return { fees, deliv, confirmed };
+  }, [ci]);
+
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const reportUrl = link ? `${window.location.origin}/r/${link.token}` : "";
   const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`;
@@ -135,7 +161,9 @@ const CampaignDetail = () => {
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm text-muted-foreground">
             {c.hashtag && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{c.hashtag.replace(/^#/, "")}</span>}
             {c.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(c.budget_kes).toLocaleString()}</span>}
-            <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{ci.length} creator{ci.length === 1 ? "" : "s"}</span>
+            <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{rosterTotals.confirmed}/{ci.length} confirmed</span>
+            {rosterTotals.fees > 0 && <span className="inline-flex items-center gap-1">Fees committed: KES {rosterTotals.fees.toLocaleString()}</span>}
+            {rosterTotals.deliv > 0 && <span>{rosterTotals.deliv} deliverable{rosterTotals.deliv === 1 ? "" : "s"}</span>}
           </div>
           {c.brief && <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">{c.brief}</p>}
         </div>
@@ -214,6 +242,10 @@ const CampaignDetail = () => {
                       <div><Label>Followers</Label><Input type="number" value={newInfl.follower_count} onChange={e => setNewInfl({ ...newInfl, follower_count: e.target.value })} /></div>
                     </div>
                     <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
+                    <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border mt-1">
+                      <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
+                      <div><Label>Deliverables</Label><Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} /></div>
+                    </div>
                     <div className="flex gap-2 pt-2">
                       <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)} disabled={submitting}>Back</Button>
                       <Button type="submit" className="flex-1 bg-primary" disabled={submitting}>{submitting ? "Saving…" : "Create & add"}</Button>
@@ -221,7 +253,11 @@ const CampaignDetail = () => {
                   </form>
                 ) : (
                   <>
-                    <div className="space-y-1 max-h-80 overflow-auto">
+                    <div className="grid grid-cols-2 gap-3 pb-3 border-b border-border">
+                      <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
+                      <div><Label>Deliverables</Label><Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} /></div>
+                    </div>
+                    <div className="space-y-1 max-h-72 overflow-auto mt-2">
                       {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).map(r => (
                         <button key={r.id} onClick={() => addInfl(r.id)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
                           <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
@@ -247,18 +283,57 @@ const CampaignDetail = () => {
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {ci.map(x => (
-                <li key={x.id} className="flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display">{x.influencers?.full_name?.[0]}</div>
-                    <div className="min-w-0">
-                      <div className="text-sm truncate">{x.influencers?.full_name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{x.influencers?.handle} · {x.influencers?.primary_platform}</div>
+              {ci.map(x => {
+                const briefUrl = `${window.location.origin}/b/${x.brief_token}`;
+                const statusTones: Record<string,string> = {
+                  invited: "bg-muted text-muted-foreground",
+                  negotiating: "bg-highlight/20 text-foreground",
+                  confirmed: "bg-success/15 text-success",
+                  live: "bg-accent text-accent-foreground",
+                  completed: "bg-secondary text-foreground",
+                  declined: "bg-destructive/15 text-destructive",
+                };
+                const isEditing = editingId === x.id;
+                const mailto = `mailto:${x.influencers?.email ?? ""}?subject=${encodeURIComponent(`${c.clients?.name} × ${c.name} — collaboration brief`)}&body=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""},\n\nWe'd love to have you on this campaign. View your brief and confirm here:\n${briefUrl}\n\nThanks!`)}`;
+                const wa = x.influencers?.phone_mpesa ? `https://wa.me/${String(x.influencers.phone_mpesa).replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""}! ${c.clients?.name} × ${c.name} brief: ${briefUrl}`)}` : null;
+                return (
+                  <li key={x.id} className="py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display">{x.influencers?.full_name?.[0]}</div>
+                        <div className="min-w-0">
+                          <div className="text-sm truncate">{x.influencers?.full_name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{x.influencers?.handle} · {x.influencers?.primary_platform}</div>
+                        </div>
+                      </div>
+                      <Select value={x.status} onValueChange={(v) => updateCi(x.id, { status: v })}>
+                        <SelectTrigger className={`w-32 h-7 text-xs capitalize border-0 ${statusTones[x.status] ?? ""}`}><SelectValue /></SelectTrigger>
+                        <SelectContent>{["invited","negotiating","confirmed","live","completed","declined"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
+                      </Select>
                     </div>
-                  </div>
-                  <Badge variant="outline" className="capitalize">{x.status}</Badge>
-                </li>
-              ))}
+                    <div className="flex items-center justify-between gap-2 mt-2 pl-12 text-xs">
+                      {isEditing ? (
+                        <div className="flex items-center gap-1 flex-1">
+                          <Input className="h-7 text-xs" type="number" value={editFee} onChange={e => setEditFee(e.target.value)} placeholder="Fee" />
+                          <span className="text-muted-foreground">·</span>
+                          <Input className="h-7 text-xs w-16" type="number" min="1" value={editDeliv} onChange={e => setEditDeliv(e.target.value)} />
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => saveEdit(x.id)}><Check className="w-3 h-3" /></Button>
+                        </div>
+                      ) : (
+                        <button className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1" onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditDeliv(String(x.deliverables_count ?? 1)); }}>
+                          KES {Number(x.fee_kes || 0).toLocaleString()} · {x.deliverables_count} deliverable{x.deliverables_count === 1 ? "" : "s"} <Pencil className="w-3 h-3" />
+                        </button>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Copy brief link" onClick={() => { navigator.clipboard.writeText(briefUrl); toast.success("Brief link copied"); }}><Copy className="w-3 h-3" /></Button>
+                        <a href={mailto}><Button size="icon" variant="ghost" className="h-7 w-7" title="Email invite"><Mail className="w-3 h-3" /></Button></a>
+                        {wa && <a href={wa} target="_blank" rel="noreferrer"><Button size="icon" variant="ghost" className="h-7 w-7" title="WhatsApp invite"><MessageSquare className="w-3 h-3" /></Button></a>}
+                        <a href={briefUrl} target="_blank" rel="noreferrer"><Button size="icon" variant="ghost" className="h-7 w-7" title="Open brief"><ExternalLink className="w-3 h-3" /></Button></a>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Card>

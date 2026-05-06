@@ -54,6 +54,7 @@ export type Database = {
       }
       campaign_influencers: {
         Row: {
+          brief_token: string
           campaign_id: string
           created_at: string
           deliverables_count: number | null
@@ -63,6 +64,7 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          brief_token?: string
           campaign_id: string
           created_at?: string
           deliverables_count?: number | null
@@ -72,6 +74,7 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          brief_token?: string
           campaign_id?: string
           created_at?: string
           deliverables_count?: number | null
@@ -549,12 +552,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_brief_by_token: { Args: { _token: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      update_brief_status: {
+        Args: { _status: string; _token: string }
+        Returns: undefined
       }
     }
     Enums: {

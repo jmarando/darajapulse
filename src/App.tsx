@@ -14,6 +14,7 @@ import CampaignDetail from "./pages/app/CampaignDetail";
 import Influencers from "./pages/app/Influencers";
 import Stub from "./pages/app/Stub";
 import PublicReport from "./pages/PublicReport";
+import PublicBrief from "./pages/PublicBrief";
 import ConnectTikTok from "./pages/ConnectTikTok";
 import NotFound from "./pages/NotFound.tsx";
 import LandingPicker from "./pages/landings/LandingPicker";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/landing/dashboard" element={<LandingDashboard />} />
             <Route path="/landing/bento" element={<LandingBento />} />
             <Route path="/r/:token" element={<PublicReport />} />
+            <Route path="/b/:token" element={<PublicBrief />} />
             <Route path="/connect/tiktok/:influencerId" element={<ConnectTikTok />} />
             <Route path="/connect/tiktok/done" element={<ConnectTikTok />} />
             <Route path="/app" element={<AppShell />}>
