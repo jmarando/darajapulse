@@ -254,7 +254,7 @@ const CampaignDetail = () => {
           { label: "Saves", value: fmt(totals.saves), icon: Bookmark },
           { label: "Reach", value: fmt(totals.reach), icon: Radio },
           { label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3 },
-          { label: "Earned Media", value: `KES ${fmt(totals.emv)}`, icon: Wallet },
+          { label: "Earned Media", value: fmtKes(totals.emv), icon: Wallet },
         ].map((s, i) => (
           <div key={i} className="bg-card p-5">
             <div className="flex items-center justify-between">
