@@ -14,7 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2 } from "lucide-react";
 import { toast } from "sonner";
 import { ContestsSection } from "./ContestsSection";
-import { ContentSection } from "./ContentSection";
+
 
 const CampaignDetail = () => {
   const { id } = useParams();
@@ -558,7 +558,14 @@ const CampaignDetail = () => {
         )}
       </Card>
 
-      <ContentSection campaignId={id!} roster={ci} />
+      <Card className="p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Production</div>
+          <h2 className="font-display text-2xl">Content calendar</h2>
+          <p className="text-xs text-muted-foreground mt-1">Plan, upload, review and approve content for this campaign — managed in the standalone Content module.</p>
+        </div>
+        <a href={`/app/content?campaign=${id}`} className="text-sm text-accent hover:underline">Open in Content module →</a>
+      </Card>
       <ContestsSection campaignId={id!} />
 
       {/* Learnings & recommendations */}

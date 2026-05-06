@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 
@@ -8,6 +8,7 @@ const nav = [
   { to: "/app", icon: LayoutDashboard, label: "Overview", end: true },
   { to: "/app/clients", icon: Building2, label: "Clients" },
   { to: "/app/campaigns", icon: Megaphone, label: "Campaigns" },
+  { to: "/app/content", icon: Calendar, label: "Content" },
   { to: "/app/influencers", icon: Users, label: "Influencers" },
   { to: "/app/briefs", icon: FileSignature, label: "Briefs" },
   { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },

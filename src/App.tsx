@@ -15,6 +15,7 @@ import CampaignDetail from "./pages/app/CampaignDetail";
 import Influencers from "./pages/app/Influencers";
 import Stub from "./pages/app/Stub";
 import Briefs from "./pages/app/Briefs";
+import Content from "./pages/app/Content";
 import PublicReport from "./pages/PublicReport";
 import PublicBrief from "./pages/PublicBrief";
 import PublicContestSubmit from "./pages/PublicContestSubmit";
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="campaigns/:id" element={<CampaignDetail />} />
               <Route path="influencers" element={<Influencers />} />
               <Route path="briefs" element={<Briefs />} />
+              <Route path="content" element={<Content />} />
               <Route path="approvals" element={<Stub title="Approvals" body="Two-round content approvals with versioning and threaded comments per asset. Ships in v0.2." />} />
               <Route path="payouts" element={<Stub title="Payouts" body="M-Pesa B2C disbursements via Daraja API with WHT computation and e-TIMS-ready records. Ships in v0.2." />} />
             </Route>
