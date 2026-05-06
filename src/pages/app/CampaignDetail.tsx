@@ -215,8 +215,8 @@ const CampaignDetail = () => {
                     </div>
                     <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
                     <div className="flex gap-2 pt-2">
-                      <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)}>Back</Button>
-                      <Button type="submit" className="flex-1 bg-primary">Create & add</Button>
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)} disabled={submitting}>Back</Button>
+                      <Button type="submit" className="flex-1 bg-primary" disabled={submitting}>{submitting ? "Saving…" : "Create & add"}</Button>
                     </div>
                   </form>
                 ) : (
