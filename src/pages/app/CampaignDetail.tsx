@@ -34,6 +34,8 @@ const CampaignDetail = () => {
   const [editFee, setEditFee] = useState<string>("");
   const [editDeliv, setEditDeliv] = useState<string>("1");
   const [selectedCi, setSelectedCi] = useState<any>(null);
+  const [learnings, setLearnings] = useState<string>("");
+  const [savingLearnings, setSavingLearnings] = useState(false);
 
   const load = async () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug)").eq("id", id).single();
