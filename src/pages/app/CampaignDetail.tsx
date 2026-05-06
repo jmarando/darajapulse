@@ -36,6 +36,19 @@ const CampaignDetail = () => {
   const [selectedCi, setSelectedCi] = useState<any>(null);
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
+  const [generatingLearnings, setGeneratingLearnings] = useState(false);
+
+  const generateLearnings = async () => {
+    setGeneratingLearnings(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-learnings", { body: { campaign_id: id } });
+      if (error) { toast.error(error.message); return; }
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.learnings) { setLearnings(data.learnings); toast.success("Draft generated — review and Save"); }
+    } finally {
+      setGeneratingLearnings(false);
+    }
+  };
 
   const load = async () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug)").eq("id", id).single();
