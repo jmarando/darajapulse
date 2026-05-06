@@ -558,7 +558,14 @@ const CampaignDetail = () => {
         )}
       </Card>
 
-      <ContentSection campaignId={id!} roster={ci} />
+      <Card className="p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Production</div>
+          <h2 className="font-display text-2xl">Content calendar</h2>
+          <p className="text-xs text-muted-foreground mt-1">Plan, upload, review and approve content for this campaign — managed in the standalone Content module.</p>
+        </div>
+        <a href={`/app/content?campaign=${id}`} className="text-sm text-accent hover:underline">Open in Content module →</a>
+      </Card>
       <ContestsSection campaignId={id!} />
 
       {/* Learnings & recommendations */}
