@@ -551,7 +551,7 @@ const CampaignDetail = () => {
             const inf = selectedCi.influencers;
             const stats = byInfluencer.get(selectedCi.influencer_id);
             const creatorPosts = posts.filter(p => p.influencer_id === selectedCi.influencer_id);
-            const briefUrl = `${window.location.origin}/b/${selectedCi.brief_token}`;
+            const briefUrl = `${window.location.origin}${slugPath}/brief/${selectedCi.brief_token}`;
             return (
               <>
                 <SheetHeader className="text-left">
