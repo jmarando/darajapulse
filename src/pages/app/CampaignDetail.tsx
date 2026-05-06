@@ -192,26 +192,6 @@ const CampaignDetail = () => {
         ))}
       </div>
 
-      {/* Report link */}
-      <Card className="p-6 mb-6 bg-gradient-ink text-primary-foreground border-0">
-        <div className="flex items-center justify-between gap-6 flex-wrap">
-          <div className="min-w-0">
-            <div className="text-xs uppercase tracking-widest opacity-70">Live client report</div>
-            <div className="font-display text-2xl mt-1">Share with the brand</div>
-            <p className="text-sm opacity-80 mt-1 max-w-md">A tokenized public page that updates as posts roll in. Forward internally without seats or logins.</p>
-          </div>
-          {link ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <Input readOnly value={reportUrl} className="w-[22rem] bg-white/10 border-white/20 text-primary-foreground placeholder:text-white/40" />
-              <Button variant="secondary" size="icon" onClick={() => { navigator.clipboard.writeText(reportUrl); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button>
-              <a href={reportUrl} target="_blank" rel="noreferrer"><Button variant="secondary" size="icon"><ExternalLink className="w-4 h-4" /></Button></a>
-            </div>
-          ) : (
-            <Button onClick={generateLink} className="bg-accent text-accent-foreground hover:bg-accent/90"><Link2 className="w-4 h-4 mr-2" /> Generate report link</Button>
-          )}
-        </div>
-      </Card>
-
       {/* Roster + Posts */}
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Roster */}
