@@ -193,252 +193,277 @@ const CampaignDetail = () => {
         ))}
       </div>
 
-      {/* Roster + Posts */}
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* Roster */}
-        <Card className="p-5 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
-              <h2 className="font-display text-2xl">Creators</h2>
-            </div>
-            <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) setCreating(false); }}>
-              <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add</Button></DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>{creating ? "Create new influencer" : "Add influencer to campaign"}</DialogTitle></DialogHeader>
-                {creating ? (
-                  <form onSubmit={createAndAddInfl} className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><Label>Full name</Label><Input required value={newInfl.full_name} onChange={e => setNewInfl({ ...newInfl, full_name: e.target.value })} /></div>
-                      <div><Label>Handle</Label><Input value={newInfl.handle} onChange={e => setNewInfl({ ...newInfl, handle: e.target.value })} placeholder="@..." /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label>Platform</Label>
-                        <Select value={newInfl.primary_platform} onValueChange={v => setNewInfl({ ...newInfl, primary_platform: v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>{["tiktok","instagram","youtube","twitter","facebook"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      <div><Label>Followers</Label><Input type="number" value={newInfl.follower_count} onChange={e => setNewInfl({ ...newInfl, follower_count: e.target.value })} /></div>
-                    </div>
-                    <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
-                    <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border mt-1">
-                      <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
-                      <div><Label>Deliverables</Label><Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} /></div>
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)} disabled={submitting}>Back</Button>
-                      <Button type="submit" className="flex-1 bg-primary" disabled={submitting}>{submitting ? "Saving…" : "Create & add"}</Button>
-                    </div>
-                  </form>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-3 pb-3 border-b border-border">
-                      <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
-                      <div><Label>Deliverables</Label><Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} /></div>
-                    </div>
-                    <div className="space-y-1 max-h-72 overflow-auto mt-2">
-                      {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).map(r => (
-                        <button key={r.id} onClick={() => addInfl(r.id)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
-                          <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      ))}
-                      {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).length === 0 && (
-                        <p className="text-sm text-muted-foreground p-3 text-center">{rosterAll.length === 0 ? "No influencers in your roster yet." : "All your influencers are already on this campaign."}</p>
-                      )}
-                    </div>
-                    <Button variant="outline" className="w-full mt-2" onClick={() => setCreating(true)}>
-                      <Plus className="w-4 h-4 mr-2" /> Create new influencer
-                    </Button>
-                  </>
-                )}
-              </DialogContent>
-            </Dialog>
+      {/* Roster — full width table */}
+      <Card className="p-0 overflow-hidden mb-6">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
+            <h2 className="font-display text-2xl">Creators</h2>
           </div>
-          {ci.length === 0 ? (
-            <div className="text-center py-10 border border-dashed border-border rounded-md">
-              <Users className="w-6 h-6 mx-auto text-muted-foreground" />
-              <p className="text-sm text-muted-foreground mt-2">No creators on this campaign yet.</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-border -mx-2">
-              {ci.map(x => {
-                const briefUrl = `${window.location.origin}/b/${x.brief_token}`;
-                const statusDot: Record<string,string> = {
-                  invited: "bg-muted-foreground/40",
-                  negotiating: "bg-highlight",
-                  confirmed: "bg-success",
-                  live: "bg-accent",
-                  completed: "bg-foreground",
-                  declined: "bg-destructive",
-                };
-                const statusLabel: Record<string,string> = {
-                  invited: "Invite sent",
-                  negotiating: "Negotiating",
-                  confirmed: "Confirmed",
-                  live: "Live",
-                  completed: "Completed",
-                  declined: "Declined",
-                };
-                const isEditing = editingId === x.id;
-                const mailto = `mailto:${x.influencers?.email ?? ""}?subject=${encodeURIComponent(`${c.clients?.name} × ${c.name} — collaboration brief`)}&body=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""},\n\nWe'd love to have you on this campaign. View your brief and confirm here:\n${briefUrl}\n\nThanks!`)}`;
-                const wa = x.influencers?.phone_mpesa ? `https://wa.me/${String(x.influencers.phone_mpesa).replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""}! ${c.clients?.name} × ${c.name} brief: ${briefUrl}`)}` : null;
-                return (
-                  <li key={x.id} className="px-2 py-3 hover:bg-secondary/40 rounded-md group transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display text-base shrink-0">{x.influencers?.full_name?.[0]}</div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">{x.influencers?.full_name}</div>
-                        <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full ${statusDot[x.status] ?? "bg-muted-foreground/40"}`} />
-                          {statusLabel[x.status] ?? x.status}
-                          {!isEditing && (x.fee_kes > 0 || x.deliverables_count > 0) && (
-                            <>
-                              <span>·</span>
-                              <span>KES {Number(x.fee_kes || 0).toLocaleString()}</span>
-                              <span>·</span>
-                              <span>{x.deliverables_count} post{x.deliverables_count === 1 ? "" : "s"}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      {!isEditing && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-60 group-hover:opacity-100">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Send invite</DropdownMenuLabel>
-                            <DropdownMenuItem asChild><a href={mailto}><Mail className="w-4 h-4 mr-2" /> Email brief</a></DropdownMenuItem>
-                            {wa && <DropdownMenuItem asChild><a href={wa} target="_blank" rel="noreferrer"><MessageSquare className="w-4 h-4 mr-2" /> WhatsApp brief</a></DropdownMenuItem>}
-                            <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(briefUrl); toast.success("Brief link copied"); }}>
-                              <Copy className="w-4 h-4 mr-2" /> Copy brief link
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild><a href={briefUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4 mr-2" /> Preview brief</a></DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Set status</DropdownMenuLabel>
-                            {[
-                              { v: "invited", l: "Invite sent" },
-                              { v: "negotiating", l: "Negotiating" },
-                              { v: "confirmed", l: "Confirmed" },
-                              { v: "live", l: "Live" },
-                              { v: "completed", l: "Completed" },
-                              { v: "declined", l: "Declined" },
-                            ].map(s => (
-                              <DropdownMenuItem key={s.v} onClick={() => updateCi(x.id, { status: s.v })}>
-                                <span className={`w-1.5 h-1.5 rounded-full mr-2 ${statusDot[s.v]}`} /> {s.l}
-                                {x.status === s.v && <Check className="w-3 h-3 ml-auto" />}
-                              </DropdownMenuItem>
-                            ))}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditDeliv(String(x.deliverables_count ?? 1)); }}>
-                              <Pencil className="w-4 h-4 mr-2" /> Edit fee & deliverables
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                    {isEditing && (
-                      <div className="flex items-center gap-2 pl-12 mt-2">
-                        <div className="flex-1">
-                          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Fee (KES)</Label>
-                          <Input className="h-8 text-sm mt-1" type="number" value={editFee} onChange={e => setEditFee(e.target.value)} />
-                        </div>
-                        <div className="w-24">
-                          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Posts</Label>
-                          <Input className="h-8 text-sm mt-1" type="number" min="1" value={editDeliv} onChange={e => setEditDeliv(e.target.value)} />
-                        </div>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 mt-5" onClick={() => setEditingId(null)}><X className="w-4 h-4" /></Button>
-                        <Button size="icon" className="h-8 w-8 mt-5 bg-primary" onClick={() => saveEdit(x.id)}><Check className="w-4 h-4" /></Button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Card>
-
-        {/* Posts */}
-        <Card className="p-5 lg:col-span-3">
-          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Activity</div>
-              <h2 className="font-display text-2xl">Posts</h2>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={async () => {
-                toast.loading("Refreshing TikTok metrics…", { id: "tt" });
-                const { data, error } = await supabase.functions.invoke("tiktok-poll", { body: { campaign_id: id } });
-                if (error) return toast.error(error.message, { id: "tt" });
-                toast.success(`Polled ${(data?.results ?? []).reduce((a: number, r: any) => a + (r.polled ?? 0), 0)} posts`, { id: "tt" });
-                load();
-              }}><RefreshCw className="w-3 h-3 mr-1" /> Refresh TikTok</Button>
-              <Dialog open={postOpen} onOpenChange={setPostOpen}>
-                <DialogTrigger asChild><Button size="sm" className="bg-primary" disabled={ci.length === 0}><Plus className="w-3 h-3 mr-1" /> Add post</Button></DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Add a published post</DialogTitle></DialogHeader>
-                  <form onSubmit={addPost} className="space-y-3">
-                    <div>
-                      <Label>Influencer</Label>
-                      <Select value={post.influencer_id} onValueChange={v => setPost({ ...post, influencer_id: v })}>
-                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent>{ci.map(x => <SelectItem key={x.influencer_id} value={x.influencer_id}>{x.influencers?.full_name}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
+          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) setCreating(false); }}>
+            <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add creator</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>{creating ? "Create new influencer" : "Add influencer to campaign"}</DialogTitle></DialogHeader>
+              {creating ? (
+                <form onSubmit={createAndAddInfl} className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Full name</Label><Input required value={newInfl.full_name} onChange={e => setNewInfl({ ...newInfl, full_name: e.target.value })} /></div>
+                    <div><Label>Handle</Label><Input value={newInfl.handle} onChange={e => setNewInfl({ ...newInfl, handle: e.target.value })} placeholder="@..." /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label>Platform</Label>
-                      <Select value={post.platform} onValueChange={v => setPost({ ...post, platform: v })}>
+                      <Select value={newInfl.primary_platform} onValueChange={v => setNewInfl({ ...newInfl, primary_platform: v })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>{["tiktok","instagram","youtube","twitter","facebook"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
-                    <div><Label>Post URL</Label><Input required value={post.post_url} onChange={e => setPost({ ...post, post_url: e.target.value })} /></div>
-                    <div><Label>Caption</Label><Input value={post.caption} onChange={e => setPost({ ...post, caption: e.target.value })} /></div>
-                    <Button type="submit" className="w-full bg-primary">Save</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-          {posts.length === 0 ? (
-            <div className="text-center py-10 border border-dashed border-border rounded-md">
-              <p className="text-sm text-muted-foreground">No posts captured yet.</p>
-              <p className="text-xs text-muted-foreground mt-1">Add the first live post or refresh TikTok metrics.</p>
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {posts.map(p => {
-                const m = latestByPost.get(p.id);
-                return (
-                  <li key={p.id} className="p-3 rounded-md border border-border hover:bg-secondary/30 transition-colors">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm min-w-0 truncate">
-                        <span className="font-medium">{p.influencers?.full_name}</span>
-                        <span className="text-muted-foreground"> · {p.platform}</span>
-                      </div>
-                      <Badge variant="outline" className="capitalize">{p.status}</Badge>
+                    <div><Label>Followers</Label><Input type="number" value={newInfl.follower_count} onChange={e => setNewInfl({ ...newInfl, follower_count: e.target.value })} /></div>
+                  </div>
+                  <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
+                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border mt-1">
+                    <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
+                    <div>
+                      <Label># of posts</Label>
+                      <Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} />
+                      <p className="text-[10px] text-muted-foreground mt-1">How many pieces of content (Reels, Stories, TikToks) the creator will deliver.</p>
                     </div>
-                    {p.post_url && <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block mt-1">{p.post_url}</a>}
-                    {m && (
-                      <div className="grid grid-cols-4 gap-2 mt-3 text-center">
-                        <div><div className="font-display text-base">{fmt(m.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                        <div><div className="font-display text-base">{fmt(m.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
-                        <div><div className="font-display text-base">{fmt(m.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
-                        <div><div className="font-display text-base">{fmt(m.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
-                      </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)} disabled={submitting}>Back</Button>
+                    <Button type="submit" className="flex-1 bg-primary" disabled={submitting}>{submitting ? "Saving…" : "Create & add"}</Button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3 pb-3 border-b border-border">
+                    <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
+                    <div>
+                      <Label># of posts</Label>
+                      <Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} />
+                      <p className="text-[10px] text-muted-foreground mt-1">Pieces of content the creator will deliver.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1 max-h-72 overflow-auto mt-2">
+                    {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).map(r => (
+                      <button key={r.id} onClick={() => addInfl(r.id)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
+                        <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    ))}
+                    {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).length === 0 && (
+                      <p className="text-sm text-muted-foreground p-3 text-center">{rosterAll.length === 0 ? "No influencers in your roster yet." : "All your influencers are already on this campaign."}</p>
                     )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </Card>
-      </div>
+                  </div>
+                  <Button variant="outline" className="w-full mt-2" onClick={() => setCreating(true)}>
+                    <Plus className="w-4 h-4 mr-2" /> Create new influencer
+                  </Button>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {ci.length === 0 ? (
+          <div className="text-center py-14">
+            <Users className="w-6 h-6 mx-auto text-muted-foreground" />
+            <p className="text-sm text-muted-foreground mt-2">No creators on this campaign yet.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                  <th className="text-left font-medium px-5 py-3">Creator</th>
+                  <th className="text-left font-medium px-3 py-3">Platform</th>
+                  <th className="text-left font-medium px-3 py-3">Status</th>
+                  <th className="text-right font-medium px-3 py-3">Fee (KES)</th>
+                  <th className="text-right font-medium px-3 py-3"># Posts</th>
+                  <th className="text-right font-medium px-5 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ci.map(x => {
+                  const briefUrl = `${window.location.origin}/b/${x.brief_token}`;
+                  const statusDot: Record<string,string> = {
+                    invited: "bg-muted-foreground/40",
+                    negotiating: "bg-highlight",
+                    confirmed: "bg-success",
+                    live: "bg-accent",
+                    completed: "bg-foreground",
+                    declined: "bg-destructive",
+                  };
+                  const statusLabel: Record<string,string> = {
+                    invited: "Invite sent",
+                    negotiating: "Negotiating",
+                    confirmed: "Confirmed",
+                    live: "Live",
+                    completed: "Completed",
+                    declined: "Declined",
+                  };
+                  const isEditing = editingId === x.id;
+                  const mailto = `mailto:${x.influencers?.email ?? ""}?subject=${encodeURIComponent(`${c.clients?.name} × ${c.name} — collaboration brief`)}&body=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""},\n\nWe'd love to have you on this campaign. View your brief and confirm here:\n${briefUrl}\n\nThanks!`)}`;
+                  const wa = x.influencers?.phone_mpesa ? `https://wa.me/${String(x.influencers.phone_mpesa).replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""}! ${c.clients?.name} × ${c.name} brief: ${briefUrl}`)}` : null;
+                  return (
+                    <tr key={x.id} className="border-b border-border last:border-0 hover:bg-secondary/40 transition-colors group">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display text-base shrink-0">{x.influencers?.full_name?.[0]}</div>
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{x.influencers?.full_name}</div>
+                            {x.influencers?.handle && <div className="text-xs text-muted-foreground truncate">@{x.influencers.handle.replace(/^@/, "")}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 capitalize text-muted-foreground">{x.influencers?.primary_platform}</td>
+                      <td className="px-3 py-3">
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusDot[x.status] ?? "bg-muted-foreground/40"}`} />
+                          {statusLabel[x.status] ?? x.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums">
+                        {isEditing ? (
+                          <Input className="h-8 text-sm text-right" type="number" value={editFee} onChange={e => setEditFee(e.target.value)} />
+                        ) : (
+                          Number(x.fee_kes || 0).toLocaleString()
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums">
+                        {isEditing ? (
+                          <Input className="h-8 text-sm text-right w-20 ml-auto" type="number" min="1" value={editDeliv} onChange={e => setEditDeliv(e.target.value)} />
+                        ) : (
+                          x.deliverables_count
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        {isEditing ? (
+                          <div className="inline-flex gap-1">
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingId(null)}><X className="w-4 h-4" /></Button>
+                            <Button size="icon" className="h-8 w-8 bg-primary" onClick={() => saveEdit(x.id)}><Check className="w-4 h-4" /></Button>
+                          </div>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-60 group-hover:opacity-100">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Send invite</DropdownMenuLabel>
+                              <DropdownMenuItem asChild><a href={mailto}><Mail className="w-4 h-4 mr-2" /> Email brief</a></DropdownMenuItem>
+                              {wa && <DropdownMenuItem asChild><a href={wa} target="_blank" rel="noreferrer"><MessageSquare className="w-4 h-4 mr-2" /> WhatsApp brief</a></DropdownMenuItem>}
+                              <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(briefUrl); toast.success("Brief link copied"); }}>
+                                <Copy className="w-4 h-4 mr-2" /> Copy brief link
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild><a href={briefUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4 mr-2" /> Preview brief</a></DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Set status</DropdownMenuLabel>
+                              {[
+                                { v: "invited", l: "Invite sent" },
+                                { v: "negotiating", l: "Negotiating" },
+                                { v: "confirmed", l: "Confirmed" },
+                                { v: "live", l: "Live" },
+                                { v: "completed", l: "Completed" },
+                                { v: "declined", l: "Declined" },
+                              ].map(s => (
+                                <DropdownMenuItem key={s.v} onClick={() => updateCi(x.id, { status: s.v })}>
+                                  <span className={`w-1.5 h-1.5 rounded-full mr-2 ${statusDot[s.v]}`} /> {s.l}
+                                  {x.status === s.v && <Check className="w-3 h-3 ml-auto" />}
+                                </DropdownMenuItem>
+                              ))}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditDeliv(String(x.deliverables_count ?? 1)); }}>
+                                <Pencil className="w-4 h-4 mr-2" /> Edit fee & posts
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Posts — full width below */}
+      <Card className="p-5 mb-6">
+        <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Activity</div>
+            <h2 className="font-display text-2xl">Posts</h2>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={async () => {
+              toast.loading("Refreshing TikTok metrics…", { id: "tt" });
+              const { data, error } = await supabase.functions.invoke("tiktok-poll", { body: { campaign_id: id } });
+              if (error) return toast.error(error.message, { id: "tt" });
+              toast.success(`Polled ${(data?.results ?? []).reduce((a: number, r: any) => a + (r.polled ?? 0), 0)} posts`, { id: "tt" });
+              load();
+            }}><RefreshCw className="w-3 h-3 mr-1" /> Refresh TikTok</Button>
+            <Dialog open={postOpen} onOpenChange={setPostOpen}>
+              <DialogTrigger asChild><Button size="sm" className="bg-primary" disabled={ci.length === 0}><Plus className="w-3 h-3 mr-1" /> Add post</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Add a published post</DialogTitle></DialogHeader>
+                <form onSubmit={addPost} className="space-y-3">
+                  <div>
+                    <Label>Influencer</Label>
+                    <Select value={post.influencer_id} onValueChange={v => setPost({ ...post, influencer_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>{ci.map(x => <SelectItem key={x.influencer_id} value={x.influencer_id}>{x.influencers?.full_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Platform</Label>
+                    <Select value={post.platform} onValueChange={v => setPost({ ...post, platform: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{["tiktok","instagram","youtube","twitter","facebook"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Post URL</Label><Input required value={post.post_url} onChange={e => setPost({ ...post, post_url: e.target.value })} /></div>
+                  <div><Label>Caption</Label><Input value={post.caption} onChange={e => setPost({ ...post, caption: e.target.value })} /></div>
+                  <Button type="submit" className="w-full bg-primary">Save</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+        {posts.length === 0 ? (
+          <div className="text-center py-10 border border-dashed border-border rounded-md">
+            <p className="text-sm text-muted-foreground">No posts captured yet.</p>
+            <p className="text-xs text-muted-foreground mt-1">Add the first live post or refresh TikTok metrics.</p>
+          </div>
+        ) : (
+          <ul className="grid md:grid-cols-2 gap-3">
+            {posts.map(p => {
+              const m = latestByPost.get(p.id);
+              return (
+                <li key={p.id} className="p-3 rounded-md border border-border hover:bg-secondary/30 transition-colors">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm min-w-0 truncate">
+                      <span className="font-medium">{p.influencers?.full_name}</span>
+                      <span className="text-muted-foreground"> · {p.platform}</span>
+                    </div>
+                    <Badge variant="outline" className="capitalize">{p.status}</Badge>
+                  </div>
+                  {p.post_url && <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block mt-1">{p.post_url}</a>}
+                  {m && (
+                    <div className="grid grid-cols-4 gap-2 mt-3 text-center">
+                      <div><div className="font-display text-base">{fmt(m.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                      <div><div className="font-display text-base">{fmt(m.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                      <div><div className="font-display text-base">{fmt(m.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
+                      <div><div className="font-display text-base">{fmt(m.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
 
       {/* Report link — moved below */}
       <Card className="p-6 mt-6 bg-gradient-ink text-primary-foreground border-0">
