@@ -542,6 +542,100 @@ const CampaignDetail = () => {
           )}
         </div>
       </Card>
+
+      {/* Creator detail sheet */}
+      <Sheet open={!!selectedCi} onOpenChange={(o) => !o && setSelectedCi(null)}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          {selectedCi && (() => {
+            const inf = selectedCi.influencers;
+            const stats = byInfluencer.get(selectedCi.influencer_id);
+            const creatorPosts = posts.filter(p => p.influencer_id === selectedCi.influencer_id);
+            const briefUrl = `${window.location.origin}/b/${selectedCi.brief_token}`;
+            return (
+              <>
+                <SheetHeader className="text-left">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center font-display text-2xl">{inf?.full_name?.[0]}</div>
+                    <div className="min-w-0">
+                      <SheetTitle className="font-display text-2xl">{inf?.full_name}</SheetTitle>
+                      <div className="text-sm text-muted-foreground">@{inf?.handle?.replace(/^@/, "")} · {inf?.primary_platform}</div>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                <div className="grid grid-cols-3 gap-px bg-border rounded-lg overflow-hidden border border-border mt-6">
+                  {[
+                    { l: "Followers", v: inf?.follower_count ? fmt(inf.follower_count) : "—" },
+                    { l: "Niche", v: inf?.niche || "—" },
+                    { l: "Status", v: selectedCi.status },
+                  ].map((s, i) => (
+                    <div key={i} className="bg-card p-3">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.l}</div>
+                      <div className="font-display text-lg mt-1 truncate capitalize">{s.v}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Deal</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Fee</div><div className="font-display text-xl mt-1">KES {Number(selectedCi.fee_kes || 0).toLocaleString()}</div></Card>
+                    <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Deliverables</div><div className="font-display text-xl mt-1">{selectedCi.deliverables_count}</div></Card>
+                  </div>
+                </div>
+
+                {stats && (
+                  <div className="mt-6">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Performance ({stats.posts} post{stats.posts === 1 ? "" : "s"})</div>
+                    <div className="grid grid-cols-5 gap-px bg-border rounded-lg overflow-hidden border border-border">
+                      {[
+                        { l: "Views", v: fmt(stats.views) },
+                        { l: "Likes", v: fmt(stats.likes) },
+                        { l: "Comm.", v: fmt(stats.comments) },
+                        { l: "Shares", v: fmt(stats.shares) },
+                        { l: "Saves", v: fmt(stats.saves) },
+                      ].map((s, i) => (
+                        <div key={i} className="bg-card p-3 text-center">
+                          <div className="font-display text-base">{s.v}</div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.l}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {creatorPosts.length > 0 && (
+                  <div className="mt-6">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Posts</div>
+                    <ul className="space-y-2">
+                      {creatorPosts.map(p => (
+                        <li key={p.id} className="p-3 rounded-md border border-border">
+                          <div className="text-xs text-muted-foreground capitalize">{p.platform} · {p.status}</div>
+                          {p.post_url && <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block mt-1">{p.post_url}</a>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-6 pt-6 border-t border-border">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Contact</div>
+                  <div className="space-y-1 text-sm">
+                    {inf?.email && <div className="text-muted-foreground">{inf.email}</div>}
+                    {inf?.phone_mpesa && <div className="text-muted-foreground">{inf.phone_mpesa}</div>}
+                    {!inf?.email && !inf?.phone_mpesa && <div className="text-muted-foreground italic">No contact details on file</div>}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <Button variant="outline" className="flex-1" onClick={() => { navigator.clipboard.writeText(briefUrl); toast.success("Brief link copied"); }}><Copy className="w-4 h-4 mr-2" /> Copy brief</Button>
+                  <a href={briefUrl} target="_blank" rel="noreferrer" className="flex-1"><Button variant="outline" className="w-full"><ExternalLink className="w-4 h-4 mr-2" /> Open brief</Button></a>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
