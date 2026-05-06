@@ -42,6 +42,8 @@ const App = () => (
             <Route path="/landing/bento" element={<LandingBento />} />
             <Route path="/r/:token" element={<PublicReport />} />
             <Route path="/b/:token" element={<PublicBrief />} />
+            <Route path="/:clientSlug/:campaignSlug/report/:token" element={<PublicReport />} />
+            <Route path="/:clientSlug/:campaignSlug/brief/:token" element={<PublicBrief />} />
             <Route path="/connect/tiktok/:influencerId" element={<ConnectTikTok />} />
             <Route path="/connect/tiktok/done" element={<ConnectTikTok />} />
             <Route path="/app" element={<AppShell />}>

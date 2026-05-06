@@ -35,7 +35,7 @@ const CampaignDetail = () => {
   const [selectedCi, setSelectedCi] = useState<any>(null);
 
   const load = async () => {
-    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name)").eq("id", id).single();
+    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug)").eq("id", id).single();
     setC(c1);
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
     setCi(ciAll ?? []);
@@ -171,7 +171,8 @@ const CampaignDetail = () => {
   }, [ci]);
 
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
-  const reportUrl = link ? `${window.location.origin}/r/${link.token}` : "";
+  const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
+  const reportUrl = link ? `${window.location.origin}${slugPath}/report/${link.token}` : "";
   const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`;
 
   const statusTone: Record<string, string> = {
@@ -342,7 +343,7 @@ const CampaignDetail = () => {
               </thead>
               <tbody>
                 {ci.map(x => {
-                  const briefUrl = `${window.location.origin}/b/${x.brief_token}`;
+                  const briefUrl = `${window.location.origin}${slugPath}/brief/${x.brief_token}`;
                   const statusDot: Record<string,string> = {
                     invited: "bg-muted-foreground/40",
                     negotiating: "bg-highlight",
@@ -550,7 +551,7 @@ const CampaignDetail = () => {
             const inf = selectedCi.influencers;
             const stats = byInfluencer.get(selectedCi.influencer_id);
             const creatorPosts = posts.filter(p => p.influencer_id === selectedCi.influencer_id);
-            const briefUrl = `${window.location.origin}/b/${selectedCi.brief_token}`;
+            const briefUrl = `${window.location.origin}${slugPath}/brief/${selectedCi.brief_token}`;
             return (
               <>
                 <SheetHeader className="text-left">
