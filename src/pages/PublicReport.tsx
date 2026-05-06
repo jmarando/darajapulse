@@ -9,6 +9,7 @@ import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPi
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
+import { PostEmbed } from "@/components/PostEmbed";
 
 type PostWithMetrics = any;
 
@@ -457,7 +458,25 @@ const PublicReport = () => {
                       </div>
                       <Badge variant="outline" className="capitalize">{p.status}</Badge>
                     </div>
-                    {p.post_url && <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block mt-1">{p.post_url}</a>}
+                    {p.post_url && (
+                      <div className="mt-3 grid md:grid-cols-[minmax(0,360px)_1fr] gap-4 items-start">
+                        <div className="no-print">
+                          <PostEmbed url={p.post_url} platform={p.platform} />
+                        </div>
+                        <div className="min-w-0">
+                          <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block">{p.post_url}</a>
+                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3 text-center">
+                            <div><div className="font-display text-base">{fmt(p.metrics.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                            <div><div className="font-display text-base">{fmt(p.metrics.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                            <div><div className="font-display text-base">{fmt(p.metrics.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
+                            <div><div className="font-display text-base">{fmt(p.metrics.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                            <div><div className="font-display text-base">{fmt(p.metrics.saves || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
+                            <div><div className="font-display text-base">{fmt(p.metrics.reach || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Reach</div></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {!p.post_url && (
                     <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3 text-center">
                       <div><div className="font-display text-base">{fmt(p.metrics.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
                       <div><div className="font-display text-base">{fmt(p.metrics.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
@@ -466,6 +485,7 @@ const PublicReport = () => {
                       <div><div className="font-display text-base">{fmt(p.metrics.saves || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
                       <div><div className="font-display text-base">{fmt(p.metrics.reach || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Reach</div></div>
                     </div>
+                    )}
                   </li>
                 ))}
               </ul>
