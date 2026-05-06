@@ -79,10 +79,11 @@ const CampaignDetail = () => {
         follower_count: Number(newInfl.follower_count) || 0,
       }).select().single();
       if (error) { toast.error(error.message); return; }
-      const { error: e2 } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: data.id });
+      const { error: e2 } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: data.id, fee_kes: Number(addFee) || 0, deliverables_count: Number(addDeliv) || 1 });
       if (e2) { toast.error(e2.message); return; }
       toast.success("Influencer created and added");
       setNewInfl({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
+      setAddFee(""); setAddDeliv("1");
       setCreating(false); setRosterOpen(false); load();
     } finally {
       setSubmitting(false);
