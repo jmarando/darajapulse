@@ -35,7 +35,7 @@ const CampaignDetail = () => {
   const [selectedCi, setSelectedCi] = useState<any>(null);
 
   const load = async () => {
-    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name)").eq("id", id).single();
+    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug)").eq("id", id).single();
     setC(c1);
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
     setCi(ciAll ?? []);
