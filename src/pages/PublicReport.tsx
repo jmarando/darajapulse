@@ -279,6 +279,50 @@ const PublicReport = () => {
           </Card>
         )}
 
+        {/* Audience */}
+        {influencers.length > 0 && (() => {
+          const totalFollowers = influencers.reduce((a, x) => a + Number(x.influencers?.follower_count || 0), 0);
+          const weightedKE = totalFollowers > 0
+            ? influencers.reduce((a, x) => a + Number(x.influencers?.follower_count || 0) * Number(x.influencers?.audience_kenya_pct || 0), 0) / totalFollowers
+            : 0;
+          const diaspora = 100 - weightedKE;
+          const langs = new Set<string>();
+          influencers.forEach(x => (x.influencers?.languages || []).forEach((l: string) => langs.add(l)));
+          return (
+            <Card className="p-6 mb-6">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audience</div>
+              <h2 className="font-display text-2xl mt-1 mb-4">Who we reached</h2>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <div className="flex justify-between items-baseline text-sm mb-1.5">
+                    <span>Kenya</span><span className="font-display text-lg">{weightedKE.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-secondary overflow-hidden flex">
+                    <div className="bg-accent h-full" style={{ width: `${weightedKE}%` }} />
+                    <div className="bg-highlight/60 h-full" style={{ width: `${diaspora}%` }} />
+                  </div>
+                  <div className="flex justify-between items-baseline text-sm mt-1.5">
+                    <span className="text-muted-foreground">Diaspora & rest of world</span>
+                    <span className="text-muted-foreground">{diaspora.toFixed(0)}%</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-border">
+                    <div><div className="font-display text-2xl">{fmt(totalFollowers)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Combined followers</div></div>
+                    <div><div className="font-display text-2xl">{influencers.length}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Creators</div></div>
+                    <div><div className="font-display text-2xl">{langs.size || 1}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Languages</div></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Languages</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.from(langs).map(l => <Badge key={l} variant="outline" className="text-xs">{l}</Badge>)}
+                    {langs.size === 0 && <span className="text-xs text-muted-foreground">—</span>}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })()}
+
         {/* Learnings & Recommendations */}
         {campaign.learnings && (
           <Card className="p-6 mb-6">
