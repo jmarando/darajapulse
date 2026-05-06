@@ -21,6 +21,9 @@ const CampaignDetail = () => {
   const [link, setLink] = useState<any>(null);
   const [postOpen, setPostOpen] = useState(false);
   const [post, setPost] = useState<any>({ influencer_id: "", platform: "tiktok", post_url: "", caption: "" });
+  const [rosterOpen, setRosterOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
 
   const load = async () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name)").eq("id", id).single();
