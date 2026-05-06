@@ -111,3 +111,10 @@
   }
   .animate-pulse-counter { animation: pulse-counter 2.4s ease-in-out infinite; }
 }
+
+@media print {
+  .no-print { display: none !important; }
+  header.sticky { position: static !important; }
+  body { background: white !important; }
+}
+
