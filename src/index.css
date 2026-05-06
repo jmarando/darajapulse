@@ -38,20 +38,20 @@
 
     --border: 24 10% 86%;
     --input: 24 10% 86%;
-    --ring: 24 78% 50%;
+    --ring: 0 99% 57%;
 
     --radius: 0.625rem;
 
     --sidebar-background: 22 16% 12%;
     --sidebar-foreground: 36 20% 88%;
-    --sidebar-primary: 24 78% 50%;
+    --sidebar-primary: 0 99% 57%;
     --sidebar-primary-foreground: 36 30% 97%;
     --sidebar-accent: 22 14% 18%;
     --sidebar-accent-foreground: 36 30% 97%;
     --sidebar-border: 22 12% 22%;
-    --sidebar-ring: 24 78% 50%;
+    --sidebar-ring: 0 99% 57%;
 
-    --gradient-warm: linear-gradient(135deg, hsl(24 78% 50%), hsl(38 92% 56%));
+    --gradient-warm: linear-gradient(135deg, hsl(0 99% 57%), hsl(0 85% 45%));
     --gradient-ink: linear-gradient(160deg, hsl(20 14% 10%), hsl(22 16% 18%));
     --gradient-paper: linear-gradient(180deg, hsl(36 30% 97%), hsl(36 20% 93%));
 
@@ -79,7 +79,7 @@
     --accent-foreground: 22 16% 8%;
     --border: 22 12% 20%;
     --input: 22 12% 20%;
-    --ring: 24 78% 55%;
+    --ring: 0 99% 57%;
   }
 }
 
