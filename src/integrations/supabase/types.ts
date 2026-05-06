@@ -105,49 +105,73 @@ export type Database = {
           brief: string | null
           budget_kes: number | null
           client_id: string
+          content_format: string | null
           created_at: string
           created_by: string | null
+          donts: string[] | null
+          dos: string[] | null
           end_date: string | null
           hashtag: string | null
+          hashtags_extra: string[] | null
           id: string
           learnings: string | null
+          mandatory_mentions: string[] | null
           name: string
           objective: string | null
+          references_urls: string[] | null
           slug: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["campaign_status"]
+          tone: string | null
+          wht_percent: number | null
         }
         Insert: {
           brief?: string | null
           budget_kes?: number | null
           client_id: string
+          content_format?: string | null
           created_at?: string
           created_by?: string | null
+          donts?: string[] | null
+          dos?: string[] | null
           end_date?: string | null
           hashtag?: string | null
+          hashtags_extra?: string[] | null
           id?: string
           learnings?: string | null
+          mandatory_mentions?: string[] | null
           name: string
           objective?: string | null
+          references_urls?: string[] | null
           slug?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
+          tone?: string | null
+          wht_percent?: number | null
         }
         Update: {
           brief?: string | null
           budget_kes?: number | null
           client_id?: string
+          content_format?: string | null
           created_at?: string
           created_by?: string | null
+          donts?: string[] | null
+          dos?: string[] | null
           end_date?: string | null
           hashtag?: string | null
+          hashtags_extra?: string[] | null
           id?: string
           learnings?: string | null
+          mandatory_mentions?: string[] | null
           name?: string
           objective?: string | null
+          references_urls?: string[] | null
           slug?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
+          tone?: string | null
+          wht_percent?: number | null
         }
         Relationships: [
           {
