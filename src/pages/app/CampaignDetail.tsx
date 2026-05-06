@@ -53,17 +53,22 @@ const CampaignDetail = () => {
 
   const createAndAddInfl = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newInfl.full_name) return;
-    const { data, error } = await supabase.from("influencers").insert({
-      ...newInfl,
-      follower_count: Number(newInfl.follower_count) || 0,
-    }).select().single();
-    if (error) return toast.error(error.message);
-    const { error: e2 } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: data.id });
-    if (e2) return toast.error(e2.message);
-    toast.success("Influencer created and added");
-    setNewInfl({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
-    setCreating(false); setRosterOpen(false); load();
+    if (!newInfl.full_name || submitting) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase.from("influencers").insert({
+        ...newInfl,
+        follower_count: Number(newInfl.follower_count) || 0,
+      }).select().single();
+      if (error) { toast.error(error.message); return; }
+      const { error: e2 } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: data.id });
+      if (e2) { toast.error(e2.message); return; }
+      toast.success("Influencer created and added");
+      setNewInfl({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
+      setCreating(false); setRosterOpen(false); load();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const addPost = async (e: React.FormEvent) => {
