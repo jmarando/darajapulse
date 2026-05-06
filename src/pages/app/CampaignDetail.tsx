@@ -210,23 +210,46 @@ const CampaignDetail = () => {
       </div>
 
       {/* Performance band */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
         {[
           { label: "Views", value: fmt(totals.views), icon: Eye },
           { label: "Likes", value: fmt(totals.likes), icon: Heart },
           { label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
           { label: "Shares", value: fmt(totals.shares), icon: Share2 },
-          { label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: null as any },
+          { label: "Saves", value: fmt(totals.saves), icon: Bookmark },
+          { label: "Reach", value: fmt(totals.reach), icon: Radio },
+          { label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3 },
+          { label: "Earned Media", value: `KES ${fmt(totals.emv)}`, icon: Wallet },
         ].map((s, i) => (
           <div key={i} className="bg-card p-5">
             <div className="flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
               {s.icon && <s.icon className="w-3.5 h-3.5 text-muted-foreground" />}
             </div>
-            <div className="font-display text-3xl mt-2">{s.value}</div>
+            <div className="font-display text-2xl mt-2">{s.value}</div>
           </div>
         ))}
       </div>
+
+      {/* Top performer */}
+      {topPerformer && (
+        <Card className="p-5 mb-6 bg-gradient-ink text-primary-foreground border-0">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center"><Trophy className="w-6 h-6" /></div>
+              <div>
+                <div className="text-[10px] uppercase tracking-widest opacity-70">Top performer</div>
+                <div className="font-display text-2xl mt-0.5">{topPerformer.ci.influencers?.full_name}</div>
+                <div className="text-sm opacity-80">@{topPerformer.ci.influencers?.handle?.replace(/^@/, "")} · {byInfluencer.get(topPerformer.ci.influencer_id)?.posts} post{byInfluencer.get(topPerformer.ci.influencer_id)?.posts === 1 ? "" : "s"}</div>
+              </div>
+            </div>
+            <div className="flex gap-6 text-right">
+              <div><div className="font-display text-3xl">{fmt(topPerformer.views)}</div><div className="text-[10px] uppercase tracking-widest opacity-70">Views</div></div>
+              <div><div className="font-display text-3xl">{fmt(byInfluencer.get(topPerformer.ci.influencer_id)?.likes ?? 0)}</div><div className="text-[10px] uppercase tracking-widest opacity-70">Likes</div></div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Roster — full width table */}
       <Card className="p-0 overflow-hidden mb-6">
