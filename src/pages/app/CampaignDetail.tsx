@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2 } from "lucide-react";
 import { toast } from "sonner";
+import { PostEmbed } from "@/components/PostEmbed";
 import { ContestsSection } from "./ContestsSection";
 
 
@@ -638,15 +639,29 @@ const CampaignDetail = () => {
               const m = latestByPost.get(p.id);
               return (
                 <li key={p.id} className="p-3 rounded-md border border-border hover:bg-secondary/30 transition-colors">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="text-sm min-w-0 truncate">
                       <span className="font-medium">{p.influencers?.full_name}</span>
                       <span className="text-muted-foreground"> · {p.platform}</span>
                     </div>
                     <Badge variant="outline" className="capitalize">{p.status}</Badge>
                   </div>
-                  {p.post_url && <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block mt-1">{p.post_url}</a>}
-                  {m && (
+                  {p.post_url ? (
+                    <div className="grid sm:grid-cols-[minmax(0,300px)_1fr] gap-3 items-start">
+                      <PostEmbed url={p.post_url} platform={p.platform} />
+                      <div className="min-w-0">
+                        <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block">{p.post_url}</a>
+                        {m && (
+                          <div className="grid grid-cols-4 gap-2 mt-3 text-center">
+                            <div><div className="font-display text-base">{fmt(m.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                            <div><div className="font-display text-base">{fmt(m.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                            <div><div className="font-display text-base">{fmt(m.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
+                            <div><div className="font-display text-base">{fmt(m.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : m && (
                     <div className="grid grid-cols-4 gap-2 mt-3 text-center">
                       <div><div className="font-display text-base">{fmt(m.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
                       <div><div className="font-display text-base">{fmt(m.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
