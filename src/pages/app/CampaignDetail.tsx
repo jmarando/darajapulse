@@ -536,6 +536,21 @@ const CampaignDetail = () => {
         )}
       </Card>
 
+      {/* Learnings & recommendations */}
+      <Card className="p-5 mb-6">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Narrative</div>
+            <h2 className="font-display text-2xl">Learnings & recommendations</h2>
+            <p className="text-xs text-muted-foreground mt-1">Shown to the client on the live report.</p>
+          </div>
+          <Button size="sm" onClick={saveLearnings} disabled={savingLearnings} className="bg-primary">
+            {savingLearnings ? "Saving…" : "Save"}
+          </Button>
+        </div>
+        <Textarea value={learnings} onChange={e => setLearnings(e.target.value)} rows={6} placeholder="What worked, what didn't, and what to do next time. e.g. TikTok drove 3× the reach of Instagram Reels at half the cost. Recommend doubling TikTok allocation in Q3." />
+      </Card>
+
       {/* Report link — moved below */}
       <Card className="p-6 mt-6 bg-gradient-ink text-primary-foreground border-0">
         <div className="flex items-center justify-between gap-6 flex-wrap">
