@@ -60,7 +60,15 @@ const PublicReport = () => {
   </div>;
   if (!campaign) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading report…</div>;
 
-  const totals = posts.reduce((a, p) => ({
+  const fromTs = from ? +new Date(from) : -Infinity;
+  const toTs = to ? +new Date(to) + 86399999 : Infinity;
+  const filteredPosts = posts.filter(p => {
+    const t = p.posted_at ? +new Date(p.posted_at) : +new Date(p.created_at);
+    return t >= fromTs && t <= toTs;
+  });
+  const rangeLabel = from || to ? `${from || "start"} → ${to || "now"}` : "All time";
+
+  const totals = filteredPosts.reduce((a, p) => ({
     views: a.views + (p.metrics.views || 0),
     likes: a.likes + (p.metrics.likes || 0),
     comments: a.comments + (p.metrics.comments || 0),
