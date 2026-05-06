@@ -171,7 +171,8 @@ const CampaignDetail = () => {
   }, [ci]);
 
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
-  const reportUrl = link ? `${window.location.origin}/r/${link.token}` : "";
+  const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
+  const reportUrl = link ? `${window.location.origin}${slugPath}/report/${link.token}` : "";
   const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`;
 
   const statusTone: Record<string, string> = {
