@@ -85,8 +85,29 @@ const PublicBrief = () => {
               </Button>
             </>
           )}
-          {final && <span className="text-sm text-muted-foreground">Thanks — your response has been recorded.</span>}
+          {final && b.status === "declined" && <span className="text-sm text-muted-foreground">Thanks — your response has been recorded.</span>}
         </div>
+
+        {b.status === "confirmed" && b.influencer?.id && (
+          <Card className="p-6 mt-8 bg-gradient-ink text-primary-foreground border-0">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                <Music2 className="w-6 h-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] uppercase tracking-widest opacity-70">One last step</div>
+                <div className="font-display text-xl mt-0.5">Connect your TikTok</div>
+                <p className="text-sm opacity-80 mt-1">So we can track your post performance for the brand and pay you accurately. Read-only access — we never post on your behalf.</p>
+              </div>
+              <Button
+                onClick={() => { window.location.href = `/connect/tiktok/${b.influencer.id}`; }}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                <Music2 className="w-4 h-4 mr-2" /> Connect TikTok
+              </Button>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
