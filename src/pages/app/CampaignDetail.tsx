@@ -25,6 +25,11 @@ const CampaignDetail = () => {
   const [creating, setCreating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
+  const [addFee, setAddFee] = useState<string>("");
+  const [addDeliv, setAddDeliv] = useState<string>("1");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFee, setEditFee] = useState<string>("");
+  const [editDeliv, setEditDeliv] = useState<string>("1");
 
   const load = async () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name)").eq("id", id).single();
