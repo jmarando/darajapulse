@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import AppShell from "./components/AppShell";
 import Overview from "./pages/app/Overview";
 import Clients from "./pages/app/Clients";
@@ -37,6 +38,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<LandingDashboard />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/landing" element={<LandingPicker />} />
             <Route path="/landing/editorial" element={<LandingEditorial />} />
             <Route path="/landing/cinematic" element={<LandingCinematic />} />
