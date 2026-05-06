@@ -407,13 +407,11 @@ const CampaignDetail = () => {
                     <div><Label>Full name</Label><Input required value={newInfl.full_name} onChange={e => setNewInfl({ ...newInfl, full_name: e.target.value })} /></div>
                     <div><Label>Handle</Label><Input value={newInfl.handle} onChange={e => setNewInfl({ ...newInfl, handle: e.target.value })} placeholder="@..." /></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                     <div><Label>Followers</Label><Input type="number" value={newInfl.follower_count} onChange={e => setNewInfl({ ...newInfl, follower_count: e.target.value })} /></div>
-                   </div>
                    <div>
                      <Label>Platform</Label>
                      <PlatformPicker value={newInfl.primary_platform} onChange={v => setNewInfl({ ...newInfl, primary_platform: v })} />
                    </div>
+                   <div><Label>Followers</Label><Input type="number" value={newInfl.follower_count} onChange={e => setNewInfl({ ...newInfl, follower_count: e.target.value })} /></div>
                   <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
                   <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border mt-1">
                     <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
