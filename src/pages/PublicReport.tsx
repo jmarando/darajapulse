@@ -1,15 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3, Download, FileText } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
+import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 
 type PostWithMetrics = any;
 
 const fmt = (n: number) => n >= 1e6 ? `${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `${(n/1e3).toFixed(1)}k` : `${n}`;
+
 
 const PublicReport = () => {
   const { token } = useParams();
