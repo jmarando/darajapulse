@@ -551,6 +551,9 @@ const CampaignDetail = () => {
         )}
       </Card>
 
+      <ContentSection campaignId={id!} roster={ci} />
+      <ContestsSection campaignId={id!} />
+
       {/* Learnings & recommendations */}
       <Card className="p-5 mb-6">
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
