@@ -187,19 +187,50 @@ const CampaignDetail = () => {
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
               <h2 className="font-display text-2xl">Creators</h2>
             </div>
-            <Dialog>
+            <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) setCreating(false); }}>
               <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add</Button></DialogTrigger>
               <DialogContent>
-                <DialogHeader><DialogTitle>Add influencer to campaign</DialogTitle></DialogHeader>
-                <div className="space-y-1 max-h-96 overflow-auto">
-                  {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).map(r => (
-                    <button key={r.id} onClick={() => addInfl(r.id)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
-                      <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  ))}
-                  {rosterAll.length === 0 && <p className="text-sm text-muted-foreground p-3">No influencers in your roster yet.</p>}
-                </div>
+                <DialogHeader><DialogTitle>{creating ? "Create new influencer" : "Add influencer to campaign"}</DialogTitle></DialogHeader>
+                {creating ? (
+                  <form onSubmit={createAndAddInfl} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label>Full name</Label><Input required value={newInfl.full_name} onChange={e => setNewInfl({ ...newInfl, full_name: e.target.value })} /></div>
+                      <div><Label>Handle</Label><Input value={newInfl.handle} onChange={e => setNewInfl({ ...newInfl, handle: e.target.value })} placeholder="@..." /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Platform</Label>
+                        <Select value={newInfl.primary_platform} onValueChange={v => setNewInfl({ ...newInfl, primary_platform: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>{["tiktok","instagram","youtube","twitter","facebook"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div><Label>Followers</Label><Input type="number" value={newInfl.follower_count} onChange={e => setNewInfl({ ...newInfl, follower_count: e.target.value })} /></div>
+                    </div>
+                    <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
+                    <div className="flex gap-2 pt-2">
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)}>Back</Button>
+                      <Button type="submit" className="flex-1 bg-primary">Create & add</Button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="space-y-1 max-h-80 overflow-auto">
+                      {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).map(r => (
+                        <button key={r.id} onClick={() => addInfl(r.id)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
+                          <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      ))}
+                      {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).length === 0 && (
+                        <p className="text-sm text-muted-foreground p-3 text-center">{rosterAll.length === 0 ? "No influencers in your roster yet." : "All your influencers are already on this campaign."}</p>
+                      )}
+                    </div>
+                    <Button variant="outline" className="w-full mt-2" onClick={() => setCreating(true)}>
+                      <Plus className="w-4 h-4 mr-2" /> Create new influencer
+                    </Button>
+                  </>
+                )}
               </DialogContent>
             </Dialog>
           </div>
