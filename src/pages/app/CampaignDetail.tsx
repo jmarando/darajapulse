@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,10 +34,13 @@ const CampaignDetail = () => {
   const [editFee, setEditFee] = useState<string>("");
   const [editDeliv, setEditDeliv] = useState<string>("1");
   const [selectedCi, setSelectedCi] = useState<any>(null);
+  const [learnings, setLearnings] = useState<string>("");
+  const [savingLearnings, setSavingLearnings] = useState(false);
 
   const load = async () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug)").eq("id", id).single();
     setC(c1);
+    setLearnings(c1?.learnings ?? "");
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
     setCi(ciAll ?? []);
     const { data: r } = await supabase.from("influencers").select("*");
@@ -109,6 +113,14 @@ const CampaignDetail = () => {
   const setStatus = async (status: string) => {
     await supabase.from("campaigns").update({ status: status as any }).eq("id", id);
     load();
+  };
+
+  const saveLearnings = async () => {
+    setSavingLearnings(true);
+    const { error } = await supabase.from("campaigns").update({ learnings }).eq("id", id);
+    setSavingLearnings(false);
+    if (error) return toast.error(error.message);
+    toast.success("Learnings saved");
   };
 
   // Latest metric per post
@@ -522,6 +534,21 @@ const CampaignDetail = () => {
             })}
           </ul>
         )}
+      </Card>
+
+      {/* Learnings & recommendations */}
+      <Card className="p-5 mb-6">
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Narrative</div>
+            <h2 className="font-display text-2xl">Learnings & recommendations</h2>
+            <p className="text-xs text-muted-foreground mt-1">Shown to the client on the live report.</p>
+          </div>
+          <Button size="sm" onClick={saveLearnings} disabled={savingLearnings} className="bg-primary">
+            {savingLearnings ? "Saving…" : "Save"}
+          </Button>
+        </div>
+        <Textarea value={learnings} onChange={e => setLearnings(e.target.value)} rows={6} placeholder="What worked, what didn't, and what to do next time. e.g. TikTok drove 3× the reach of Instagram Reels at half the cost. Recommend doubling TikTok allocation in Q3." />
       </Card>
 
       {/* Report link — moved below */}

@@ -87,6 +87,24 @@ const PublicReport = () => {
     if (!s) continue;
     if (!topPerformer || s.views > topPerformer.views) topPerformer = { ci: x, views: s.views };
   }
+
+  // Per-platform breakdown
+  const platformMap = new Map<string, { posts: number; creators: Set<string>; views: number; reach: number; followers: number; }>();
+  const seenCreatorPerPlatform = new Map<string, Set<string>>();
+  for (const p of posts) {
+    const key = p.platform || "other";
+    const cur = platformMap.get(key) ?? { posts: 0, creators: new Set<string>(), views: 0, reach: 0, followers: 0 };
+    cur.posts += 1;
+    if (!cur.creators.has(p.influencer_id)) {
+      cur.creators.add(p.influencer_id);
+      const inf = influencers.find(i => i.influencer_id === p.influencer_id)?.influencers;
+      cur.followers += Number(inf?.follower_count || 0);
+    }
+    cur.views += p.metrics.views || 0;
+    cur.reach += p.metrics.reach || 0;
+    platformMap.set(key, cur);
+  }
+  const platformRows = Array.from(platformMap.entries()).sort((a,b) => b[1].views - a[1].views);
   const allHistory = posts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: h.views || 0 })));
   let trend: { d: number; v: number }[] = [];
   if (allHistory.length > 1) {
@@ -223,6 +241,51 @@ const PublicReport = () => {
               </Card>
             )}
           </div>
+        )}
+
+        {/* Platform breakdown */}
+        {platformRows.length > 0 && (
+          <Card className="p-5 mb-6 overflow-hidden">
+            <div className="mb-4">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">By platform</div>
+              <h2 className="font-display text-2xl">Channel mix</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                    <th className="text-left font-medium py-2 pr-3">Platform</th>
+                    <th className="text-right font-medium py-2 px-3">Posts</th>
+                    <th className="text-right font-medium py-2 px-3">Creators</th>
+                    <th className="text-right font-medium py-2 px-3">Views</th>
+                    <th className="text-right font-medium py-2 px-3">Reach</th>
+                    <th className="text-right font-medium py-2 pl-3">Followers</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {platformRows.map(([k, v]) => (
+                    <tr key={k} className="border-b border-border last:border-0">
+                      <td className="py-2 pr-3 capitalize">{k}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">{v.posts}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">{v.creators.size}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">{fmt(v.views)}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">{fmt(v.reach)}</td>
+                      <td className="py-2 pl-3 text-right tabular-nums">{fmt(v.followers)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
+        {/* Learnings & Recommendations */}
+        {campaign.learnings && (
+          <Card className="p-6 mb-6">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Narrative</div>
+            <h2 className="font-display text-2xl mt-1 mb-3">Learnings & recommendations</h2>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{campaign.learnings}</p>
+          </Card>
         )}
 
         {/* Roster + Posts — mirrors CampaignDetail */}

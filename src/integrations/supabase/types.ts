@@ -110,6 +110,7 @@ export type Database = {
           end_date: string | null
           hashtag: string | null
           id: string
+          learnings: string | null
           name: string
           objective: string | null
           slug: string | null
@@ -125,6 +126,7 @@ export type Database = {
           end_date?: string | null
           hashtag?: string | null
           id?: string
+          learnings?: string | null
           name: string
           objective?: string | null
           slug?: string | null
@@ -140,6 +142,7 @@ export type Database = {
           end_date?: string | null
           hashtag?: string | null
           id?: string
+          learnings?: string | null
           name?: string
           objective?: string | null
           slug?: string | null
