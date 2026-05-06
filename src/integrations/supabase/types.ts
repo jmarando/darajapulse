@@ -112,6 +112,7 @@ export type Database = {
           id: string
           name: string
           objective: string | null
+          slug: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["campaign_status"]
         }
@@ -126,6 +127,7 @@ export type Database = {
           id?: string
           name: string
           objective?: string | null
+          slug?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
         }
@@ -140,6 +142,7 @@ export type Database = {
           id?: string
           name?: string
           objective?: string | null
+          slug?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
         }
@@ -164,6 +167,7 @@ export type Database = {
           name: string
           primary_contact_email: string | null
           primary_contact_name: string | null
+          slug: string | null
         }
         Insert: {
           country?: string | null
@@ -175,6 +179,7 @@ export type Database = {
           name: string
           primary_contact_email?: string | null
           primary_contact_name?: string | null
+          slug?: string | null
         }
         Update: {
           country?: string | null
@@ -186,6 +191,7 @@ export type Database = {
           name?: string
           primary_contact_email?: string | null
           primary_contact_name?: string | null
+          slug?: string | null
         }
         Relationships: []
       }
@@ -560,6 +566,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      slugify: { Args: { _s: string }; Returns: string }
       update_brief_status: {
         Args: { _status: string; _token: string }
         Returns: undefined
