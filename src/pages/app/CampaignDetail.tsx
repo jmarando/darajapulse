@@ -51,9 +51,22 @@ const CampaignDetail = () => {
   useEffect(() => { load(); }, [id]);
 
   const addInfl = async (influencer_id: string) => {
-    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id });
+    const fee = Number(addFee) || 0;
+    const deliv = Number(addDeliv) || 1;
+    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id, fee_kes: fee, deliverables_count: deliv });
     if (error) return toast.error(error.message);
-    toast.success("Added"); load();
+    toast.success("Added"); setAddFee(""); setAddDeliv("1"); load();
+  };
+
+  const updateCi = async (ciId: string, patch: any) => {
+    const { error } = await supabase.from("campaign_influencers").update(patch).eq("id", ciId);
+    if (error) return toast.error(error.message);
+    load();
+  };
+
+  const saveEdit = async (ciId: string) => {
+    await updateCi(ciId, { fee_kes: Number(editFee) || 0, deliverables_count: Number(editDeliv) || 1 });
+    setEditingId(null);
   };
 
   const createAndAddInfl = async (e: React.FormEvent) => {
