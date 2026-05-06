@@ -192,26 +192,6 @@ const CampaignDetail = () => {
         ))}
       </div>
 
-      {/* Report link */}
-      <Card className="p-6 mb-6 bg-gradient-ink text-primary-foreground border-0">
-        <div className="flex items-center justify-between gap-6 flex-wrap">
-          <div className="min-w-0">
-            <div className="text-xs uppercase tracking-widest opacity-70">Live client report</div>
-            <div className="font-display text-2xl mt-1">Share with the brand</div>
-            <p className="text-sm opacity-80 mt-1 max-w-md">A tokenized public page that updates as posts roll in. Forward internally without seats or logins.</p>
-          </div>
-          {link ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <Input readOnly value={reportUrl} className="w-[22rem] bg-white/10 border-white/20 text-primary-foreground placeholder:text-white/40" />
-              <Button variant="secondary" size="icon" onClick={() => { navigator.clipboard.writeText(reportUrl); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button>
-              <a href={reportUrl} target="_blank" rel="noreferrer"><Button variant="secondary" size="icon"><ExternalLink className="w-4 h-4" /></Button></a>
-            </div>
-          ) : (
-            <Button onClick={generateLink} className="bg-accent text-accent-foreground hover:bg-accent/90"><Link2 className="w-4 h-4 mr-2" /> Generate report link</Button>
-          )}
-        </div>
-      </Card>
-
       {/* Roster + Posts */}
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Roster */}
@@ -297,34 +277,35 @@ const CampaignDetail = () => {
                 const mailto = `mailto:${x.influencers?.email ?? ""}?subject=${encodeURIComponent(`${c.clients?.name} × ${c.name} — collaboration brief`)}&body=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""},\n\nWe'd love to have you on this campaign. View your brief and confirm here:\n${briefUrl}\n\nThanks!`)}`;
                 const wa = x.influencers?.phone_mpesa ? `https://wa.me/${String(x.influencers.phone_mpesa).replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""}! ${c.clients?.name} × ${c.name} brief: ${briefUrl}`)}` : null;
                 return (
-                  <li key={x.id} className="py-3">
+                  <li key={x.id} className="py-3 space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display">{x.influencers?.full_name?.[0]}</div>
+                        <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display shrink-0">{x.influencers?.full_name?.[0]}</div>
                         <div className="min-w-0">
                           <div className="text-sm truncate">{x.influencers?.full_name}</div>
                           <div className="text-xs text-muted-foreground truncate">{x.influencers?.handle} · {x.influencers?.primary_platform}</div>
                         </div>
                       </div>
                       <Select value={x.status} onValueChange={(v) => updateCi(x.id, { status: v })}>
-                        <SelectTrigger className={`w-32 h-7 text-xs capitalize border-0 ${statusTones[x.status] ?? ""}`}><SelectValue /></SelectTrigger>
+                        <SelectTrigger className={`w-28 h-7 text-xs capitalize border-0 shrink-0 ${statusTones[x.status] ?? ""}`}><SelectValue /></SelectTrigger>
                         <SelectContent>{["invited","negotiating","confirmed","live","completed","declined"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
-                    <div className="flex items-center justify-between gap-2 mt-2 pl-12 text-xs">
+                    <div className="flex items-center justify-between gap-2 pl-12 text-xs">
                       {isEditing ? (
-                        <div className="flex items-center gap-1 flex-1">
-                          <Input className="h-7 text-xs" type="number" value={editFee} onChange={e => setEditFee(e.target.value)} placeholder="Fee" />
+                        <div className="flex items-center gap-1 flex-1 min-w-0">
+                          <Input className="h-7 text-xs w-24" type="number" value={editFee} onChange={e => setEditFee(e.target.value)} placeholder="Fee" />
                           <span className="text-muted-foreground">·</span>
-                          <Input className="h-7 text-xs w-16" type="number" min="1" value={editDeliv} onChange={e => setEditDeliv(e.target.value)} />
+                          <Input className="h-7 text-xs w-14" type="number" min="1" value={editDeliv} onChange={e => setEditDeliv(e.target.value)} />
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => saveEdit(x.id)}><Check className="w-3 h-3" /></Button>
                         </div>
                       ) : (
-                        <button className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1" onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditDeliv(String(x.deliverables_count ?? 1)); }}>
-                          KES {Number(x.fee_kes || 0).toLocaleString()} · {x.deliverables_count} deliverable{x.deliverables_count === 1 ? "" : "s"} <Pencil className="w-3 h-3" />
+                        <button className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 truncate" onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditDeliv(String(x.deliverables_count ?? 1)); }}>
+                          <span className="truncate">KES {Number(x.fee_kes || 0).toLocaleString()} · {x.deliverables_count} deliv.</span>
+                          <Pencil className="w-3 h-3 shrink-0" />
                         </button>
                       )}
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5 shrink-0">
                         <Button size="icon" variant="ghost" className="h-7 w-7" title="Copy brief link" onClick={() => { navigator.clipboard.writeText(briefUrl); toast.success("Brief link copied"); }}><Copy className="w-3 h-3" /></Button>
                         <a href={mailto}><Button size="icon" variant="ghost" className="h-7 w-7" title="Email invite"><Mail className="w-3 h-3" /></Button></a>
                         {wa && <a href={wa} target="_blank" rel="noreferrer"><Button size="icon" variant="ghost" className="h-7 w-7" title="WhatsApp invite"><MessageSquare className="w-3 h-3" /></Button></a>}
@@ -414,6 +395,26 @@ const CampaignDetail = () => {
           )}
         </Card>
       </div>
+
+      {/* Report link — moved below */}
+      <Card className="p-6 mt-6 bg-gradient-ink text-primary-foreground border-0">
+        <div className="flex items-center justify-between gap-6 flex-wrap">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-widest opacity-70">Live client report</div>
+            <div className="font-display text-2xl mt-1">Share with the brand</div>
+            <p className="text-sm opacity-80 mt-1 max-w-md">A tokenized public page that updates as posts roll in. Forward internally without seats or logins.</p>
+          </div>
+          {link ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input readOnly value={reportUrl} className="w-[22rem] bg-white/10 border-white/20 text-primary-foreground placeholder:text-white/40" />
+              <Button variant="secondary" size="icon" onClick={() => { navigator.clipboard.writeText(reportUrl); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button>
+              <a href={reportUrl} target="_blank" rel="noreferrer"><Button variant="secondary" size="icon"><ExternalLink className="w-4 h-4" /></Button></a>
+            </div>
+          ) : (
+            <Button onClick={generateLink} className="bg-accent text-accent-foreground hover:bg-accent/90"><Link2 className="w-4 h-4 mr-2" /> Generate report link</Button>
+          )}
+        </div>
+      </Card>
     </div>
   );
 };
