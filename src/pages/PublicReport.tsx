@@ -12,7 +12,14 @@ import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 
 type PostWithMetrics = any;
 
-const fmt = (n: number) => n >= 1e6 ? `${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `${(n/1e3).toFixed(1)}k` : `${n}`;
+const fmt = (n: number) => {
+  if (!isFinite(n)) return "—";
+  if (n >= 1e9) return `${(n / 1e9).toFixed(n >= 1e10 ? 1 : 2)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 1 : 2)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}K`;
+  return `${Math.round(n)}`;
+};
+const fmtKes = (n: number) => n >= 1e6 ? `KES ${(n/1e6).toFixed(2)}M` : n >= 1e3 ? `KES ${(n/1e3).toFixed(0)}K` : `KES ${Math.round(n).toLocaleString()}`;
 
 
 const PublicReport = () => {
@@ -245,12 +252,23 @@ const PublicReport = () => {
           </Card>
           <Card className="p-6 bg-gradient-ink text-primary-foreground border-0">
             <div className="text-[10px] uppercase tracking-widest opacity-70">Earned media value</div>
-            <div className="font-display text-5xl font-semibold mt-2">KES {fmt(emv)}</div>
+            <div className="font-display text-5xl font-semibold mt-2">{fmtKes(emv)}</div>
             <p className="opacity-80 text-sm mt-3">Estimated value vs. paid media at a KES 12 CPM benchmark.</p>
-            <div className="mt-6 pt-6 border-t border-white/10 flex items-center gap-2 text-sm opacity-90">
-              <MapPin className="w-4 h-4" /> Audience: ~80% Kenya · ~20% diaspora
+            <div className="mt-5 pt-5 border-t border-white/10 grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest opacity-60">Total interactions</div>
+                <div className="font-display text-2xl mt-1">{fmt(totals.likes + totals.comments + totals.shares + totals.saves)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-widest opacity-60">Avg views / post</div>
+                <div className="font-display text-2xl mt-1">{fmt(filteredPosts.length ? totals.views / filteredPosts.length : 0)}</div>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2 text-xs opacity-80">
+              <MapPin className="w-3.5 h-3.5" /> Audience: ~80% Kenya · ~20% diaspora
             </div>
           </Card>
+
         </div>
 
         {/* Top performer + Efficiency */}
