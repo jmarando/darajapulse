@@ -36,6 +36,19 @@ const CampaignDetail = () => {
   const [selectedCi, setSelectedCi] = useState<any>(null);
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
+  const [generatingLearnings, setGeneratingLearnings] = useState(false);
+
+  const generateLearnings = async () => {
+    setGeneratingLearnings(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-learnings", { body: { campaign_id: id } });
+      if (error) { toast.error(error.message); return; }
+      if (data?.error) { toast.error(data.error); return; }
+      if (data?.learnings) { setLearnings(data.learnings); toast.success("Draft generated — review and Save"); }
+    } finally {
+      setGeneratingLearnings(false);
+    }
+  };
 
   const load = async () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug)").eq("id", id).single();
@@ -544,11 +557,16 @@ const CampaignDetail = () => {
             <h2 className="font-display text-2xl">Learnings & recommendations</h2>
             <p className="text-xs text-muted-foreground mt-1">Shown to the client on the live report.</p>
           </div>
-          <Button size="sm" onClick={saveLearnings} disabled={savingLearnings} className="bg-primary">
-            {savingLearnings ? "Saving…" : "Save"}
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={generateLearnings} disabled={generatingLearnings}>
+              {generatingLearnings ? "Generating…" : "✨ Generate with AI"}
+            </Button>
+            <Button size="sm" onClick={saveLearnings} disabled={savingLearnings} className="bg-primary">
+              {savingLearnings ? "Saving…" : "Save"}
+            </Button>
+          </div>
         </div>
-        <Textarea value={learnings} onChange={e => setLearnings(e.target.value)} rows={6} placeholder="What worked, what didn't, and what to do next time. e.g. TikTok drove 3× the reach of Instagram Reels at half the cost. Recommend doubling TikTok allocation in Q3." />
+        <Textarea value={learnings} onChange={e => setLearnings(e.target.value)} rows={8} placeholder="What worked, what didn't, and what to do next time. Click ✨ Generate with AI to draft from the live report data." />
       </Card>
 
       {/* Report link — moved below */}
