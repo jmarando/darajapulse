@@ -58,12 +58,35 @@ const PublicReport = () => {
     likes: a.likes + (p.metrics.likes || 0),
     comments: a.comments + (p.metrics.comments || 0),
     shares: a.shares + (p.metrics.shares || 0),
+    saves: a.saves + (p.metrics.saves || 0),
     reach: a.reach + (p.metrics.reach || 0),
     impressions: a.impressions + (p.metrics.impressions || 0),
-  }), { views:0, likes:0, comments:0, shares:0, reach:0, impressions:0 });
+  }), { views:0, likes:0, comments:0, shares:0, saves:0, reach:0, impressions:0 });
 
-  const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares) / totals.views * 100) : 0;
+  const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares + totals.saves) / totals.views * 100) : 0;
   const emv = Math.round((totals.impressions || totals.views) * 0.012);
+  const cpm = totals.impressions > 0 && campaign.budget_kes > 0 ? (campaign.budget_kes / totals.impressions * 1000) : 0;
+  const cpv = totals.views > 0 && campaign.budget_kes > 0 ? (campaign.budget_kes / totals.views) : 0;
+
+  // Per-creator aggregated metrics
+  const byCreator = new Map<string, { views: number; likes: number; comments: number; shares: number; saves: number; posts: number }>();
+  for (const p of posts) {
+    const key = p.influencer_id;
+    const cur = byCreator.get(key) ?? { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, posts: 0 };
+    cur.views += p.metrics.views || 0;
+    cur.likes += p.metrics.likes || 0;
+    cur.comments += p.metrics.comments || 0;
+    cur.shares += p.metrics.shares || 0;
+    cur.saves += p.metrics.saves || 0;
+    cur.posts += 1;
+    byCreator.set(key, cur);
+  }
+  let topPerformer: { ci: any; views: number } | null = null;
+  for (const x of influencers) {
+    const s = byCreator.get(x.influencer_id);
+    if (!s) continue;
+    if (!topPerformer || s.views > topPerformer.views) topPerformer = { ci: x, views: s.views };
+  }
   const allHistory = posts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: h.views || 0 })));
   let trend: { d: number; v: number }[] = [];
   if (allHistory.length > 1) {
