@@ -1,0 +1,2 @@
+DELETE FROM public.campaign_influencers WHERE influencer_id IN ('7983e1e3-d561-4733-8676-ee4eba187513','ed238cc9-ccf0-4ea6-a84d-e29c8e8b1aa5','be184d33-b295-4c08-a0c4-2bd701c77bbe','d1b56331-a027-457b-babd-d9b52f1aded2');
+DELETE FROM public.influencers WHERE id IN ('7983e1e3-d561-4733-8676-ee4eba187513','ed238cc9-ccf0-4ea6-a84d-e29c8e8b1aa5','be184d33-b295-4c08-a0c4-2bd701c77bbe','d1b56331-a027-457b-babd-d9b52f1aded2');
