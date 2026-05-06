@@ -161,7 +161,9 @@ const CampaignDetail = () => {
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm text-muted-foreground">
             {c.hashtag && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{c.hashtag.replace(/^#/, "")}</span>}
             {c.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(c.budget_kes).toLocaleString()}</span>}
-            <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{ci.length} creator{ci.length === 1 ? "" : "s"}</span>
+            <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{rosterTotals.confirmed}/{ci.length} confirmed</span>
+            {rosterTotals.fees > 0 && <span className="inline-flex items-center gap-1">Fees committed: KES {rosterTotals.fees.toLocaleString()}</span>}
+            {rosterTotals.deliv > 0 && <span>{rosterTotals.deliv} deliverable{rosterTotals.deliv === 1 ? "" : "s"}</span>}
           </div>
           {c.brief && <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">{c.brief}</p>}
         </div>
