@@ -222,6 +222,253 @@ export type Database = {
         }
         Relationships: []
       }
+      content_comments: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          body: string
+          content_item_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          body: string
+          content_item_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          body?: string
+          content_item_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_comments_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_items: {
+        Row: {
+          asset_url: string | null
+          campaign_id: string
+          caption: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          influencer_id: string | null
+          notes: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          scheduled_for: string | null
+          status: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          asset_url?: string | null
+          campaign_id: string
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          influencer_id?: string | null
+          notes?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
+          scheduled_for?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          asset_url?: string | null
+          campaign_id?: string
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          influencer_id?: string | null
+          notes?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
+          scheduled_for?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_items_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_items_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contest_entries: {
+        Row: {
+          caption: string | null
+          comments: number | null
+          contest_id: string
+          created_at: string
+          handle: string | null
+          id: string
+          influencer_id: string | null
+          last_polled_at: string | null
+          likes: number | null
+          platform: Database["public"]["Enums"]["platform"]
+          post_url: string
+          posted_at: string | null
+          round_number: number | null
+          saves: number | null
+          score: number | null
+          shares: number | null
+          source: string
+          status: string
+          submitter_email: string | null
+          submitter_name: string | null
+          thumbnail_url: string | null
+          views: number | null
+        }
+        Insert: {
+          caption?: string | null
+          comments?: number | null
+          contest_id: string
+          created_at?: string
+          handle?: string | null
+          id?: string
+          influencer_id?: string | null
+          last_polled_at?: string | null
+          likes?: number | null
+          platform: Database["public"]["Enums"]["platform"]
+          post_url: string
+          posted_at?: string | null
+          round_number?: number | null
+          saves?: number | null
+          score?: number | null
+          shares?: number | null
+          source?: string
+          status?: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+          thumbnail_url?: string | null
+          views?: number | null
+        }
+        Update: {
+          caption?: string | null
+          comments?: number | null
+          contest_id?: string
+          created_at?: string
+          handle?: string | null
+          id?: string
+          influencer_id?: string | null
+          last_polled_at?: string | null
+          likes?: number | null
+          platform?: Database["public"]["Enums"]["platform"]
+          post_url?: string
+          posted_at?: string | null
+          round_number?: number | null
+          saves?: number | null
+          score?: number | null
+          shares?: number | null
+          source?: string
+          status?: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+          thumbnail_url?: string | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_entries_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_entries_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contests: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          end_date: string
+          formula: string
+          hashtag: string
+          id: string
+          is_active: boolean
+          name: string
+          platforms: string[]
+          prize: string | null
+          round_days: number
+          start_date: string
+          submission_token: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          end_date: string
+          formula?: string
+          hashtag: string
+          id?: string
+          is_active?: boolean
+          name: string
+          platforms?: string[]
+          prize?: string | null
+          round_days?: number
+          start_date: string
+          submission_token?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          end_date?: string
+          formula?: string
+          hashtag?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          platforms?: string[]
+          prize?: string | null
+          round_days?: number
+          start_date?: string
+          submission_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contests_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       influencers: {
         Row: {
           audience_kenya_pct: number | null
@@ -586,6 +833,7 @@ export type Database = {
     }
     Functions: {
       get_brief_by_token: { Args: { _token: string }; Returns: Json }
+      get_contest_by_token: { Args: { _token: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -594,6 +842,17 @@ export type Database = {
         Returns: boolean
       }
       slugify: { Args: { _s: string }; Returns: string }
+      submit_contest_entry: {
+        Args: {
+          _handle: string
+          _platform: string
+          _post_url: string
+          _submitter_email: string
+          _submitter_name: string
+          _token: string
+        }
+        Returns: string
+      }
       update_brief_status: {
         Args: { _status: string; _token: string }
         Returns: undefined
