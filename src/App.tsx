@@ -44,6 +44,7 @@ const App = () => (
             <Route path="/landing/bento" element={<LandingBento />} />
             <Route path="/r/:token" element={<PublicReport />} />
             <Route path="/b/:token" element={<PublicBrief />} />
+            <Route path="/c/:token" element={<PublicContestSubmit />} />
             <Route path="/:clientSlug/:campaignSlug/report/:token" element={<PublicReport />} />
             <Route path="/:clientSlug/:campaignSlug/brief/:token" element={<PublicBrief />} />
             <Route path="/connect/tiktok/:influencerId" element={<ConnectTikTok />} />
