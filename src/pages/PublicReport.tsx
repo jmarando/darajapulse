@@ -3,13 +3,13 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Heart, MessageCircle, Share2, TrendingUp, Sparkles, MapPin } from "lucide-react";
+import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 
 type PostWithMetrics = any;
 
-const fmt = (n: number) => n >= 1e6 ? `${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `${(n/1e3).toFixed(1)}K` : `${n}`;
+const fmt = (n: number) => n >= 1e6 ? `${(n/1e6).toFixed(1)}M` : n >= 1e3 ? `${(n/1e3).toFixed(1)}k` : `${n}`;
 
 const PublicReport = () => {
   const { token } = useParams();
@@ -29,7 +29,7 @@ const PublicReport = () => {
       const { data: cl } = await supabase.from("clients").select("*").eq("id", c.client_id).single();
       setClient(cl);
     }
-    const { data: ps } = await supabase.from("posts").select("*").eq("campaign_id", link.campaign_id);
+    const { data: ps } = await supabase.from("posts").select("*, influencers(full_name, handle)").eq("campaign_id", link.campaign_id);
     const { data: ms } = await supabase.from("post_metrics").select("*").in("post_id", (ps ?? []).map(p => p.id));
     const grouped = (ps ?? []).map(p => {
       const list = (ms ?? []).filter(m => m.post_id === p.id).sort((a,b) => +new Date(a.captured_at) - +new Date(b.captured_at));
@@ -62,9 +62,8 @@ const PublicReport = () => {
     impressions: a.impressions + (p.metrics.impressions || 0),
   }), { views:0, likes:0, comments:0, shares:0, reach:0, impressions:0 });
 
-  const er = totals.reach > 0 ? ((totals.likes + totals.comments + totals.shares) / totals.reach * 100) : 0;
-  const emv = Math.round(totals.impressions * 0.012); // rough KES per impression benchmark
-  // Build a real velocity series by bucketing post_metrics history into 12 hourly buckets
+  const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares) / totals.views * 100) : 0;
+  const emv = Math.round((totals.impressions || totals.views) * 0.012);
   const allHistory = posts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: h.views || 0 })));
   let trend: { d: number; v: number }[] = [];
   if (allHistory.length > 1) {
@@ -79,120 +78,157 @@ const PublicReport = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-paper">
+    <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Daraja Pulse" className="h-16 w-auto" />
-            <div>
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">{client?.name ?? "Client"}</div>
-              <div className="font-display text-lg leading-none">{campaign.name}</div>
+            <img src={logo} alt="Daraja Pulse" className="h-12 w-auto" />
+            <div className="hidden sm:block h-8 w-px bg-border" />
+            <div className="hidden sm:block">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Live campaign report</div>
+              <div className="text-xs text-muted-foreground">Auto-refreshes every minute</div>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse-counter" /> Live · updated {updatedAt.toLocaleTimeString()}
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" /> Updated {updatedAt.toLocaleTimeString()}
           </div>
         </div>
       </header>
 
-      <section className="max-w-6xl mx-auto px-6 pt-12 pb-8">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">Campaign report</div>
-        <h1 className="font-display text-5xl md:text-6xl font-semibold mt-2 text-balance">
-          {campaign.hashtag || campaign.name} <span className="text-accent">in numbers.</span>
-        </h1>
-        {campaign.objective && <p className="text-lg text-muted-foreground mt-3 max-w-2xl">{campaign.objective}</p>}
-      </section>
-
-      <section className="max-w-6xl mx-auto px-6 grid md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10">
-        {[
-          { l: "Reach", v: fmt(totals.reach), I: Eye },
-          { l: "Impressions", v: fmt(totals.impressions), I: TrendingUp },
-          { l: "Likes", v: fmt(totals.likes), I: Heart },
-          { l: "Comments", v: fmt(totals.comments), I: MessageCircle },
-          { l: "Shares", v: fmt(totals.shares), I: Share2 },
-          { l: "Engagement", v: `${er.toFixed(1)}%`, I: Sparkles },
-        ].map(({ l, v, I }) => (
-          <Card key={l} className="p-4">
-            <div className="flex items-center justify-between text-muted-foreground"><span className="text-[10px] uppercase tracking-widest">{l}</span><I className="w-3 h-3" /></div>
-            <div className="font-display text-3xl font-semibold mt-2">{v}</div>
-          </Card>
-        ))}
-      </section>
-
-      <section className="max-w-6xl mx-auto px-6 mb-10 grid lg:grid-cols-3 gap-6">
-        <Card className="p-6 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Velocity</div>
-              <h2 className="font-display text-2xl mt-1">Views, last 12 intervals</h2>
+      <main className="max-w-7xl mx-auto p-8">
+        {/* Header — matches CampaignDetail */}
+        <div className="flex justify-between items-start gap-6 mb-8">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">{client?.name ?? "Client"}</div>
+            <h1 className="font-display text-4xl md:text-5xl font-semibold mt-1 truncate">{campaign.name}</h1>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm text-muted-foreground">
+              {campaign.hashtag && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{campaign.hashtag.replace(/^#/, "")}</span>}
+              {campaign.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(campaign.budget_kes).toLocaleString()}</span>}
+              <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{influencers.length} creator{influencers.length === 1 ? "" : "s"}</span>
             </div>
+            {campaign.objective && <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">{campaign.objective}</p>}
           </div>
-          <div className="h-56">
-            <ResponsiveContainer>
-              <AreaChart data={trend}>
-                <defs>
-                  <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="d" hide />
-                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                <Area type="monotone" dataKey="v" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#g)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        <Card className="p-6 bg-gradient-ink text-primary-foreground">
-          <div className="text-xs uppercase tracking-widest opacity-70">Earned media value</div>
-          <div className="font-display text-5xl font-semibold mt-2">KES {fmt(emv)}</div>
-          <p className="opacity-80 text-sm mt-3">Estimated value vs. paid media at KES 12 CPM benchmark.</p>
-          <div className="mt-6 pt-6 border-t border-white/10 flex items-center gap-2 text-sm opacity-90">
-            <MapPin className="w-4 h-4" /> Audience: ~80% Kenya · ~20% diaspora
-          </div>
-        </Card>
-      </section>
-
-      <section className="max-w-6xl mx-auto px-6 mb-12">
-        <h2 className="font-display text-3xl mb-4">Creators</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {influencers.map(x => (
-            <Card key={x.id} className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-secondary flex items-center justify-center font-display">{x.influencers?.full_name?.[0]}</div>
-                <div>
-                  <div className="font-display text-lg">{x.influencers?.full_name}</div>
-                  <div className="text-xs text-muted-foreground">{x.influencers?.handle} · {x.influencers?.primary_platform}</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 mt-4 gap-2 text-center">
-                <div><div className="font-display">{fmt(x.influencers?.follower_count ?? 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Followers</div></div>
-                <div><div className="font-display">{Number(x.influencers?.engagement_rate ?? 0).toFixed(1)}%</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">ER</div></div>
-                <div><Badge variant="outline">{x.status}</Badge></div>
-              </div>
-            </Card>
-          ))}
-          {influencers.length === 0 && <Card className="p-8 text-center text-muted-foreground md:col-span-3">No creators added yet.</Card>}
+          <Badge variant="outline" className="capitalize">{campaign.status}</Badge>
         </div>
-      </section>
 
-      <section className="max-w-6xl mx-auto px-6 pb-16">
-        <h2 className="font-display text-3xl mb-4">Posts</h2>
-        <div className="space-y-3">
-          {posts.map(p => (
-            <Card key={p.id} className="p-5 flex flex-col md:flex-row md:items-center gap-4">
-              <Badge className="capitalize w-fit">{p.platform}</Badge>
-              <a href={p.post_url} target="_blank" rel="noreferrer" className="text-sm text-accent flex-1 truncate">{p.post_url}</a>
-              <div className="flex gap-6 text-sm text-muted-foreground">
-                <span><Eye className="w-3 h-3 inline mr-1" />{fmt(p.metrics.views)}</span>
-                <span><Heart className="w-3 h-3 inline mr-1" />{fmt(p.metrics.likes)}</span>
-                <span><MessageCircle className="w-3 h-3 inline mr-1" />{fmt(p.metrics.comments)}</span>
+        {/* Performance band — same style */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
+          {[
+            { label: "Views", value: fmt(totals.views), icon: Eye },
+            { label: "Likes", value: fmt(totals.likes), icon: Heart },
+            { label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
+            { label: "Shares", value: fmt(totals.shares), icon: Share2 },
+            { label: "Engagement", value: `${er.toFixed(1)}%`, icon: Sparkles },
+          ].map((s, i) => (
+            <div key={i} className="bg-card p-5">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
+                {s.icon && <s.icon className="w-3.5 h-3.5 text-muted-foreground" />}
               </div>
-            </Card>
+              <div className="font-display text-3xl mt-2">{s.value}</div>
+            </div>
           ))}
-          {posts.length === 0 && <Card className="p-8 text-center text-muted-foreground">No posts published yet — check back soon.</Card>}
         </div>
-      </section>
+
+        {/* Velocity + EMV */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-6">
+          <Card className="p-6 lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Velocity</div>
+                <h2 className="font-display text-2xl mt-1">Views over time</h2>
+              </div>
+            </div>
+            <div className="h-56">
+              <ResponsiveContainer>
+                <AreaChart data={trend}>
+                  <defs>
+                    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.5} />
+                      <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="d" hide />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+                  <Area type="monotone" dataKey="v" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#g)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+          <Card className="p-6 bg-gradient-ink text-primary-foreground border-0">
+            <div className="text-[10px] uppercase tracking-widest opacity-70">Earned media value</div>
+            <div className="font-display text-5xl font-semibold mt-2">KES {fmt(emv)}</div>
+            <p className="opacity-80 text-sm mt-3">Estimated value vs. paid media at a KES 12 CPM benchmark.</p>
+            <div className="mt-6 pt-6 border-t border-white/10 flex items-center gap-2 text-sm opacity-90">
+              <MapPin className="w-4 h-4" /> Audience: ~80% Kenya · ~20% diaspora
+            </div>
+          </Card>
+        </div>
+
+        {/* Roster + Posts — mirrors CampaignDetail */}
+        <div className="grid lg:grid-cols-5 gap-6">
+          <Card className="p-5 lg:col-span-2">
+            <div className="mb-4">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
+              <h2 className="font-display text-2xl">Creators</h2>
+            </div>
+            {influencers.length === 0 ? (
+              <div className="text-center py-10 border border-dashed border-border rounded-md">
+                <Users className="w-6 h-6 mx-auto text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mt-2">No creators added yet.</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {influencers.map(x => (
+                  <li key={x.id} className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display">{x.influencers?.full_name?.[0]}</div>
+                      <div className="min-w-0">
+                        <div className="text-sm truncate">{x.influencers?.full_name}</div>
+                        <div className="text-xs text-muted-foreground truncate">{x.influencers?.handle} · {x.influencers?.primary_platform}</div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="capitalize">{x.status}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="p-5 lg:col-span-3">
+            <div className="mb-4">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Activity</div>
+              <h2 className="font-display text-2xl">Posts</h2>
+            </div>
+            {posts.length === 0 ? (
+              <div className="text-center py-10 border border-dashed border-border rounded-md">
+                <p className="text-sm text-muted-foreground">No posts published yet — check back soon.</p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {posts.map(p => (
+                  <li key={p.id} className="p-3 rounded-md border border-border hover:bg-secondary/30 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm min-w-0 truncate">
+                        <span className="font-medium">{p.influencers?.full_name}</span>
+                        <span className="text-muted-foreground"> · {p.platform}</span>
+                      </div>
+                      <Badge variant="outline" className="capitalize">{p.status}</Badge>
+                    </div>
+                    {p.post_url && <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block mt-1">{p.post_url}</a>}
+                    <div className="grid grid-cols-4 gap-2 mt-3 text-center">
+                      <div><div className="font-display text-base">{fmt(p.metrics.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                      <div><div className="font-display text-base">{fmt(p.metrics.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                      <div><div className="font-display text-base">{fmt(p.metrics.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
+                      <div><div className="font-display text-base">{fmt(p.metrics.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+      </main>
 
       <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
         Powered by <span className="font-display text-foreground">Daraja Pulse</span> · Influence Operating System
