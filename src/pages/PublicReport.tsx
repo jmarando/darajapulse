@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin } from "lucide-react";
+import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 
