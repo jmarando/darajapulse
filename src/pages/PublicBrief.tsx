@@ -73,6 +73,94 @@ const PublicBrief = () => {
           </Card>
         )}
 
+        {(b.campaign.content_format || b.campaign.tone) && (
+          <div className="grid sm:grid-cols-2 gap-4 mt-4">
+            {b.campaign.content_format && (
+              <Card className="p-5">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Format</div>
+                <p className="text-sm mt-1.5">{b.campaign.content_format}</p>
+              </Card>
+            )}
+            {b.campaign.tone && (
+              <Card className="p-5">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Tone of voice</div>
+                <p className="text-sm mt-1.5">{b.campaign.tone}</p>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {((b.campaign.dos?.length ?? 0) > 0 || (b.campaign.donts?.length ?? 0) > 0) && (
+          <div className="grid md:grid-cols-2 gap-4 mt-4">
+            {b.campaign.dos?.length > 0 && (
+              <Card className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-7 h-7 rounded-md bg-success/15 text-success flex items-center justify-center"><Check className="w-4 h-4" /></div>
+                  <h3 className="font-display text-lg">Do's</h3>
+                </div>
+                <ul className="space-y-2">
+                  {b.campaign.dos.map((d: string, i: number) => (
+                    <li key={i} className="flex gap-2 text-sm"><Check className="w-4 h-4 text-success shrink-0 mt-0.5" /><span>{d}</span></li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+            {b.campaign.donts?.length > 0 && (
+              <Card className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-7 h-7 rounded-md bg-destructive/15 text-destructive flex items-center justify-center"><X className="w-4 h-4" /></div>
+                  <h3 className="font-display text-lg">Don'ts</h3>
+                </div>
+                <ul className="space-y-2">
+                  {b.campaign.donts.map((d: string, i: number) => (
+                    <li key={i} className="flex gap-2 text-sm"><X className="w-4 h-4 text-destructive shrink-0 mt-0.5" /><span>{d}</span></li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {((b.campaign.mandatory_mentions?.length ?? 0) > 0 || (b.campaign.hashtags_extra?.length ?? 0) > 0) && (
+          <Card className="p-5 mt-4">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Mandatory tags & mentions</div>
+            <div className="flex flex-wrap gap-2">
+              {b.campaign.mandatory_mentions?.map((m: string, i: number) => (
+                <Badge key={`m${i}`} variant="secondary" className="text-sm"><AtSign className="w-3 h-3 mr-1" />{m.replace(/^@/, "")}</Badge>
+              ))}
+              {b.campaign.hashtags_extra?.map((h: string, i: number) => (
+                <Badge key={`h${i}`} variant="outline" className="text-sm"><Hash className="w-3 h-3 mr-1" />{h.replace(/^#/, "")}</Badge>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {b.campaign.references_urls?.length > 0 && (
+          <Card className="p-5 mt-4">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">References & inspiration</div>
+            <ul className="space-y-1.5">
+              {b.campaign.references_urls.map((u: string, i: number) => (
+                <li key={i}><a href={u} target="_blank" rel="noreferrer" className="text-sm text-accent inline-flex items-center gap-1.5 break-all"><LinkIcon className="w-3.5 h-3.5 shrink-0" />{u}</a></li>
+              ))}
+            </ul>
+          </Card>
+        )}
+
+        {b.fee_kes > 0 && b.campaign.wht_percent > 0 && (
+          <Card className="p-5 mt-4 bg-secondary/50">
+            <div className="flex items-start gap-3">
+              <FileText className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+              <div className="text-sm">
+                <div className="font-medium">Payment & withholding tax</div>
+                <p className="text-muted-foreground mt-1">
+                  Gross fee: KES {Number(b.fee_kes).toLocaleString()} · WHT ({b.campaign.wht_percent}%): KES {Math.round(Number(b.fee_kes) * Number(b.campaign.wht_percent) / 100).toLocaleString()} · <span className="text-foreground font-medium">Net to you: KES {Math.round(Number(b.fee_kes) * (1 - Number(b.campaign.wht_percent) / 100)).toLocaleString()}</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Paid via M-Pesa after content goes live and is approved. We file WHT on your behalf.</p>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <div className="mt-8 flex items-center gap-3 flex-wrap">
           <Badge variant="outline" className="capitalize">Status: {b.status}</Badge>
           {!final && (
