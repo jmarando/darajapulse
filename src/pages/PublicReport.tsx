@@ -145,9 +145,38 @@ const PublicReport = () => {
               <div className="text-xs text-muted-foreground">Auto-refreshes every minute</div>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse" /> Updated {updatedAt.toLocaleTimeString()}
+          <div className="flex items-center gap-3 no-print">
+            <div className="hidden md:flex items-center gap-2">
+              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[140px]" aria-label="From date" />
+              <span className="text-xs text-muted-foreground">→</span>
+              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[140px]" aria-label="To date" />
+              {(from || to) && <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFrom(""); setTo(""); }}>Clear</Button>}
+            </div>
+            <Button variant="outline" size="sm" className="h-8" onClick={downloadReportAsPdf}><FileText className="w-3.5 h-3.5 mr-1.5" />PDF</Button>
+            <Button variant="outline" size="sm" className="h-8" disabled={exporting} onClick={async () => {
+              setExporting(true);
+              try {
+                await exportReportToPptx({
+                  campaignName: campaign.name,
+                  clientName: client?.name ?? "Client",
+                  hashtag: campaign.hashtag,
+                  budgetKes: Number(campaign.budget_kes || 0),
+                  rangeLabel,
+                  totals,
+                  er,
+                  emv,
+                  topPerformer: topPerformer ? { name: topPerformer.ci.influencers?.full_name, handle: topPerformer.ci.influencers?.handle, views: topPerformer.views, likes: byCreator.get(topPerformer.ci.influencer_id)?.likes ?? 0 } : null,
+                  platformRows: platformRows.map(([k, v]) => ({ platform: k, posts: v.posts, creators: v.creators.size, views: v.views, reach: v.reach })),
+                  posts: filteredPosts.map(p => ({ creator: p.influencers?.full_name ?? "—", platform: p.platform ?? "—", views: p.metrics.views || 0, likes: p.metrics.likes || 0, comments: p.metrics.comments || 0, shares: p.metrics.shares || 0, url: p.post_url })),
+                  learnings: campaign.learnings,
+                });
+              } finally { setExporting(false); }
+            }}><Download className="w-3.5 h-3.5 mr-1.5" />{exporting ? "…" : "PPT"}</Button>
+            <span className="hidden lg:inline-flex items-center gap-2 text-xs text-muted-foreground ml-2">
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse" /> {updatedAt.toLocaleTimeString()}
+            </span>
           </div>
+
         </div>
       </header>
 
