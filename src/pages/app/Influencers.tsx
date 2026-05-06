@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Users, Search, ShieldCheck, Link2 } from "lucide-react";
 import { toast } from "sonner";
+import { PlatformPicker } from "@/components/PlatformPicker";
 
 const platforms = ["tiktok", "instagram", "youtube", "twitter", "facebook"] as const;
 
