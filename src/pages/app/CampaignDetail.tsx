@@ -242,6 +242,10 @@ const CampaignDetail = () => {
                       <div><Label>Followers</Label><Input type="number" value={newInfl.follower_count} onChange={e => setNewInfl({ ...newInfl, follower_count: e.target.value })} /></div>
                     </div>
                     <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
+                    <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border mt-1">
+                      <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
+                      <div><Label>Deliverables</Label><Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} /></div>
+                    </div>
                     <div className="flex gap-2 pt-2">
                       <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)} disabled={submitting}>Back</Button>
                       <Button type="submit" className="flex-1 bg-primary" disabled={submitting}>{submitting ? "Saving…" : "Create & add"}</Button>
@@ -249,7 +253,11 @@ const CampaignDetail = () => {
                   </form>
                 ) : (
                   <>
-                    <div className="space-y-1 max-h-80 overflow-auto">
+                    <div className="grid grid-cols-2 gap-3 pb-3 border-b border-border">
+                      <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
+                      <div><Label>Deliverables</Label><Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} /></div>
+                    </div>
+                    <div className="space-y-1 max-h-72 overflow-auto mt-2">
                       {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).map(r => (
                         <button key={r.id} onClick={() => addInfl(r.id)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
                           <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
