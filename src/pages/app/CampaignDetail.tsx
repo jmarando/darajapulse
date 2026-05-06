@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X } from "lucide-react";
 import { toast } from "sonner";
 
 const CampaignDetail = () => {
@@ -262,56 +263,99 @@ const CampaignDetail = () => {
               <p className="text-sm text-muted-foreground mt-2">No creators on this campaign yet.</p>
             </div>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-border -mx-2">
               {ci.map(x => {
                 const briefUrl = `${window.location.origin}/b/${x.brief_token}`;
-                const statusTones: Record<string,string> = {
-                  invited: "bg-muted text-muted-foreground",
-                  negotiating: "bg-highlight/20 text-foreground",
-                  confirmed: "bg-success/15 text-success",
-                  live: "bg-accent text-accent-foreground",
-                  completed: "bg-secondary text-foreground",
-                  declined: "bg-destructive/15 text-destructive",
+                const statusDot: Record<string,string> = {
+                  invited: "bg-muted-foreground/40",
+                  negotiating: "bg-highlight",
+                  confirmed: "bg-success",
+                  live: "bg-accent",
+                  completed: "bg-foreground",
+                  declined: "bg-destructive",
+                };
+                const statusLabel: Record<string,string> = {
+                  invited: "Invite sent",
+                  negotiating: "Negotiating",
+                  confirmed: "Confirmed",
+                  live: "Live",
+                  completed: "Completed",
+                  declined: "Declined",
                 };
                 const isEditing = editingId === x.id;
                 const mailto = `mailto:${x.influencers?.email ?? ""}?subject=${encodeURIComponent(`${c.clients?.name} × ${c.name} — collaboration brief`)}&body=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""},\n\nWe'd love to have you on this campaign. View your brief and confirm here:\n${briefUrl}\n\nThanks!`)}`;
                 const wa = x.influencers?.phone_mpesa ? `https://wa.me/${String(x.influencers.phone_mpesa).replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""}! ${c.clients?.name} × ${c.name} brief: ${briefUrl}`)}` : null;
                 return (
-                  <li key={x.id} className="py-3 space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display shrink-0">{x.influencers?.full_name?.[0]}</div>
-                        <div className="min-w-0">
-                          <div className="text-sm truncate">{x.influencers?.full_name}</div>
-                          <div className="text-xs text-muted-foreground truncate">{x.influencers?.handle} · {x.influencers?.primary_platform}</div>
+                  <li key={x.id} className="px-2 py-3 hover:bg-secondary/40 rounded-md group transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display text-base shrink-0">{x.influencers?.full_name?.[0]}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{x.influencers?.full_name}</div>
+                        <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusDot[x.status] ?? "bg-muted-foreground/40"}`} />
+                          {statusLabel[x.status] ?? x.status}
+                          {!isEditing && (x.fee_kes > 0 || x.deliverables_count > 0) && (
+                            <>
+                              <span>·</span>
+                              <span>KES {Number(x.fee_kes || 0).toLocaleString()}</span>
+                              <span>·</span>
+                              <span>{x.deliverables_count} post{x.deliverables_count === 1 ? "" : "s"}</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <Select value={x.status} onValueChange={(v) => updateCi(x.id, { status: v })}>
-                        <SelectTrigger className={`w-28 h-7 text-xs capitalize border-0 shrink-0 ${statusTones[x.status] ?? ""}`}><SelectValue /></SelectTrigger>
-                        <SelectContent>{["invited","negotiating","confirmed","live","completed","declined"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 pl-12 text-xs">
-                      {isEditing ? (
-                        <div className="flex items-center gap-1 flex-1 min-w-0">
-                          <Input className="h-7 text-xs w-24" type="number" value={editFee} onChange={e => setEditFee(e.target.value)} placeholder="Fee" />
-                          <span className="text-muted-foreground">·</span>
-                          <Input className="h-7 text-xs w-14" type="number" min="1" value={editDeliv} onChange={e => setEditDeliv(e.target.value)} />
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => saveEdit(x.id)}><Check className="w-3 h-3" /></Button>
-                        </div>
-                      ) : (
-                        <button className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 truncate" onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditDeliv(String(x.deliverables_count ?? 1)); }}>
-                          <span className="truncate">KES {Number(x.fee_kes || 0).toLocaleString()} · {x.deliverables_count} deliv.</span>
-                          <Pencil className="w-3 h-3 shrink-0" />
-                        </button>
+                      {!isEditing && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-60 group-hover:opacity-100">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Send invite</DropdownMenuLabel>
+                            <DropdownMenuItem asChild><a href={mailto}><Mail className="w-4 h-4 mr-2" /> Email brief</a></DropdownMenuItem>
+                            {wa && <DropdownMenuItem asChild><a href={wa} target="_blank" rel="noreferrer"><MessageSquare className="w-4 h-4 mr-2" /> WhatsApp brief</a></DropdownMenuItem>}
+                            <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(briefUrl); toast.success("Brief link copied"); }}>
+                              <Copy className="w-4 h-4 mr-2" /> Copy brief link
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild><a href={briefUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4 mr-2" /> Preview brief</a></DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Set status</DropdownMenuLabel>
+                            {[
+                              { v: "invited", l: "Invite sent" },
+                              { v: "negotiating", l: "Negotiating" },
+                              { v: "confirmed", l: "Confirmed" },
+                              { v: "live", l: "Live" },
+                              { v: "completed", l: "Completed" },
+                              { v: "declined", l: "Declined" },
+                            ].map(s => (
+                              <DropdownMenuItem key={s.v} onClick={() => updateCi(x.id, { status: s.v })}>
+                                <span className={`w-1.5 h-1.5 rounded-full mr-2 ${statusDot[s.v]}`} /> {s.l}
+                                {x.status === s.v && <Check className="w-3 h-3 ml-auto" />}
+                              </DropdownMenuItem>
+                            ))}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditDeliv(String(x.deliverables_count ?? 1)); }}>
+                              <Pencil className="w-4 h-4 mr-2" /> Edit fee & deliverables
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Copy brief link" onClick={() => { navigator.clipboard.writeText(briefUrl); toast.success("Brief link copied"); }}><Copy className="w-3 h-3" /></Button>
-                        <a href={mailto}><Button size="icon" variant="ghost" className="h-7 w-7" title="Email invite"><Mail className="w-3 h-3" /></Button></a>
-                        {wa && <a href={wa} target="_blank" rel="noreferrer"><Button size="icon" variant="ghost" className="h-7 w-7" title="WhatsApp invite"><MessageSquare className="w-3 h-3" /></Button></a>}
-                        <a href={briefUrl} target="_blank" rel="noreferrer"><Button size="icon" variant="ghost" className="h-7 w-7" title="Open brief"><ExternalLink className="w-3 h-3" /></Button></a>
-                      </div>
                     </div>
+                    {isEditing && (
+                      <div className="flex items-center gap-2 pl-12 mt-2">
+                        <div className="flex-1">
+                          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Fee (KES)</Label>
+                          <Input className="h-8 text-sm mt-1" type="number" value={editFee} onChange={e => setEditFee(e.target.value)} />
+                        </div>
+                        <div className="w-24">
+                          <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Posts</Label>
+                          <Input className="h-8 text-sm mt-1" type="number" min="1" value={editDeliv} onChange={e => setEditDeliv(e.target.value)} />
+                        </div>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 mt-5" onClick={() => setEditingId(null)}><X className="w-4 h-4" /></Button>
+                        <Button size="icon" className="h-8 w-8 mt-5 bg-primary" onClick={() => saveEdit(x.id)}><Check className="w-4 h-4" /></Button>
+                      </div>
+                    )}
                   </li>
                 );
               })}
