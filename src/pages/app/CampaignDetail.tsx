@@ -23,6 +23,7 @@ const CampaignDetail = () => {
   const [post, setPost] = useState<any>({ influencer_id: "", platform: "tiktok", post_url: "", caption: "" });
   const [rosterOpen, setRosterOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
 
   const load = async () => {
@@ -52,17 +53,22 @@ const CampaignDetail = () => {
 
   const createAndAddInfl = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newInfl.full_name) return;
-    const { data, error } = await supabase.from("influencers").insert({
-      ...newInfl,
-      follower_count: Number(newInfl.follower_count) || 0,
-    }).select().single();
-    if (error) return toast.error(error.message);
-    const { error: e2 } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: data.id });
-    if (e2) return toast.error(e2.message);
-    toast.success("Influencer created and added");
-    setNewInfl({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
-    setCreating(false); setRosterOpen(false); load();
+    if (!newInfl.full_name || submitting) return;
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase.from("influencers").insert({
+        ...newInfl,
+        follower_count: Number(newInfl.follower_count) || 0,
+      }).select().single();
+      if (error) { toast.error(error.message); return; }
+      const { error: e2 } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: data.id });
+      if (e2) { toast.error(e2.message); return; }
+      toast.success("Influencer created and added");
+      setNewInfl({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
+      setCreating(false); setRosterOpen(false); load();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const addPost = async (e: React.FormEvent) => {
@@ -209,8 +215,8 @@ const CampaignDetail = () => {
                     </div>
                     <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
                     <div className="flex gap-2 pt-2">
-                      <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)}>Back</Button>
-                      <Button type="submit" className="flex-1 bg-primary">Create & add</Button>
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)} disabled={submitting}>Back</Button>
+                      <Button type="submit" className="flex-1 bg-primary" disabled={submitting}>{submitting ? "Saving…" : "Create & add"}</Button>
                     </div>
                   </form>
                 ) : (
