@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X } from "lucide-react";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2 } from "lucide-react";
 import { toast } from "sonner";
 
 const CampaignDetail = () => {
@@ -31,6 +32,7 @@ const CampaignDetail = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFee, setEditFee] = useState<string>("");
   const [editDeliv, setEditDeliv] = useState<string>("1");
+  const [selectedCi, setSelectedCi] = useState<any>(null);
 
   const load = async () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name)").eq("id", id).single();
@@ -117,16 +119,49 @@ const CampaignDetail = () => {
   }, [metrics]);
 
   const totals = useMemo(() => {
-    let views = 0, likes = 0, comments = 0, shares = 0;
+    let views = 0, likes = 0, comments = 0, shares = 0, saves = 0, reach = 0, impressions = 0;
     for (const m of latestByPost.values()) {
       views += Number(m.views || 0);
       likes += Number(m.likes || 0);
       comments += Number(m.comments || 0);
       shares += Number(m.shares || 0);
+      saves += Number(m.saves || 0);
+      reach += Number(m.reach || 0);
+      impressions += Number(m.impressions || 0);
     }
-    const er = views ? ((likes + comments + shares) / views) * 100 : 0;
-    return { views, likes, comments, shares, er };
+    const er = views ? ((likes + comments + shares + saves) / views) * 100 : 0;
+    const emv = Math.round((impressions || views) * 0.012);
+    return { views, likes, comments, shares, saves, reach, impressions, er, emv };
   }, [latestByPost]);
+
+  // Per-influencer aggregated metrics
+  const byInfluencer = useMemo(() => {
+    const map = new Map<string, { views: number; likes: number; comments: number; shares: number; saves: number; posts: number }>();
+    for (const p of posts) {
+      const m = latestByPost.get(p.id);
+      if (!m) continue;
+      const key = p.influencer_id;
+      const cur = map.get(key) ?? { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, posts: 0 };
+      cur.views += Number(m.views || 0);
+      cur.likes += Number(m.likes || 0);
+      cur.comments += Number(m.comments || 0);
+      cur.shares += Number(m.shares || 0);
+      cur.saves += Number(m.saves || 0);
+      cur.posts += 1;
+      map.set(key, cur);
+    }
+    return map;
+  }, [posts, latestByPost]);
+
+  const topPerformer = useMemo(() => {
+    let best: { ci: any; views: number } | null = null;
+    for (const x of ci) {
+      const s = byInfluencer.get(x.influencer_id);
+      if (!s) continue;
+      if (!best || s.views > best.views) best = { ci: x, views: s.views };
+    }
+    return best;
+  }, [ci, byInfluencer]);
 
   const rosterTotals = useMemo(() => {
     const fees = ci.reduce((a, x) => a + Number(x.fee_kes || 0), 0);
@@ -175,23 +210,46 @@ const CampaignDetail = () => {
       </div>
 
       {/* Performance band */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
         {[
           { label: "Views", value: fmt(totals.views), icon: Eye },
           { label: "Likes", value: fmt(totals.likes), icon: Heart },
           { label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
           { label: "Shares", value: fmt(totals.shares), icon: Share2 },
-          { label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: null as any },
+          { label: "Saves", value: fmt(totals.saves), icon: Bookmark },
+          { label: "Reach", value: fmt(totals.reach), icon: Radio },
+          { label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3 },
+          { label: "Earned Media", value: `KES ${fmt(totals.emv)}`, icon: Wallet },
         ].map((s, i) => (
           <div key={i} className="bg-card p-5">
             <div className="flex items-center justify-between">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
               {s.icon && <s.icon className="w-3.5 h-3.5 text-muted-foreground" />}
             </div>
-            <div className="font-display text-3xl mt-2">{s.value}</div>
+            <div className="font-display text-2xl mt-2">{s.value}</div>
           </div>
         ))}
       </div>
+
+      {/* Top performer */}
+      {topPerformer && (
+        <Card className="p-5 mb-6 bg-gradient-ink text-primary-foreground border-0">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center"><Trophy className="w-6 h-6" /></div>
+              <div>
+                <div className="text-[10px] uppercase tracking-widest opacity-70">Top performer</div>
+                <div className="font-display text-2xl mt-0.5">{topPerformer.ci.influencers?.full_name}</div>
+                <div className="text-sm opacity-80">@{topPerformer.ci.influencers?.handle?.replace(/^@/, "")} · {byInfluencer.get(topPerformer.ci.influencer_id)?.posts} post{byInfluencer.get(topPerformer.ci.influencer_id)?.posts === 1 ? "" : "s"}</div>
+              </div>
+            </div>
+            <div className="flex gap-6 text-right">
+              <div><div className="font-display text-3xl">{fmt(topPerformer.views)}</div><div className="text-[10px] uppercase tracking-widest opacity-70">Views</div></div>
+              <div><div className="font-display text-3xl">{fmt(byInfluencer.get(topPerformer.ci.influencer_id)?.likes ?? 0)}</div><div className="text-[10px] uppercase tracking-widest opacity-70">Likes</div></div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Roster — full width table */}
       <Card className="p-0 overflow-hidden mb-6">
@@ -305,7 +363,7 @@ const CampaignDetail = () => {
                   const mailto = `mailto:${x.influencers?.email ?? ""}?subject=${encodeURIComponent(`${c.clients?.name} × ${c.name} — collaboration brief`)}&body=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""},\n\nWe'd love to have you on this campaign. View your brief and confirm here:\n${briefUrl}\n\nThanks!`)}`;
                   const wa = x.influencers?.phone_mpesa ? `https://wa.me/${String(x.influencers.phone_mpesa).replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""}! ${c.clients?.name} × ${c.name} brief: ${briefUrl}`)}` : null;
                   return (
-                    <tr key={x.id} className="border-b border-border last:border-0 hover:bg-secondary/40 transition-colors group">
+                    <tr key={x.id} onClick={(e) => { if ((e.target as HTMLElement).closest("button,a,input,[role=menu]")) return; setSelectedCi(x); }} className="border-b border-border last:border-0 hover:bg-secondary/40 transition-colors group cursor-pointer">
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display text-base shrink-0">{x.influencers?.full_name?.[0]}</div>
@@ -484,6 +542,100 @@ const CampaignDetail = () => {
           )}
         </div>
       </Card>
+
+      {/* Creator detail sheet */}
+      <Sheet open={!!selectedCi} onOpenChange={(o) => !o && setSelectedCi(null)}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          {selectedCi && (() => {
+            const inf = selectedCi.influencers;
+            const stats = byInfluencer.get(selectedCi.influencer_id);
+            const creatorPosts = posts.filter(p => p.influencer_id === selectedCi.influencer_id);
+            const briefUrl = `${window.location.origin}/b/${selectedCi.brief_token}`;
+            return (
+              <>
+                <SheetHeader className="text-left">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center font-display text-2xl">{inf?.full_name?.[0]}</div>
+                    <div className="min-w-0">
+                      <SheetTitle className="font-display text-2xl">{inf?.full_name}</SheetTitle>
+                      <div className="text-sm text-muted-foreground">@{inf?.handle?.replace(/^@/, "")} · {inf?.primary_platform}</div>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                <div className="grid grid-cols-3 gap-px bg-border rounded-lg overflow-hidden border border-border mt-6">
+                  {[
+                    { l: "Followers", v: inf?.follower_count ? fmt(inf.follower_count) : "—" },
+                    { l: "Niche", v: inf?.niche || "—" },
+                    { l: "Status", v: selectedCi.status },
+                  ].map((s, i) => (
+                    <div key={i} className="bg-card p-3">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.l}</div>
+                      <div className="font-display text-lg mt-1 truncate capitalize">{s.v}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Deal</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Fee</div><div className="font-display text-xl mt-1">KES {Number(selectedCi.fee_kes || 0).toLocaleString()}</div></Card>
+                    <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Deliverables</div><div className="font-display text-xl mt-1">{selectedCi.deliverables_count}</div></Card>
+                  </div>
+                </div>
+
+                {stats && (
+                  <div className="mt-6">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Performance ({stats.posts} post{stats.posts === 1 ? "" : "s"})</div>
+                    <div className="grid grid-cols-5 gap-px bg-border rounded-lg overflow-hidden border border-border">
+                      {[
+                        { l: "Views", v: fmt(stats.views) },
+                        { l: "Likes", v: fmt(stats.likes) },
+                        { l: "Comm.", v: fmt(stats.comments) },
+                        { l: "Shares", v: fmt(stats.shares) },
+                        { l: "Saves", v: fmt(stats.saves) },
+                      ].map((s, i) => (
+                        <div key={i} className="bg-card p-3 text-center">
+                          <div className="font-display text-base">{s.v}</div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.l}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {creatorPosts.length > 0 && (
+                  <div className="mt-6">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Posts</div>
+                    <ul className="space-y-2">
+                      {creatorPosts.map(p => (
+                        <li key={p.id} className="p-3 rounded-md border border-border">
+                          <div className="text-xs text-muted-foreground capitalize">{p.platform} · {p.status}</div>
+                          {p.post_url && <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block mt-1">{p.post_url}</a>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-6 pt-6 border-t border-border">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Contact</div>
+                  <div className="space-y-1 text-sm">
+                    {inf?.email && <div className="text-muted-foreground">{inf.email}</div>}
+                    {inf?.phone_mpesa && <div className="text-muted-foreground">{inf.phone_mpesa}</div>}
+                    {!inf?.email && !inf?.phone_mpesa && <div className="text-muted-foreground italic">No contact details on file</div>}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <Button variant="outline" className="flex-1" onClick={() => { navigator.clipboard.writeText(briefUrl); toast.success("Brief link copied"); }}><Copy className="w-4 h-4 mr-2" /> Copy brief</Button>
+                  <a href={briefUrl} target="_blank" rel="noreferrer" className="flex-1"><Button variant="outline" className="w-full"><ExternalLink className="w-4 h-4 mr-2" /> Open brief</Button></a>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

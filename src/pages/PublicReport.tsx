@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin } from "lucide-react";
+import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 
@@ -58,12 +58,35 @@ const PublicReport = () => {
     likes: a.likes + (p.metrics.likes || 0),
     comments: a.comments + (p.metrics.comments || 0),
     shares: a.shares + (p.metrics.shares || 0),
+    saves: a.saves + (p.metrics.saves || 0),
     reach: a.reach + (p.metrics.reach || 0),
     impressions: a.impressions + (p.metrics.impressions || 0),
-  }), { views:0, likes:0, comments:0, shares:0, reach:0, impressions:0 });
+  }), { views:0, likes:0, comments:0, shares:0, saves:0, reach:0, impressions:0 });
 
-  const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares) / totals.views * 100) : 0;
+  const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares + totals.saves) / totals.views * 100) : 0;
   const emv = Math.round((totals.impressions || totals.views) * 0.012);
+  const cpm = totals.impressions > 0 && campaign.budget_kes > 0 ? (campaign.budget_kes / totals.impressions * 1000) : 0;
+  const cpv = totals.views > 0 && campaign.budget_kes > 0 ? (campaign.budget_kes / totals.views) : 0;
+
+  // Per-creator aggregated metrics
+  const byCreator = new Map<string, { views: number; likes: number; comments: number; shares: number; saves: number; posts: number }>();
+  for (const p of posts) {
+    const key = p.influencer_id;
+    const cur = byCreator.get(key) ?? { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, posts: 0 };
+    cur.views += p.metrics.views || 0;
+    cur.likes += p.metrics.likes || 0;
+    cur.comments += p.metrics.comments || 0;
+    cur.shares += p.metrics.shares || 0;
+    cur.saves += p.metrics.saves || 0;
+    cur.posts += 1;
+    byCreator.set(key, cur);
+  }
+  let topPerformer: { ci: any; views: number } | null = null;
+  for (const x of influencers) {
+    const s = byCreator.get(x.influencer_id);
+    if (!s) continue;
+    if (!topPerformer || s.views > topPerformer.views) topPerformer = { ci: x, views: s.views };
+  }
   const allHistory = posts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: h.views || 0 })));
   let trend: { d: number; v: number }[] = [];
   if (allHistory.length > 1) {
@@ -112,12 +135,15 @@ const PublicReport = () => {
         </div>
 
         {/* Performance band — same style */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
           {[
             { label: "Views", value: fmt(totals.views), icon: Eye },
+            { label: "Reach", value: fmt(totals.reach), icon: Radio },
+            { label: "Impressions", value: fmt(totals.impressions), icon: BarChart3 },
             { label: "Likes", value: fmt(totals.likes), icon: Heart },
             { label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
             { label: "Shares", value: fmt(totals.shares), icon: Share2 },
+            { label: "Saves", value: fmt(totals.saves), icon: Bookmark },
             { label: "Engagement", value: `${er.toFixed(1)}%`, icon: Sparkles },
           ].map((s, i) => (
             <div key={i} className="bg-card p-5">
@@ -125,7 +151,7 @@ const PublicReport = () => {
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
                 {s.icon && <s.icon className="w-3.5 h-3.5 text-muted-foreground" />}
               </div>
-              <div className="font-display text-3xl mt-2">{s.value}</div>
+              <div className="font-display text-2xl mt-2">{s.value}</div>
             </div>
           ))}
         </div>
@@ -165,6 +191,40 @@ const PublicReport = () => {
           </Card>
         </div>
 
+        {/* Top performer + Efficiency */}
+        {(topPerformer || campaign.budget_kes > 0) && (
+          <div className="grid lg:grid-cols-3 gap-6 mb-6">
+            {topPerformer && (
+              <Card className="p-6 lg:col-span-2">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-accent/15 text-accent flex items-center justify-center"><Trophy className="w-6 h-6" /></div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Top performer</div>
+                      <div className="font-display text-2xl mt-0.5">{topPerformer.ci.influencers?.full_name}</div>
+                      <div className="text-sm text-muted-foreground">@{topPerformer.ci.influencers?.handle?.replace(/^@/, "")} · {byCreator.get(topPerformer.ci.influencer_id)?.posts} post{byCreator.get(topPerformer.ci.influencer_id)?.posts === 1 ? "" : "s"}</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-6 text-right">
+                    <div><div className="font-display text-3xl">{fmt(topPerformer.views)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                    <div><div className="font-display text-3xl">{fmt(byCreator.get(topPerformer.ci.influencer_id)?.likes ?? 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                  </div>
+                </div>
+              </Card>
+            )}
+            {campaign.budget_kes > 0 && (
+              <Card className="p-6">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Efficiency</div>
+                <div className="mt-3 space-y-3">
+                  <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per view</span><span className="font-display text-xl">KES {cpv.toFixed(2)}</span></div>
+                  <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per mille</span><span className="font-display text-xl">KES {cpm.toFixed(0)}</span></div>
+                  <div className="flex justify-between items-baseline pt-3 border-t border-border"><span className="text-sm text-muted-foreground">ROI vs paid</span><span className="font-display text-xl">{campaign.budget_kes > 0 ? `${(emv / campaign.budget_kes * 100).toFixed(0)}%` : "—"}</span></div>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+
         {/* Roster + Posts — mirrors CampaignDetail */}
         <div className="grid lg:grid-cols-5 gap-6">
           <Card className="p-5 lg:col-span-2">
@@ -179,18 +239,31 @@ const PublicReport = () => {
               </div>
             ) : (
               <ul className="divide-y divide-border">
-                {influencers.map(x => (
-                  <li key={x.id} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display">{x.influencers?.full_name?.[0]}</div>
-                      <div className="min-w-0">
-                        <div className="text-sm truncate">{x.influencers?.full_name}</div>
-                        <div className="text-xs text-muted-foreground truncate">{x.influencers?.handle} · {x.influencers?.primary_platform}</div>
+                {influencers.map(x => {
+                  const s = byCreator.get(x.influencer_id);
+                  return (
+                    <li key={x.id} className="py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display shrink-0">{x.influencers?.full_name?.[0]}</div>
+                          <div className="min-w-0">
+                            <div className="text-sm truncate">{x.influencers?.full_name}</div>
+                            <div className="text-xs text-muted-foreground truncate">{x.influencers?.handle} · {x.influencers?.primary_platform}</div>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="capitalize shrink-0">{x.status}</Badge>
                       </div>
-                    </div>
-                    <Badge variant="outline" className="capitalize">{x.status}</Badge>
-                  </li>
-                ))}
+                      {s && (
+                        <div className="grid grid-cols-4 gap-1 mt-2 ml-12 text-center">
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.views)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.likes)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.comments)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.shares)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>
@@ -216,11 +289,13 @@ const PublicReport = () => {
                       <Badge variant="outline" className="capitalize">{p.status}</Badge>
                     </div>
                     {p.post_url && <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block mt-1">{p.post_url}</a>}
-                    <div className="grid grid-cols-4 gap-2 mt-3 text-center">
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3 text-center">
                       <div><div className="font-display text-base">{fmt(p.metrics.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
                       <div><div className="font-display text-base">{fmt(p.metrics.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
                       <div><div className="font-display text-base">{fmt(p.metrics.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
                       <div><div className="font-display text-base">{fmt(p.metrics.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                      <div><div className="font-display text-base">{fmt(p.metrics.saves || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
+                      <div><div className="font-display text-base">{fmt(p.metrics.reach || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Reach</div></div>
                     </div>
                   </li>
                 ))}
