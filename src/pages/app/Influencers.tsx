@@ -59,8 +59,8 @@ const Influencers = () => {
                 <div><Label>Followers</Label><Input type="number" value={form.follower_count} onChange={e => setForm({ ...form, follower_count: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>Followers</Label><Input type="number" value={form.follower_count} onChange={e => setForm({ ...form, follower_count: e.target.value })} /></div>
                 <div><Label>Engagement %</Label><Input type="number" step="0.1" value={form.engagement_rate} onChange={e => setForm({ ...form, engagement_rate: e.target.value })} /></div>
+                <div><Label>Region</Label><Input value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} /></div>
               </div>
               <div><Label>M-Pesa phone</Label><Input value={form.phone_mpesa} onChange={e => setForm({ ...form, phone_mpesa: e.target.value })} placeholder="2547..." /></div>
               <Button type="submit" className="w-full bg-primary">Save</Button>
