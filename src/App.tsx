@@ -13,6 +13,7 @@ import Campaigns from "./pages/app/Campaigns";
 import CampaignDetail from "./pages/app/CampaignDetail";
 import Influencers from "./pages/app/Influencers";
 import Stub from "./pages/app/Stub";
+import Briefs from "./pages/app/Briefs";
 import PublicReport from "./pages/PublicReport";
 import PublicBrief from "./pages/PublicBrief";
 import ConnectTikTok from "./pages/ConnectTikTok";
