@@ -161,6 +161,38 @@ const CampaignDetail = () => {
     return { views, likes, comments, shares, saves, reach, impressions, er, emv };
   }, [latestByPost]);
 
+  // Per-platform breakdown (mirrors public report)
+  const platformRows = useMemo(() => {
+    const map = new Map<string, { posts: number; creators: Set<string>; views: number; reach: number; followers: number }>();
+    for (const p of posts) {
+      const m = latestByPost.get(p.id);
+      const key = (p.platform as string) || "other";
+      const cur = map.get(key) ?? { posts: 0, creators: new Set<string>(), views: 0, reach: 0, followers: 0 };
+      cur.posts += 1;
+      if (p.influencer_id) cur.creators.add(p.influencer_id);
+      cur.views += Number(m?.views || 0);
+      cur.reach += Number(m?.reach || 0);
+      map.set(key, cur);
+    }
+    for (const x of ci) {
+      const plat = (x.influencers?.primary_platform as string) || "other";
+      const cur = map.get(plat);
+      if (cur) cur.followers += Number(x.influencers?.follower_count || 0);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views);
+  }, [posts, latestByPost, ci]);
+
+  // Audience demographics (mirrors public report)
+  const audience = useMemo(() => {
+    const totalFollowers = ci.reduce((a, x) => a + Number(x.influencers?.follower_count || 0), 0);
+    const weightedKE = totalFollowers > 0
+      ? ci.reduce((a, x) => a + Number(x.influencers?.follower_count || 0) * Number(x.influencers?.audience_kenya_pct || 0), 0) / totalFollowers
+      : 0;
+    const langs = new Set<string>();
+    ci.forEach(x => (x.influencers?.languages || []).forEach((l: string) => langs.add(l)));
+    return { totalFollowers, weightedKE, diaspora: 100 - weightedKE, langs };
+  }, [ci]);
+
   // Per-influencer aggregated metrics
   const byInfluencer = useMemo(() => {
     const map = new Map<string, { views: number; likes: number; comments: number; shares: number; saves: number; posts: number }>();
@@ -281,6 +313,77 @@ const CampaignDetail = () => {
             <div className="flex gap-6 text-right">
               <div><div className="font-display text-3xl">{fmt(topPerformer.views)}</div><div className="text-[10px] uppercase tracking-widest opacity-70">Views</div></div>
               <div><div className="font-display text-3xl">{fmt(byInfluencer.get(topPerformer.ci.influencer_id)?.likes ?? 0)}</div><div className="text-[10px] uppercase tracking-widest opacity-70">Likes</div></div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Channel mix */}
+      {platformRows.length > 0 && (
+        <Card className="p-5 mb-6">
+          <div className="mb-4">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">By platform</div>
+            <h2 className="font-display text-2xl">Channel mix</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                  <th className="text-left font-medium py-2 pr-3">Platform</th>
+                  <th className="text-right font-medium py-2 px-3">Posts</th>
+                  <th className="text-right font-medium py-2 px-3">Creators</th>
+                  <th className="text-right font-medium py-2 px-3">Views</th>
+                  <th className="text-right font-medium py-2 px-3">Reach</th>
+                  <th className="text-right font-medium py-2 pl-3">Followers</th>
+                </tr>
+              </thead>
+              <tbody>
+                {platformRows.map(([k, v]) => (
+                  <tr key={k} className="border-b border-border last:border-0">
+                    <td className="py-2 pr-3 capitalize">{k}</td>
+                    <td className="py-2 px-3 text-right tabular-nums">{v.posts}</td>
+                    <td className="py-2 px-3 text-right tabular-nums">{v.creators.size}</td>
+                    <td className="py-2 px-3 text-right tabular-nums">{fmt(v.views)}</td>
+                    <td className="py-2 px-3 text-right tabular-nums">{fmt(v.reach)}</td>
+                    <td className="py-2 pl-3 text-right tabular-nums">{fmt(v.followers)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Audience demographics */}
+      {ci.length > 0 && (
+        <Card className="p-6 mb-6">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audience</div>
+          <h2 className="font-display text-2xl mt-1 mb-4">Who we reached</h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+              <div className="flex justify-between items-baseline text-sm mb-1.5">
+                <span>Kenya</span><span className="font-display text-lg">{audience.weightedKE.toFixed(0)}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-secondary overflow-hidden flex">
+                <div className="bg-accent h-full" style={{ width: `${audience.weightedKE}%` }} />
+                <div className="bg-highlight/60 h-full" style={{ width: `${audience.diaspora}%` }} />
+              </div>
+              <div className="flex justify-between items-baseline text-sm mt-1.5">
+                <span className="text-muted-foreground">Diaspora & rest of world</span>
+                <span className="text-muted-foreground">{audience.diaspora.toFixed(0)}%</span>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-border">
+                <div><div className="font-display text-2xl">{fmt(audience.totalFollowers)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Combined followers</div></div>
+                <div><div className="font-display text-2xl">{ci.length}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Creators</div></div>
+                <div><div className="font-display text-2xl">{audience.langs.size || 1}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Languages</div></div>
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Languages</div>
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from(audience.langs).map(l => <Badge key={l} variant="outline" className="text-xs">{l}</Badge>)}
+                {audience.langs.size === 0 && <span className="text-xs text-muted-foreground">—</span>}
+              </div>
             </div>
           </div>
         </Card>
