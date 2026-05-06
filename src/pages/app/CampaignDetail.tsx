@@ -115,6 +115,14 @@ const CampaignDetail = () => {
     load();
   };
 
+  const saveLearnings = async () => {
+    setSavingLearnings(true);
+    const { error } = await supabase.from("campaigns").update({ learnings }).eq("id", id);
+    setSavingLearnings(false);
+    if (error) return toast.error(error.message);
+    toast.success("Learnings saved");
+  };
+
   // Latest metric per post
   const latestByPost = useMemo(() => {
     const map = new Map<string, any>();
