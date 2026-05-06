@@ -485,6 +485,7 @@ const PublicReport = () => {
                       <div><div className="font-display text-base">{fmt(p.metrics.saves || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
                       <div><div className="font-display text-base">{fmt(p.metrics.reach || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Reach</div></div>
                     </div>
+                    )}
                   </li>
                 ))}
               </ul>
