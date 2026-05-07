@@ -864,6 +864,7 @@ export type Database = {
         | "account_manager"
         | "client_viewer"
         | "influencer"
+        | "client_user"
       approval_status: "pending" | "approved" | "changes_requested"
       campaign_status:
         | "draft"
@@ -1007,6 +1008,7 @@ export const Constants = {
         "account_manager",
         "client_viewer",
         "influencer",
+        "client_user",
       ],
       approval_status: ["pending", "approved", "changes_requested"],
       campaign_status: [
