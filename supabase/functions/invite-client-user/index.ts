@@ -25,8 +25,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { client_id, email, redirect_to } = await req.json();
+    const { client_id, email, redirect_to, campaign_ids } = await req.json();
     if (!client_id || !email) return new Response(JSON.stringify({ error: "client_id and email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const campaignIds: string[] = Array.isArray(campaign_ids) ? campaign_ids.filter((x) => typeof x === "string") : [];
 
     const cleanEmail = String(email).trim().toLowerCase();
 
