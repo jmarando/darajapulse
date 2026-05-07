@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 
@@ -17,7 +17,8 @@ const nav = [
 ];
 
 const AppShell = () => {
-  const { user, loading, signOut, isAgency, isClient } = useAuth();
+  const { user, loading, signOut, isAgency, isClient, roles } = useAuth();
+  const isAdmin = roles.includes("agency_admin");
   const navigate = useNavigate();
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
@@ -38,6 +39,13 @@ const AppShell = () => {
               <Icon className="w-4 h-4" /> {label}
             </NavLink>
           ))}
+          {isAdmin && (
+            <NavLink to="/app/team"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50'}`}>
+              <UserCog className="w-4 h-4" /> Team
+            </NavLink>
+          )}
         </nav>
         <div className="p-3 border-t border-sidebar-border">
           <div className="px-3 py-2 text-xs text-sidebar-foreground/70 truncate">{user.email}</div>
