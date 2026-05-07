@@ -286,7 +286,7 @@ const Moderation = ({ readOnly = false }: { readOnly?: boolean }) => {
               )}
             </div>
 
-            <div className="mt-auto border-t border-border pt-4 space-y-3">
+            {!readOnly && <div className="mt-auto border-t border-border pt-4 space-y-3">
               <div className="space-y-2">
                 <textarea
                   value={reply}
