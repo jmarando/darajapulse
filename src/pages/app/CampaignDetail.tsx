@@ -781,35 +781,31 @@ const CampaignDetail = () => {
             <p className="text-xs text-muted-foreground mt-1">Add the first live post or refresh TikTok metrics.</p>
           </div>
         ) : (
-          <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {posts.map(p => {
               const m = latestByPost.get(p.id);
               return (
                 <li key={p.id} className="rounded-lg border border-border bg-card overflow-hidden flex flex-col hover:shadow-elegant transition-shadow">
-                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border">
+                  <PostThumb
+                    url={p.post_url}
+                    platform={p.platform}
+                    thumbnailUrl={p.thumbnail_url}
+                    caption={p.caption}
+                    handle={p.influencers?.handle || p.influencers?.full_name}
+                  />
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border">
                     <div className="text-xs min-w-0 truncate">
                       <span className="font-medium">{p.influencers?.full_name}</span>
-                      <span className="text-muted-foreground"> · {p.platform}</span>
                     </div>
                     <Badge variant="outline" className="capitalize text-[10px] py-0 h-5">{p.status}</Badge>
                   </div>
-                  {p.post_url && (
-                    <div className="bg-muted/30 flex items-center justify-center min-h-[420px] overflow-hidden">
-                      <PostEmbed url={p.post_url} platform={p.platform} />
-                    </div>
-                  )}
                   {m && (
-                    <div className="grid grid-cols-4 gap-1 px-2 py-3 text-center border-t border-border">
+                    <div className="grid grid-cols-4 gap-1 px-2 py-2 text-center border-t border-border">
                       <div><div className="font-display text-sm">{fmt(m.views || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Views</div></div>
                       <div><div className="font-display text-sm">{fmt(m.likes || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Likes</div></div>
                       <div><div className="font-display text-sm">{fmt(m.comments || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Cmts</div></div>
                       <div><div className="font-display text-sm">{fmt(m.shares || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Shares</div></div>
                     </div>
-                  )}
-                  {p.post_url && (
-                    <a href={p.post_url} target="_blank" rel="noreferrer" className="block px-3 py-2 text-[10px] text-muted-foreground hover:text-accent border-t border-border truncate">
-                      {p.post_url.replace(/^https?:\/\//, "")}
-                    </a>
                   )}
                 </li>
               );
