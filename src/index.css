@@ -110,6 +110,11 @@
     50% { opacity: 0.55; }
   }
   .animate-pulse-counter { animation: pulse-counter 2.4s ease-in-out infinite; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
 }
 
 @media print {

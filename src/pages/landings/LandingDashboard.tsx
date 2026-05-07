@@ -1,47 +1,110 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Eye, Heart, MessageCircle, Share2 } from "lucide-react";
+import {
+  ArrowRight, Eye, Heart, MessageCircle, Share2, Sparkles, Wallet, FileText,
+  Users, Trophy, BarChart3, ShieldCheck, Zap, Globe, CheckCircle2, TrendingUp
+} from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 
-const seed = Array.from({ length: 12 }, (_, i) => ({ x: i, v: 40 + Math.sin(i / 1.7) * 18 + i * 4 }));
+const seed = Array.from({ length: 16 }, (_, i) => ({ x: i, v: 30 + Math.sin(i / 1.5) * 22 + i * 5 }));
+
+const ticker = [
+  "TikTok view captured · @wanjiruke · +12,408",
+  "M-Pesa payout sent · KES 45,000 · 14s",
+  "Content approved · Royco — Mama Mboga Q1",
+  "Contest entry · #BoltKE — 38 submissions today",
+  "Brief opened · NCBA Loop · 6 creators viewing",
+  "Instagram Reels metrics synced · 21 posts",
+];
 
 const LandingDashboard = () => {
   const [views, setViews] = useState(2_413_902);
+  const [tickIdx, setTickIdx] = useState(0);
+
   useEffect(() => {
     const t = setInterval(() => setViews(v => v + Math.floor(20 + Math.random() * 80)), 1500);
-    return () => clearInterval(t);
+    const tk = setInterval(() => setTickIdx(i => (i + 1) % ticker.length), 2400);
+    return () => { clearInterval(t); clearInterval(tk); };
   }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-paper">
-      <header className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-        <img src={logo} alt="Daraja Pulse" className="h-20 w-auto" />
-        <Link to="/auth"><Button variant="ghost">Sign in</Button></Link>
+    <div className="min-h-screen bg-gradient-paper overflow-hidden">
+      {/* Ambient floating accents */}
+      <div className="pointer-events-none fixed inset-0 -z-0">
+        <div className="absolute top-[-10%] left-[-5%] w-[40rem] h-[40rem] rounded-full bg-accent/15 blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[50rem] h-[50rem] rounded-full bg-highlight/10 blur-[140px]" style={{ animation: "pulse 6s ease-in-out infinite" }} />
+      </div>
+
+      <header className="relative max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+        <img src={logo} alt="Daraja Pulse" className="h-16 w-auto" />
+        <div className="flex items-center gap-2">
+          <Link to="/auth"><Button variant="ghost">Sign in</Button></Link>
+          <Link to="/auth"><Button className="bg-primary">Start free</Button></Link>
+        </div>
       </header>
 
-      <section className="max-w-7xl mx-auto px-6 pt-12 pb-24 grid md:grid-cols-2 gap-12 items-center">
-        <div>
-          <div className="text-xs uppercase tracking-[0.3em] text-accent mb-5">Influence Operating System</div>
-          <h1 className="font-display text-6xl md:text-7xl leading-[1.02] font-semibold text-balance">
-            Your client report<br /><span className="text-accent italic">refreshes itself.</span>
-          </h1>
-          <p className="mt-6 text-lg text-muted-foreground max-w-lg">
-            Brief, publish, measure and pay — across TikTok, Instagram, YouTube and X. M-Pesa native. KRA aware.
-          </p>
-          <div className="mt-8 flex gap-3">
-            <Link to="/auth"><Button size="lg" className="bg-primary">Open the console <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
-            <Button size="lg" variant="outline">Watch 60s tour</Button>
+      {/* HERO */}
+      <section className="relative max-w-7xl mx-auto px-6 pt-12 pb-20 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
+        <div className="animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-[11px] uppercase tracking-[0.25em] text-foreground/70 mb-6 shadow-soft">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+            The influence operating system · Kenya
           </div>
-          <div className="mt-10 flex items-center gap-6 text-xs text-muted-foreground">
-            <div>★★★★★ 4.9 from 38 brands</div>
-            <div>Trusted by Safaricom · NCBA · Bolt</div>
+          <h1 className="font-display text-6xl md:text-7xl lg:text-[5.5rem] leading-[0.98] font-semibold text-balance tracking-tight">
+            Run influencer<br />
+            campaigns like<br />
+            <span className="text-accent italic relative inline-block">
+              an empire.
+              <svg className="absolute -bottom-2 left-0 w-full" height="14" viewBox="0 0 300 14" fill="none">
+                <path d="M2 8 Q 75 2, 150 7 T 298 6" stroke="hsl(0 99% 57%)" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.4" />
+              </svg>
+            </span>
+          </h1>
+          <p className="mt-7 text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
+            Discover creators. Send briefs. Approve content. Track every post across <span className="text-foreground font-medium">TikTok, Instagram, YouTube and X</span> in real time. Pay via M-Pesa. Hand your client a live, self-refreshing report — not a stale PDF.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link to="/auth"><Button size="lg" className="bg-primary text-base h-12 px-6 group">Open the console <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" /></Button></Link>
+            <Button size="lg" variant="outline" className="h-12 px-6">Watch the 60s tour</Button>
+          </div>
+
+          {/* Live ticker */}
+          <div className="mt-8 flex items-center gap-3 px-4 py-3 rounded-lg bg-card/70 border border-border max-w-xl backdrop-blur-sm">
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
+            <div className="text-xs text-muted-foreground font-mono truncate animate-fade-in" key={tickIdx}>
+              {ticker[tickIdx]}
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> M-Pesa native</div>
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> KRA & WHT aware</div>
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> 4 platforms, one inbox</div>
           </div>
         </div>
 
         {/* Live report mock */}
-        <div className="relative">
-          <div className="absolute -inset-6 bg-gradient-warm opacity-20 blur-3xl rounded-full" />
+        <div className="relative animate-fade-in">
+          <div className="absolute -inset-8 bg-gradient-warm opacity-25 blur-3xl rounded-full" />
+
+          {/* Floating mini-cards */}
+          <div className="absolute -top-6 -left-6 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs animate-fade-in" style={{ animation: "fade-in 0.6s ease-out, float 4s ease-in-out 0.6s infinite" }}>
+            <Wallet className="w-4 h-4 text-success" />
+            <div>
+              <div className="font-semibold">KES 45,000 paid</div>
+              <div className="text-[10px] text-muted-foreground">M-Pesa · 14s ago</div>
+            </div>
+          </div>
+          <div className="absolute -bottom-4 -right-4 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs" style={{ animation: "float 5s ease-in-out infinite" }}>
+            <Trophy className="w-4 h-4 text-highlight" />
+            <div>
+              <div className="font-semibold">38 contest entries</div>
+              <div className="text-[10px] text-muted-foreground">#BoltKE · today</div>
+            </div>
+          </div>
+
           <div className="relative rounded-2xl bg-card border border-border shadow-elegant overflow-hidden">
             <div className="px-5 py-3 border-b border-border flex items-center justify-between text-xs">
               <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> Live · Hustler Fund</div>
@@ -60,7 +123,7 @@ const LandingDashboard = () => {
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="x" hide />
-                    <Area type="monotone" dataKey="v" stroke="hsl(0 99% 57%)" strokeWidth={2} fill="url(#g)" />
+                    <Area type="monotone" dataKey="v" stroke="hsl(0 99% 57%)" strokeWidth={2.5} fill="url(#g)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -71,7 +134,7 @@ const LandingDashboard = () => {
                   { i: MessageCircle, l: "Comments", v: "9.2k" },
                   { i: Share2, l: "Shares", v: "21k" },
                 ].map(({ i: I, l, v }) => (
-                  <div key={l} className="rounded-lg bg-secondary/60 p-3">
+                  <div key={l} className="rounded-lg bg-secondary/60 p-3 hover:bg-secondary transition-colors">
                     <I className="w-3.5 h-3.5 text-muted-foreground" />
                     <div className="font-display text-lg mt-1">{v}</div>
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{l}</div>
@@ -81,12 +144,110 @@ const LandingDashboard = () => {
             </div>
             <div className="px-5 py-3 bg-secondary/40 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
               <span>14 creators · 21 posts</span>
-              <span>daraja.pulse/r/h7s2k</span>
+              <span className="font-mono">daraja.pulse/r/h7s2k</span>
             </div>
           </div>
         </div>
       </section>
+
+      {/* USP STRIP */}
+      <section className="relative border-y border-border bg-card/40 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+          {[
+            { n: "4", l: "Platforms unified" },
+            { n: "<2 min", l: "Creator payout" },
+            { n: "Live", l: "Client reports" },
+            { n: "0", l: "Spreadsheets" },
+          ].map(s => (
+            <div key={s.l} className="text-center md:text-left">
+              <div className="font-display text-3xl md:text-4xl font-semibold text-accent">{s.n}</div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1">{s.l}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* USP DEEP DIVE */}
+      <section className="relative max-w-7xl mx-auto px-6 py-24">
+        <div className="text-xs uppercase tracking-[0.3em] text-accent mb-3">Why Daraja Pulse</div>
+        <h2 className="font-display text-4xl md:text-6xl font-semibold max-w-3xl leading-[1.05] mb-16">
+          Everything between the brief and the bank — <span className="italic text-muted-foreground">finally in one place.</span>
+        </h2>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[
+            { i: Users, t: "Creator roster & discovery", b: "TikTok-first database with audience authenticity, niche, language and Kenya-vs-diaspora splits. Build a list in minutes, not weeks." },
+            { i: FileText, t: "Tokenized creator briefs", b: "Send a single link. Creators see the deliverables, deadlines and payout — no logins, no chasing on WhatsApp." },
+            { i: CheckCircle2, t: "Two-round content approvals", b: "Threaded comments per asset. Brand and account manager align before a single post goes live." },
+            { i: BarChart3, t: "Live, self-refreshing reports", b: "A tokenized client URL that updates every few minutes. Brand managers actually forward this internally." },
+            { i: Wallet, t: "M-Pesa payouts in minutes", b: "B2C disbursements via the Daraja API. WHT auto-computed. e-TIMS-ready records. Creators get paid before they ask." },
+            { i: Trophy, t: "UGC contests & leaderboards", b: "Public submission links, auto-leaderboards and entry tracking. Turn fans into your next campaign roster." },
+            { i: ShieldCheck, t: "Brand portal access", b: "Invite client-side stakeholders to a read-only portal. They see only their campaigns — never your fees or other accounts." },
+            { i: Sparkles, t: "AI campaign learnings", b: "Auto-generated insights on what worked, who outperformed and what to repeat next quarter. Powered by Lovable AI." },
+            { i: Globe, t: "TikTok · Instagram · YouTube · X", b: "Native OAuth + polling for TikTok. Embeds, manual + API metrics for the rest. One dashboard, four platforms." },
+          ].map(({ i: I, t, b }) => (
+            <div key={t} className="group relative p-6 rounded-xl bg-card border border-border hover:border-accent/40 hover:shadow-elegant hover:-translate-y-1 transition-all duration-300">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
+                <I className="w-5 h-5 text-accent group-hover:text-accent-foreground transition-colors" />
+              </div>
+              <h3 className="font-display text-xl mb-2">{t}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{b}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* WORKFLOW */}
+      <section className="relative bg-primary text-primary-foreground py-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-xs uppercase tracking-[0.3em] text-accent mb-3">The flow</div>
+          <h2 className="font-display text-4xl md:text-6xl font-semibold max-w-3xl leading-[1.05] mb-16">
+            From brief to payout — <span className="italic opacity-70">in one continuous motion.</span>
+          </h2>
+          <div className="grid md:grid-cols-5 gap-4">
+            {[
+              { n: "01", t: "Brief", d: "Tokenized link to creators" },
+              { n: "02", t: "Approve", d: "Round 1 + 2 with comments" },
+              { n: "03", t: "Publish", d: "Auto-tracked across platforms" },
+              { n: "04", t: "Report", d: "Live URL for the brand" },
+              { n: "05", t: "Pay", d: "M-Pesa B2C in minutes" },
+            ].map((s, i) => (
+              <div key={s.n} className="relative p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                <div className="text-accent font-mono text-xs">{s.n}</div>
+                <div className="font-display text-2xl mt-2">{s.t}</div>
+                <div className="text-sm opacity-60 mt-1">{s.d}</div>
+                {i < 4 && <ArrowRight className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-accent z-10 bg-primary rounded-full p-0.5" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CLOSING CTA */}
+      <section className="relative max-w-5xl mx-auto px-6 py-24 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-[11px] uppercase tracking-[0.25em] mb-6">
+          <Zap className="w-3 h-3" /> Built for Kenyan agencies
+        </div>
+        <h2 className="font-display text-5xl md:text-7xl font-semibold leading-[1.02] text-balance">
+          Stop losing nights<br />
+          <span className="italic text-accent">to spreadsheets.</span>
+        </h2>
+        <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
+          Spin up your first campaign today. No credit card. No 30-day demo dance.
+        </p>
+        <div className="mt-8 flex justify-center gap-3">
+          <Link to="/auth"><Button size="lg" className="bg-primary text-base h-12 px-8 group">Start free <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" /></Button></Link>
+        </div>
+        <div className="mt-10 flex justify-center items-center gap-2 text-xs text-muted-foreground">
+          <TrendingUp className="w-3.5 h-3.5 text-success" /> Trusted by agencies running campaigns across East Africa
+        </div>
+      </section>
+
+      <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
+        © {new Date().getFullYear()} Daraja Pulse · The influence operating system
+      </footer>
     </div>
   );
 };
+
 export default LandingDashboard;
