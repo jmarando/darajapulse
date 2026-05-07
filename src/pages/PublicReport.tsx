@@ -10,6 +10,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 import { PostEmbed } from "@/components/PostEmbed";
+import { PostThumb } from "@/components/PostThumb";
 
 type PostWithMetrics = any;
 
