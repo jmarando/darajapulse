@@ -85,7 +85,7 @@ const Overview = () => {
         payouts: totalPayout,
         live: lv.count ?? 0,
         posts: posts.count ?? 0,
-        briefs: briefs.count ?? 0,
+        briefs: briefs.count ?? 0, // content items count
         contests: contests.count ?? 0,
       });
       setMetrics(pm.data ?? []);
@@ -171,7 +171,7 @@ const Overview = () => {
 
       {/* Secondary KPIs */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Stat icon={FileText} label="Briefs" value={s.briefs} to="/app/briefs" />
+        <Stat icon={FileText} label="Content items" value={s.briefs} to="/app/content" />
         <Stat icon={Activity} label="Posts tracked" value={s.posts} to="/app/content" />
         <Stat icon={Trophy} label="Contests" value={s.contests} />
         <Stat icon={Sparkles} label="EMV (KES)" value={fmt(emv)} sub="vs KES 12 CPM" />
