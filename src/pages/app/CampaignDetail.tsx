@@ -33,6 +33,8 @@ const CampaignDetail = () => {
   const [rosterOpen, setRosterOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [picked, setPicked] = useState<any>(null);
+  const [rosterSearch, setRosterSearch] = useState("");
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
   const [addFee, setAddFee] = useState<string>("");
   const [addDeliv, setAddDeliv] = useState<string>("1");
