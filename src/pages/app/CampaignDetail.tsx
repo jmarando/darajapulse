@@ -627,7 +627,7 @@ const CampaignDetail = () => {
             <p className="text-xs text-muted-foreground mt-1">Add the first live post or refresh TikTok metrics.</p>
           </div>
         ) : (
-          <ul className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {posts.map(p => {
               const m = latestByPost.get(p.id);
               return (
@@ -640,7 +640,7 @@ const CampaignDetail = () => {
                     <Badge variant="outline" className="capitalize text-[10px] py-0 h-5">{p.status}</Badge>
                   </div>
                   {p.post_url && (
-                    <div className="bg-muted/30 flex items-center justify-center min-h-[300px]">
+                    <div className="bg-muted/30 flex items-center justify-center min-h-[420px] overflow-hidden">
                       <PostEmbed url={p.post_url} platform={p.platform} />
                     </div>
                   )}
