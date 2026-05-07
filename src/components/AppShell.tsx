@@ -39,6 +39,13 @@ const AppShell = () => {
               <Icon className="w-4 h-4" /> {label}
             </NavLink>
           ))}
+          {isAdmin && (
+            <NavLink to="/app/team"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50'}`}>
+              <UserCog className="w-4 h-4" /> Team
+            </NavLink>
+          )}
         </nav>
         <div className="p-3 border-t border-sidebar-border">
           <div className="px-3 py-2 text-xs text-sidebar-foreground/70 truncate">{user.email}</div>
