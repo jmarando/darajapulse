@@ -145,8 +145,25 @@ const Moderation = ({ readOnly = false }: { readOnly?: boolean }) => {
           <Badge variant="outline" className="bg-accent/20 border-accent/40">{counts.open} open</Badge>
           <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">{counts.toxic} toxic</Badge>
           <Badge variant="outline" className="bg-success/10 text-success border-success/30">{counts.praise} praise</Badge>
+          {!readOnly && (
+            <Button size="sm" variant="outline" onClick={copyShare} className="ml-2 h-7">
+              {copied ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Link2 className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? "Copied" : "Share link"}
+            </Button>
+          )}
         </div>
       </header>
+
+      {!readOnly && (
+        <div className="mb-4 p-3 rounded-md border border-border bg-muted/30 flex items-center gap-2 text-xs">
+          <Link2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <code className="flex-1 truncate text-muted-foreground">{shareUrl}</code>
+          <Button size="sm" variant="ghost" onClick={copyShare} className="h-7 text-xs">
+            <Copy className="w-3 h-3 mr-1" />Copy
+          </Button>
+          <span className="text-muted-foreground hidden sm:inline">Read-only public view</span>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
