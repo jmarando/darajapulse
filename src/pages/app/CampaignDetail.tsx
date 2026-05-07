@@ -233,6 +233,42 @@ const CampaignDetail = () => {
     return { fees, deliv, confirmed };
   }, [ci]);
 
+  const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement", emv: "Earned Media (KES)" };
+  const valOf = (m: any) => {
+    if (metric === "engagement") return (m.likes||0)+(m.comments||0)+(m.shares||0)+(m.saves||0);
+    if (metric === "emv") return Math.round(((m.impressions || m.views) || 0) * 0.012);
+    return Number((m as any)[metric] || 0);
+  };
+  const trend = useMemo(() => {
+    // Sum across all posts at each capture timestamp (latest <= bucket time)
+    const sorted = [...metrics].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
+    if (sorted.length === 0) return [];
+    const min = +new Date(sorted[0].captured_at);
+    const max = +new Date(sorted[sorted.length - 1].captured_at);
+    const span = Math.max(max - min, 1);
+    const N = 24;
+    // For each post, capture value evolution; for each bucket use latest value <= bucket time
+    const byPost = new Map<string, any[]>();
+    for (const m of sorted) {
+      const arr = byPost.get(m.post_id) || [];
+      arr.push(m);
+      byPost.set(m.post_id, arr);
+    }
+    const points: { d: string; v: number }[] = [];
+    for (let i = 0; i < N; i++) {
+      const t = min + (span * i) / (N - 1);
+      let total = 0;
+      for (const arr of byPost.values()) {
+        let last: any = null;
+        for (const m of arr) { if (+new Date(m.captured_at) <= t) last = m; else break; }
+        if (last) total += valOf(last);
+      }
+      const date = new Date(t);
+      points.push({ d: `${date.getMonth()+1}/${date.getDate()}`, v: total });
+    }
+    return points;
+  }, [metrics, metric]);
+
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
   const reportUrl = link ? `${window.location.origin}${slugPath}/report/${link.token}` : "";
