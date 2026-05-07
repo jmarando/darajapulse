@@ -362,6 +362,29 @@ const PublicReport = () => {
           const diaspora = 100 - weightedKE;
           const langs = new Set<string>();
           influencers.forEach(x => (x.influencers?.languages || []).forEach((l: string) => langs.add(l)));
+
+          const weight = (key: string, sub: string) => {
+            if (totalFollowers === 0) return 0;
+            let acc = 0;
+            influencers.forEach(x => {
+              const f = Number(x.influencers?.follower_count || 0);
+              const v = Number(x.influencers?.[key]?.[sub] || 0);
+              acc += f * v;
+            });
+            return acc / totalFollowers;
+          };
+          const ages = ["13-17","18-24","25-34","35-44","45-54","55+"].map(b => ({ bucket: b, pct: weight("audience_age_breakdown", b) }));
+          const genders = ["female","male","other"].map(g => ({ gender: g, pct: weight("audience_gender_breakdown", g) }));
+          const cityMap = new Map<string, number>();
+          influencers.forEach(x => {
+            const f = Number(x.influencers?.follower_count || 0);
+            const list = (x.influencers?.audience_top_cities || []) as Array<{city:string; pct:number}>;
+            list.forEach(({ city, pct }) => {
+              cityMap.set(city, (cityMap.get(city) || 0) + (totalFollowers > 0 ? (f * Number(pct||0)) / totalFollowers : 0));
+            });
+          });
+          const cities = Array.from(cityMap.entries()).map(([city, pct]) => ({ city, pct })).sort((a,b)=>b.pct-a.pct).slice(0,6);
+
           return (
             <Card className="p-6 mb-6">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audience</div>
@@ -390,6 +413,55 @@ const PublicReport = () => {
                   <div className="flex flex-wrap gap-1.5">
                     {Array.from(langs).map(l => <Badge key={l} variant="outline" className="text-xs">{l}</Badge>)}
                     {langs.size === 0 && <span className="text-xs text-muted-foreground">—</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 mt-6 pt-6 border-t border-border">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Age</div>
+                  <div className="space-y-2">
+                    {ages.map(a => (
+                      <div key={a.bucket}>
+                        <div className="flex justify-between text-xs mb-1"><span>{a.bucket}</span><span className="tabular-nums text-muted-foreground">{a.pct.toFixed(0)}%</span></div>
+                        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                          <div className="h-full bg-accent" style={{ width: `${Math.min(100, a.pct)}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Gender</div>
+                  <div className="h-2 rounded-full bg-secondary overflow-hidden flex mb-3">
+                    <div className="bg-accent h-full" style={{ width: `${genders[0]?.pct || 0}%` }} />
+                    <div className="bg-highlight h-full" style={{ width: `${genders[1]?.pct || 0}%` }} />
+                    <div className="bg-muted-foreground/40 h-full" style={{ width: `${genders[2]?.pct || 0}%` }} />
+                  </div>
+                  <div className="space-y-1.5">
+                    {genders.map((g, i) => (
+                      <div key={g.gender} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${i===0?"bg-accent":i===1?"bg-highlight":"bg-muted-foreground/40"}`} />
+                          <span className="capitalize">{g.gender}</span>
+                        </div>
+                        <span className="tabular-nums text-muted-foreground">{g.pct.toFixed(0)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Top cities</div>
+                  <div className="space-y-2">
+                    {cities.length === 0 && <div className="text-xs text-muted-foreground">—</div>}
+                    {cities.map(c => (
+                      <div key={c.city}>
+                        <div className="flex justify-between text-xs mb-1"><span>{c.city}</span><span className="tabular-nums text-muted-foreground">{c.pct.toFixed(0)}%</span></div>
+                        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                          <div className="h-full bg-highlight" style={{ width: `${Math.min(100, c.pct)}%` }} />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
