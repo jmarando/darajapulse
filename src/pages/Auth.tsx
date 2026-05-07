@@ -31,17 +31,6 @@ const Auth = () => {
     nav("/app");
   };
 
-  const signUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email, password,
-      options: { emailRedirectTo: `${window.location.origin}/app`, data: { full_name: name } }
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Account created. Check your inbox to verify.");
-  };
 
   const forgot = async (e: React.FormEvent) => {
     e.preventDefault();
