@@ -213,24 +213,27 @@ const PublicReport = () => {
 
         {/* Performance band — same style */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
-          {[
-            { label: "Views", value: fmt(totals.views), icon: Eye },
-            { label: "Reach", value: fmt(totals.reach), icon: Radio },
-            { label: "Impressions", value: fmt(totals.impressions), icon: BarChart3 },
-            { label: "Likes", value: fmt(totals.likes), icon: Heart },
-            { label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
-            { label: "Shares", value: fmt(totals.shares), icon: Share2 },
-            { label: "Saves", value: fmt(totals.saves), icon: Bookmark },
-            { label: "Engagement", value: `${er.toFixed(1)}%`, icon: Sparkles },
-          ].map((s, i) => (
-            <div key={i} className="bg-card p-5">
-              <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
-                {s.icon && <s.icon className="w-3.5 h-3.5 text-muted-foreground" />}
-              </div>
-              <div className="font-display text-2xl mt-2">{s.value}</div>
-            </div>
-          ))}
+          {([
+            { key: "views", label: "Views", value: fmt(totals.views), icon: Eye },
+            { key: "reach", label: "Reach", value: fmt(totals.reach), icon: Radio },
+            { key: "impressions", label: "Impressions", value: fmt(totals.impressions), icon: BarChart3 },
+            { key: "likes", label: "Likes", value: fmt(totals.likes), icon: Heart },
+            { key: "comments", label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
+            { key: "shares", label: "Shares", value: fmt(totals.shares), icon: Share2 },
+            { key: "saves", label: "Saves", value: fmt(totals.saves), icon: Bookmark },
+            { key: "engagement", label: "Engagement", value: `${er.toFixed(1)}%`, icon: Sparkles },
+          ] as const).map((s) => {
+            const active = metric === s.key;
+            return (
+              <button key={s.key} type="button" onClick={() => setMetric(s.key as any)} className={`text-left bg-card p-5 transition-colors hover:bg-secondary/40 ${active ? "ring-2 ring-accent ring-inset bg-secondary/30" : ""}`}>
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
+                  {s.icon && <s.icon className={`w-3.5 h-3.5 ${active ? "text-accent" : "text-muted-foreground"}`} />}
+                </div>
+                <div className="font-display text-2xl mt-2">{s.value}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Velocity + EMV */}
