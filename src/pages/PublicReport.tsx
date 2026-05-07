@@ -34,6 +34,7 @@ const PublicReport = () => {
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
   const [exporting, setExporting] = useState(false);
+  const [metric, setMetric] = useState<"views"|"reach"|"impressions"|"likes"|"comments"|"shares"|"saves"|"engagement">("views");
 
   const load = async () => {
     const { data: link } = await supabase.from("report_links").select("campaign_id").eq("token", token).eq("is_active", true).maybeSingle();
@@ -128,7 +129,11 @@ const PublicReport = () => {
     platformMap.set(key, cur);
   }
   const platformRows = Array.from(platformMap.entries()).sort((a,b) => b[1].views - a[1].views);
-  const allHistory = filteredPosts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: h.views || 0 })));
+  const valOf = (h: any) => {
+    if (metric === "engagement") return (h.likes||0)+(h.comments||0)+(h.shares||0)+(h.saves||0);
+    return Number(h[metric] || 0);
+  };
+  const allHistory = filteredPosts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: valOf(h) })));
   let trend: { d: number; v: number }[] = [];
   if (allHistory.length > 1) {
     const min = Math.min(...allHistory.map(h => h.t));
@@ -138,8 +143,10 @@ const PublicReport = () => {
     allHistory.forEach(h => { const i = Math.min(11, Math.floor(((h.t - min) / span) * 12)); buckets[i] = Math.max(buckets[i], h.v); });
     trend = buckets.map((v, d) => ({ d, v }));
   } else {
-    trend = Array.from({ length: 12 }, (_, d) => ({ d, v: Math.round((totals.views / 12) * (d + 1) / 12) }));
+    const totalForMetric = metric === "engagement" ? (totals.likes+totals.comments+totals.shares+totals.saves) : (totals as any)[metric] || 0;
+    trend = Array.from({ length: 12 }, (_, d) => ({ d, v: Math.round((totalForMetric / 12) * (d + 1) / 12) }));
   }
+  const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", impressions: "Impressions", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
 
   return (
     <div className="min-h-screen bg-background">
@@ -206,24 +213,27 @@ const PublicReport = () => {
 
         {/* Performance band — same style */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
-          {[
-            { label: "Views", value: fmt(totals.views), icon: Eye },
-            { label: "Reach", value: fmt(totals.reach), icon: Radio },
-            { label: "Impressions", value: fmt(totals.impressions), icon: BarChart3 },
-            { label: "Likes", value: fmt(totals.likes), icon: Heart },
-            { label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
-            { label: "Shares", value: fmt(totals.shares), icon: Share2 },
-            { label: "Saves", value: fmt(totals.saves), icon: Bookmark },
-            { label: "Engagement", value: `${er.toFixed(1)}%`, icon: Sparkles },
-          ].map((s, i) => (
-            <div key={i} className="bg-card p-5">
-              <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
-                {s.icon && <s.icon className="w-3.5 h-3.5 text-muted-foreground" />}
-              </div>
-              <div className="font-display text-2xl mt-2">{s.value}</div>
-            </div>
-          ))}
+          {([
+            { key: "views", label: "Views", value: fmt(totals.views), icon: Eye },
+            { key: "reach", label: "Reach", value: fmt(totals.reach), icon: Radio },
+            { key: "impressions", label: "Impressions", value: fmt(totals.impressions), icon: BarChart3 },
+            { key: "likes", label: "Likes", value: fmt(totals.likes), icon: Heart },
+            { key: "comments", label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
+            { key: "shares", label: "Shares", value: fmt(totals.shares), icon: Share2 },
+            { key: "saves", label: "Saves", value: fmt(totals.saves), icon: Bookmark },
+            { key: "engagement", label: "Engagement", value: `${er.toFixed(1)}%`, icon: Sparkles },
+          ] as const).map((s) => {
+            const active = metric === s.key;
+            return (
+              <button key={s.key} type="button" onClick={() => setMetric(s.key as any)} className={`text-left bg-card p-5 transition-colors hover:bg-secondary/40 ${active ? "ring-2 ring-accent ring-inset bg-secondary/30" : ""}`}>
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
+                  {s.icon && <s.icon className={`w-3.5 h-3.5 ${active ? "text-accent" : "text-muted-foreground"}`} />}
+                </div>
+                <div className="font-display text-2xl mt-2">{s.value}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Velocity + EMV */}
@@ -232,7 +242,8 @@ const PublicReport = () => {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Velocity</div>
-                <h2 className="font-display text-2xl mt-1">Views over time</h2>
+                <h2 className="font-display text-2xl mt-1">{metricLabel[metric]} over time</h2>
+                <div className="text-xs text-muted-foreground mt-1">Click any metric above to switch the chart.</div>
               </div>
             </div>
             <div className="h-56">

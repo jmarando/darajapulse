@@ -11,11 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2 } from "lucide-react";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
+import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 
 
 const CampaignDetail = () => {
@@ -41,6 +42,7 @@ const CampaignDetail = () => {
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
   const [generatingLearnings, setGeneratingLearnings] = useState(false);
+  const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement"|"emv">("views");
 
   const generateLearnings = async () => {
     setGeneratingLearnings(true);
@@ -231,6 +233,42 @@ const CampaignDetail = () => {
     return { fees, deliv, confirmed };
   }, [ci]);
 
+  const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement", emv: "Earned Media (KES)" };
+  const valOf = (m: any) => {
+    if (metric === "engagement") return (m.likes||0)+(m.comments||0)+(m.shares||0)+(m.saves||0);
+    if (metric === "emv") return Math.round(((m.impressions || m.views) || 0) * 0.012);
+    return Number((m as any)[metric] || 0);
+  };
+  const trend = useMemo(() => {
+    // Sum across all posts at each capture timestamp (latest <= bucket time)
+    const sorted = [...metrics].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
+    if (sorted.length === 0) return [];
+    const min = +new Date(sorted[0].captured_at);
+    const max = +new Date(sorted[sorted.length - 1].captured_at);
+    const span = Math.max(max - min, 1);
+    const N = 24;
+    // For each post, capture value evolution; for each bucket use latest value <= bucket time
+    const byPost = new Map<string, any[]>();
+    for (const m of sorted) {
+      const arr = byPost.get(m.post_id) || [];
+      arr.push(m);
+      byPost.set(m.post_id, arr);
+    }
+    const points: { d: string; v: number }[] = [];
+    for (let i = 0; i < N; i++) {
+      const t = min + (span * i) / (N - 1);
+      let total = 0;
+      for (const arr of byPost.values()) {
+        let last: any = null;
+        for (const m of arr) { if (+new Date(m.captured_at) <= t) last = m; else break; }
+        if (last) total += valOf(last);
+      }
+      const date = new Date(t);
+      points.push({ d: `${date.getMonth()+1}/${date.getDate()}`, v: total });
+    }
+    return points;
+  }, [metrics, metric]);
+
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
   const reportUrl = link ? `${window.location.origin}${slugPath}/report/${link.token}` : "";
@@ -280,25 +318,59 @@ const CampaignDetail = () => {
 
       {/* Performance band */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
-        {[
-          { label: "Views", value: fmt(totals.views), icon: Eye },
-          { label: "Likes", value: fmt(totals.likes), icon: Heart },
-          { label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
-          { label: "Shares", value: fmt(totals.shares), icon: Share2 },
-          { label: "Saves", value: fmt(totals.saves), icon: Bookmark },
-          { label: "Reach", value: fmt(totals.reach), icon: Radio },
-          { label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3 },
-          { label: "Earned Media", value: fmtKes(totals.emv), icon: Wallet },
-        ].map((s, i) => (
-          <div key={i} className="bg-card p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
-              {s.icon && <s.icon className="w-3.5 h-3.5 text-muted-foreground" />}
-            </div>
-            <div className="font-display text-2xl mt-2">{s.value}</div>
-          </div>
-        ))}
+        {([
+          { key: "views", label: "Views", value: fmt(totals.views), icon: Eye },
+          { key: "likes", label: "Likes", value: fmt(totals.likes), icon: Heart },
+          { key: "comments", label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
+          { key: "shares", label: "Shares", value: fmt(totals.shares), icon: Share2 },
+          { key: "saves", label: "Saves", value: fmt(totals.saves), icon: Bookmark },
+          { key: "reach", label: "Reach", value: fmt(totals.reach), icon: Radio },
+          { key: "engagement", label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3 },
+          { key: "emv", label: "Earned Media", value: fmtKes(totals.emv), icon: Wallet },
+        ] as const).map((s) => {
+          const active = metric === s.key;
+          return (
+            <button key={s.key} type="button" onClick={() => setMetric(s.key as any)} className={`text-left bg-card p-5 transition-colors hover:bg-secondary/40 ${active ? "ring-2 ring-accent ring-inset bg-secondary/30" : ""}`}>
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
+                {s.icon && <s.icon className={`w-3.5 h-3.5 ${active ? "text-accent" : "text-muted-foreground"}`} />}
+              </div>
+              <div className="font-display text-2xl mt-2">{s.value}</div>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Trend chart for selected metric */}
+      <Card className="p-6 mb-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Trend</div>
+            <h2 className="font-display text-2xl mt-1">{metricLabel[metric]} over time</h2>
+            <div className="text-xs text-muted-foreground mt-1">Click any metric above to switch the chart.</div>
+          </div>
+        </div>
+        {trend.length === 0 ? (
+          <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">No metric history yet.</div>
+        ) : (
+          <div className="h-56">
+            <ResponsiveContainer>
+              <AreaChart data={trend}>
+                <defs>
+                  <linearGradient id="cdg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => fmt(Number(v))} width={50} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: any) => fmt(Number(v))} />
+                <Area type="monotone" dataKey="v" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#cdg)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
 
       {/* Top performer */}
       {topPerformer && (
