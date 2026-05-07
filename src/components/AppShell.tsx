@@ -17,7 +17,8 @@ const nav = [
 ];
 
 const AppShell = () => {
-  const { user, loading, signOut, isAgency, isClient } = useAuth();
+  const { user, loading, signOut, isAgency, isClient, roles } = useAuth();
+  const isAdmin = roles.includes("agency_admin");
   const navigate = useNavigate();
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
