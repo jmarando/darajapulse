@@ -34,6 +34,7 @@ const PublicReport = () => {
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
   const [exporting, setExporting] = useState(false);
+  const [metric, setMetric] = useState<"views"|"reach"|"impressions"|"likes"|"comments"|"shares"|"saves"|"engagement">("views");
 
   const load = async () => {
     const { data: link } = await supabase.from("report_links").select("campaign_id").eq("token", token).eq("is_active", true).maybeSingle();
