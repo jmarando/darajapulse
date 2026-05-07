@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import PostEmbed from "@/components/PostEmbed";
+import { PostThumb } from "@/components/PostThumb";
 
 const PortalCampaign = () => {
   const { id } = useParams();
