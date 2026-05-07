@@ -26,6 +26,9 @@ import LandingEditorial from "./pages/landings/LandingEditorial";
 import LandingCinematic from "./pages/landings/LandingCinematic";
 import LandingDashboard from "./pages/landings/LandingDashboard";
 import LandingBento from "./pages/landings/LandingBento";
+import PortalShell from "./components/PortalShell";
+import PortalOverview from "./pages/portal/PortalOverview";
+import PortalCampaign from "./pages/portal/PortalCampaign";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +55,11 @@ const App = () => (
             <Route path="/:clientSlug/:campaignSlug/brief/:token" element={<PublicBrief />} />
             <Route path="/connect/tiktok/:influencerId" element={<ConnectTikTok />} />
             <Route path="/connect/tiktok/done" element={<ConnectTikTok />} />
+            <Route path="/portal" element={<PortalShell />}>
+              <Route index element={<PortalOverview />} />
+              <Route path="campaigns" element={<PortalOverview />} />
+              <Route path="campaigns/:id" element={<PortalCampaign />} />
+            </Route>
             <Route path="/app" element={<AppShell />}>
               <Route index element={<Overview />} />
               <Route path="clients" element={<Clients />} />
