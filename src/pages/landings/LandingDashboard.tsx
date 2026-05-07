@@ -1,22 +1,25 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
-  ArrowRight, Eye, Heart, MessageCircle, Share2, Sparkles, Wallet, FileText,
-  Users, Trophy, BarChart3, ShieldCheck, Zap, Globe, CheckCircle2, TrendingUp
+  ArrowRight, Eye, Heart, MessageCircle, Share2, Sparkles, FileText,
+  Users, Trophy, BarChart3, ShieldCheck, Zap, Globe, CheckCircle2, TrendingUp, Play
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 
 const seed = Array.from({ length: 16 }, (_, i) => ({ x: i, v: 30 + Math.sin(i / 1.5) * 22 + i * 5 }));
 
+
 const ticker = [
   "TikTok view captured · @wanjiruke · +12,408",
-  "M-Pesa payout sent · KES 45,000 · 14s",
   "Content approved · Royco — Mama Mboga Q1",
   "Contest entry · #BoltKE — 38 submissions today",
   "Brief opened · NCBA Loop · 6 creators viewing",
   "Instagram Reels metrics synced · 21 posts",
+  "Facebook Reel published · @sauticreates · live now",
+  "YouTube Short tracked · @kenyanvibes · +4,210 views",
 ];
 
 const LandingDashboard = () => {
@@ -50,24 +53,40 @@ const LandingDashboard = () => {
         <div className="animate-fade-in">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-[11px] uppercase tracking-[0.25em] text-foreground/70 mb-6 shadow-soft">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            The influence operating system · Kenya
+            Built for modern agencies
           </div>
           <h1 className="font-display text-6xl md:text-7xl lg:text-[5.5rem] leading-[0.98] font-semibold text-balance tracking-tight">
-            Run influencer<br />
-            campaigns like<br />
+            Influence,<br />
             <span className="text-accent italic relative inline-block">
-              an empire.
+              orchestrated.
               <svg className="absolute -bottom-2 left-0 w-full" height="14" viewBox="0 0 300 14" fill="none">
                 <path d="M2 8 Q 75 2, 150 7 T 298 6" stroke="hsl(0 99% 57%)" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.4" />
               </svg>
             </span>
           </h1>
           <p className="mt-7 text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
-            Discover creators. Send briefs. Approve content. Track every post across <span className="text-foreground font-medium">TikTok, Instagram, YouTube and X</span> in real time. Pay via M-Pesa. Hand your client a live, self-refreshing report — not a stale PDF.
+            Discover creators. Send briefs. Approve content. Track every post across <span className="text-foreground font-medium">TikTok, Instagram, Facebook, YouTube and X</span> in real time. Hand your client a live, self-refreshing report — not a stale PDF.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/auth"><Button size="lg" className="bg-primary text-base h-12 px-6 group">Open the console <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" /></Button></Link>
-            <Button size="lg" variant="outline" className="h-12 px-6">Watch the 60s tour</Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="lg" variant="outline" className="h-12 px-6 group">
+                  <Play className="w-4 h-4 mr-2 fill-current" /> Watch the 60s tour
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-0">
+                <div className="aspect-video w-full">
+                  <iframe
+                    className="w-full h-full"
+                    src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0"
+                    title="Daraja Pulse — 60 second tour"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Live ticker */}
@@ -79,9 +98,9 @@ const LandingDashboard = () => {
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> M-Pesa native</div>
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> KRA & WHT aware</div>
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> 4 platforms, one inbox</div>
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> 5 platforms, one inbox</div>
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Live tokenized reports</div>
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Built for Kenyan agencies</div>
           </div>
         </div>
 
@@ -90,11 +109,11 @@ const LandingDashboard = () => {
           <div className="absolute -inset-8 bg-gradient-warm opacity-25 blur-3xl rounded-full" />
 
           {/* Floating mini-cards */}
-          <div className="absolute -top-6 -left-6 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs animate-fade-in" style={{ animation: "fade-in 0.6s ease-out, float 4s ease-in-out 0.6s infinite" }}>
-            <Wallet className="w-4 h-4 text-success" />
+          <div className="absolute -top-6 -left-6 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs" style={{ animation: "fade-in 0.6s ease-out, float 4s ease-in-out 0.6s infinite" }}>
+            <CheckCircle2 className="w-4 h-4 text-success" />
             <div>
-              <div className="font-semibold">KES 45,000 paid</div>
-              <div className="text-[10px] text-muted-foreground">M-Pesa · 14s ago</div>
+              <div className="font-semibold">Content approved</div>
+              <div className="text-[10px] text-muted-foreground">Round 2 · 1m ago</div>
             </div>
           </div>
           <div className="absolute -bottom-4 -right-4 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs" style={{ animation: "float 5s ease-in-out infinite" }}>
@@ -154,8 +173,8 @@ const LandingDashboard = () => {
       <section className="relative border-y border-border bg-card/40 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { n: "4", l: "Platforms unified" },
-            { n: "<2 min", l: "Creator payout" },
+            { n: "5", l: "Platforms unified" },
+            { n: "<5 min", l: "From brief to live" },
             { n: "Live", l: "Client reports" },
             { n: "0", l: "Spreadsheets" },
           ].map(s => (
@@ -171,20 +190,20 @@ const LandingDashboard = () => {
       <section className="relative max-w-7xl mx-auto px-6 py-24">
         <div className="text-xs uppercase tracking-[0.3em] text-accent mb-3">Why Daraja Pulse</div>
         <h2 className="font-display text-4xl md:text-6xl font-semibold max-w-3xl leading-[1.05] mb-16">
-          Everything between the brief and the bank — <span className="italic text-muted-foreground">finally in one place.</span>
+          Everything between the brief and the report — <span className="italic text-muted-foreground">finally in one place.</span>
         </h2>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {[
             { i: Users, t: "Creator roster & discovery", b: "TikTok-first database with audience authenticity, niche, language and Kenya-vs-diaspora splits. Build a list in minutes, not weeks." },
-            { i: FileText, t: "Tokenized creator briefs", b: "Send a single link. Creators see the deliverables, deadlines and payout — no logins, no chasing on WhatsApp." },
+            { i: FileText, t: "Tokenized creator briefs", b: "Send a single link. Creators see the deliverables, deadlines and scope — no logins, no chasing on WhatsApp." },
             { i: CheckCircle2, t: "Two-round content approvals", b: "Threaded comments per asset. Brand and account manager align before a single post goes live." },
             { i: BarChart3, t: "Live, self-refreshing reports", b: "A tokenized client URL that updates every few minutes. Brand managers actually forward this internally." },
-            { i: Wallet, t: "M-Pesa payouts in minutes", b: "B2C disbursements via the Daraja API. WHT auto-computed. e-TIMS-ready records. Creators get paid before they ask." },
             { i: Trophy, t: "UGC contests & leaderboards", b: "Public submission links, auto-leaderboards and entry tracking. Turn fans into your next campaign roster." },
             { i: ShieldCheck, t: "Brand portal access", b: "Invite client-side stakeholders to a read-only portal. They see only their campaigns — never your fees or other accounts." },
             { i: Sparkles, t: "AI campaign learnings", b: "Auto-generated insights on what worked, who outperformed and what to repeat next quarter. Powered by Lovable AI." },
-            { i: Globe, t: "TikTok · Instagram · YouTube · X", b: "Native OAuth + polling for TikTok. Embeds, manual + API metrics for the rest. One dashboard, four platforms." },
+            { i: Globe, t: "Five-platform tracking", b: "Native OAuth + polling for TikTok. Embeds and metrics for Instagram, Facebook, YouTube and X. One dashboard, every channel." },
+            { i: TrendingUp, t: "Earned media valuation", b: "Every view, like and share priced against a CPM benchmark — so you can show the brand the ROI in shillings, not vibes." },
           ].map(({ i: I, t, b }) => (
             <div key={t} className="group relative p-6 rounded-xl bg-card border border-border hover:border-accent/40 hover:shadow-elegant hover:-translate-y-1 transition-all duration-300">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
@@ -202,15 +221,15 @@ const LandingDashboard = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-xs uppercase tracking-[0.3em] text-accent mb-3">The flow</div>
           <h2 className="font-display text-4xl md:text-6xl font-semibold max-w-3xl leading-[1.05] mb-16">
-            From brief to payout — <span className="italic opacity-70">in one continuous motion.</span>
+            From brief to report — <span className="italic opacity-70">in one continuous motion.</span>
           </h2>
           <div className="grid md:grid-cols-5 gap-4">
             {[
-              { n: "01", t: "Brief", d: "Tokenized link to creators" },
-              { n: "02", t: "Approve", d: "Round 1 + 2 with comments" },
-              { n: "03", t: "Publish", d: "Auto-tracked across platforms" },
-              { n: "04", t: "Report", d: "Live URL for the brand" },
-              { n: "05", t: "Pay", d: "M-Pesa B2C in minutes" },
+              { n: "01", t: "Discover", d: "Build a creator shortlist" },
+              { n: "02", t: "Brief", d: "Tokenized link to creators" },
+              { n: "03", t: "Approve", d: "Round 1 + 2 with comments" },
+              { n: "04", t: "Publish", d: "Auto-tracked across platforms" },
+              { n: "05", t: "Report", d: "Live URL for the brand" },
             ].map((s, i) => (
               <div key={s.n} className="relative p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
                 <div className="text-accent font-mono text-xs">{s.n}</div>
