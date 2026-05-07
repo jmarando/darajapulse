@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   MessageSquare, Inbox, Search, Sparkles, Send, EyeOff, Flag, Trash2,
-  CheckCircle2, AlertTriangle, HelpCircle, Heart, Bot, User2, Clock,
+  CheckCircle2, AlertTriangle, HelpCircle, Heart, Bot, User2, Clock, Link2, Copy, Check,
 } from "lucide-react";
+import { toast } from "sonner";
 
 type Platform = "tiktok" | "instagram" | "facebook" | "x" | "youtube";
 type Sentiment = "praise" | "question" | "spam" | "toxic" | "neutral";
