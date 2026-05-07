@@ -503,7 +503,10 @@ export type Database = {
       }
       influencers: {
         Row: {
+          audience_age_breakdown: Json | null
+          audience_gender_breakdown: Json | null
           audience_kenya_pct: number | null
+          audience_top_cities: Json | null
           authenticity_score: number | null
           avatar_url: string | null
           avg_cpm_kes: number | null
@@ -522,7 +525,10 @@ export type Database = {
           region: string | null
         }
         Insert: {
+          audience_age_breakdown?: Json | null
+          audience_gender_breakdown?: Json | null
           audience_kenya_pct?: number | null
+          audience_top_cities?: Json | null
           authenticity_score?: number | null
           avatar_url?: string | null
           avg_cpm_kes?: number | null
@@ -541,7 +547,10 @@ export type Database = {
           region?: string | null
         }
         Update: {
+          audience_age_breakdown?: Json | null
+          audience_gender_breakdown?: Json | null
           audience_kenya_pct?: number | null
+          audience_top_cities?: Json | null
           authenticity_score?: number | null
           avatar_url?: string | null
           avg_cpm_kes?: number | null
