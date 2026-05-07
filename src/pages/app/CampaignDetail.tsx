@@ -318,25 +318,59 @@ const CampaignDetail = () => {
 
       {/* Performance band */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
-        {[
-          { label: "Views", value: fmt(totals.views), icon: Eye },
-          { label: "Likes", value: fmt(totals.likes), icon: Heart },
-          { label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
-          { label: "Shares", value: fmt(totals.shares), icon: Share2 },
-          { label: "Saves", value: fmt(totals.saves), icon: Bookmark },
-          { label: "Reach", value: fmt(totals.reach), icon: Radio },
-          { label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3 },
-          { label: "Earned Media", value: fmtKes(totals.emv), icon: Wallet },
-        ].map((s, i) => (
-          <div key={i} className="bg-card p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
-              {s.icon && <s.icon className="w-3.5 h-3.5 text-muted-foreground" />}
-            </div>
-            <div className="font-display text-2xl mt-2">{s.value}</div>
-          </div>
-        ))}
+        {([
+          { key: "views", label: "Views", value: fmt(totals.views), icon: Eye },
+          { key: "likes", label: "Likes", value: fmt(totals.likes), icon: Heart },
+          { key: "comments", label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
+          { key: "shares", label: "Shares", value: fmt(totals.shares), icon: Share2 },
+          { key: "saves", label: "Saves", value: fmt(totals.saves), icon: Bookmark },
+          { key: "reach", label: "Reach", value: fmt(totals.reach), icon: Radio },
+          { key: "engagement", label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3 },
+          { key: "emv", label: "Earned Media", value: fmtKes(totals.emv), icon: Wallet },
+        ] as const).map((s) => {
+          const active = metric === s.key;
+          return (
+            <button key={s.key} type="button" onClick={() => setMetric(s.key as any)} className={`text-left bg-card p-5 transition-colors hover:bg-secondary/40 ${active ? "ring-2 ring-accent ring-inset bg-secondary/30" : ""}`}>
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
+                {s.icon && <s.icon className={`w-3.5 h-3.5 ${active ? "text-accent" : "text-muted-foreground"}`} />}
+              </div>
+              <div className="font-display text-2xl mt-2">{s.value}</div>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Trend chart for selected metric */}
+      <Card className="p-6 mb-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Trend</div>
+            <h2 className="font-display text-2xl mt-1">{metricLabel[metric]} over time</h2>
+            <div className="text-xs text-muted-foreground mt-1">Click any metric above to switch the chart.</div>
+          </div>
+        </div>
+        {trend.length === 0 ? (
+          <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">No metric history yet.</div>
+        ) : (
+          <div className="h-56">
+            <ResponsiveContainer>
+              <AreaChart data={trend}>
+                <defs>
+                  <linearGradient id="cdg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => fmt(Number(v))} width={50} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: any) => fmt(Number(v))} />
+                <Area type="monotone" dataKey="v" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#cdg)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
 
       {/* Top performer */}
       {topPerformer && (
