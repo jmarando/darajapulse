@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   MessageSquare, Inbox, Search, Sparkles, Send, EyeOff, Flag, Trash2,
-  CheckCircle2, AlertTriangle, HelpCircle, Heart, Bot, User2, Clock,
+  CheckCircle2, AlertTriangle, HelpCircle, Heart, Bot, User2, Clock, Link2, Copy, Check,
 } from "lucide-react";
+import { toast } from "sonner";
 
 type Platform = "tiktok" | "instagram" | "facebook" | "x" | "youtube";
 type Sentiment = "praise" | "question" | "spam" | "toxic" | "neutral";
@@ -88,7 +89,7 @@ const timeAgo = (iso: string) => {
   return `${Math.round(h / 24)}d`;
 };
 
-const Moderation = () => {
+const Moderation = ({ readOnly = false }: { readOnly?: boolean }) => {
   const [items, setItems] = useState<Comment[]>(MOCK);
   const [tab, setTab] = useState<"all" | "open" | "questions" | "toxic" | "praise" | "resolved">("open");
   const [campaign, setCampaign] = useState<string>("all");
@@ -96,6 +97,13 @@ const Moderation = () => {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string>(MOCK[0].id);
   const [reply, setReply] = useState("");
+  const [shareToken] = useState<string>(() => Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10));
+  const [copied, setCopied] = useState(false);
+  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/m/${shareToken}` : "";
+  const copyShare = async () => {
+    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); toast.success("Share link copied"); setTimeout(() => setCopied(false), 1500); }
+    catch { toast.error("Could not copy"); }
+  };
 
   const campaigns = useMemo(() => Array.from(new Set(MOCK.map(m => m.campaign))), []);
 
@@ -137,8 +145,25 @@ const Moderation = () => {
           <Badge variant="outline" className="bg-accent/20 border-accent/40">{counts.open} open</Badge>
           <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">{counts.toxic} toxic</Badge>
           <Badge variant="outline" className="bg-success/10 text-success border-success/30">{counts.praise} praise</Badge>
+          {!readOnly && (
+            <Button size="sm" variant="outline" onClick={copyShare} className="ml-2 h-7">
+              {copied ? <Check className="w-3.5 h-3.5 mr-1.5" /> : <Link2 className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? "Copied" : "Share link"}
+            </Button>
+          )}
         </div>
       </header>
+
+      {!readOnly && (
+        <div className="mb-4 p-3 rounded-md border border-border bg-muted/30 flex items-center gap-2 text-xs">
+          <Link2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <code className="flex-1 truncate text-muted-foreground">{shareUrl}</code>
+          <Button size="sm" variant="ghost" onClick={copyShare} className="h-7 text-xs">
+            <Copy className="w-3 h-3 mr-1" />Copy
+          </Button>
+          <span className="text-muted-foreground hidden sm:inline">Read-only public view</span>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)}>
@@ -261,7 +286,7 @@ const Moderation = () => {
               )}
             </div>
 
-            <div className="mt-auto border-t border-border pt-4 space-y-3">
+            {!readOnly && <div className="mt-auto border-t border-border pt-4 space-y-3">
               <div className="space-y-2">
                 <textarea
                   value={reply}
@@ -294,7 +319,7 @@ const Moderation = () => {
                 <Bot className="w-3 h-3" /> Auto-rules: hide spam · auto-reply praise · escalate toxic to account manager
                 <span className="ml-auto flex items-center gap-1"><User2 className="w-3 h-3" /> Assign</span>
               </div>
-            </div>
+            </div>}
           </Card>
         ) : (
           <Card className="p-10 flex items-center justify-center text-sm text-muted-foreground">
