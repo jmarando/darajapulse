@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.tiktok-poll]
 verify_jwt = false
+
+[functions.invite-client-user]
+verify_jwt = false
