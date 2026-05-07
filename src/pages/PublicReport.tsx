@@ -242,8 +242,8 @@ const PublicReport = () => {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Velocity</div>
-                <h2 className="font-display text-2xl mt-1">Views over time</h2>
-              </div>
+                <h2 className="font-display text-2xl mt-1">{metricLabel[metric]} over time</h2>
+                <div className="text-xs text-muted-foreground mt-1">Click any metric above to switch the chart.</div>
             </div>
             <div className="h-56">
               <ResponsiveContainer>
