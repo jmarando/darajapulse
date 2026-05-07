@@ -1,22 +1,25 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
-  ArrowRight, Eye, Heart, MessageCircle, Share2, Sparkles, Wallet, FileText,
-  Users, Trophy, BarChart3, ShieldCheck, Zap, Globe, CheckCircle2, TrendingUp
+  ArrowRight, Eye, Heart, MessageCircle, Share2, Sparkles, FileText,
+  Users, Trophy, BarChart3, ShieldCheck, Zap, Globe, CheckCircle2, TrendingUp, Play
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 
 const seed = Array.from({ length: 16 }, (_, i) => ({ x: i, v: 30 + Math.sin(i / 1.5) * 22 + i * 5 }));
 
+
 const ticker = [
   "TikTok view captured · @wanjiruke · +12,408",
-  "M-Pesa payout sent · KES 45,000 · 14s",
   "Content approved · Royco — Mama Mboga Q1",
   "Contest entry · #BoltKE — 38 submissions today",
   "Brief opened · NCBA Loop · 6 creators viewing",
   "Instagram Reels metrics synced · 21 posts",
+  "Facebook Reel published · @sauticreates · live now",
+  "YouTube Short tracked · @kenyanvibes · +4,210 views",
 ];
 
 const LandingDashboard = () => {
