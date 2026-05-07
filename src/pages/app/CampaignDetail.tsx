@@ -627,40 +627,35 @@ const CampaignDetail = () => {
             <p className="text-xs text-muted-foreground mt-1">Add the first live post or refresh TikTok metrics.</p>
           </div>
         ) : (
-          <ul className="grid md:grid-cols-2 gap-3">
+          <ul className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {posts.map(p => {
               const m = latestByPost.get(p.id);
               return (
-                <li key={p.id} className="p-3 rounded-md border border-border hover:bg-secondary/30 transition-colors">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="text-sm min-w-0 truncate">
+                <li key={p.id} className="rounded-lg border border-border bg-card overflow-hidden flex flex-col hover:shadow-elegant transition-shadow">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border">
+                    <div className="text-xs min-w-0 truncate">
                       <span className="font-medium">{p.influencers?.full_name}</span>
                       <span className="text-muted-foreground"> · {p.platform}</span>
                     </div>
-                    <Badge variant="outline" className="capitalize">{p.status}</Badge>
+                    <Badge variant="outline" className="capitalize text-[10px] py-0 h-5">{p.status}</Badge>
                   </div>
-                  {p.post_url ? (
-                    <div className="grid sm:grid-cols-[minmax(0,300px)_1fr] gap-3 items-start">
+                  {p.post_url && (
+                    <div className="bg-muted/30 flex items-center justify-center min-h-[300px]">
                       <PostEmbed url={p.post_url} platform={p.platform} />
-                      <div className="min-w-0">
-                        <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block">{p.post_url}</a>
-                        {m && (
-                          <div className="grid grid-cols-4 gap-2 mt-3 text-center">
-                            <div><div className="font-display text-base">{fmt(m.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                            <div><div className="font-display text-base">{fmt(m.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
-                            <div><div className="font-display text-base">{fmt(m.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
-                            <div><div className="font-display text-base">{fmt(m.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
-                          </div>
-                        )}
-                      </div>
                     </div>
-                  ) : m && (
-                    <div className="grid grid-cols-4 gap-2 mt-3 text-center">
-                      <div><div className="font-display text-base">{fmt(m.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                      <div><div className="font-display text-base">{fmt(m.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
-                      <div><div className="font-display text-base">{fmt(m.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
-                      <div><div className="font-display text-base">{fmt(m.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                  )}
+                  {m && (
+                    <div className="grid grid-cols-4 gap-1 px-2 py-3 text-center border-t border-border">
+                      <div><div className="font-display text-sm">{fmt(m.views || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Views</div></div>
+                      <div><div className="font-display text-sm">{fmt(m.likes || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Likes</div></div>
+                      <div><div className="font-display text-sm">{fmt(m.comments || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Cmts</div></div>
+                      <div><div className="font-display text-sm">{fmt(m.shares || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Shares</div></div>
                     </div>
+                  )}
+                  {p.post_url && (
+                    <a href={p.post_url} target="_blank" rel="noreferrer" className="block px-3 py-2 text-[10px] text-muted-foreground hover:text-accent border-t border-border truncate">
+                      {p.post_url.replace(/^https?:\/\//, "")}
+                    </a>
                   )}
                 </li>
               );
