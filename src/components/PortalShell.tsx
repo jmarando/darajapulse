@@ -1,34 +1,29 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar } from "lucide-react";
+import { LayoutDashboard, Megaphone, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 
 const nav = [
-  { to: "/app", icon: LayoutDashboard, label: "Overview", end: true },
-  { to: "/app/clients", icon: Building2, label: "Clients" },
-  { to: "/app/campaigns", icon: Megaphone, label: "Campaigns" },
-  { to: "/app/content", icon: Calendar, label: "Content" },
-  { to: "/app/influencers", icon: Users, label: "Influencers" },
-  { to: "/app/briefs", icon: FileSignature, label: "Briefs" },
-  { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },
-  { to: "/app/payouts", icon: Wallet, label: "Payouts" },
+  { to: "/portal", icon: LayoutDashboard, label: "Overview", end: true },
+  { to: "/portal/campaigns", icon: Megaphone, label: "Campaigns" },
 ];
 
-const AppShell = () => {
-  const { user, loading, signOut, isAgency, isClient } = useAuth();
+const PortalShell = () => {
+  const { user, loading, signOut, isClient, isAgency } = useAuth();
   const navigate = useNavigate();
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (!user) { navigate("/auth"); return null; }
-  if (!isAgency && isClient) { navigate("/portal"); return null; }
+  if (isAgency && !isClient) { navigate("/app"); return null; }
 
   return (
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
         <div className="p-6 border-b border-sidebar-border bg-white">
-          <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-20 w-auto mx-auto" />
+          <img src={logo} alt="Daraja Pulse" className="h-20 w-auto mx-auto" />
         </div>
+        <div className="px-4 pt-3 text-[10px] uppercase tracking-widest text-sidebar-foreground/60">Brand portal</div>
         <nav className="flex-1 p-3 space-y-1">
           {nav.map(({ to, icon: Icon, label, end }) => (
             <NavLink key={to} to={to} end={end as any}
@@ -51,5 +46,4 @@ const AppShell = () => {
     </div>
   );
 };
-
-export default AppShell;
+export default PortalShell;

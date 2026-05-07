@@ -2,17 +2,19 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-type Role = "agency_admin" | "account_manager" | "client_viewer" | "influencer";
+type Role = "agency_admin" | "account_manager" | "client_user" | "client_viewer" | "influencer";
 
 interface AuthCtx {
   user: User | null;
   session: Session | null;
   roles: Role[];
   loading: boolean;
+  isAgency: boolean;
+  isClient: boolean;
   signOut: () => Promise<void>;
 }
 
-const Ctx = createContext<AuthCtx>({ user: null, session: null, roles: [], loading: true, signOut: async () => {} });
+const Ctx = createContext<AuthCtx>({ user: null, session: null, roles: [], loading: true, isAgency: false, isClient: false, signOut: async () => {} });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -47,8 +49,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  const isAgency = roles.includes("agency_admin") || roles.includes("account_manager");
+  const isClient = roles.includes("client_user");
+
   return (
-    <Ctx.Provider value={{ user, session, roles, loading, signOut: async () => { await supabase.auth.signOut(); } }}>
+    <Ctx.Provider value={{ user, session, roles, loading, isAgency, isClient, signOut: async () => { await supabase.auth.signOut(); } }}>
       {children}
     </Ctx.Provider>
   );

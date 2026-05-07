@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Building2, ArrowUpRight } from "lucide-react";
+import { Plus, Building2, ArrowUpRight, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 
 const Clients = () => {
@@ -14,6 +14,12 @@ const Clients = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", industry: "", primary_contact_name: "", primary_contact_email: "", logo_url: "" });
+
+  // Members management
+  const [memberClient, setMemberClient] = useState<any>(null);
+  const [members, setMembers] = useState<any[]>([]);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
 
   const load = async () => {
     const { data } = await supabase
@@ -50,6 +56,33 @@ const Clients = () => {
       logo_url: r.logo_url ?? "",
     });
     setOpen(true);
+  };
+
+  const openMembers = async (r: any) => {
+    setMemberClient(r);
+    const { data } = await supabase.from("client_members").select("*").eq("client_id", r.id).order("created_at", { ascending: false });
+    setMembers(data ?? []);
+  };
+
+  const invite = async () => {
+    if (!memberClient || !inviteEmail) return;
+    setInviting(true);
+    const { data, error } = await supabase.functions.invoke("invite-client-user", {
+      body: { client_id: memberClient.id, email: inviteEmail, redirect_to: `${window.location.origin}/portal` },
+    });
+    setInviting(false);
+    if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Failed");
+    toast.success((data as any)?.existed ? "Linked existing user" : "Invitation email sent");
+    setInviteEmail("");
+    openMembers(memberClient);
+  };
+
+  const removeMember = async (m: any) => {
+    if (!confirm("Revoke access?")) return;
+    const { error } = await supabase.from("client_members").delete().eq("id", m.id);
+    if (error) return toast.error(error.message);
+    toast.success("Access revoked");
+    openMembers(memberClient);
   };
 
   return (
@@ -120,13 +153,22 @@ const Clients = () => {
                   </div>
                   <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                     <span>{campaignCount} {campaignCount === 1 ? "campaign" : "campaigns"}</span>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.preventDefault(); openEdit(r); }}
-                      className="text-foreground hover:text-accent transition-colors"
-                    >
-                      Edit
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); openMembers(r); }}
+                        className="text-foreground hover:text-accent transition-colors inline-flex items-center gap-1"
+                      >
+                        <UserPlus className="w-3 h-3" /> Access
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); openEdit(r); }}
+                        className="text-foreground hover:text-accent transition-colors"
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 </Card>
               </Link>
@@ -134,6 +176,32 @@ const Clients = () => {
           })}
         </div>
       )}
+
+      <Dialog open={!!memberClient} onOpenChange={(v) => { if (!v) setMemberClient(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl">Brand access — {memberClient?.name}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Invite people from the brand to log in and view their campaigns, content & reports. They won't see fees, payouts, or other clients.</p>
+          <div className="flex gap-2 mt-2">
+            <Input type="email" placeholder="brand@example.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+            <Button onClick={invite} disabled={inviting || !inviteEmail} className="bg-primary">{inviting ? "…" : "Invite"}</Button>
+          </div>
+          <div className="mt-4 space-y-2">
+            {members.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No brand users yet.</div>
+            ) : members.map(m => (
+              <div key={m.id} className="flex items-center justify-between text-sm border rounded-md px-3 py-2">
+                <div>
+                  <div className="font-medium">{m.invited_email ?? m.user_id}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Client user</div>
+                </div>
+                <button onClick={() => removeMember(m)} className="text-muted-foreground hover:text-destructive"><X className="w-4 h-4" /></button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

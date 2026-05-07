@@ -183,6 +183,38 @@ export type Database = {
           },
         ]
       }
+      client_members: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          invited_email: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          invited_email?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          invited_email?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_members_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           country: string | null
@@ -857,6 +889,14 @@ export type Database = {
         Args: { _status: string; _token: string }
         Returns: undefined
       }
+      user_has_campaign_access: {
+        Args: { _campaign_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_has_client_access: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
@@ -864,6 +904,7 @@ export type Database = {
         | "account_manager"
         | "client_viewer"
         | "influencer"
+        | "client_user"
       approval_status: "pending" | "approved" | "changes_requested"
       campaign_status:
         | "draft"
@@ -1007,6 +1048,7 @@ export const Constants = {
         "account_manager",
         "client_viewer",
         "influencer",
+        "client_user",
       ],
       approval_status: ["pending", "approved", "changes_requested"],
       campaign_status: [

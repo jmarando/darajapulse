@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import logo from "@/assets/logo-pulse-mark.png";
 
 const Auth = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, isAgency, isClient } = useAuth();
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +20,8 @@ const Auth = () => {
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
 
-  if (!loading && user) return <Navigate to="/app" replace />;
+  const dest = isClient && !isAgency ? "/portal" : "/app";
+  if (!loading && user) return <Navigate to={dest} replace />;
 
   const signIn = async (e: React.FormEvent) => {
     e.preventDefault();
