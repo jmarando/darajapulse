@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 
