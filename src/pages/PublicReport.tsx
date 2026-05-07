@@ -225,7 +225,7 @@ const PublicReport = () => {
           ] as const).map((s) => {
             const active = metric === s.key;
             return (
-              <button key={s.key} type="button" onClick={() => setMetric(s.key as any)} className={`text-left bg-card p-5 transition-colors hover:bg-secondary/40 ${active ? "ring-2 ring-accent ring-inset bg-secondary/30" : ""}`}>
+              <button key={s.key} type="button" onClick={() => setMetric(s.key as any)} className={`text-left bg-card p-5 transition-colors hover:bg-secondary/40 ${active ? "outline outline-2 -outline-offset-2 outline-accent bg-secondary/30 relative z-10" : ""}`}>
                 <div className="flex items-center justify-between">
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
                   {s.icon && <s.icon className={`w-3.5 h-3.5 ${active ? "text-accent" : "text-muted-foreground"}`} />}
