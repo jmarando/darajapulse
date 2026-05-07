@@ -42,6 +42,7 @@ const CampaignDetail = () => {
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
   const [generatingLearnings, setGeneratingLearnings] = useState(false);
+  const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement"|"emv">("views");
 
   const generateLearnings = async () => {
     setGeneratingLearnings(true);
