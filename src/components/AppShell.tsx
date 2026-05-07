@@ -12,6 +12,7 @@ const nav = [
   { to: "/app/influencers", icon: Users, label: "Influencers" },
   { to: "/app/briefs", icon: FileSignature, label: "Briefs" },
   { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },
+  { to: "/app/moderation", icon: MessageSquare, label: "Moderation" },
   { to: "/app/payouts", icon: Wallet, label: "Payouts" },
 ];
 
