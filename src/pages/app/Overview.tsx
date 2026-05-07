@@ -71,7 +71,7 @@ const Overview = () => {
         supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("status", "live"),
         supabase.from("post_metrics").select("captured_at, views, reach, likes, comments, shares, post_id").order("captured_at", { ascending: true }),
         supabase.from("posts").select("id", { count: "exact", head: true }),
-        supabase.from("briefs").select("id", { count: "exact", head: true }),
+        supabase.from("content_items").select("id", { count: "exact", head: true }),
         supabase.from("contests").select("id", { count: "exact", head: true }),
         supabase.from("campaigns").select("id, name, status, hashtag, budget_kes, clients(name)").order("created_at", { ascending: false }).limit(5),
         supabase.from("posts").select("id, caption, campaign_id, influencer_id, campaigns(name), influencers(handle, full_name), post_metrics(views, likes)").limit(50),
