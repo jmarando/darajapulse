@@ -16,11 +16,12 @@ const nav = [
 ];
 
 const AppShell = () => {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, isAgency, isClient } = useAuth();
   const navigate = useNavigate();
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (!user) { navigate("/auth"); return null; }
+  if (!isAgency && isClient) { navigate("/portal"); return null; }
 
   return (
     <div className="min-h-screen flex bg-background">
