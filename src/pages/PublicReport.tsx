@@ -10,6 +10,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 import { PostEmbed } from "@/components/PostEmbed";
+import { PostThumb } from "@/components/PostThumb";
 
 type PostWithMetrics = any;
 
@@ -542,9 +543,15 @@ const PublicReport = () => {
                       <Badge variant="outline" className="capitalize">{p.status}</Badge>
                     </div>
                     {p.post_url && (
-                      <div className="mt-3 grid md:grid-cols-[minmax(0,360px)_1fr] gap-4 items-start">
-                        <div className="no-print">
-                          <PostEmbed url={p.post_url} platform={p.platform} />
+                      <div className="mt-3 grid md:grid-cols-[minmax(0,220px)_1fr] gap-4 items-start">
+                        <div className="no-print w-full max-w-[220px]">
+                          <PostThumb
+                            url={p.post_url}
+                            platform={p.platform}
+                            thumbnailUrl={(p as any).thumbnail_url}
+                            caption={(p as any).caption}
+                            handle={p.influencers?.handle || p.influencers?.full_name}
+                          />
                         </div>
                         <div className="min-w-0">
                           <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block">{p.post_url}</a>
