@@ -555,52 +555,70 @@ const CampaignDetail = () => {
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
             <h2 className="font-display text-2xl">Creators</h2>
           </div>
-          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) setCreating(false); }}>
+          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddDeliv("1"); } }}>
             <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add creator</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{creating ? "Create new influencer" : "Add influencer to campaign"}</DialogTitle></DialogHeader>
-              {creating ? (
-                <form onSubmit={createAndAddInfl} className="space-y-3">
+              <DialogHeader>
+                <DialogTitle>
+                  {picked ? `Set fee for ${picked.full_name}` : creating ? "Create new influencer" : "Add creator to campaign"}
+                </DialogTitle>
+              </DialogHeader>
+
+              {picked ? (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-md bg-secondary/50 border text-sm">
+                    <div className="font-medium">{picked.full_name}</div>
+                    <div className="text-xs text-muted-foreground">{picked.handle ? `@${picked.handle.replace(/^@/, "")}` : "—"} · {picked.primary_platform}</div>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Full name</Label><Input required value={newInfl.full_name} onChange={e => setNewInfl({ ...newInfl, full_name: e.target.value })} /></div>
-                    <div><Label>Handle</Label><Input value={newInfl.handle} onChange={e => setNewInfl({ ...newInfl, handle: e.target.value })} placeholder="@..." /></div>
-                  </div>
-                   <div>
-                     <Label>Platform</Label>
-                     <PlatformPicker value={newInfl.primary_platform} onChange={v => setNewInfl({ ...newInfl, primary_platform: v })} />
-                   </div>
-                   <div><Label>Followers</Label><Input type="number" value={newInfl.follower_count} onChange={e => setNewInfl({ ...newInfl, follower_count: e.target.value })} /></div>
-                  <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
-                  <div className="grid grid-cols-2 gap-3 pt-1 border-t border-border mt-1">
-                    <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
-                    <div>
-                      <Label># of posts</Label>
-                      <Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} />
-                      <p className="text-[10px] text-muted-foreground mt-1">How many pieces of content (Reels, Stories, TikToks) the creator will deliver.</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 pt-2">
-                    <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)} disabled={submitting}>Back</Button>
-                    <Button type="submit" className="flex-1 bg-primary" disabled={submitting}>{submitting ? "Saving…" : "Create & add"}</Button>
-                  </div>
-                </form>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-3 pb-3 border-b border-border">
-                    <div><Label>Fee (KES)</Label><Input type="number" value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
+                    <div><Label>Fee (KES)</Label><Input type="number" autoFocus value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
                     <div>
                       <Label># of posts</Label>
                       <Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} />
                       <p className="text-[10px] text-muted-foreground mt-1">Pieces of content the creator will deliver.</p>
                     </div>
                   </div>
-                  <div className="space-y-1 max-h-72 overflow-auto mt-2">
-                    {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).map(r => (
-                      <button key={r.id} onClick={() => addInfl(r.id)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
-                        <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    ))}
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setPicked(null)}>Back</Button>
+                    <Button type="button" className="flex-1 bg-primary" onClick={() => addInfl()}>Add to campaign</Button>
+                  </div>
+                </div>
+              ) : creating ? (
+                <form onSubmit={createAndAddInfl} className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Full name</Label><Input required value={newInfl.full_name} onChange={e => setNewInfl({ ...newInfl, full_name: e.target.value })} /></div>
+                    <div><Label>Handle</Label><Input value={newInfl.handle} onChange={e => setNewInfl({ ...newInfl, handle: e.target.value })} placeholder="@..." /></div>
+                  </div>
+                  <div>
+                    <Label>Platform</Label>
+                    <PlatformPicker value={newInfl.primary_platform} onChange={v => setNewInfl({ ...newInfl, primary_platform: v })} />
+                  </div>
+                  <div><Label>Followers</Label><Input type="number" value={newInfl.follower_count} onChange={e => setNewInfl({ ...newInfl, follower_count: e.target.value })} /></div>
+                  <div><Label>Niche</Label><Input value={newInfl.niche} onChange={e => setNewInfl({ ...newInfl, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
+                  <div className="flex gap-2 pt-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setCreating(false)} disabled={submitting}>Back</Button>
+                    <Button type="submit" className="flex-1 bg-primary" disabled={submitting}>{submitting ? "Saving…" : "Continue"}</Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center">You'll set fee & deliverables in the next step.</p>
+                </form>
+              ) : (
+                <>
+                  <Input
+                    placeholder="Search your roster…"
+                    value={rosterSearch}
+                    onChange={(e) => setRosterSearch(e.target.value)}
+                    className="mb-2"
+                  />
+                  <div className="space-y-1 max-h-72 overflow-auto">
+                    {rosterAll
+                      .filter(r => !ci.some(x => x.influencer_id === r.id))
+                      .filter(r => !rosterSearch || `${r.full_name} ${r.handle ?? ""}`.toLowerCase().includes(rosterSearch.toLowerCase()))
+                      .map(r => (
+                        <button key={r.id} onClick={() => setPicked(r)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
+                          <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      ))}
                     {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).length === 0 && (
                       <p className="text-sm text-muted-foreground p-3 text-center">{rosterAll.length === 0 ? "No influencers in your roster yet." : "All your influencers are already on this campaign."}</p>
                     )}
