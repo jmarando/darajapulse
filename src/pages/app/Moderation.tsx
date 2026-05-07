@@ -89,7 +89,7 @@ const timeAgo = (iso: string) => {
   return `${Math.round(h / 24)}d`;
 };
 
-const Moderation = () => {
+const Moderation = ({ readOnly = false }: { readOnly?: boolean }) => {
   const [items, setItems] = useState<Comment[]>(MOCK);
   const [tab, setTab] = useState<"all" | "open" | "questions" | "toxic" | "praise" | "resolved">("open");
   const [campaign, setCampaign] = useState<string>("all");
@@ -97,6 +97,13 @@ const Moderation = () => {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string>(MOCK[0].id);
   const [reply, setReply] = useState("");
+  const [shareToken] = useState<string>(() => Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10));
+  const [copied, setCopied] = useState(false);
+  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/m/${shareToken}` : "";
+  const copyShare = async () => {
+    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); toast.success("Share link copied"); setTimeout(() => setCopied(false), 1500); }
+    catch { toast.error("Could not copy"); }
+  };
 
   const campaigns = useMemo(() => Array.from(new Set(MOCK.map(m => m.campaign))), []);
 
