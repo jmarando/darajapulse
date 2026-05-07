@@ -319,7 +319,7 @@ const Moderation = ({ readOnly = false }: { readOnly?: boolean }) => {
                 <Bot className="w-3 h-3" /> Auto-rules: hide spam · auto-reply praise · escalate toxic to account manager
                 <span className="ml-auto flex items-center gap-1"><User2 className="w-3 h-3" /> Assign</span>
               </div>
-            </div>
+            </div>}
           </Card>
         ) : (
           <Card className="p-10 flex items-center justify-center text-sm text-muted-foreground">
