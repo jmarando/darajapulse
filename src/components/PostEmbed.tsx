@@ -113,12 +113,12 @@ export const PostEmbed = ({ url, platform }: Props) => {
   if (p === "tiktok") {
     const id = getTikTokId(url);
     return (
-      <div ref={ref} className="rounded-md overflow-hidden">
+      <div ref={ref} className="rounded-md overflow-hidden w-full flex justify-center">
         <blockquote
           className="tiktok-embed"
           cite={url}
           data-video-id={id ?? undefined}
-          style={{ maxWidth: "605px", minWidth: "240px", margin: 0 }}
+          style={{ maxWidth: "100%", minWidth: 0, width: "100%", margin: 0 }}
         >
           <section />
         </blockquote>
