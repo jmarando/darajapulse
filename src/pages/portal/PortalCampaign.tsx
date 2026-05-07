@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import PostEmbed from "@/components/PostEmbed";
+import { PostThumb } from "@/components/PostThumb";
 
 const PortalCampaign = () => {
   const { id } = useParams();
@@ -59,7 +59,7 @@ const PortalCampaign = () => {
         {posts.map(p => (
           <Card key={p.id} className="p-3">
             <div className="text-xs text-muted-foreground mb-2">{p.influencers?.full_name} · {p.platform}</div>
-            <PostEmbed url={p.post_url} platform={p.platform} />
+            <PostThumb url={p.post_url} platform={p.platform} thumbnailUrl={p.thumbnail_url} caption={p.caption} handle={p.influencers?.handle || p.influencers?.full_name} />
             {metrics[p.id] && (
               <div className="grid grid-cols-4 gap-1 text-center mt-2 text-xs">
                 <div>{(metrics[p.id].views || 0).toLocaleString()}<div className="text-[9px] text-muted-foreground">views</div></div>
