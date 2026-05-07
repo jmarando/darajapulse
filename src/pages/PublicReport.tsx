@@ -129,7 +129,11 @@ const PublicReport = () => {
     platformMap.set(key, cur);
   }
   const platformRows = Array.from(platformMap.entries()).sort((a,b) => b[1].views - a[1].views);
-  const allHistory = filteredPosts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: h.views || 0 })));
+  const valOf = (h: any) => {
+    if (metric === "engagement") return (h.likes||0)+(h.comments||0)+(h.shares||0)+(h.saves||0);
+    return Number(h[metric] || 0);
+  };
+  const allHistory = filteredPosts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: valOf(h) })));
   let trend: { d: number; v: number }[] = [];
   if (allHistory.length > 1) {
     const min = Math.min(...allHistory.map(h => h.t));
@@ -139,8 +143,10 @@ const PublicReport = () => {
     allHistory.forEach(h => { const i = Math.min(11, Math.floor(((h.t - min) / span) * 12)); buckets[i] = Math.max(buckets[i], h.v); });
     trend = buckets.map((v, d) => ({ d, v }));
   } else {
-    trend = Array.from({ length: 12 }, (_, d) => ({ d, v: Math.round((totals.views / 12) * (d + 1) / 12) }));
+    const totalForMetric = metric === "engagement" ? (totals.likes+totals.comments+totals.shares+totals.saves) : (totals as any)[metric] || 0;
+    trend = Array.from({ length: 12 }, (_, d) => ({ d, v: Math.round((totalForMetric / 12) * (d + 1) / 12) }));
   }
+  const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", impressions: "Impressions", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
 
   return (
     <div className="min-h-screen bg-background">
