@@ -53,24 +53,40 @@ const LandingDashboard = () => {
         <div className="animate-fade-in">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-[11px] uppercase tracking-[0.25em] text-foreground/70 mb-6 shadow-soft">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            The influence operating system · Kenya
+            Built for modern agencies
           </div>
           <h1 className="font-display text-6xl md:text-7xl lg:text-[5.5rem] leading-[0.98] font-semibold text-balance tracking-tight">
-            Run influencer<br />
-            campaigns like<br />
+            Influence,<br />
             <span className="text-accent italic relative inline-block">
-              an empire.
+              orchestrated.
               <svg className="absolute -bottom-2 left-0 w-full" height="14" viewBox="0 0 300 14" fill="none">
                 <path d="M2 8 Q 75 2, 150 7 T 298 6" stroke="hsl(0 99% 57%)" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.4" />
               </svg>
             </span>
           </h1>
           <p className="mt-7 text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
-            Discover creators. Send briefs. Approve content. Track every post across <span className="text-foreground font-medium">TikTok, Instagram, YouTube and X</span> in real time. Pay via M-Pesa. Hand your client a live, self-refreshing report — not a stale PDF.
+            Discover creators. Send briefs. Approve content. Track every post across <span className="text-foreground font-medium">TikTok, Instagram, Facebook, YouTube and X</span> in real time. Hand your client a live, self-refreshing report — not a stale PDF.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link to="/auth"><Button size="lg" className="bg-primary text-base h-12 px-6 group">Open the console <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" /></Button></Link>
-            <Button size="lg" variant="outline" className="h-12 px-6">Watch the 60s tour</Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="lg" variant="outline" className="h-12 px-6 group">
+                  <Play className="w-4 h-4 mr-2 fill-current" /> Watch the 60s tour
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-0">
+                <div className="aspect-video w-full">
+                  <iframe
+                    className="w-full h-full"
+                    src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0"
+                    title="Daraja Pulse — 60 second tour"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Live ticker */}
@@ -82,9 +98,9 @@ const LandingDashboard = () => {
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> M-Pesa native</div>
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> KRA & WHT aware</div>
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> 4 platforms, one inbox</div>
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> 5 platforms, one inbox</div>
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Live tokenized reports</div>
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Built for Kenyan agencies</div>
           </div>
         </div>
 
@@ -93,11 +109,11 @@ const LandingDashboard = () => {
           <div className="absolute -inset-8 bg-gradient-warm opacity-25 blur-3xl rounded-full" />
 
           {/* Floating mini-cards */}
-          <div className="absolute -top-6 -left-6 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs animate-fade-in" style={{ animation: "fade-in 0.6s ease-out, float 4s ease-in-out 0.6s infinite" }}>
-            <Wallet className="w-4 h-4 text-success" />
+          <div className="absolute -top-6 -left-6 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs" style={{ animation: "fade-in 0.6s ease-out, float 4s ease-in-out 0.6s infinite" }}>
+            <CheckCircle2 className="w-4 h-4 text-success" />
             <div>
-              <div className="font-semibold">KES 45,000 paid</div>
-              <div className="text-[10px] text-muted-foreground">M-Pesa · 14s ago</div>
+              <div className="font-semibold">Content approved</div>
+              <div className="text-[10px] text-muted-foreground">Round 2 · 1m ago</div>
             </div>
           </div>
           <div className="absolute -bottom-4 -right-4 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs" style={{ animation: "float 5s ease-in-out infinite" }}>
