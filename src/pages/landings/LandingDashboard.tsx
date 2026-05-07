@@ -173,8 +173,8 @@ const LandingDashboard = () => {
       <section className="relative border-y border-border bg-card/40 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { n: "4", l: "Platforms unified" },
-            { n: "<2 min", l: "Creator payout" },
+            { n: "5", l: "Platforms unified" },
+            { n: "<5 min", l: "From brief to live" },
             { n: "Live", l: "Client reports" },
             { n: "0", l: "Spreadsheets" },
           ].map(s => (
@@ -190,20 +190,20 @@ const LandingDashboard = () => {
       <section className="relative max-w-7xl mx-auto px-6 py-24">
         <div className="text-xs uppercase tracking-[0.3em] text-accent mb-3">Why Daraja Pulse</div>
         <h2 className="font-display text-4xl md:text-6xl font-semibold max-w-3xl leading-[1.05] mb-16">
-          Everything between the brief and the bank — <span className="italic text-muted-foreground">finally in one place.</span>
+          Everything between the brief and the report — <span className="italic text-muted-foreground">finally in one place.</span>
         </h2>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {[
             { i: Users, t: "Creator roster & discovery", b: "TikTok-first database with audience authenticity, niche, language and Kenya-vs-diaspora splits. Build a list in minutes, not weeks." },
-            { i: FileText, t: "Tokenized creator briefs", b: "Send a single link. Creators see the deliverables, deadlines and payout — no logins, no chasing on WhatsApp." },
+            { i: FileText, t: "Tokenized creator briefs", b: "Send a single link. Creators see the deliverables, deadlines and scope — no logins, no chasing on WhatsApp." },
             { i: CheckCircle2, t: "Two-round content approvals", b: "Threaded comments per asset. Brand and account manager align before a single post goes live." },
             { i: BarChart3, t: "Live, self-refreshing reports", b: "A tokenized client URL that updates every few minutes. Brand managers actually forward this internally." },
-            { i: Wallet, t: "M-Pesa payouts in minutes", b: "B2C disbursements via the Daraja API. WHT auto-computed. e-TIMS-ready records. Creators get paid before they ask." },
             { i: Trophy, t: "UGC contests & leaderboards", b: "Public submission links, auto-leaderboards and entry tracking. Turn fans into your next campaign roster." },
             { i: ShieldCheck, t: "Brand portal access", b: "Invite client-side stakeholders to a read-only portal. They see only their campaigns — never your fees or other accounts." },
             { i: Sparkles, t: "AI campaign learnings", b: "Auto-generated insights on what worked, who outperformed and what to repeat next quarter. Powered by Lovable AI." },
-            { i: Globe, t: "TikTok · Instagram · YouTube · X", b: "Native OAuth + polling for TikTok. Embeds, manual + API metrics for the rest. One dashboard, four platforms." },
+            { i: Globe, t: "Five-platform tracking", b: "Native OAuth + polling for TikTok. Embeds and metrics for Instagram, Facebook, YouTube and X. One dashboard, every channel." },
+            { i: TrendingUp, t: "Earned media valuation", b: "Every view, like and share priced against a CPM benchmark — so you can show the brand the ROI in shillings, not vibes." },
           ].map(({ i: I, t, b }) => (
             <div key={t} className="group relative p-6 rounded-xl bg-card border border-border hover:border-accent/40 hover:shadow-elegant hover:-translate-y-1 transition-all duration-300">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
@@ -221,15 +221,15 @@ const LandingDashboard = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-xs uppercase tracking-[0.3em] text-accent mb-3">The flow</div>
           <h2 className="font-display text-4xl md:text-6xl font-semibold max-w-3xl leading-[1.05] mb-16">
-            From brief to payout — <span className="italic opacity-70">in one continuous motion.</span>
+            From brief to report — <span className="italic opacity-70">in one continuous motion.</span>
           </h2>
           <div className="grid md:grid-cols-5 gap-4">
             {[
-              { n: "01", t: "Brief", d: "Tokenized link to creators" },
-              { n: "02", t: "Approve", d: "Round 1 + 2 with comments" },
-              { n: "03", t: "Publish", d: "Auto-tracked across platforms" },
-              { n: "04", t: "Report", d: "Live URL for the brand" },
-              { n: "05", t: "Pay", d: "M-Pesa B2C in minutes" },
+              { n: "01", t: "Discover", d: "Build a creator shortlist" },
+              { n: "02", t: "Brief", d: "Tokenized link to creators" },
+              { n: "03", t: "Approve", d: "Round 1 + 2 with comments" },
+              { n: "04", t: "Publish", d: "Auto-tracked across platforms" },
+              { n: "05", t: "Report", d: "Live URL for the brand" },
             ].map((s, i) => (
               <div key={s.n} className="relative p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
                 <div className="text-accent font-mono text-xs">{s.n}</div>
