@@ -15,7 +15,7 @@ const Auth = () => {
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
 
