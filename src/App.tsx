@@ -17,6 +17,7 @@ import Stub from "./pages/app/Stub";
 import Briefs from "./pages/app/Briefs";
 import Content from "./pages/app/Content";
 import Moderation from "./pages/app/Moderation";
+import PublicModeration from "./pages/PublicModeration";
 import PublicReport from "./pages/PublicReport";
 import PublicBrief from "./pages/PublicBrief";
 import PublicContestSubmit from "./pages/PublicContestSubmit";
