@@ -57,7 +57,23 @@ Deno.serve(async (req) => {
     );
     if (linkErr) return new Response(JSON.stringify({ error: linkErr.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    return new Response(JSON.stringify({ ok: true, user_id: userId, existed: !!found }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Per-campaign restriction: replace any existing rows for this user × this client's campaigns
+    const { data: clientCamps } = await admin.from("campaigns").select("id").eq("client_id", client_id);
+    const clientCampIds = (clientCamps ?? []).map((c: any) => c.id);
+    if (clientCampIds.length > 0) {
+      await admin.from("campaign_members").delete().eq("user_id", userId).in("campaign_id", clientCampIds);
+    }
+    if (campaignIds.length > 0) {
+      const valid = campaignIds.filter((id) => clientCampIds.includes(id));
+      if (valid.length > 0) {
+        await admin.from("campaign_members").upsert(
+          valid.map((cid) => ({ user_id: userId, campaign_id: cid })),
+          { onConflict: "campaign_id,user_id" },
+        );
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, user_id: userId, existed: !!found, scoped_campaigns: campaignIds.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
