@@ -486,6 +486,61 @@ const CampaignDetail = () => {
               </div>
             </div>
           </div>
+
+          {/* Age / Gender / Cities */}
+          <div className="grid md:grid-cols-3 gap-6 mt-6 pt-6 border-t border-border">
+            {/* Age */}
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Age</div>
+              <div className="space-y-2">
+                {audience.ages.map(a => (
+                  <div key={a.bucket}>
+                    <div className="flex justify-between text-xs mb-1"><span>{a.bucket}</span><span className="tabular-nums text-muted-foreground">{a.pct.toFixed(0)}%</span></div>
+                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full bg-accent" style={{ width: `${Math.min(100, a.pct)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Gender */}
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Gender</div>
+              <div className="h-2 rounded-full bg-secondary overflow-hidden flex mb-3">
+                <div className="bg-accent h-full" style={{ width: `${audience.genders[0]?.pct || 0}%` }} />
+                <div className="bg-highlight h-full" style={{ width: `${audience.genders[1]?.pct || 0}%` }} />
+                <div className="bg-muted-foreground/40 h-full" style={{ width: `${audience.genders[2]?.pct || 0}%` }} />
+              </div>
+              <div className="space-y-1.5">
+                {audience.genders.map((g, i) => (
+                  <div key={g.gender} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${i===0?"bg-accent":i===1?"bg-highlight":"bg-muted-foreground/40"}`} />
+                      <span className="capitalize">{g.gender}</span>
+                    </div>
+                    <span className="tabular-nums text-muted-foreground">{g.pct.toFixed(0)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Cities */}
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Top cities</div>
+              <div className="space-y-2">
+                {audience.cities.length === 0 && <div className="text-xs text-muted-foreground">—</div>}
+                {audience.cities.map(c => (
+                  <div key={c.city}>
+                    <div className="flex justify-between text-xs mb-1"><span>{c.city}</span><span className="tabular-nums text-muted-foreground">{c.pct.toFixed(0)}%</span></div>
+                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full bg-highlight" style={{ width: `${Math.min(100, c.pct)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </Card>
       )}
 
