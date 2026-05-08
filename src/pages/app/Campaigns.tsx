@@ -24,8 +24,9 @@ const statusColor: Record<string, string> = {
 const Campaigns = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ client_id: "", name: "", brief: "", hashtag: "", budget_kes: 0, status: "draft" });
+  const [form, setForm] = useState<any>({ client_id: "", name: "", brief: "", hashtag: "", budget_kes: 0, status: "draft", brief_template_id: "" });
 
   const load = async () => {
     const { data } = await supabase.from("campaigns").select("*, clients(name)").order("created_at", { ascending: false });
@@ -35,9 +36,17 @@ const Campaigns = () => {
   };
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    if (!form.client_id) { setTemplates([]); return; }
+    supabase.from("brief_templates").select("id,name").eq("client_id", form.client_id).order("updated_at", { ascending: false })
+      .then(({ data }) => setTemplates(data ?? []));
+  }, [form.client_id]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from("campaigns").insert({ ...form, budget_kes: Number(form.budget_kes) });
+    const payload: any = { ...form, budget_kes: Number(form.budget_kes) };
+    if (!payload.brief_template_id) delete payload.brief_template_id;
+    const { error } = await supabase.from("campaigns").insert(payload);
     if (error) return toast.error(error.message);
     toast.success("Campaign created"); setOpen(false); load();
   };
