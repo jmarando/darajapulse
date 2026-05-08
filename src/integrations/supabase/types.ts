@@ -52,6 +52,66 @@ export type Database = {
           },
         ]
       }
+      brief_templates: {
+        Row: {
+          brief: string | null
+          client_id: string
+          content_format: string | null
+          created_at: string
+          created_by: string | null
+          donts: string[] | null
+          dos: string[] | null
+          hashtag: string | null
+          hashtags_extra: string[] | null
+          id: string
+          mandatory_mentions: string[] | null
+          name: string
+          objective: string | null
+          references_urls: string[] | null
+          tone: string | null
+          updated_at: string
+          wht_percent: number | null
+        }
+        Insert: {
+          brief?: string | null
+          client_id: string
+          content_format?: string | null
+          created_at?: string
+          created_by?: string | null
+          donts?: string[] | null
+          dos?: string[] | null
+          hashtag?: string | null
+          hashtags_extra?: string[] | null
+          id?: string
+          mandatory_mentions?: string[] | null
+          name: string
+          objective?: string | null
+          references_urls?: string[] | null
+          tone?: string | null
+          updated_at?: string
+          wht_percent?: number | null
+        }
+        Update: {
+          brief?: string | null
+          client_id?: string
+          content_format?: string | null
+          created_at?: string
+          created_by?: string | null
+          donts?: string[] | null
+          dos?: string[] | null
+          hashtag?: string | null
+          hashtags_extra?: string[] | null
+          id?: string
+          mandatory_mentions?: string[] | null
+          name?: string
+          objective?: string | null
+          references_urls?: string[] | null
+          tone?: string | null
+          updated_at?: string
+          wht_percent?: number | null
+        }
+        Relationships: []
+      }
       campaign_influencers: {
         Row: {
           brief_token: string
@@ -124,6 +184,7 @@ export type Database = {
       campaigns: {
         Row: {
           brief: string | null
+          brief_template_id: string | null
           budget_kes: number | null
           client_id: string
           content_format: string | null
@@ -148,6 +209,7 @@ export type Database = {
         }
         Insert: {
           brief?: string | null
+          brief_template_id?: string | null
           budget_kes?: number | null
           client_id: string
           content_format?: string | null
@@ -172,6 +234,7 @@ export type Database = {
         }
         Update: {
           brief?: string | null
+          brief_template_id?: string | null
           budget_kes?: number | null
           client_id?: string
           content_format?: string | null
