@@ -927,6 +927,27 @@ const CampaignDetail = () => {
         <Textarea value={learnings} onChange={e => setLearnings(e.target.value)} rows={8} placeholder="What worked, what didn't, and what to do next time. Click ✨ Generate with AI to draft from the live report data." />
       </Card>
 
+      {/* Plan share link — for client approval before launch */}
+      <Card className="p-6 mt-6">
+        <div className="flex items-center justify-between gap-6 flex-wrap">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">Plan link</div>
+            <div className="font-display text-xl mt-1">Share the roster with the brand</div>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md">A view-only public page showing the brief summary and creator lineup (handle, platform, posts, fee). Send to the client for sign-off before launch.</p>
+          </div>
+          {planUrl ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input readOnly value={planUrl} className="w-[22rem]" />
+              <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(planUrl); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button>
+              <a href={planUrl} target="_blank" rel="noreferrer"><Button variant="outline" size="icon"><ExternalLink className="w-4 h-4" /></Button></a>
+              <Button variant="ghost" size="sm" onClick={revokePlanLink}><X className="w-4 h-4 mr-1" /> Revoke</Button>
+            </div>
+          ) : (
+            <Button onClick={generatePlanLink}><Link2 className="w-4 h-4 mr-2" /> Generate plan link</Button>
+          )}
+        </div>
+      </Card>
+
       {/* Report link — moved below */}
       <Card className="p-6 mt-6 bg-gradient-ink text-primary-foreground border-0">
         <div className="flex items-center justify-between gap-6 flex-wrap">
