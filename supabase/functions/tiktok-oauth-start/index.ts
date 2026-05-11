@@ -5,12 +5,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CLIENT_KEY = Deno.env.get("TIKTOK_CLIENT_KEY")!;
+const CLIENT_KEY = Deno.env.get("TIKTOK_CLIENT_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  if (!CLIENT_KEY || CLIENT_KEY.trim().length < 6) {
+    console.error("TIKTOK_CLIENT_KEY missing or invalid", { length: CLIENT_KEY.length });
+    return new Response(
+      "TikTok is not configured: TIKTOK_CLIENT_KEY is missing on the server. Ask the agency admin to set the TikTok Client Key (not the Client Secret) in backend secrets.",
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "text/plain" } }
+    );
+  }
 
   const url = new URL(req.url);
   const influencer_id = url.searchParams.get("influencer_id");
