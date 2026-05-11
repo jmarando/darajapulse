@@ -27,9 +27,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { email, role, redirect_to } = await req.json();
+    const { email, role, title, redirect_to } = await req.json();
     const cleanEmail = String(email ?? "").trim().toLowerCase();
     const newRole: Role = role === "agency_admin" ? "agency_admin" : "account_manager";
+    const cleanTitle = typeof title === "string" && title.length ? title : null;
     if (!cleanEmail) return new Response(JSON.stringify({ error: "email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     let userId: string | null = null;
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
       userId = invited.user.id;
     }
 
-    await admin.from("profiles").upsert({ id: userId!, email: cleanEmail }, { onConflict: "id" });
+    await admin.from("profiles").upsert({ id: userId!, email: cleanEmail, ...(cleanTitle ? { title: cleanTitle } : {}) }, { onConflict: "id" });
     await admin.from("user_roles").upsert({ user_id: userId, role: newRole }, { onConflict: "user_id,role" });
 
     return new Response(JSON.stringify({ ok: true, user_id: userId, existed: !!found, role: newRole }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });

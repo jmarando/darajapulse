@@ -14,8 +14,21 @@ type Member = {
   user_id: string;
   email: string | null;
   full_name: string | null;
+  title: string | null;
   roles: string[];
 };
+
+const TITLE_OPTIONS = [
+  { value: "lead", label: "Lead" },
+  { value: "account_manager", label: "Account manager" },
+  { value: "strategist", label: "Strategist" },
+  { value: "creative", label: "Creative" },
+  { value: "analyst", label: "Analyst" },
+  { value: "agency_admin", label: "Agency admin" },
+] as const;
+
+const titleLabel = (v?: string | null) =>
+  TITLE_OPTIONS.find((o) => o.value === v)?.label ?? (v ? v.replace(/_/g, " ") : "");
 
 const Team = () => {
   const { roles: myRoles, user } = useAuth();
@@ -23,7 +36,7 @@ const Team = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"account_manager" | "agency_admin">("account_manager");
+  const [role, setRole] = useState<string>("account_manager");
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -40,10 +53,10 @@ const Team = () => {
     });
     const ids = Array.from(byUser.keys());
     if (ids.length === 0) { setMembers([]); setLoading(false); return; }
-    const { data: profs } = await supabase.from("profiles").select("id, email, full_name").in("id", ids);
+    const { data: profs } = await supabase.from("profiles").select("id, email, full_name, title").in("id", ids);
     const list: Member[] = ids.map((id) => {
       const p = (profs ?? []).find((x: any) => x.id === id);
-      return { user_id: id, email: p?.email ?? null, full_name: p?.full_name ?? null, roles: byUser.get(id) ?? [] };
+      return { user_id: id, email: p?.email ?? null, full_name: p?.full_name ?? null, title: (p as any)?.title ?? null, roles: byUser.get(id) ?? [] };
     });
     list.sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
     setMembers(list);
@@ -64,8 +77,10 @@ const Team = () => {
   const invite = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
+    const permission = role === "agency_admin" ? "agency_admin" : "account_manager";
+    const title = role;
     const { data, error } = await supabase.functions.invoke("invite-teammate", {
-      body: { email, role, redirect_to: `${window.location.origin}/app` },
+      body: { email, role: permission, title, redirect_to: `${window.location.origin}/app` },
     });
     setBusy(false);
     if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Invite failed");
@@ -99,11 +114,12 @@ const Team = () => {
           </div>
           <div>
             <Label>Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as any)}>
+            <Select value={role} onValueChange={(v) => setRole(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="account_manager">Account manager</SelectItem>
-                <SelectItem value="agency_admin">Agency admin</SelectItem>
+                {TITLE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -124,9 +140,12 @@ const Team = () => {
                   <div className="text-xs text-muted-foreground">{m.email}</div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {m.title && m.title !== "agency_admin" && !m.roles.includes(m.title) && (
+                    <Badge variant="outline">{titleLabel(m.title)}</Badge>
+                  )}
                   {m.roles.map(r => (
                     <Badge key={r} variant={r === "agency_admin" ? "default" : "secondary"} className="gap-1">
-                      {r.replace("_", " ")}
+                      {titleLabel(r)}
                       {!(m.user_id === user?.id && r === "agency_admin") && (
                         <button onClick={() => removeRole(m, r)} className="ml-1 opacity-60 hover:opacity-100">
                           <Trash2 className="w-3 h-3" />
