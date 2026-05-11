@@ -18,6 +18,7 @@ import { PostThumb } from "@/components/PostThumb";
 import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
+import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 
 
 const CampaignDetail = () => {
