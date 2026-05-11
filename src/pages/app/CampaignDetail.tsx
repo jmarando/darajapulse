@@ -552,6 +552,14 @@ const CampaignDetail = () => {
         </Card>
       )}
 
+      {/* Agency team on this campaign */}
+      {c?.id && (
+        <Card className="p-5 mb-6">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Agency team on this campaign</div>
+          <AgencyTeamPicker scope={{ type: "campaign", campaign_id: c.id }} title="Who's running this campaign" />
+        </Card>
+      )}
+
       {/* Roster — full width table */}
       <Card className="p-0 overflow-hidden mb-6">
         <div className="flex items-center justify-between p-5 border-b border-border">
