@@ -142,6 +142,22 @@ const CampaignDetail = () => {
     load();
   };
 
+  const generatePlanLink = async () => {
+    const { error } = await supabase.from("plan_links").insert({ campaign_id: id });
+    if (error) return toast.error(error.message);
+    toast.success("Plan link generated");
+    load();
+  };
+
+  const revokePlanLink = async () => {
+    if (!planLink) return;
+    if (!confirm("Revoke this plan link? The shared URL will stop working.")) return;
+    const { error } = await supabase.from("plan_links").update({ is_active: false }).eq("id", planLink.id);
+    if (error) return toast.error(error.message);
+    toast.success("Plan link revoked");
+    load();
+  };
+
   const setStatus = async (status: string) => {
     await supabase.from("campaigns").update({ status: status as any }).eq("id", id);
     load();
