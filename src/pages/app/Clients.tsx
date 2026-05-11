@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Building2, ArrowUpRight, UserPlus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 
 const Clients = () => {
   const [rows, setRows] = useState<any[]>([]);
