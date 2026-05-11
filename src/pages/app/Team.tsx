@@ -14,8 +14,21 @@ type Member = {
   user_id: string;
   email: string | null;
   full_name: string | null;
+  title: string | null;
   roles: string[];
 };
+
+const TITLE_OPTIONS = [
+  { value: "lead", label: "Lead" },
+  { value: "account_manager", label: "Account manager" },
+  { value: "strategist", label: "Strategist" },
+  { value: "creative", label: "Creative" },
+  { value: "analyst", label: "Analyst" },
+  { value: "agency_admin", label: "Agency admin" },
+] as const;
+
+const titleLabel = (v?: string | null) =>
+  TITLE_OPTIONS.find((o) => o.value === v)?.label ?? (v ? v.replace(/_/g, " ") : "");
 
 const Team = () => {
   const { roles: myRoles, user } = useAuth();
