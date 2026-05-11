@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import PublicFooter from "@/components/PublicFooter";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -584,9 +585,7 @@ const PublicReport = () => {
         </div>
       </main>
 
-      <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        Powered by <span className="font-display text-foreground">Daraja Pulse</span> · Influence Operating System
-      </footer>
+      <PublicFooter />
     </div>
   );
 };
