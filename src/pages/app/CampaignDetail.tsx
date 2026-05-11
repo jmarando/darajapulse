@@ -83,6 +83,8 @@ const CampaignDetail = () => {
     } else setMetrics([]);
     const { data: l } = await supabase.from("report_links").select("*").eq("campaign_id", id).maybeSingle();
     setLink(l);
+    const { data: pl } = await supabase.from("plan_links").select("*").eq("campaign_id", id).maybeSingle();
+    setPlanLink(pl);
   };
   useEffect(() => { load(); }, [id]);
 
