@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Hash, Users, Wallet } from "lucide-react";
+import PublicFooter from "@/components/PublicFooter";
 
 const PublicPlan = () => {
   const { token } = useParams();
