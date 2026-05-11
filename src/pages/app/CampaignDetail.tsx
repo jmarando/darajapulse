@@ -985,6 +985,38 @@ const CampaignDetail = () => {
       </Card>
 
       {/* Creator detail sheet */}
+      {/* Post preview dialog */}
+      <Dialog open={!!previewPost} onOpenChange={(o) => !o && setPreviewPost(null)}>
+        <DialogContent className="max-w-2xl">
+          {previewPost && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <span>{previewPost.influencers?.full_name}</span>
+                  {previewPost.influencers?.handle && <span className="text-sm text-muted-foreground font-normal">@{previewPost.influencers.handle}</span>}
+                  <Badge variant="outline" className="capitalize ml-auto text-xs">{previewPost.platform}</Badge>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[70vh] overflow-y-auto space-y-3">
+                <PostEmbed url={previewPost.post_url} platform={previewPost.platform} />
+                {previewPost.caption && (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Caption</div>
+                    <p className="text-sm whitespace-pre-line leading-relaxed">{previewPost.caption}</p>
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground flex items-center justify-between gap-3 pt-2 border-t">
+                  <a href={previewPost.post_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground break-all">
+                    <ExternalLink className="w-3 h-3 shrink-0" /> {previewPost.post_url}
+                  </a>
+                  {previewPost.posted_at && <span className="shrink-0">Posted {new Date(previewPost.posted_at).toLocaleString()}</span>}
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Sheet open={!!selectedCi} onOpenChange={(o) => !o && setSelectedCi(null)}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {selectedCi && (() => {
