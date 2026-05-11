@@ -48,6 +48,7 @@ const CampaignDetail = () => {
   const [savingLearnings, setSavingLearnings] = useState(false);
   const [generatingLearnings, setGeneratingLearnings] = useState(false);
   const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement"|"emv">("views");
+  const [previewPost, setPreviewPost] = useState<any>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
 
   const generateLearnings = async () => {
@@ -864,23 +865,38 @@ const CampaignDetail = () => {
             <p className="text-xs text-muted-foreground mt-1">Add the first live post or refresh TikTok metrics.</p>
           </div>
         ) : (
-          <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {posts.map(p => {
               const m = latestByPost.get(p.id);
+              const postedAt = p.posted_at ? new Date(p.posted_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
               return (
                 <li key={p.id} className="rounded-lg border border-border bg-card overflow-hidden flex flex-col hover:shadow-elegant transition-shadow">
-                  <PostThumb
-                    url={p.post_url}
-                    platform={p.platform}
-                    thumbnailUrl={p.thumbnail_url}
-                    caption={p.caption}
-                    handle={p.influencers?.handle || p.influencers?.full_name}
-                  />
-                  <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-border">
-                    <div className="text-xs min-w-0 truncate">
-                      <span className="font-medium">{p.influencers?.full_name}</span>
+                  <button type="button" onClick={() => setPreviewPost(p)} className="block text-left">
+                    <PostThumb
+                      url={p.post_url}
+                      platform={p.platform}
+                      thumbnailUrl={p.thumbnail_url}
+                      caption={p.caption}
+                      handle={p.influencers?.handle || p.influencers?.full_name}
+                    />
+                  </button>
+                  <div className="px-3 py-2 border-t border-border space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs min-w-0 truncate">
+                        <span className="font-medium">{p.influencers?.full_name}</span>
+                        {p.influencers?.handle && <span className="text-muted-foreground"> · @{p.influencers.handle}</span>}
+                      </div>
+                      <Badge variant="outline" className="capitalize text-[10px] py-0 h-5 shrink-0">{p.status}</Badge>
                     </div>
-                    <Badge variant="outline" className="capitalize text-[10px] py-0 h-5">{p.status}</Badge>
+                    {p.caption && (
+                      <p className="text-[11px] text-muted-foreground leading-snug line-clamp-3">{p.caption}</p>
+                    )}
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      {postedAt && <span>{postedAt}</span>}
+                      <button type="button" onClick={() => setPreviewPost(p)} className="inline-flex items-center gap-1 hover:text-foreground">
+                        <Eye className="w-3 h-3" /> Preview
+                      </button>
+                    </div>
                   </div>
                   {m && (
                     <div className="grid grid-cols-4 gap-1 px-2 py-2 text-center border-t border-border">
@@ -969,6 +985,38 @@ const CampaignDetail = () => {
       </Card>
 
       {/* Creator detail sheet */}
+      {/* Post preview dialog */}
+      <Dialog open={!!previewPost} onOpenChange={(o) => !o && setPreviewPost(null)}>
+        <DialogContent className="max-w-2xl">
+          {previewPost && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <span>{previewPost.influencers?.full_name}</span>
+                  {previewPost.influencers?.handle && <span className="text-sm text-muted-foreground font-normal">@{previewPost.influencers.handle}</span>}
+                  <Badge variant="outline" className="capitalize ml-auto text-xs">{previewPost.platform}</Badge>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[70vh] overflow-y-auto space-y-3">
+                <PostEmbed url={previewPost.post_url} platform={previewPost.platform} />
+                {previewPost.caption && (
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Caption</div>
+                    <p className="text-sm whitespace-pre-line leading-relaxed">{previewPost.caption}</p>
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground flex items-center justify-between gap-3 pt-2 border-t">
+                  <a href={previewPost.post_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground break-all">
+                    <ExternalLink className="w-3 h-3 shrink-0" /> {previewPost.post_url}
+                  </a>
+                  {previewPost.posted_at && <span className="shrink-0">Posted {new Date(previewPost.posted_at).toLocaleString()}</span>}
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Sheet open={!!selectedCi} onOpenChange={(o) => !o && setSelectedCi(null)}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {selectedCi && (() => {
