@@ -29,6 +29,7 @@ const CampaignDetail = () => {
   const [posts, setPosts] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [link, setLink] = useState<any>(null);
+  const [planLink, setPlanLink] = useState<any>(null);
   const [postOpen, setPostOpen] = useState(false);
   const [post, setPost] = useState<any>({ influencer_id: "", platform: "tiktok", post_url: "", caption: "" });
   const [rosterOpen, setRosterOpen] = useState(false);
@@ -82,6 +83,8 @@ const CampaignDetail = () => {
     } else setMetrics([]);
     const { data: l } = await supabase.from("report_links").select("*").eq("campaign_id", id).maybeSingle();
     setLink(l);
+    const { data: pl } = await supabase.from("plan_links").select("*").eq("campaign_id", id).maybeSingle();
+    setPlanLink(pl);
   };
   useEffect(() => { load(); }, [id]);
 
@@ -136,6 +139,22 @@ const CampaignDetail = () => {
   const generateLink = async () => {
     const { error } = await supabase.from("report_links").insert({ campaign_id: id });
     if (error) return toast.error(error.message);
+    load();
+  };
+
+  const generatePlanLink = async () => {
+    const { error } = await supabase.from("plan_links").insert({ campaign_id: id });
+    if (error) return toast.error(error.message);
+    toast.success("Plan link generated");
+    load();
+  };
+
+  const revokePlanLink = async () => {
+    if (!planLink) return;
+    if (!confirm("Revoke this plan link? The shared URL will stop working.")) return;
+    const { error } = await supabase.from("plan_links").update({ is_active: false }).eq("id", planLink.id);
+    if (error) return toast.error(error.message);
+    toast.success("Plan link revoked");
     load();
   };
 
@@ -308,6 +327,7 @@ const CampaignDetail = () => {
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
   const reportUrl = link ? `${window.location.origin}${slugPath}/report/${link.token}` : "";
+  const planUrl = planLink && planLink.is_active ? `${window.location.origin}${slugPath}/plan/${planLink.token}` : "";
   const fmt = (n: number) => {
     if (!isFinite(n)) return "—";
     if (n >= 1e9) return `${(n / 1e9).toFixed(n >= 1e10 ? 1 : 2)}B`;
@@ -905,6 +925,27 @@ const CampaignDetail = () => {
           </div>
         </div>
         <Textarea value={learnings} onChange={e => setLearnings(e.target.value)} rows={8} placeholder="What worked, what didn't, and what to do next time. Click ✨ Generate with AI to draft from the live report data." />
+      </Card>
+
+      {/* Plan share link — for client approval before launch */}
+      <Card className="p-6 mt-6">
+        <div className="flex items-center justify-between gap-6 flex-wrap">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">Plan link</div>
+            <div className="font-display text-xl mt-1">Share the roster with the brand</div>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md">A view-only public page showing the brief summary and creator lineup (handle, platform, posts, fee). Send to the client for sign-off before launch.</p>
+          </div>
+          {planUrl ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input readOnly value={planUrl} className="w-[22rem]" />
+              <Button variant="outline" size="icon" onClick={() => { navigator.clipboard.writeText(planUrl); toast.success("Copied"); }}><Copy className="w-4 h-4" /></Button>
+              <a href={planUrl} target="_blank" rel="noreferrer"><Button variant="outline" size="icon"><ExternalLink className="w-4 h-4" /></Button></a>
+              <Button variant="ghost" size="sm" onClick={revokePlanLink}><X className="w-4 h-4 mr-1" /> Revoke</Button>
+            </div>
+          ) : (
+            <Button onClick={generatePlanLink}><Link2 className="w-4 h-4 mr-2" /> Generate plan link</Button>
+          )}
+        </div>
       </Card>
 
       {/* Report link — moved below */}

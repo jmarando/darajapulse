@@ -20,6 +20,7 @@ import Moderation from "./pages/app/Moderation";
 import Team from "./pages/app/Team";
 import PublicModeration from "./pages/PublicModeration";
 import PublicReport from "./pages/PublicReport";
+import PublicPlan from "./pages/PublicPlan";
 import PublicBrief from "./pages/PublicBrief";
 import PublicContestSubmit from "./pages/PublicContestSubmit";
 import ConnectTikTok from "./pages/ConnectTikTok";
@@ -52,6 +53,8 @@ const App = () => (
             <Route path="/landing/dashboard" element={<LandingDashboard />} />
             <Route path="/landing/bento" element={<LandingBento />} />
             <Route path="/r/:token" element={<PublicReport />} />
+            <Route path="/p/:token" element={<PublicPlan />} />
+            <Route path="/:clientSlug/:campaignSlug/plan/:token" element={<PublicPlan />} />
             <Route path="/b/:token" element={<PublicBrief />} />
             <Route path="/c/:token" element={<PublicContestSubmit />} />
             <Route path="/m/:token" element={<PublicModeration />} />
