@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import PublicFooter from "@/components/PublicFooter";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
