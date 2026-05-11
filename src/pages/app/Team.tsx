@@ -114,11 +114,12 @@ const Team = () => {
           </div>
           <div>
             <Label>Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as any)}>
+            <Select value={role} onValueChange={(v) => setRole(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="account_manager">Account manager</SelectItem>
-                <SelectItem value="agency_admin">Agency admin</SelectItem>
+                {TITLE_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
