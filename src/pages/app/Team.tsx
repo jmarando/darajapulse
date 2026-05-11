@@ -140,9 +140,12 @@ const Team = () => {
                   <div className="text-xs text-muted-foreground">{m.email}</div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {m.title && m.title !== "agency_admin" && !m.roles.includes(m.title) && (
+                    <Badge variant="outline">{titleLabel(m.title)}</Badge>
+                  )}
                   {m.roles.map(r => (
                     <Badge key={r} variant={r === "agency_admin" ? "default" : "secondary"} className="gap-1">
-                      {r.replace("_", " ")}
+                      {titleLabel(r)}
                       {!(m.user_id === user?.id && r === "agency_admin") && (
                         <button onClick={() => removeRole(m, r)} className="ml-1 opacity-60 hover:opacity-100">
                           <Trash2 className="w-3 h-3" />
