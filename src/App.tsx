@@ -57,6 +57,8 @@ const App = () => (
             <Route path="/r/:token" element={<PublicReport />} />
             <Route path="/p/:token" element={<PublicPlan />} />
             <Route path="/:clientSlug/:campaignSlug/plan/:token" element={<PublicPlan />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="/b/:token" element={<PublicBrief />} />
             <Route path="/c/:token" element={<PublicContestSubmit />} />
             <Route path="/m/:token" element={<PublicModeration />} />
