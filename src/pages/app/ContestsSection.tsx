@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download } from "lucide-react";
 import { toast } from "sonner";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
@@ -82,6 +82,31 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
     return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
   }, [entries]);
 
+  const exportCsv = () => {
+    if (!active || !entries.length) return toast.error("No entries to export");
+    const headers = ["round","rank","handle","submitter_name","submitter_email","platform","post_url","views","likes","comments","shares","score","status","posted_at","created_at"];
+    const ranked = byRound.flatMap(([round, rows]) =>
+      rows.sort((a, b) => b.score - a.score).map((e, i) => ({ ...e, _round: round, _rank: i + 1 }))
+    );
+    const esc = (v: any) => {
+      const s = v == null ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = ranked.map(e => [
+      e._round, e._rank, e.handle, e.submitter_name, e.submitter_email, e.platform, e.post_url,
+      e.views ?? 0, e.likes ?? 0, e.comments ?? 0, e.shares ?? 0, Math.round(e.score ?? 0),
+      e.status, e.posted_at ?? "", e.created_at ?? "",
+    ].map(esc).join(","));
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${active.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-entries.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Card className="p-5 mb-6">
       <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
@@ -91,6 +116,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
           <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1).</p>
         </div>
         <div className="flex gap-2">
+          {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button size="sm" className="bg-primary"><Plus className="w-3 h-3 mr-1" /> New contest</Button></DialogTrigger>
