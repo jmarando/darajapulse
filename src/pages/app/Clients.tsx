@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Building2, ArrowUpRight, UserPlus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 
 const Clients = () => {
   const [rows, setRows] = useState<any[]>([]);
@@ -277,10 +278,11 @@ const Clients = () => {
       )}
 
       <Dialog open={!!memberClient} onOpenChange={(v) => { if (!v) setMemberClient(null); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Brand access — {memberClient?.name}</DialogTitle>
+            <DialogTitle className="font-display text-2xl">Access — {memberClient?.name}</DialogTitle>
           </DialogHeader>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground mt-2">Brand contacts</div>
           <p className="text-sm text-muted-foreground">Invite people from the brand to log in and view their campaigns. They won't see fees, payouts, or other clients.</p>
 
           <div className="border rounded-md p-3 space-y-3 bg-secondary/30">
@@ -353,6 +355,13 @@ const Clients = () => {
               );
             })}
           </div>
+
+          {memberClient && (
+            <>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground mt-6">Agency team</div>
+              <AgencyTeamPicker scope={{ type: "client", client_id: memberClient.id }} title="Who from the agency runs this account" />
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

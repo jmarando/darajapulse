@@ -18,6 +18,7 @@ import { PostThumb } from "@/components/PostThumb";
 import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
+import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 
 
 const CampaignDetail = () => {
@@ -549,6 +550,14 @@ const CampaignDetail = () => {
               </div>
             </div>
           </div>
+        </Card>
+      )}
+
+      {/* Agency team on this campaign */}
+      {c?.id && (
+        <Card className="p-5 mb-6">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Agency team on this campaign</div>
+          <AgencyTeamPicker scope={{ type: "campaign", campaign_id: c.id }} title="Who's running this campaign" />
         </Card>
       )}
 
