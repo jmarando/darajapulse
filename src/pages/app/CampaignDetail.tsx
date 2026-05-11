@@ -327,6 +327,7 @@ const CampaignDetail = () => {
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
   const reportUrl = link ? `${window.location.origin}${slugPath}/report/${link.token}` : "";
+  const planUrl = planLink && planLink.is_active ? `${window.location.origin}${slugPath}/plan/${planLink.token}` : "";
   const fmt = (n: number) => {
     if (!isFinite(n)) return "—";
     if (n >= 1e9) return `${(n / 1e9).toFixed(n >= 1e10 ? 1 : 2)}B`;
