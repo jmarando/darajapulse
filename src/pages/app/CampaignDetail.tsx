@@ -65,6 +65,10 @@ const CampaignDetail = () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug), brief_templates:brief_template_id(*)").eq("id", id).single();
     setC(c1);
     setLearnings(c1?.learnings ?? "");
+    if (c1?.client_id) {
+      const { data: tpls } = await supabase.from("brief_templates").select("id,name").eq("client_id", c1.client_id).order("created_at", { ascending: false });
+      setBriefTemplates(tpls ?? []);
+    }
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
     setCi(ciAll ?? []);
     const { data: r } = await supabase.from("influencers").select("*");
