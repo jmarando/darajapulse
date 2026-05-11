@@ -29,6 +29,7 @@ const CampaignDetail = () => {
   const [posts, setPosts] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [link, setLink] = useState<any>(null);
+  const [planLink, setPlanLink] = useState<any>(null);
   const [postOpen, setPostOpen] = useState(false);
   const [post, setPost] = useState<any>({ influencer_id: "", platform: "tiktok", post_url: "", caption: "" });
   const [rosterOpen, setRosterOpen] = useState(false);
