@@ -47,6 +47,7 @@ const CampaignDetail = () => {
   const [savingLearnings, setSavingLearnings] = useState(false);
   const [generatingLearnings, setGeneratingLearnings] = useState(false);
   const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement"|"emv">("views");
+  const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
 
   const generateLearnings = async () => {
     setGeneratingLearnings(true);
@@ -64,6 +65,10 @@ const CampaignDetail = () => {
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug), brief_templates:brief_template_id(*)").eq("id", id).single();
     setC(c1);
     setLearnings(c1?.learnings ?? "");
+    if (c1?.client_id) {
+      const { data: tpls } = await supabase.from("brief_templates").select("id,name").eq("client_id", c1.client_id).order("created_at", { ascending: false });
+      setBriefTemplates(tpls ?? []);
+    }
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
     setCi(ciAll ?? []);
     const { data: r } = await supabase.from("influencers").select("*");
@@ -339,11 +344,35 @@ const CampaignDetail = () => {
             {rosterTotals.fees > 0 && <span className="inline-flex items-center gap-1">Fees committed: KES {rosterTotals.fees.toLocaleString()}</span>}
             {rosterTotals.deliv > 0 && <span>{rosterTotals.deliv} deliverable{rosterTotals.deliv === 1 ? "" : "s"}</span>}
           </div>
-          {(c.brief || c.brief_templates?.brief || c.brief_templates?.objective) && (
-            <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed whitespace-pre-line">
-              {c.brief || c.brief_templates?.brief || c.brief_templates?.objective}
+          {(c.brief_templates?.objective || c.brief || c.brief_templates?.brief) && (
+            <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed line-clamp-3">
+              {c.brief_templates?.objective || c.brief || c.brief_templates?.brief}
             </p>
           )}
+          <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
+            <span className="text-muted-foreground uppercase tracking-widest">Brief</span>
+            <Select
+              value={c.brief_template_id ?? "__none__"}
+              onValueChange={async (v) => {
+                const newVal = v === "__none__" ? null : v;
+                const { error } = await supabase.from("campaigns").update({ brief_template_id: newVal }).eq("id", c.id);
+                if (error) return toast.error(error.message);
+                toast.success(newVal ? "Brief linked" : "Brief unlinked");
+                load();
+              }}
+            >
+              <SelectTrigger className="h-8 w-[220px]"><SelectValue placeholder="No brief linked" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No brief linked</SelectItem>
+                {briefTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Link to="/app/briefs" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+              <ExternalLink className="w-3 h-3" /> Manage briefs
+            </Link>
+          </div>
         </div>
         <Select value={c.status} onValueChange={setStatus}>
           <SelectTrigger className={`w-40 capitalize border ${statusTone[c.status] ?? ""}`}><SelectValue /></SelectTrigger>
