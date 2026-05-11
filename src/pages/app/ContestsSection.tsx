@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download } from "lucide-react";
 import { toast } from "sonner";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
