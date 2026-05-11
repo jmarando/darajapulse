@@ -278,10 +278,11 @@ const Clients = () => {
       )}
 
       <Dialog open={!!memberClient} onOpenChange={(v) => { if (!v) setMemberClient(null); }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Brand access — {memberClient?.name}</DialogTitle>
+            <DialogTitle className="font-display text-2xl">Access — {memberClient?.name}</DialogTitle>
           </DialogHeader>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground mt-2">Brand contacts</div>
           <p className="text-sm text-muted-foreground">Invite people from the brand to log in and view their campaigns. They won't see fees, payouts, or other clients.</p>
 
           <div className="border rounded-md p-3 space-y-3 bg-secondary/30">
