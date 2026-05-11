@@ -86,19 +86,14 @@ const Briefs = () => {
   useEffect(() => { loadClients(); }, []);
 
   const loadTemplates = async () => {
-    if (!selectedClientId) { setTemplates([]); return; }
+    if (!selectedClientId) { setTemplates([]); setCampaigns([]); return; }
     const { data } = await supabase.from("brief_templates").select("*").eq("client_id", selectedClientId).order("updated_at", { ascending: false });
     setTemplates(data ?? []);
-    // usage count
-    const ids = (data ?? []).map(x => x.id);
-    if (ids.length) {
-      const { data: camps } = await supabase.from("campaigns").select("brief_template_id").in("brief_template_id", ids);
-      const counts: Record<string, number> = {};
-      (camps ?? []).forEach((c: any) => { if (c.brief_template_id) counts[c.brief_template_id] = (counts[c.brief_template_id] ?? 0) + 1; });
-      setUsageCounts(counts);
-    } else {
-      setUsageCounts({});
-    }
+    const { data: camps } = await supabase.from("campaigns").select("id,name,brief_template_id,status").eq("client_id", selectedClientId).order("start_date", { ascending: false });
+    setCampaigns(camps ?? []);
+    const counts: Record<string, number> = {};
+    (camps ?? []).forEach((c: any) => { if (c.brief_template_id) counts[c.brief_template_id] = (counts[c.brief_template_id] ?? 0) + 1; });
+    setUsageCounts(counts);
     if (!selectedId && data && data.length) setSelectedId(data[0].id);
     if (selectedId && data && !data.find(x => x.id === selectedId)) setSelectedId(data[0]?.id ?? null);
   };
