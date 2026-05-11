@@ -181,6 +181,30 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_team_members: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          team_role: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          team_role?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          team_role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           brief: string | null
@@ -298,6 +322,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_team_members: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          team_role: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          team_role?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          team_role?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       clients: {
         Row: {
