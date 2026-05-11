@@ -355,6 +355,13 @@ const Clients = () => {
               );
             })}
           </div>
+
+          {memberClient && (
+            <>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground mt-6">Agency team</div>
+              <AgencyTeamPicker scope={{ type: "client", client_id: memberClient.id }} title="Who from the agency runs this account" />
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
