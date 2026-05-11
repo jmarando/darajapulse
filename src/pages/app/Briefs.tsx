@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 type Client = { id: string; name: string };
 type Template = any;
+type Campaign = { id: string; name: string; brief_template_id: string | null; status: string | null };
 
 const STARTER_PRESETS: Record<string, Partial<Template>> = {
   "Product launch": {
@@ -68,6 +69,7 @@ const Briefs = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [t, setT] = useState<any>(null);
@@ -84,19 +86,14 @@ const Briefs = () => {
   useEffect(() => { loadClients(); }, []);
 
   const loadTemplates = async () => {
-    if (!selectedClientId) { setTemplates([]); return; }
+    if (!selectedClientId) { setTemplates([]); setCampaigns([]); return; }
     const { data } = await supabase.from("brief_templates").select("*").eq("client_id", selectedClientId).order("updated_at", { ascending: false });
     setTemplates(data ?? []);
-    // usage count
-    const ids = (data ?? []).map(x => x.id);
-    if (ids.length) {
-      const { data: camps } = await supabase.from("campaigns").select("brief_template_id").in("brief_template_id", ids);
-      const counts: Record<string, number> = {};
-      (camps ?? []).forEach((c: any) => { if (c.brief_template_id) counts[c.brief_template_id] = (counts[c.brief_template_id] ?? 0) + 1; });
-      setUsageCounts(counts);
-    } else {
-      setUsageCounts({});
-    }
+    const { data: camps } = await supabase.from("campaigns").select("id,name,brief_template_id,status").eq("client_id", selectedClientId).order("start_date", { ascending: false });
+    setCampaigns(camps ?? []);
+    const counts: Record<string, number> = {};
+    (camps ?? []).forEach((c: any) => { if (c.brief_template_id) counts[c.brief_template_id] = (counts[c.brief_template_id] ?? 0) + 1; });
+    setUsageCounts(counts);
     if (!selectedId && data && data.length) setSelectedId(data[0].id);
     if (selectedId && data && !data.find(x => x.id === selectedId)) setSelectedId(data[0]?.id ?? null);
   };
@@ -158,6 +155,16 @@ const Briefs = () => {
     if (error) return toast.error(error.message);
     toast.success("Brief deleted");
     setSelectedId(null);
+    loadTemplates();
+  };
+
+  const toggleCampaign = async (camp: Campaign) => {
+    if (!t) return;
+    const isLinked = camp.brief_template_id === t.id;
+    const newVal = isLinked ? null : t.id;
+    const { error } = await supabase.from("campaigns").update({ brief_template_id: newVal }).eq("id", camp.id);
+    if (error) return toast.error(error.message);
+    toast.success(isLinked ? `Unlinked from ${camp.name}` : `Linked to ${camp.name}`);
     loadTemplates();
   };
 
@@ -281,6 +288,37 @@ const Briefs = () => {
                   <Button onClick={save} disabled={saving} size="sm" className="bg-primary"><Save className="w-3.5 h-3.5 mr-1" /> {saving ? "Saving…" : "Save brief"}</Button>
                 </div>
               </div>
+            </Card>
+
+            <Card className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Assign to campaigns</div>
+                <span className="text-[10px] text-muted-foreground">{usage} linked · {campaigns.length} total for this client</span>
+              </div>
+              {campaigns.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-4 text-center">No campaigns for this client yet.</div>
+              ) : (
+                <ul className="divide-y">
+                  {campaigns.map(c => {
+                    const linked = c.brief_template_id === t.id;
+                    const otherTpl = !linked && c.brief_template_id ? templates.find(x => x.id === c.brief_template_id)?.name : null;
+                    return (
+                      <li key={c.id} className="flex items-center justify-between gap-3 py-2.5">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{c.name}</div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">
+                            {linked ? "Linked to this brief" : otherTpl ? `Linked to: ${otherTpl}` : "No brief linked"}
+                            {c.status ? ` · ${c.status}` : ""}
+                          </div>
+                        </div>
+                        <Button size="sm" variant={linked ? "outline" : "default"} className={linked ? "" : "bg-primary"} onClick={() => toggleCampaign(c)}>
+                          {linked ? (<><X className="w-3.5 h-3.5 mr-1" /> Unlink</>) : (<><LinkIcon className="w-3.5 h-3.5 mr-1" /> {otherTpl ? "Replace & link" : "Link"}</>)}
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </Card>
 
             <Card className="p-5">
