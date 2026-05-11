@@ -60,7 +60,7 @@ const CampaignDetail = () => {
   };
 
   const load = async () => {
-    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug)").eq("id", id).single();
+    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug), brief_templates:brief_template_id(*)").eq("id", id).single();
     setC(c1);
     setLearnings(c1?.learnings ?? "");
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
