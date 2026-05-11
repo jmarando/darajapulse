@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 type Client = { id: string; name: string };
 type Template = any;
+type Campaign = { id: string; name: string; brief_template_id: string | null; status: string | null };
 
 const STARTER_PRESETS: Record<string, Partial<Template>> = {
   "Product launch": {
