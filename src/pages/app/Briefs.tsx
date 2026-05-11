@@ -69,6 +69,7 @@ const Briefs = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [t, setT] = useState<any>(null);
