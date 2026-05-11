@@ -36,7 +36,7 @@ const Team = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"account_manager" | "agency_admin">("account_manager");
+  const [role, setRole] = useState<string>("account_manager");
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
@@ -53,10 +53,10 @@ const Team = () => {
     });
     const ids = Array.from(byUser.keys());
     if (ids.length === 0) { setMembers([]); setLoading(false); return; }
-    const { data: profs } = await supabase.from("profiles").select("id, email, full_name").in("id", ids);
+    const { data: profs } = await supabase.from("profiles").select("id, email, full_name, title").in("id", ids);
     const list: Member[] = ids.map((id) => {
       const p = (profs ?? []).find((x: any) => x.id === id);
-      return { user_id: id, email: p?.email ?? null, full_name: p?.full_name ?? null, roles: byUser.get(id) ?? [] };
+      return { user_id: id, email: p?.email ?? null, full_name: p?.full_name ?? null, title: (p as any)?.title ?? null, roles: byUser.get(id) ?? [] };
     });
     list.sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
     setMembers(list);
@@ -77,8 +77,10 @@ const Team = () => {
   const invite = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
+    const permission = role === "agency_admin" ? "agency_admin" : "account_manager";
+    const title = role;
     const { data, error } = await supabase.functions.invoke("invite-teammate", {
-      body: { email, role, redirect_to: `${window.location.origin}/app` },
+      body: { email, role: permission, title, redirect_to: `${window.location.origin}/app` },
     });
     setBusy(false);
     if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Invite failed");
