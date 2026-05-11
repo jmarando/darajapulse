@@ -60,7 +60,7 @@ const CampaignDetail = () => {
   };
 
   const load = async () => {
-    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug)").eq("id", id).single();
+    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug), brief_templates:brief_template_id(*)").eq("id", id).single();
     setC(c1);
     setLearnings(c1?.learnings ?? "");
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
@@ -332,13 +332,17 @@ const CampaignDetail = () => {
           <div className="text-xs uppercase tracking-widest text-muted-foreground">{c.clients?.name}</div>
           <h1 className="font-display text-4xl font-semibold mt-1 truncate">{c.name}</h1>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm text-muted-foreground">
-            {c.hashtag && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{c.hashtag.replace(/^#/, "")}</span>}
+            {(c.hashtag || c.brief_templates?.hashtag) && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(c.hashtag || c.brief_templates?.hashtag).replace(/^#/, "")}</span>}
             {c.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(c.budget_kes).toLocaleString()}</span>}
             <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{rosterTotals.confirmed}/{ci.length} confirmed</span>
             {rosterTotals.fees > 0 && <span className="inline-flex items-center gap-1">Fees committed: KES {rosterTotals.fees.toLocaleString()}</span>}
             {rosterTotals.deliv > 0 && <span>{rosterTotals.deliv} deliverable{rosterTotals.deliv === 1 ? "" : "s"}</span>}
           </div>
-          {c.brief && <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">{c.brief}</p>}
+          {(c.brief || c.brief_templates?.brief || c.brief_templates?.objective) && (
+            <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed whitespace-pre-line">
+              {c.brief || c.brief_templates?.brief || c.brief_templates?.objective}
+            </p>
+          )}
         </div>
         <Select value={c.status} onValueChange={setStatus}>
           <SelectTrigger className={`w-40 capitalize border ${statusTone[c.status] ?? ""}`}><SelectValue /></SelectTrigger>
