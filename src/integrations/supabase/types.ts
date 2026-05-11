@@ -283,6 +283,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "campaigns_brief_template_id_fkey"
+            columns: ["brief_template_id"]
+            isOneToOne: false
+            referencedRelation: "brief_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "campaigns_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
