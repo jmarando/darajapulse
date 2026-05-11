@@ -158,6 +158,16 @@ const Briefs = () => {
     loadTemplates();
   };
 
+  const toggleCampaign = async (camp: Campaign) => {
+    if (!t) return;
+    const isLinked = camp.brief_template_id === t.id;
+    const newVal = isLinked ? null : t.id;
+    const { error } = await supabase.from("campaigns").update({ brief_template_id: newVal }).eq("id", camp.id);
+    if (error) return toast.error(error.message);
+    toast.success(isLinked ? `Unlinked from ${camp.name}` : `Linked to ${camp.name}`);
+    loadTemplates();
+  };
+
   const ListEditor = ({ label, items, onChange, placeholder, icon: Icon }: any) => {
     const [v, setV] = useState("");
     const add = () => { if (!v.trim()) return; onChange([...(items ?? []), v.trim()]); setV(""); };
