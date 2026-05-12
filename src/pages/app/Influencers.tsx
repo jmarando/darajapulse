@@ -32,6 +32,12 @@ const Influencers = () => {
     toast.success("Influencer added"); setOpen(false); load();
   };
 
+  const updateField = async (id: string, field: string, value: number) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+    const { error } = await supabase.from("influencers").update({ [field]: value }).eq("id", id);
+    if (error) { toast.error(error.message); load(); }
+  };
+
   const filtered = rows.filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()));
 
   return (
