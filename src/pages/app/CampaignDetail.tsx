@@ -52,6 +52,9 @@ const CampaignDetail = () => {
   const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement"|"emv">("views");
   const [previewPost, setPreviewPost] = useState<any>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "overview";
+  const setActiveTab = (v: string) => setSearchParams((sp) => { sp.set("tab", v); return sp; }, { replace: true });
 
   const generateLearnings = async () => {
     setGeneratingLearnings(true);
