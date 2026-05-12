@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Megaphone, ArrowUpRight } from "lucide-react";
+import { Plus, Megaphone, ArrowUpRight, Eye, BarChart3, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 const statusColor: Record<string, string> = {
@@ -21,8 +21,16 @@ const statusColor: Record<string, string> = {
   closed: "bg-muted text-muted-foreground",
 };
 
+const fmtNum = (n: number) => {
+  if (!isFinite(n) || n === 0) return "0";
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return `${Math.round(n)}`;
+};
+
 const Campaigns = () => {
   const [rows, setRows] = useState<any[]>([]);
+  const [perf, setPerf] = useState<Record<string, { views: number; er: number; posts: number }>>({});
   const [clients, setClients] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -33,6 +41,37 @@ const Campaigns = () => {
     setRows(data ?? []);
     const { data: cs } = await supabase.from("clients").select("id,name");
     setClients(cs ?? []);
+
+    // Per-campaign performance preview
+    const ids = (data ?? []).map((c) => c.id);
+    if (ids.length) {
+      const { data: ps } = await supabase.from("posts").select("id, campaign_id").in("campaign_id", ids);
+      const postIds = (ps ?? []).map((p) => p.id);
+      const { data: ms } = postIds.length
+        ? await supabase.from("post_metrics").select("post_id, views, likes, comments, shares, saves").in("post_id", postIds)
+        : { data: [] as any[] };
+      // latest metric per post
+      const latest = new Map<string, any>();
+      for (const m of ms ?? []) if (!latest.has(m.post_id)) latest.set(m.post_id, m);
+      const map: Record<string, { views: number; er: number; posts: number; eng: number }> = {};
+      for (const p of ps ?? []) {
+        const cur = map[p.campaign_id] ?? { views: 0, er: 0, posts: 0, eng: 0 };
+        cur.posts += 1;
+        const m = latest.get(p.id);
+        if (m) {
+          cur.views += Number(m.views || 0);
+          cur.eng += Number((m.likes||0) + (m.comments||0) + (m.shares||0) + (m.saves||0));
+        }
+        map[p.campaign_id] = cur;
+      }
+      const out: Record<string, { views: number; er: number; posts: number }> = {};
+      for (const [k, v] of Object.entries(map)) {
+        out[k] = { views: v.views, posts: v.posts, er: v.views > 0 ? (v.eng / v.views) * 100 : 0 };
+      }
+      setPerf(out);
+    } else {
+      setPerf({});
+    }
   };
   useEffect(() => { load(); }, []);
 
