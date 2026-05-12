@@ -4,16 +4,35 @@ import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquar
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 
-const nav = [
-  { to: "/app", icon: LayoutDashboard, label: "Overview", end: true },
-  { to: "/app/clients", icon: Building2, label: "Clients" },
-  { to: "/app/campaigns", icon: Megaphone, label: "Campaigns" },
-  { to: "/app/content", icon: Calendar, label: "Content" },
-  { to: "/app/influencers", icon: Users, label: "Influencers" },
-  { to: "/app/briefs", icon: FileSignature, label: "Briefs" },
-  { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },
-  { to: "/app/moderation", icon: MessageSquare, label: "Moderation" },
-  { to: "/app/payouts", icon: Wallet, label: "Payouts" },
+const navGroups: { label?: string; items: { to: string; icon: any; label: string; end?: boolean }[] }[] = [
+  {
+    items: [
+      { to: "/app", icon: LayoutDashboard, label: "Overview", end: true },
+    ],
+  },
+  {
+    label: "Campaign Management",
+    items: [
+      { to: "/app/campaigns", icon: Megaphone, label: "Campaigns" },
+      { to: "/app/briefs", icon: FileSignature, label: "Briefs" },
+      { to: "/app/content", icon: Calendar, label: "Content" },
+      { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },
+      { to: "/app/moderation", icon: MessageSquare, label: "Moderation" },
+    ],
+  },
+  {
+    label: "Roster",
+    items: [
+      { to: "/app/clients", icon: Building2, label: "Clients" },
+      { to: "/app/influencers", icon: Users, label: "Influencers" },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { to: "/app/payouts", icon: Wallet, label: "Payouts" },
+    ],
+  },
 ];
 
 const AppShell = () => {
