@@ -995,6 +995,10 @@ const CampaignDetail = () => {
       </Card>
       <ContestsSection campaignId={id!} />
 
+        </TabsContent>
+
+        <TabsContent value="share" className="space-y-6 mt-0">
+
       {/* Learnings & recommendations */}
       <Card className="p-5 mb-6">
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
