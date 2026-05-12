@@ -665,6 +665,10 @@ const CampaignDetail = () => {
         </Card>
       )}
 
+        </TabsContent>
+
+        <TabsContent value="roster" className="space-y-6 mt-0">
+
       {/* Agency team on this campaign */}
       {c?.id && (
         <Card className="p-5 mb-6">
