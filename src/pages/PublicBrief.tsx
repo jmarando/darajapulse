@@ -169,18 +169,34 @@ const PublicBrief = () => {
           </Card>
         )}
 
+        {/* Payment timeline — content → payout */}
+        <Card className="p-6 mt-4">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">How you get paid</div>
+          <h3 className="font-display text-xl mt-1 mb-5">From acceptance to M-Pesa</h3>
+          <ol className="relative">
+            {paymentSteps.map((s, i) => {
+              const Icon = s.icon;
+              const isLast = i === paymentSteps.length - 1;
+              return (
+                <li key={i} className="relative flex gap-4 pb-5 last:pb-0">
+                  {!isLast && <span aria-hidden className="absolute left-[18px] top-9 bottom-0 w-px bg-border" />}
+                  <div className="w-9 h-9 rounded-full bg-accent/15 text-accent flex items-center justify-center shrink-0 ring-4 ring-background">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 pt-1">
+                    <div className="text-sm font-medium">{s.label}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{s.desc}</div>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </Card>
+
+        {/* Status indicator on page (sticky bar handles primary CTAs) */}
         <div className="mt-8 flex items-center gap-3 flex-wrap">
           <Badge variant="outline" className="capitalize">Status: {b.status}</Badge>
-          {!final && (
-            <>
-              <Button onClick={() => act("confirmed")} disabled={acting} className="bg-success text-success-foreground hover:bg-success/90">
-                <CheckCircle2 className="w-4 h-4 mr-2" /> Accept
-              </Button>
-              <Button onClick={() => act("declined")} disabled={acting} variant="outline">
-                <XCircle className="w-4 h-4 mr-2" /> Decline
-              </Button>
-            </>
-          )}
+          {final && b.status === "confirmed" && <span className="text-sm text-success">You're confirmed — see next step below.</span>}
           {final && b.status === "declined" && <span className="text-sm text-muted-foreground">Thanks — your response has been recorded.</span>}
         </div>
 
@@ -205,6 +221,39 @@ const PublicBrief = () => {
           </Card>
         )}
       </div>
+
+      {/* Sticky action bar — keeps Accept / Decline reachable on long briefs */}
+      {!final && (
+        <div className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+            <div className="hidden sm:block min-w-0 flex-1">
+              <div className="text-xs text-muted-foreground">{b.campaign.name}</div>
+              {b.fee_kes > 0 && (
+                <div className="text-sm font-medium truncate">
+                  Net: KES {Math.round(Number(b.fee_kes) * (1 - Number(b.campaign.wht_percent || 0) / 100)).toLocaleString()}
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={() => act("declined")}
+              disabled={acting}
+              variant="outline"
+              size="lg"
+              className="flex-1 sm:flex-initial h-12"
+            >
+              <XCircle className="w-4 h-4 mr-2" /> Decline
+            </Button>
+            <Button
+              onClick={() => act("confirmed")}
+              disabled={acting}
+              size="lg"
+              className="flex-1 sm:flex-initial h-12 bg-success text-success-foreground hover:bg-success/90"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" /> Accept brief
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
