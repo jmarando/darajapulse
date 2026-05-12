@@ -1058,7 +1058,7 @@ const CampaignDetail = () => {
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Deal</div>
                   <div className="grid grid-cols-2 gap-3">
                     <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Fee</div><div className="font-display text-xl mt-1">KES {Number(selectedCi.fee_kes || 0).toLocaleString()}</div></Card>
-                    <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Deliverables</div><div className="font-display text-xl mt-1">{selectedCi.deliverables_count}</div></Card>
+                    <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Deliverables</div><div className="font-display text-xl mt-1">{selectedCi.deliverables_count}</div>{breakdownSummary(selectedCi.deliverables_breakdown) && <div className="text-[10px] text-muted-foreground mt-0.5">{breakdownSummary(selectedCi.deliverables_breakdown)}</div>}</Card>
                   </div>
                 </div>
 
