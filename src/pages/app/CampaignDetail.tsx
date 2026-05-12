@@ -888,6 +888,10 @@ const CampaignDetail = () => {
         )}
       </Card>
 
+        </TabsContent>
+
+        <TabsContent value="content" className="space-y-6 mt-0">
+
       {/* Posts — full width below */}
       <Card className="p-5 mb-6">
         <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
