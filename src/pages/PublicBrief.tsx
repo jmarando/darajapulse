@@ -34,8 +34,16 @@ const PublicBrief = () => {
 
   const final = ["confirmed","declined"].includes(b.status);
 
+  const paymentSteps = [
+    { icon: CheckCircle2, label: "Brief accepted", desc: "You confirm and connect TikTok" },
+    { icon: Clapperboard, label: "Content created", desc: "You shoot and submit drafts" },
+    { icon: Eye, label: "Approved & live", desc: "Brand reviews, you publish" },
+    { icon: Smartphone, label: "Performance tracked", desc: "Daily metric updates" },
+    { icon: Banknote, label: "M-Pesa payout", desc: "Net fee sent to your phone" },
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-28 md:pb-10">
       <div className="max-w-3xl mx-auto p-6 md:p-10">
         <div className="text-xs uppercase tracking-widest text-muted-foreground">{b.client.name} · Creator brief</div>
         <h1 className="font-display text-4xl md:text-5xl font-semibold mt-2">{b.campaign.name}</h1>
