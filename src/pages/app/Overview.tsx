@@ -53,6 +53,8 @@ const Overview = () => {
   const twoWeeksAgo = new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10);
   const [from, setFrom] = useState<string>(twoWeeksAgo);
   const [to, setTo] = useState<string>(today);
+  const [compact, setCompact] = useState<boolean>(() => localStorage.getItem("overview_compact") === "1");
+  useEffect(() => { localStorage.setItem("overview_compact", compact ? "1" : "0"); }, [compact]);
 
   useEffect(() => {
     if (!user) return;
