@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -51,6 +52,9 @@ const CampaignDetail = () => {
   const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement"|"emv">("views");
   const [previewPost, setPreviewPost] = useState<any>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "overview";
+  const setActiveTab = (v: string) => setSearchParams((sp) => { sp.set("tab", v); return sp; }, { replace: true });
 
   const generateLearnings = async () => {
     setGeneratingLearnings(true);
@@ -356,53 +360,108 @@ const CampaignDetail = () => {
         <ArrowLeft className="w-4 h-4 mr-1" /> All campaigns
       </Link>
 
-      {/* Header */}
-      <div className="flex justify-between items-start gap-6 mb-8">
-        <div className="min-w-0">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">{c.clients?.name}</div>
-          <h1 className="font-display text-4xl font-semibold mt-1 truncate">{c.name}</h1>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm text-muted-foreground">
-            {(c.hashtag || c.brief_templates?.hashtag) && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(c.hashtag || c.brief_templates?.hashtag).replace(/^#/, "")}</span>}
-            {c.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(c.budget_kes).toLocaleString()}</span>}
-            <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{rosterTotals.confirmed}/{ci.length} confirmed</span>
-            {rosterTotals.fees > 0 && <span className="inline-flex items-center gap-1">Fees committed: KES {rosterTotals.fees.toLocaleString()}</span>}
-            {rosterTotals.deliv > 0 && <span>{rosterTotals.deliv} deliverable{rosterTotals.deliv === 1 ? "" : "s"}</span>}
+      {/* Hero */}
+      <div className="mb-8">
+        <div className="flex justify-between items-start gap-6">
+          <div className="min-w-0 flex-1">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">{c.clients?.name}</div>
+            <h1 className="font-display text-4xl font-semibold mt-1 truncate">{c.name}</h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-sm text-muted-foreground">
+              {(c.hashtag || c.brief_templates?.hashtag) && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(c.hashtag || c.brief_templates?.hashtag).replace(/^#/, "")}</span>}
+              {c.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />Budget KES {Number(c.budget_kes).toLocaleString()}</span>}
+              <span className="inline-flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-widest">Brief</span>
+                <Select
+                  value={c.brief_template_id ?? "__none__"}
+                  onValueChange={async (v) => {
+                    const newVal = v === "__none__" ? null : v;
+                    const { error } = await supabase.from("campaigns").update({ brief_template_id: newVal }).eq("id", c.id);
+                    if (error) return toast.error(error.message);
+                    toast.success(newVal ? "Brief linked" : "Brief unlinked");
+                    load();
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-[200px] text-xs"><SelectValue placeholder="No brief linked" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No brief linked</SelectItem>
+                    {briefTemplates.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+                <Link to="/app/briefs" className="inline-flex items-center gap-1 hover:text-foreground" title="Manage briefs"><ExternalLink className="w-3 h-3" /></Link>
+              </span>
+            </div>
+            {(c.brief_templates?.objective || c.brief || c.brief_templates?.brief) && (
+              <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed line-clamp-2">
+                {c.brief_templates?.objective || c.brief || c.brief_templates?.brief}
+              </p>
+            )}
           </div>
-          {(c.brief_templates?.objective || c.brief || c.brief_templates?.brief) && (
-            <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed line-clamp-3">
-              {c.brief_templates?.objective || c.brief || c.brief_templates?.brief}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
-            <span className="text-muted-foreground uppercase tracking-widest">Brief</span>
-            <Select
-              value={c.brief_template_id ?? "__none__"}
-              onValueChange={async (v) => {
-                const newVal = v === "__none__" ? null : v;
-                const { error } = await supabase.from("campaigns").update({ brief_template_id: newVal }).eq("id", c.id);
-                if (error) return toast.error(error.message);
-                toast.success(newVal ? "Brief linked" : "Brief unlinked");
-                load();
-              }}
-            >
-              <SelectTrigger className="h-8 w-[220px]"><SelectValue placeholder="No brief linked" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">No brief linked</SelectItem>
-                {briefTemplates.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                ))}
-              </SelectContent>
+          <div className="flex items-center gap-2 shrink-0">
+            <Select value={c.status} onValueChange={setStatus}>
+              <SelectTrigger className={`w-36 capitalize border ${statusTone[c.status] ?? ""}`}><SelectValue /></SelectTrigger>
+              <SelectContent>{["draft","pitched","won","live","reporting","closed"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
             </Select>
-            <Link to="/app/briefs" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
-              <ExternalLink className="w-3 h-3" /> Manage briefs
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="bg-primary"><Send className="w-4 h-4 mr-2" /> Share</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Plan link · pre-launch</DropdownMenuLabel>
+                {planUrl ? (
+                  <>
+                    <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(planUrl); toast.success("Plan link copied"); }}><Copy className="w-4 h-4 mr-2" /> Copy plan link</DropdownMenuItem>
+                    <DropdownMenuItem asChild><a href={planUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4 mr-2" /> Open plan</a></DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem onClick={generatePlanLink}><Link2 className="w-4 h-4 mr-2" /> Generate plan link</DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Live report</DropdownMenuLabel>
+                {link ? (
+                  <>
+                    <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(reportUrl); toast.success("Report link copied"); }}><Copy className="w-4 h-4 mr-2" /> Copy report link</DropdownMenuItem>
+                    <DropdownMenuItem asChild><a href={reportUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4 mr-2" /> Open report</a></DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem onClick={generateLink}><Link2 className="w-4 h-4 mr-2" /> Generate report link</DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setActiveTab("share")}><Sparkles className="w-4 h-4 mr-2" /> Manage sharing</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-        <Select value={c.status} onValueChange={setStatus}>
-          <SelectTrigger className={`w-40 capitalize border ${statusTone[c.status] ?? ""}`}><SelectValue /></SelectTrigger>
-          <SelectContent>{["draft","pitched","won","live","reporting","closed"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
-        </Select>
+
+        {/* 4 hero KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border rounded-lg overflow-hidden mt-6 border border-border">
+          {[
+            { l: "Views", v: fmt(totals.views), icon: Eye, sub: `${posts.length} post${posts.length === 1 ? "" : "s"}` },
+            { l: "Engagement", v: `${totals.er.toFixed(1)}%`, icon: BarChart3, sub: `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` },
+            { l: "Creators", v: `${rosterTotals.confirmed}/${ci.length}`, icon: Users, sub: "confirmed" },
+            { l: "Fees committed", v: rosterTotals.fees > 0 ? fmtKes(rosterTotals.fees) : "—", icon: Wallet, sub: `${rosterTotals.deliv} deliverable${rosterTotals.deliv === 1 ? "" : "s"}` },
+          ].map((s, i) => (
+            <div key={i} className="bg-card p-5">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.l}</div>
+                <s.icon className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <div className="font-display text-2xl mt-2">{s.v}</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{s.sub}</div>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="roster">Roster<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
+          <TabsTrigger value="content">Content<span className="ml-1.5 text-xs opacity-60">{posts.length}</span></TabsTrigger>
+          <TabsTrigger value="share">Share &amp; wrap</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6 mt-0">
 
       {/* Performance band */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
@@ -605,6 +664,10 @@ const CampaignDetail = () => {
           </div>
         </Card>
       )}
+
+        </TabsContent>
+
+        <TabsContent value="roster" className="space-y-6 mt-0">
 
       {/* Agency team on this campaign */}
       {c?.id && (
@@ -825,6 +888,10 @@ const CampaignDetail = () => {
         )}
       </Card>
 
+        </TabsContent>
+
+        <TabsContent value="content" className="space-y-6 mt-0">
+
       {/* Posts — full width below */}
       <Card className="p-5 mb-6">
         <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
@@ -928,6 +995,10 @@ const CampaignDetail = () => {
       </Card>
       <ContestsSection campaignId={id!} />
 
+        </TabsContent>
+
+        <TabsContent value="share" className="space-y-6 mt-0">
+
       {/* Learnings & recommendations */}
       <Card className="p-5 mb-6">
         <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
@@ -988,6 +1059,9 @@ const CampaignDetail = () => {
           )}
         </div>
       </Card>
+
+        </TabsContent>
+      </Tabs>
 
       {/* Creator detail sheet */}
       {/* Post preview dialog */}
