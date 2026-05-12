@@ -564,14 +564,19 @@ const PublicReport = () => {
                         </div>
                         <Badge variant="outline" className="capitalize shrink-0">{x.status}</Badge>
                       </div>
-                      {s && (
-                        <div className="grid grid-cols-4 gap-1 mt-2 ml-12 text-center">
-                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.views)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.likes)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
-                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.comments)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
-                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.shares)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
-                        </div>
-                      )}
+                      {s && (() => {
+                        const cer = s.views > 0 ? ((s.likes + s.comments + s.shares + s.saves) / s.views) * 100 : 0;
+                        return (
+                          <div className="grid grid-cols-6 gap-1 mt-2 ml-12 text-center">
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.views)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.likes)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.comments)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.shares)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.saves)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{cer.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">ER</div></div>
+                          </div>
+                        );
+                      })()}
                     </li>
                   );
                 })}
