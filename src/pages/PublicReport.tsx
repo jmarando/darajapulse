@@ -196,16 +196,16 @@ const PublicReport = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Daraja Pulse" className="h-12 w-auto" />
+            <img src={logo} alt="Daraja Pulse" className="h-10 md:h-12 w-auto" />
             <div className="hidden sm:block h-8 w-px bg-border" />
             <div className="hidden sm:block">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Live campaign report</div>
               <div className="text-xs text-muted-foreground">Auto-refreshes every minute</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 no-print">
+          <div className="flex flex-wrap items-center gap-2 no-print">
             <div className="flex items-center gap-2">
               <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="From date" />
               <span className="text-xs text-muted-foreground hidden sm:inline">→</span>
