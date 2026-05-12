@@ -62,24 +62,64 @@ const PublicContestSubmit = () => {
           <p className="text-muted-foreground mt-2">Post with <span className="font-mono font-semibold text-foreground">{contest.hashtag}</span> and submit below.</p>
           {contest.prize && <p className="text-sm mt-3"><strong>Prize:</strong> {contest.prize}</p>}
         </div>
-        <Card className="p-6">
-          <form onSubmit={submit} className="space-y-4">
+        <Card className="p-5 sm:p-6">
+          <form onSubmit={submit} className="space-y-5">
             <div>
-              <Label>Platform</Label>
+              <Label className="text-sm">Platform</Label>
               <Select value={form.platform} onValueChange={v => setForm({ ...form, platform: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-12 text-base mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(contest.platforms ?? ["tiktok"]).map((p: string) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Post URL *</Label><Input required value={form.post_url} onChange={e => setForm({ ...form, post_url: e.target.value })} placeholder="https://www.tiktok.com/@you/video/..." /></div>
-            <div><Label>Your handle</Label><Input value={form.handle} onChange={e => setForm({ ...form, handle: e.target.value })} placeholder="@yourhandle" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Name</Label><Input value={form.submitter_name} onChange={e => setForm({ ...form, submitter_name: e.target.value })} /></div>
-              <div><Label>Email</Label><Input type="email" value={form.submitter_email} onChange={e => setForm({ ...form, submitter_email: e.target.value })} /></div>
+            <div>
+              <Label className="text-sm">Post URL *</Label>
+              <Input
+                required
+                inputMode="url"
+                autoComplete="url"
+                value={form.post_url}
+                onChange={e => setForm({ ...form, post_url: e.target.value })}
+                placeholder="Paste your post link…"
+                className="h-12 text-base mt-1.5"
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">Tip: open your post, tap Share → Copy link, then paste here.</p>
             </div>
-            <Button type="submit" disabled={loading} className="w-full bg-primary">{loading ? "Submitting…" : "Submit entry"}</Button>
+            <div>
+              <Label className="text-sm">Your handle</Label>
+              <Input
+                value={form.handle}
+                onChange={e => setForm({ ...form, handle: e.target.value })}
+                placeholder="@yourhandle"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="h-12 text-base mt-1.5"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Name</Label>
+              <Input
+                value={form.submitter_name}
+                onChange={e => setForm({ ...form, submitter_name: e.target.value })}
+                autoComplete="name"
+                className="h-12 text-base mt-1.5"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Email</Label>
+              <Input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={form.submitter_email}
+                onChange={e => setForm({ ...form, submitter_email: e.target.value })}
+                className="h-12 text-base mt-1.5"
+              />
+            </div>
+            <Button type="submit" disabled={loading} size="lg" className="w-full h-12 text-base bg-primary">
+              {loading ? "Submitting…" : "Submit entry"}
+            </Button>
           </form>
         </Card>
       </div>

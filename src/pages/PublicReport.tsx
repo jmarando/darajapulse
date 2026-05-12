@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3, Download, FileText } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis } from "recharts";
+import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 import { PostEmbed } from "@/components/PostEmbed";
@@ -135,20 +135,50 @@ const PublicReport = () => {
     if (metric === "engagement") return (h.likes||0)+(h.comments||0)+(h.shares||0)+(h.saves||0);
     return Number(h[metric] || 0);
   };
+  // Real daily time-series: bucket per ISO date, take max value (cumulative metric snapshot)
   const allHistory = filteredPosts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: valOf(h) })));
-  let trend: { d: number; v: number }[] = [];
-  if (allHistory.length > 1) {
-    const min = Math.min(...allHistory.map(h => h.t));
-    const max = Math.max(...allHistory.map(h => h.t));
-    const span = Math.max(max - min, 1);
-    const buckets = Array.from({ length: 12 }, () => 0);
-    allHistory.forEach(h => { const i = Math.min(11, Math.floor(((h.t - min) / span) * 12)); buckets[i] = Math.max(buckets[i], h.v); });
-    trend = buckets.map((v, d) => ({ d, v }));
-  } else {
-    const totalForMetric = metric === "engagement" ? (totals.likes+totals.comments+totals.shares+totals.saves) : (totals as any)[metric] || 0;
-    trend = Array.from({ length: 12 }, (_, d) => ({ d, v: Math.round((totalForMetric / 12) * (d + 1) / 12) }));
+  let trend: { d: string; v: number }[] = [];
+  if (allHistory.length > 0) {
+    const dayBuckets = new Map<string, number>();
+    allHistory.forEach(h => {
+      const d = new Date(h.t).toISOString().slice(0, 10);
+      dayBuckets.set(d, Math.max(dayBuckets.get(d) ?? 0, h.v));
+    });
+    trend = Array.from(dayBuckets.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([d, v]) => ({ d: d.slice(5), v }));
   }
   const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", impressions: "Impressions", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
+
+  const exportCsv = () => {
+    const esc = (s: any) => { const v = String(s ?? ""); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
+    const rows: string[][] = [];
+    rows.push(["Campaign", campaign.name]);
+    rows.push(["Client", client?.name ?? ""]);
+    rows.push(["Range", rangeLabel]);
+    rows.push([]);
+    rows.push(["Totals"]);
+    rows.push(["Views", "Reach", "Impressions", "Likes", "Comments", "Shares", "Saves", "Engagement %", "EMV (KES)"]);
+    rows.push([totals.views, totals.reach, totals.impressions, totals.likes, totals.comments, totals.shares, totals.saves, er.toFixed(2), emv].map(String));
+    rows.push([]);
+    rows.push(["Posts"]);
+    rows.push(["Creator", "Handle", "Platform", "Status", "Posted at", "Views", "Reach", "Impressions", "Likes", "Comments", "Shares", "Saves", "Engagement %", "URL"]);
+    filteredPosts.forEach(p => {
+      const m = p.metrics;
+      const eR = m.views ? ((m.likes + m.comments + m.shares + (m.saves || 0)) / m.views * 100).toFixed(2) : "0.00";
+      rows.push([
+        p.influencers?.full_name ?? "", p.influencers?.handle ?? "", p.platform ?? "", p.status ?? "",
+        p.posted_at ?? "", m.views || 0, m.reach || 0, m.impressions || 0, m.likes || 0, m.comments || 0,
+        m.shares || 0, m.saves || 0, eR, p.post_url ?? "",
+      ].map(String));
+    });
+    const csv = rows.map(r => r.map(esc).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${campaign.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-report.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -169,6 +199,7 @@ const PublicReport = () => {
               <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[140px]" aria-label="To date" />
               {(from || to) && <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFrom(""); setTo(""); }}>Clear</Button>}
             </div>
+            <Button variant="outline" size="sm" className="h-8" onClick={exportCsv}><Download className="w-3.5 h-3.5 mr-1.5" />CSV</Button>
             <Button variant="outline" size="sm" className="h-8" onClick={downloadReportAsPdf}><FileText className="w-3.5 h-3.5 mr-1.5" />PDF</Button>
             <Button variant="outline" size="sm" className="h-8" disabled={exporting} onClick={async () => {
               setExporting(true);
@@ -250,16 +281,18 @@ const PublicReport = () => {
             </div>
             <div className="h-56">
               <ResponsiveContainer>
-                <AreaChart data={trend}>
+                <AreaChart data={trend} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.5} />
                       <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="d" hide />
-                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                  <Area type="monotone" dataKey="v" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#g)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => fmt(Number(v))} width={40} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: any) => fmt(Number(v))} />
+                  <Area type="monotone" dataKey="v" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#g)" name={metricLabel[metric]} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
