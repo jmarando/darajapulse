@@ -809,7 +809,7 @@ const CampaignDetail = () => {
                                 </DropdownMenuItem>
                               ))}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditDeliv(String(x.deliverables_count ?? 1)); }}>
+                              <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditBreakdown((x.deliverables_breakdown && Object.keys(x.deliverables_breakdown).length) ? x.deliverables_breakdown : { post: Number(x.deliverables_count) || 1 }); }}>
                                 <Pencil className="w-4 h-4 mr-2" /> Edit fee & posts
                               </DropdownMenuItem>
                             </DropdownMenuContent>
