@@ -252,7 +252,12 @@ const PublicReport = () => {
               {campaign.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(campaign.budget_kes).toLocaleString()}</span>}
               <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{influencers.length} creator{influencers.length === 1 ? "" : "s"}</span>
             </div>
-            {campaign.objective && <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">{campaign.objective}</p>}
+            {campaign.objective && (
+              <div className="mt-3 max-w-2xl">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Campaign goal</div>
+                <p className="text-muted-foreground text-sm leading-relaxed">{campaign.objective}</p>
+              </div>
+            )}
           </div>
           <Badge variant="outline" className="capitalize">{campaign.status}</Badge>
         </div>
@@ -358,6 +363,11 @@ const PublicReport = () => {
                 <div className="mt-3 space-y-3">
                   <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per view</span><span className="font-display text-xl">KES {cpv.toFixed(2)}</span></div>
                   <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per mille</span><span className="font-display text-xl">KES {cpm.toFixed(0)}</span></div>
+                  {(() => {
+                    const eng = totals.likes + totals.comments + totals.shares + totals.saves;
+                    const cpe = eng > 0 && campaign.budget_kes > 0 ? campaign.budget_kes / eng : 0;
+                    return <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per engagement</span><span className="font-display text-xl">{cpe > 0 ? `KES ${cpe.toFixed(2)}` : "—"}</span></div>;
+                  })()}
                   <div className="flex justify-between items-baseline pt-3 border-t border-border"><span className="text-sm text-muted-foreground">ROI vs paid</span><span className="font-display text-xl">{campaign.budget_kes > 0 ? `${(emv / campaign.budget_kes * 100).toFixed(0)}%` : "—"}</span></div>
                 </div>
               </Card>
