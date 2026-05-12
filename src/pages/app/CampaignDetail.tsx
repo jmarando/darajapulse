@@ -40,10 +40,10 @@ const CampaignDetail = () => {
   const [rosterSearch, setRosterSearch] = useState("");
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
   const [addFee, setAddFee] = useState<string>("");
-  const [addDeliv, setAddDeliv] = useState<string>("1");
+  const [addBreakdown, setAddBreakdown] = useState<Breakdown>({ post: 1 });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFee, setEditFee] = useState<string>("");
-  const [editDeliv, setEditDeliv] = useState<string>("1");
+  const [editBreakdown, setEditBreakdown] = useState<Breakdown>({ post: 1 });
   const [selectedCi, setSelectedCi] = useState<any>(null);
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
