@@ -157,6 +157,10 @@ const Overview = () => {
           <p className="text-muted-foreground mt-1">Here's where your campaigns stand today.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCompact(!compact)} title="Toggle compact mode">
+            {compact ? <LayoutGrid className="w-4 h-4 mr-1" /> : <Rows3 className="w-4 h-4 mr-1" />}
+            {compact ? "Comfortable" : "Compact"}
+          </Button>
           <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-9 text-xs w-[150px]" aria-label="From" />
           <span className="text-xs text-muted-foreground">→</span>
           <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-9 text-xs w-[150px]" aria-label="To" />
@@ -164,6 +168,41 @@ const Overview = () => {
         </div>
       </header>
 
+      {compact ? (
+        <Card className="mb-6">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Metric</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+                <TableHead>Metric</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[
+                [["Clients", s.clients, "/app/clients"], ["Views", fmt(totals.views)]],
+                [["Campaigns", `${s.campaigns} (${s.live} live)`, "/app/campaigns"], ["Reach", fmt(totals.reach)]],
+                [["Influencers", s.influencers, "/app/influencers"], ["Likes", fmt(totals.likes)]],
+                [["Paid (KES)", s.payouts.toLocaleString(), "/app/payouts"], ["Comments", fmt(totals.comments)]],
+                [["Content items", s.briefs, "/app/content"], ["Shares", fmt(totals.shares)]],
+                [["Posts tracked", s.posts, "/app/content"], ["Engagement", `${er.toFixed(2)}%`]],
+                [["Contests", s.contests], ["EMV (KES)", fmt(emv)]],
+              ].map((row: any, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-medium">
+                    {row[0][2] ? <Link to={row[0][2]} className="hover:underline">{row[0][0]}</Link> : row[0][0]}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{row[0][1]}</TableCell>
+                  <TableCell className="font-medium text-muted-foreground">{row[1][0]}</TableCell>
+                  <TableCell className="text-right tabular-nums">{row[1][1]}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      ) : (
+        <>
       {/* Primary KPIs */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <Stat icon={Building2} label="Clients" value={s.clients} to="/app/clients" />
