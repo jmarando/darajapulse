@@ -100,8 +100,14 @@ const Influencers = () => {
                 <Badge variant="secondary" className="gap-1"><ShieldCheck className="w-3 h-3" /> {Math.round(Number(r.authenticity_score))}</Badge>
               </div>
               <div className="grid grid-cols-3 mt-4 gap-2 text-center">
-                <div><div className="font-display text-lg">{Number(r.follower_count).toLocaleString()}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Followers</div></div>
-                <div><div className="font-display text-lg">{Number(r.engagement_rate).toFixed(1)}%</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">ER</div></div>
+                <div>
+                  <InlineNumber value={Number(r.follower_count)} format={(v) => v.toLocaleString()} onSave={(v) => updateField(r.id, "follower_count", v)} />
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Followers</div>
+                </div>
+                <div>
+                  <InlineNumber value={Number(r.engagement_rate)} step={0.1} format={(v) => `${v.toFixed(1)}%`} onSave={(v) => updateField(r.id, "engagement_rate", v)} />
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">ER</div>
+                </div>
                 <div><div className="font-display text-lg">{r.region?.slice(0, 4) ?? "—"}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Region</div></div>
               </div>
               {r.niche && <div className="mt-3 text-xs text-muted-foreground">{r.niche}</div>}
