@@ -19,6 +19,7 @@ import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
+import { DeliverablesEditor, breakdownTotal, breakdownSummary, type Breakdown } from "@/components/DeliverablesEditor";
 
 
 const CampaignDetail = () => {
