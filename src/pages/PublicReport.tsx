@@ -66,9 +66,22 @@ const PublicReport = () => {
     return () => clearInterval(i);
   }, [token]);
 
-  if (notFound) return <div className="min-h-screen flex items-center justify-center p-6 text-center">
-    <div><h1 className="font-display text-3xl">Report not found</h1><p className="text-muted-foreground mt-2">This link may have expired.</p></div>
-  </div>;
+  if (notFound) return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="max-w-md text-center">
+          <img src={logo} alt="Daraja Pulse" className="h-16 w-auto mx-auto mb-6" />
+          <h1 className="font-display text-3xl">Report not found</h1>
+          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+            This link may have expired or been revoked. If you were expecting to see a campaign report,
+            please contact the agency that shared it with you for a refreshed link.
+          </p>
+          <Button asChild variant="outline" className="mt-6"><a href="/">Back to home</a></Button>
+        </div>
+      </div>
+      <PublicFooter />
+    </div>
+  );
   if (!campaign) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading report…</div>;
 
   const fromTs = from ? +new Date(from) : -Infinity;
@@ -193,10 +206,10 @@ const PublicReport = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 no-print">
-            <div className="hidden md:flex items-center gap-2">
-              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[140px]" aria-label="From date" />
-              <span className="text-xs text-muted-foreground">→</span>
-              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[140px]" aria-label="To date" />
+            <div className="flex items-center gap-2">
+              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="From date" />
+              <span className="text-xs text-muted-foreground hidden sm:inline">→</span>
+              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="To date" />
               {(from || to) && <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFrom(""); setTo(""); }}>Clear</Button>}
             </div>
             <Button variant="outline" size="sm" className="h-8" onClick={exportCsv}><Download className="w-3.5 h-3.5 mr-1.5" />CSV</Button>
