@@ -94,10 +94,11 @@ const CampaignDetail = () => {
     const inflId = influencer_id ?? picked?.id;
     if (!inflId) return;
     const fee = Number(addFee) || 0;
-    const deliv = Number(addDeliv) || 1;
-    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: inflId, fee_kes: fee, deliverables_count: deliv });
+    const total = breakdownTotal(addBreakdown);
+    const deliv = total > 0 ? total : 1;
+    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: inflId, fee_kes: fee, deliverables_count: deliv, deliverables_breakdown: addBreakdown as any });
     if (error) return toast.error(error.message);
-    toast.success("Added"); setAddFee(""); setAddDeliv("1"); setPicked(null); setRosterOpen(false); load();
+    toast.success("Added"); setAddFee(""); setAddBreakdown({ post: 1 }); setPicked(null); setRosterOpen(false); load();
   };
 
   const updateCi = async (ciId: string, patch: any) => {
