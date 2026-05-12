@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Hash, Wallet, Calendar, CheckCircle2, XCircle, Music2, Check, X, AtSign, Link as LinkIcon, FileText } from "lucide-react";
+import { Hash, Wallet, Calendar, CheckCircle2, XCircle, Music2, Check, X, AtSign, Link as LinkIcon, FileText, Clapperboard, Smartphone, Eye, Banknote } from "lucide-react";
 import { toast } from "sonner";
 
 const PublicBrief = () => {
