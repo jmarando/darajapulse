@@ -4,16 +4,35 @@ import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquar
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 
-const nav = [
-  { to: "/app", icon: LayoutDashboard, label: "Overview", end: true },
-  { to: "/app/clients", icon: Building2, label: "Clients" },
-  { to: "/app/campaigns", icon: Megaphone, label: "Campaigns" },
-  { to: "/app/content", icon: Calendar, label: "Content" },
-  { to: "/app/influencers", icon: Users, label: "Influencers" },
-  { to: "/app/briefs", icon: FileSignature, label: "Briefs" },
-  { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },
-  { to: "/app/moderation", icon: MessageSquare, label: "Moderation" },
-  { to: "/app/payouts", icon: Wallet, label: "Payouts" },
+const navGroups: { label?: string; items: { to: string; icon: any; label: string; end?: boolean }[] }[] = [
+  {
+    items: [
+      { to: "/app", icon: LayoutDashboard, label: "Overview", end: true },
+    ],
+  },
+  {
+    label: "Campaign Management",
+    items: [
+      { to: "/app/campaigns", icon: Megaphone, label: "Campaigns" },
+      { to: "/app/briefs", icon: FileSignature, label: "Briefs" },
+      { to: "/app/content", icon: Calendar, label: "Content" },
+      { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },
+      { to: "/app/moderation", icon: MessageSquare, label: "Moderation" },
+    ],
+  },
+  {
+    label: "Roster",
+    items: [
+      { to: "/app/clients", icon: Building2, label: "Clients" },
+      { to: "/app/influencers", icon: Users, label: "Influencers" },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { to: "/app/payouts", icon: Wallet, label: "Payouts" },
+    ],
+  },
 ];
 
 const AppShell = () => {
@@ -32,12 +51,21 @@ const AppShell = () => {
           <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-20 w-auto mx-auto" />
         </div>
         <nav className="flex-1 p-3 space-y-1">
-          {nav.map(({ to, icon: Icon, label, end }) => (
-            <NavLink key={to} to={to} end={end as any}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50'}`}>
-              <Icon className="w-4 h-4" /> {label}
-            </NavLink>
+          {navGroups.map((group, gi) => (
+            <div key={gi} className={gi > 0 ? "pt-3 mt-3 border-t border-sidebar-border/60" : ""}>
+              {group.label && (
+                <div className="px-3 pb-1 text-[10px] uppercase tracking-widest text-sidebar-foreground/50">
+                  {group.label}
+                </div>
+              )}
+              {group.items.map(({ to, icon: Icon, label, end }) => (
+                <NavLink key={to} to={to} end={end as any}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50'}`}>
+                  <Icon className="w-4 h-4" /> {label}
+                </NavLink>
+              ))}
+            </div>
           ))}
           {isAdmin && (
             <NavLink to="/app/team"

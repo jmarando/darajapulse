@@ -13,6 +13,36 @@ import { PlatformPicker } from "@/components/PlatformPicker";
 
 const platforms = ["tiktok", "instagram", "youtube", "twitter", "facebook"] as const;
 
+const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; format: (v: number) => string; onSave: (v: number) => void; step?: number }) => {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(String(value));
+  useEffect(() => { setV(String(value)); }, [value]);
+  if (editing) {
+    return (
+      <Input
+        autoFocus
+        type="number"
+        step={step}
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => { setEditing(false); const n = Number(v); if (!Number.isNaN(n) && n !== value) onSave(n); }}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setV(String(value)); setEditing(false); } }}
+        className="h-7 text-center font-display text-lg px-1"
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="font-display text-lg w-full hover:bg-secondary rounded px-1 transition-colors"
+      title="Click to edit"
+    >
+      {format(value)}
+    </button>
+  );
+};
+
 const Influencers = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
@@ -30,6 +60,12 @@ const Influencers = () => {
     const { error } = await supabase.from("influencers").insert({ ...form, follower_count: Number(form.follower_count), engagement_rate: Number(form.engagement_rate) });
     if (error) return toast.error(error.message);
     toast.success("Influencer added"); setOpen(false); load();
+  };
+
+  const updateField = async (id: string, field: string, value: number) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+    const { error } = await (supabase.from("influencers") as any).update({ [field]: value }).eq("id", id);
+    if (error) { toast.error(error.message); load(); }
   };
 
   const filtered = rows.filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()));
@@ -94,8 +130,14 @@ const Influencers = () => {
                 <Badge variant="secondary" className="gap-1"><ShieldCheck className="w-3 h-3" /> {Math.round(Number(r.authenticity_score))}</Badge>
               </div>
               <div className="grid grid-cols-3 mt-4 gap-2 text-center">
-                <div><div className="font-display text-lg">{Number(r.follower_count).toLocaleString()}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Followers</div></div>
-                <div><div className="font-display text-lg">{Number(r.engagement_rate).toFixed(1)}%</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">ER</div></div>
+                <div>
+                  <InlineNumber value={Number(r.follower_count)} format={(v) => v.toLocaleString()} onSave={(v) => updateField(r.id, "follower_count", v)} />
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Followers</div>
+                </div>
+                <div>
+                  <InlineNumber value={Number(r.engagement_rate)} step={0.1} format={(v) => `${v.toFixed(1)}%`} onSave={(v) => updateField(r.id, "engagement_rate", v)} />
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">ER</div>
+                </div>
                 <div><div className="font-display text-lg">{r.region?.slice(0, 4) ?? "—"}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Region</div></div>
               </div>
               {r.niche && <div className="mt-3 text-xs text-muted-foreground">{r.niche}</div>}
