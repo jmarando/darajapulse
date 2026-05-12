@@ -709,7 +709,7 @@ const CampaignDetail = () => {
                   <th className="text-left font-medium px-3 py-3">Platform</th>
                   <th className="text-left font-medium px-3 py-3">Status</th>
                   <th className="text-right font-medium px-3 py-3">Fee (KES)</th>
-                  <th className="text-right font-medium px-3 py-3"># Posts</th>
+                  <th className="text-right font-medium px-3 py-3">Deliverables</th>
                   <th className="text-right font-medium px-5 py-3">Actions</th>
                 </tr>
               </thead>
