@@ -621,7 +621,7 @@ const CampaignDetail = () => {
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
             <h2 className="font-display text-2xl">Creators</h2>
           </div>
-          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddDeliv("1"); } }}>
+          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddBreakdown({ post: 1 }); } }}>
             <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add creator</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -636,13 +636,10 @@ const CampaignDetail = () => {
                     <div className="font-medium">{picked.full_name}</div>
                     <div className="text-xs text-muted-foreground">{picked.handle ? `@${picked.handle.replace(/^@/, "")}` : "—"} · {picked.primary_platform}</div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Fee (KES)</Label><Input type="number" autoFocus value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
-                    <div>
-                      <Label># of posts</Label>
-                      <Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} />
-                      <p className="text-[10px] text-muted-foreground mt-1">Pieces of content the creator will deliver.</p>
-                    </div>
+                  <div><Label>Fee (KES)</Label><Input type="number" autoFocus value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
+                  <div>
+                    <Label>Deliverables</Label>
+                    <div className="mt-1.5"><DeliverablesEditor value={addBreakdown} onChange={setAddBreakdown} /></div>
                   </div>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" className="flex-1" onClick={() => setPicked(null)}>Back</Button>
