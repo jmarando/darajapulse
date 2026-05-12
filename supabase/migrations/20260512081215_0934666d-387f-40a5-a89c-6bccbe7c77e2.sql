@@ -1,0 +1,1 @@
+ALTER TABLE public.campaign_influencers ADD COLUMN IF NOT EXISTS deliverables_breakdown jsonb NOT NULL DEFAULT '{}'::jsonb;
