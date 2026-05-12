@@ -264,6 +264,8 @@ const Overview = () => {
           </ResponsiveContainer>
         </div>
       </Card>
+        </>
+      )}
 
       {/* Bottom row: top performer + recent campaigns */}
       <div className="grid lg:grid-cols-2 gap-4">
