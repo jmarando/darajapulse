@@ -13,6 +13,36 @@ import { PlatformPicker } from "@/components/PlatformPicker";
 
 const platforms = ["tiktok", "instagram", "youtube", "twitter", "facebook"] as const;
 
+const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; format: (v: number) => string; onSave: (v: number) => void; step?: number }) => {
+  const [editing, setEditing] = useState(false);
+  const [v, setV] = useState(String(value));
+  useEffect(() => { setV(String(value)); }, [value]);
+  if (editing) {
+    return (
+      <Input
+        autoFocus
+        type="number"
+        step={step}
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => { setEditing(false); const n = Number(v); if (!Number.isNaN(n) && n !== value) onSave(n); }}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setV(String(value)); setEditing(false); } }}
+        className="h-7 text-center font-display text-lg px-1"
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="font-display text-lg w-full hover:bg-secondary rounded px-1 transition-colors"
+      title="Click to edit"
+    >
+      {format(value)}
+    </button>
+  );
+};
+
 const Influencers = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
