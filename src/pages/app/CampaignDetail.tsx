@@ -1060,6 +1060,9 @@ const CampaignDetail = () => {
         </div>
       </Card>
 
+        </TabsContent>
+      </Tabs>
+
       {/* Creator detail sheet */}
       {/* Post preview dialog */}
       <Dialog open={!!previewPost} onOpenChange={(o) => !o && setPreviewPost(null)}>
