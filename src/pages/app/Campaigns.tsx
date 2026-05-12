@@ -141,18 +141,35 @@ const Campaigns = () => {
         <div className="grid md:grid-cols-2 gap-4">
           {rows.map(r => (
             <Link key={r.id} to={`/app/campaigns/${r.id}`}>
-              <Card className="p-5 hover:shadow-elegant transition-all hover:-translate-y-0.5 group">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-xs uppercase tracking-widest text-muted-foreground">{r.clients?.name}</div>
-                    <div className="font-display text-2xl mt-1">{r.name}</div>
+              <Card className="p-5 hover:shadow-elegant transition-all hover:-translate-y-0.5 group h-full">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs uppercase tracking-widest text-muted-foreground truncate">{r.clients?.name}</div>
+                    <div className="font-display text-2xl mt-1 truncate">{r.name}</div>
                   </div>
-                  <Badge className={statusColor[r.status]}>{r.status}</Badge>
+                  <Badge className={`${statusColor[r.status]} shrink-0`}>{r.status}</Badge>
                 </div>
-                <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-                  <span>{r.hashtag || "—"}</span>
-                  <span className="font-display text-foreground">KES {Number(r.budget_kes).toLocaleString()}</span>
-                  <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
+                  <span className="truncate">{r.hashtag || "—"}</span>
+                  <span className="font-display text-foreground shrink-0 ml-3">KES {Number(r.budget_kes).toLocaleString()}</span>
+                </div>
+                {/* Performance preview */}
+                <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-3">
+                  <div>
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
+                    <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(perf[r.id]?.views ?? 0)}</div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><BarChart3 className="w-3 h-3" /> ER</div>
+                    <div className="font-display text-lg mt-0.5 tabular-nums">{(perf[r.id]?.er ?? 0).toFixed(1)}%</div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Posts</div>
+                    <div className="font-display text-lg mt-0.5 tabular-nums">{perf[r.id]?.posts ?? 0}</div>
+                  </div>
+                </div>
+                <div className="flex justify-end mt-2">
+                  <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </Card>
             </Link>
