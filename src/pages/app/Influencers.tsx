@@ -34,7 +34,7 @@ const Influencers = () => {
 
   const updateField = async (id: string, field: string, value: number) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
-    const { error } = await supabase.from("influencers").update({ [field]: value }).eq("id", id);
+    const { error } = await (supabase.from("influencers") as any).update({ [field]: value }).eq("id", id);
     if (error) { toast.error(error.message); load(); }
   };
 
