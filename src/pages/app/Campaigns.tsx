@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Megaphone, ArrowUpRight } from "lucide-react";
+import { Plus, Megaphone, ArrowUpRight, Eye, BarChart3, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 const statusColor: Record<string, string> = {
@@ -21,8 +21,16 @@ const statusColor: Record<string, string> = {
   closed: "bg-muted text-muted-foreground",
 };
 
+const fmtNum = (n: number) => {
+  if (!isFinite(n) || n === 0) return "0";
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return `${Math.round(n)}`;
+};
+
 const Campaigns = () => {
   const [rows, setRows] = useState<any[]>([]);
+  const [perf, setPerf] = useState<Record<string, { views: number; er: number; posts: number }>>({});
   const [clients, setClients] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -33,6 +41,37 @@ const Campaigns = () => {
     setRows(data ?? []);
     const { data: cs } = await supabase.from("clients").select("id,name");
     setClients(cs ?? []);
+
+    // Per-campaign performance preview
+    const ids = (data ?? []).map((c) => c.id);
+    if (ids.length) {
+      const { data: ps } = await supabase.from("posts").select("id, campaign_id").in("campaign_id", ids);
+      const postIds = (ps ?? []).map((p) => p.id);
+      const { data: ms } = postIds.length
+        ? await supabase.from("post_metrics").select("post_id, views, likes, comments, shares, saves").in("post_id", postIds)
+        : { data: [] as any[] };
+      // latest metric per post
+      const latest = new Map<string, any>();
+      for (const m of ms ?? []) if (!latest.has(m.post_id)) latest.set(m.post_id, m);
+      const map: Record<string, { views: number; er: number; posts: number; eng: number }> = {};
+      for (const p of ps ?? []) {
+        const cur = map[p.campaign_id] ?? { views: 0, er: 0, posts: 0, eng: 0 };
+        cur.posts += 1;
+        const m = latest.get(p.id);
+        if (m) {
+          cur.views += Number(m.views || 0);
+          cur.eng += Number((m.likes||0) + (m.comments||0) + (m.shares||0) + (m.saves||0));
+        }
+        map[p.campaign_id] = cur;
+      }
+      const out: Record<string, { views: number; er: number; posts: number }> = {};
+      for (const [k, v] of Object.entries(map)) {
+        out[k] = { views: v.views, posts: v.posts, er: v.views > 0 ? (v.eng / v.views) * 100 : 0 };
+      }
+      setPerf(out);
+    } else {
+      setPerf({});
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -102,18 +141,35 @@ const Campaigns = () => {
         <div className="grid md:grid-cols-2 gap-4">
           {rows.map(r => (
             <Link key={r.id} to={`/app/campaigns/${r.id}`}>
-              <Card className="p-5 hover:shadow-elegant transition-all hover:-translate-y-0.5 group">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-xs uppercase tracking-widest text-muted-foreground">{r.clients?.name}</div>
-                    <div className="font-display text-2xl mt-1">{r.name}</div>
+              <Card className="p-5 hover:shadow-elegant transition-all hover:-translate-y-0.5 group h-full">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs uppercase tracking-widest text-muted-foreground truncate">{r.clients?.name}</div>
+                    <div className="font-display text-2xl mt-1 truncate">{r.name}</div>
                   </div>
-                  <Badge className={statusColor[r.status]}>{r.status}</Badge>
+                  <Badge className={`${statusColor[r.status]} shrink-0`}>{r.status}</Badge>
                 </div>
-                <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-                  <span>{r.hashtag || "—"}</span>
-                  <span className="font-display text-foreground">KES {Number(r.budget_kes).toLocaleString()}</span>
-                  <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
+                  <span className="truncate">{r.hashtag || "—"}</span>
+                  <span className="font-display text-foreground shrink-0 ml-3">KES {Number(r.budget_kes).toLocaleString()}</span>
+                </div>
+                {/* Performance preview */}
+                <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-3">
+                  <div>
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
+                    <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(perf[r.id]?.views ?? 0)}</div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><BarChart3 className="w-3 h-3" /> ER</div>
+                    <div className="font-display text-lg mt-0.5 tabular-nums">{(perf[r.id]?.er ?? 0).toFixed(1)}%</div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Posts</div>
+                    <div className="font-display text-lg mt-0.5 tabular-nums">{perf[r.id]?.posts ?? 0}</div>
+                  </div>
+                </div>
+                <div className="flex justify-end mt-2">
+                  <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </Card>
             </Link>

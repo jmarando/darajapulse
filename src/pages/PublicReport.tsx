@@ -66,9 +66,22 @@ const PublicReport = () => {
     return () => clearInterval(i);
   }, [token]);
 
-  if (notFound) return <div className="min-h-screen flex items-center justify-center p-6 text-center">
-    <div><h1 className="font-display text-3xl">Report not found</h1><p className="text-muted-foreground mt-2">This link may have expired.</p></div>
-  </div>;
+  if (notFound) return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="max-w-md text-center">
+          <img src={logo} alt="Daraja Pulse" className="h-16 w-auto mx-auto mb-6" />
+          <h1 className="font-display text-3xl">Report not found</h1>
+          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+            This link may have expired or been revoked. If you were expecting to see a campaign report,
+            please contact the agency that shared it with you for a refreshed link.
+          </p>
+          <Button asChild variant="outline" className="mt-6"><a href="/">Back to home</a></Button>
+        </div>
+      </div>
+      <PublicFooter />
+    </div>
+  );
   if (!campaign) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading report…</div>;
 
   const fromTs = from ? +new Date(from) : -Infinity;
@@ -183,20 +196,20 @@ const PublicReport = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="Daraja Pulse" className="h-12 w-auto" />
+            <img src={logo} alt="Daraja Pulse" className="h-10 md:h-12 w-auto" />
             <div className="hidden sm:block h-8 w-px bg-border" />
             <div className="hidden sm:block">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Live campaign report</div>
               <div className="text-xs text-muted-foreground">Auto-refreshes every minute</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 no-print">
-            <div className="hidden md:flex items-center gap-2">
-              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[140px]" aria-label="From date" />
-              <span className="text-xs text-muted-foreground">→</span>
-              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[140px]" aria-label="To date" />
+          <div className="flex flex-wrap items-center gap-2 no-print">
+            <div className="flex items-center gap-2">
+              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="From date" />
+              <span className="text-xs text-muted-foreground hidden sm:inline">→</span>
+              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="To date" />
               {(from || to) && <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFrom(""); setTo(""); }}>Clear</Button>}
             </div>
             <Button variant="outline" size="sm" className="h-8" onClick={exportCsv}><Download className="w-3.5 h-3.5 mr-1.5" />CSV</Button>
@@ -239,7 +252,12 @@ const PublicReport = () => {
               {campaign.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(campaign.budget_kes).toLocaleString()}</span>}
               <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{influencers.length} creator{influencers.length === 1 ? "" : "s"}</span>
             </div>
-            {campaign.objective && <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">{campaign.objective}</p>}
+            {campaign.objective && (
+              <div className="mt-3 max-w-2xl">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Campaign goal</div>
+                <p className="text-muted-foreground text-sm leading-relaxed">{campaign.objective}</p>
+              </div>
+            )}
           </div>
           <Badge variant="outline" className="capitalize">{campaign.status}</Badge>
         </div>
@@ -345,6 +363,11 @@ const PublicReport = () => {
                 <div className="mt-3 space-y-3">
                   <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per view</span><span className="font-display text-xl">KES {cpv.toFixed(2)}</span></div>
                   <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per mille</span><span className="font-display text-xl">KES {cpm.toFixed(0)}</span></div>
+                  {(() => {
+                    const eng = totals.likes + totals.comments + totals.shares + totals.saves;
+                    const cpe = eng > 0 && campaign.budget_kes > 0 ? campaign.budget_kes / eng : 0;
+                    return <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per engagement</span><span className="font-display text-xl">{cpe > 0 ? `KES ${cpe.toFixed(2)}` : "—"}</span></div>;
+                  })()}
                   <div className="flex justify-between items-baseline pt-3 border-t border-border"><span className="text-sm text-muted-foreground">ROI vs paid</span><span className="font-display text-xl">{campaign.budget_kes > 0 ? `${(emv / campaign.budget_kes * 100).toFixed(0)}%` : "—"}</span></div>
                 </div>
               </Card>
@@ -541,14 +564,19 @@ const PublicReport = () => {
                         </div>
                         <Badge variant="outline" className="capitalize shrink-0">{x.status}</Badge>
                       </div>
-                      {s && (
-                        <div className="grid grid-cols-4 gap-1 mt-2 ml-12 text-center">
-                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.views)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.likes)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
-                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.comments)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
-                          <div><div className="text-xs font-medium tabular-nums">{fmt(s.shares)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
-                        </div>
-                      )}
+                      {s && (() => {
+                        const cer = s.views > 0 ? ((s.likes + s.comments + s.shares + s.saves) / s.views) * 100 : 0;
+                        return (
+                          <div className="grid grid-cols-6 gap-1 mt-2 ml-12 text-center">
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.views)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.likes)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.comments)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.shares)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(s.saves)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{cer.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">ER</div></div>
+                          </div>
+                        );
+                      })()}
                     </li>
                   );
                 })}
