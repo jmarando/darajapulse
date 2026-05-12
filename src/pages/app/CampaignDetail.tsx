@@ -760,11 +760,16 @@ const CampaignDetail = () => {
                           Number(x.fee_kes || 0).toLocaleString()
                         )}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums">
+                      <td className="px-3 py-3 text-right tabular-nums align-top">
                         {isEditing ? (
-                          <Input className="h-8 text-sm text-right w-20 ml-auto" type="number" min="1" value={editDeliv} onChange={e => setEditDeliv(e.target.value)} />
+                          <div className="text-left min-w-[200px]"><DeliverablesEditor value={editBreakdown} onChange={setEditBreakdown} /></div>
                         ) : (
-                          x.deliverables_count
+                          <div>
+                            <div className="font-medium">{x.deliverables_count}</div>
+                            {breakdownSummary(x.deliverables_breakdown) && (
+                              <div className="text-[10px] text-muted-foreground">{breakdownSummary(x.deliverables_breakdown)}</div>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="px-5 py-3 text-right">
