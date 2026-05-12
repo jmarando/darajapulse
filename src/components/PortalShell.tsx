@@ -1,8 +1,10 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Megaphone, LogOut } from "lucide-react";
+import { LayoutDashboard, Megaphone, LogOut, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
+import GettingStartedDialog from "@/components/GettingStartedDialog";
 
 const nav = [
   { to: "/portal", icon: LayoutDashboard, label: "Overview", end: true },
@@ -12,6 +14,7 @@ const nav = [
 const PortalShell = () => {
   const { user, loading, signOut, isClient, isAgency } = useAuth();
   const navigate = useNavigate();
+  const [tourOpen, setTourOpen] = useState<boolean | undefined>(undefined);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (!user) { navigate("/auth"); return null; }
@@ -33,7 +36,10 @@ const PortalShell = () => {
             </NavLink>
           ))}
         </nav>
-        <div className="p-3 border-t border-sidebar-border">
+        <div className="p-3 border-t border-sidebar-border space-y-1">
+          <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setTourOpen(true)}>
+            <HelpCircle className="w-4 h-4 mr-2" /> Getting started
+          </Button>
           <div className="px-3 py-2 text-xs text-sidebar-foreground/70 truncate">{user.email}</div>
           <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={async () => { await signOut(); navigate("/auth"); }}>
             <LogOut className="w-4 h-4 mr-2" /> Sign out
@@ -43,6 +49,7 @@ const PortalShell = () => {
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
+      <GettingStartedDialog open={tourOpen} onOpenChange={setTourOpen} />
     </div>
   );
 };
