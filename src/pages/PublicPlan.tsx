@@ -36,7 +36,7 @@ const PublicPlan = () => {
 
       const { data: ci } = await supabase
         .from("campaign_influencers")
-        .select("id, fee_kes, deliverables_count, status, influencers(full_name, handle, primary_platform, follower_count, niche)")
+        .select("id, fee_kes, deliverables_count, deliverables_breakdown, status, influencers(full_name, handle, primary_platform, follower_count, niche)")
         .eq("campaign_id", link.campaign_id);
       setRoster(ci ?? []);
       setLoading(false);
