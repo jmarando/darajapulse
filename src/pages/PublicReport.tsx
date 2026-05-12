@@ -199,6 +199,7 @@ const PublicReport = () => {
               <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[140px]" aria-label="To date" />
               {(from || to) && <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFrom(""); setTo(""); }}>Clear</Button>}
             </div>
+            <Button variant="outline" size="sm" className="h-8" onClick={exportCsv}><Download className="w-3.5 h-3.5 mr-1.5" />CSV</Button>
             <Button variant="outline" size="sm" className="h-8" onClick={downloadReportAsPdf}><FileText className="w-3.5 h-3.5 mr-1.5" />PDF</Button>
             <Button variant="outline" size="sm" className="h-8" disabled={exporting} onClick={async () => {
               setExporting(true);
