@@ -51,12 +51,21 @@ const AppShell = () => {
           <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-20 w-auto mx-auto" />
         </div>
         <nav className="flex-1 p-3 space-y-1">
-          {nav.map(({ to, icon: Icon, label, end }) => (
-            <NavLink key={to} to={to} end={end as any}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50'}`}>
-              <Icon className="w-4 h-4" /> {label}
-            </NavLink>
+          {navGroups.map((group, gi) => (
+            <div key={gi} className={gi > 0 ? "pt-3 mt-3 border-t border-sidebar-border/60" : ""}>
+              {group.label && (
+                <div className="px-3 pb-1 text-[10px] uppercase tracking-widest text-sidebar-foreground/50">
+                  {group.label}
+                </div>
+              )}
+              {group.items.map(({ to, icon: Icon, label, end }) => (
+                <NavLink key={to} to={to} end={end as any}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50'}`}>
+                  <Icon className="w-4 h-4" /> {label}
+                </NavLink>
+              ))}
+            </div>
           ))}
           {isAdmin && (
             <NavLink to="/app/team"
