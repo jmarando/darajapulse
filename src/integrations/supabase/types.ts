@@ -117,6 +117,7 @@ export type Database = {
           brief_token: string
           campaign_id: string
           created_at: string
+          deliverables_breakdown: Json
           deliverables_count: number | null
           fee_kes: number | null
           id: string
@@ -127,6 +128,7 @@ export type Database = {
           brief_token?: string
           campaign_id: string
           created_at?: string
+          deliverables_breakdown?: Json
           deliverables_count?: number | null
           fee_kes?: number | null
           id?: string
@@ -137,6 +139,7 @@ export type Database = {
           brief_token?: string
           campaign_id?: string
           created_at?: string
+          deliverables_breakdown?: Json
           deliverables_count?: number | null
           fee_kes?: number | null
           id?: string

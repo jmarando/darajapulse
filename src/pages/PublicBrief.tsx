@@ -57,6 +57,11 @@ const PublicBrief = () => {
           <div className="bg-card p-4">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Deliverables</div>
             <div className="font-display text-xl mt-1">{b.deliverables_count}</div>
+            {b.deliverables_breakdown && Object.keys(b.deliverables_breakdown).length > 0 && (
+              <div className="text-[10px] text-muted-foreground mt-1">
+                {Object.entries(b.deliverables_breakdown).filter(([,n]: any) => Number(n) > 0).map(([t, n]: any) => `${n} ${t}${Number(n) === 1 ? "" : "s"}`).join(" · ")}
+              </div>
+            )}
           </div>
           <div className="bg-card p-4">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Hashtag</div>

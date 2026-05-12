@@ -19,6 +19,7 @@ import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
+import { DeliverablesEditor, breakdownTotal, breakdownSummary, type Breakdown } from "@/components/DeliverablesEditor";
 
 
 const CampaignDetail = () => {
@@ -39,10 +40,10 @@ const CampaignDetail = () => {
   const [rosterSearch, setRosterSearch] = useState("");
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
   const [addFee, setAddFee] = useState<string>("");
-  const [addDeliv, setAddDeliv] = useState<string>("1");
+  const [addBreakdown, setAddBreakdown] = useState<Breakdown>({ post: 1 });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFee, setEditFee] = useState<string>("");
-  const [editDeliv, setEditDeliv] = useState<string>("1");
+  const [editBreakdown, setEditBreakdown] = useState<Breakdown>({ post: 1 });
   const [selectedCi, setSelectedCi] = useState<any>(null);
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
@@ -93,10 +94,11 @@ const CampaignDetail = () => {
     const inflId = influencer_id ?? picked?.id;
     if (!inflId) return;
     const fee = Number(addFee) || 0;
-    const deliv = Number(addDeliv) || 1;
-    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: inflId, fee_kes: fee, deliverables_count: deliv });
+    const total = breakdownTotal(addBreakdown);
+    const deliv = total > 0 ? total : 1;
+    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: inflId, fee_kes: fee, deliverables_count: deliv, deliverables_breakdown: addBreakdown as any });
     if (error) return toast.error(error.message);
-    toast.success("Added"); setAddFee(""); setAddDeliv("1"); setPicked(null); setRosterOpen(false); load();
+    toast.success("Added"); setAddFee(""); setAddBreakdown({ post: 1 }); setPicked(null); setRosterOpen(false); load();
   };
 
   const updateCi = async (ciId: string, patch: any) => {
@@ -106,7 +108,8 @@ const CampaignDetail = () => {
   };
 
   const saveEdit = async (ciId: string) => {
-    await updateCi(ciId, { fee_kes: Number(editFee) || 0, deliverables_count: Number(editDeliv) || 1 });
+    const total = breakdownTotal(editBreakdown);
+    await updateCi(ciId, { fee_kes: Number(editFee) || 0, deliverables_count: total > 0 ? total : 1, deliverables_breakdown: editBreakdown as any });
     setEditingId(null);
   };
 
@@ -618,7 +621,7 @@ const CampaignDetail = () => {
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
             <h2 className="font-display text-2xl">Creators</h2>
           </div>
-          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddDeliv("1"); } }}>
+          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddBreakdown({ post: 1 }); } }}>
             <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add creator</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -633,13 +636,10 @@ const CampaignDetail = () => {
                     <div className="font-medium">{picked.full_name}</div>
                     <div className="text-xs text-muted-foreground">{picked.handle ? `@${picked.handle.replace(/^@/, "")}` : "—"} · {picked.primary_platform}</div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Fee (KES)</Label><Input type="number" autoFocus value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
-                    <div>
-                      <Label># of posts</Label>
-                      <Input type="number" min="1" value={addDeliv} onChange={e => setAddDeliv(e.target.value)} />
-                      <p className="text-[10px] text-muted-foreground mt-1">Pieces of content the creator will deliver.</p>
-                    </div>
+                  <div><Label>Fee (KES)</Label><Input type="number" autoFocus value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
+                  <div>
+                    <Label>Deliverables</Label>
+                    <div className="mt-1.5"><DeliverablesEditor value={addBreakdown} onChange={setAddBreakdown} /></div>
                   </div>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" className="flex-1" onClick={() => setPicked(null)}>Back</Button>
@@ -709,7 +709,7 @@ const CampaignDetail = () => {
                   <th className="text-left font-medium px-3 py-3">Platform</th>
                   <th className="text-left font-medium px-3 py-3">Status</th>
                   <th className="text-right font-medium px-3 py-3">Fee (KES)</th>
-                  <th className="text-right font-medium px-3 py-3"># Posts</th>
+                  <th className="text-right font-medium px-3 py-3">Deliverables</th>
                   <th className="text-right font-medium px-5 py-3">Actions</th>
                 </tr>
               </thead>
@@ -760,11 +760,16 @@ const CampaignDetail = () => {
                           Number(x.fee_kes || 0).toLocaleString()
                         )}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums">
+                      <td className="px-3 py-3 text-right tabular-nums align-top">
                         {isEditing ? (
-                          <Input className="h-8 text-sm text-right w-20 ml-auto" type="number" min="1" value={editDeliv} onChange={e => setEditDeliv(e.target.value)} />
+                          <div className="text-left min-w-[200px]"><DeliverablesEditor value={editBreakdown} onChange={setEditBreakdown} /></div>
                         ) : (
-                          x.deliverables_count
+                          <div>
+                            <div className="font-medium">{x.deliverables_count}</div>
+                            {breakdownSummary(x.deliverables_breakdown) && (
+                              <div className="text-[10px] text-muted-foreground">{breakdownSummary(x.deliverables_breakdown)}</div>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="px-5 py-3 text-right">
@@ -804,7 +809,7 @@ const CampaignDetail = () => {
                                 </DropdownMenuItem>
                               ))}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditDeliv(String(x.deliverables_count ?? 1)); }}>
+                              <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditBreakdown((x.deliverables_breakdown && Object.keys(x.deliverables_breakdown).length) ? x.deliverables_breakdown : { post: Number(x.deliverables_count) || 1 }); }}>
                                 <Pencil className="w-4 h-4 mr-2" /> Edit fee & posts
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -1053,7 +1058,7 @@ const CampaignDetail = () => {
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Deal</div>
                   <div className="grid grid-cols-2 gap-3">
                     <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Fee</div><div className="font-display text-xl mt-1">KES {Number(selectedCi.fee_kes || 0).toLocaleString()}</div></Card>
-                    <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Deliverables</div><div className="font-display text-xl mt-1">{selectedCi.deliverables_count}</div></Card>
+                    <Card className="p-3"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Deliverables</div><div className="font-display text-xl mt-1">{selectedCi.deliverables_count}</div>{breakdownSummary(selectedCi.deliverables_breakdown) && <div className="text-[10px] text-muted-foreground mt-0.5">{breakdownSummary(selectedCi.deliverables_breakdown)}</div>}</Card>
                   </div>
                 </div>
 

@@ -36,7 +36,7 @@ const PublicPlan = () => {
 
       const { data: ci } = await supabase
         .from("campaign_influencers")
-        .select("id, fee_kes, deliverables_count, status, influencers(full_name, handle, primary_platform, follower_count, niche)")
+        .select("id, fee_kes, deliverables_count, deliverables_breakdown, status, influencers(full_name, handle, primary_platform, follower_count, niche)")
         .eq("campaign_id", link.campaign_id);
       setRoster(ci ?? []);
       setLoading(false);
@@ -84,21 +84,27 @@ const PublicPlan = () => {
           <div className="grid grid-cols-12 px-5 py-3 text-[11px] uppercase tracking-widest text-muted-foreground border-b">
             <div className="col-span-5">Creator</div>
             <div className="col-span-2">Platform</div>
-            <div className="col-span-2 text-right">Posts</div>
+            <div className="col-span-2 text-right">Deliverables</div>
             <div className="col-span-3 text-right">Fee (KES)</div>
           </div>
           <div className="divide-y">
-            {roster.map((r) => (
+            {roster.map((r) => {
+              const bd = r.deliverables_breakdown as Record<string, number> | null;
+              const summary = bd ? Object.entries(bd).filter(([,n]) => Number(n) > 0).map(([t,n]) => `${n} ${t}${Number(n)===1?"":"s"}`).join(" · ") : "";
+              return (
               <div key={r.id} className="grid grid-cols-12 px-5 py-3 items-center text-sm">
                 <div className="col-span-5">
                   <div className="font-medium">{r.influencers?.full_name ?? "—"}</div>
                   <div className="text-xs text-muted-foreground">@{r.influencers?.handle ?? "—"} {r.influencers?.niche ? `· ${r.influencers.niche}` : ""}</div>
                 </div>
                 <div className="col-span-2 capitalize">{r.influencers?.primary_platform ?? "—"}</div>
-                <div className="col-span-2 text-right">{r.deliverables_count ?? 1}</div>
+                <div className="col-span-2 text-right">
+                  <div>{r.deliverables_count ?? 1}</div>
+                  {summary && <div className="text-[10px] text-muted-foreground">{summary}</div>}
+                </div>
                 <div className="col-span-3 text-right tabular-nums">{Number(r.fee_kes ?? 0).toLocaleString()}</div>
               </div>
-            ))}
+            );})}
             {roster.length === 0 && (
               <div className="px-5 py-8 text-center text-muted-foreground text-sm">No creators on this plan yet.</div>
             )}
