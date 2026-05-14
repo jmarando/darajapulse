@@ -5,7 +5,7 @@ const opts = [
   { to: "/landing/editorial", label: "A · Editorial magazine", desc: "Huge serif headline, red accent, ticker of live stats. NYT T Magazine vibe." },
   { to: "/landing/cinematic", label: "B · Dark cinematic", desc: "Near-black bg, glowing red pulse, kinetic headline, neon stat cards." },
   { to: "/landing/dashboard", label: "C · Live dashboard preview", desc: "Split hero with a real, ticking report card on the right." },
-  { to: "/landing/bento", label: "D · Bento showcase", desc: "Modular grid: headline, M-Pesa, live metric, creators, KRA, all visible." },
+  { to: "/landing/bento", label: "D · Bento showcase", desc: "Modular grid: headline, payouts, live metric, creators, KRA, all visible." },
 ];
 
 const LandingPicker = () => (
