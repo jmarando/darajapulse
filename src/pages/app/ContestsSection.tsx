@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
@@ -56,6 +56,15 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
 
   const setStatus = async (id: string, status: string) => {
     await supabase.from("contest_entries").update({ status }).eq("id", id);
+    load();
+  };
+
+  const deleteEntry = async (entryRow: any) => {
+    const label = entryRow.handle || entryRow.post_url || "this entry";
+    if (!confirm(`Delete ${label} from this contest? This cannot be undone.`)) return;
+    const { error } = await supabase.from("contest_entries").delete().eq("id", entryRow.id);
+    if (error) return toast.error(error.message);
+    toast.success("Entry deleted");
     load();
   };
 
@@ -245,12 +254,15 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                                 <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(e.score)}</td>
                                 <td className="px-3 py-2 text-right"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
                                 <td className="px-3 py-2 text-right">
-                                  {e.status === "pending" && (
-                                    <div className="inline-flex gap-1">
-                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setStatus(e.id, "rejected")}><X className="w-4 h-4" /></Button>
-                                      <Button size="icon" className="h-7 w-7 bg-primary" onClick={() => setStatus(e.id, "approved")}><Check className="w-4 h-4" /></Button>
-                                    </div>
-                                  )}
+                                  <div className="inline-flex gap-1">
+                                    {e.status === "pending" && (
+                                      <>
+                                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setStatus(e.id, "rejected")}><X className="w-4 h-4" /></Button>
+                                        <Button size="icon" className="h-7 w-7 bg-primary" onClick={() => setStatus(e.id, "approved")}><Check className="w-4 h-4" /></Button>
+                                      </>
+                                    )}
+                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteEntry(e)} aria-label="Delete contest entry"><Trash2 className="w-4 h-4" /></Button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
