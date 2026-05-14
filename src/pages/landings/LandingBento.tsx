@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import PublicFooter from "@/components/PublicFooter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Wallet, BarChart3, Users, ShieldCheck, Zap, Sparkles } from "lucide-react";
 import logo from "@/assets/logo-pulse-mark.png";
@@ -92,6 +93,7 @@ const LandingBento = () => (
         </div>
       </div>
     </section>
+    <PublicFooter />
   </div>
 );
 export default LandingBento;

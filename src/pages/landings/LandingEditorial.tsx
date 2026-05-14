@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import PublicFooter from "@/components/PublicFooter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import logo from "@/assets/logo-pulse-mark.png";
@@ -74,12 +75,7 @@ const LandingEditorial = () => (
       </div>
     </section>
 
-    <footer className="border-t border-border">
-      <div className="max-w-7xl mx-auto px-6 py-8 flex justify-between text-xs text-muted-foreground">
-        <span>© Daraja Pulse</span>
-        <span>Nairobi · Kenya</span>
-      </div>
-    </footer>
+    <PublicFooter />
   </div>
 );
 export default LandingEditorial;

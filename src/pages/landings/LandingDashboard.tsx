@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import PublicFooter from "@/components/PublicFooter";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -262,9 +263,7 @@ const LandingDashboard = () => {
         </div>
       </section>
 
-      <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Daraja Pulse · The influence operating system
-      </footer>
+      <PublicFooter />
     </div>
   );
 };
