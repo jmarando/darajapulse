@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import PublicFooter from "@/components/PublicFooter";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Activity, Wallet, ShieldCheck } from "lucide-react";
 import logo from "@/assets/logo-pulse-mark.png";
@@ -56,6 +57,7 @@ const LandingCinematic = () => (
         ))}
       </div>
     </section>
+    <PublicFooter />
   </div>
 );
 export default LandingCinematic;
