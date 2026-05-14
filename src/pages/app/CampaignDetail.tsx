@@ -16,6 +16,7 @@ import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, Mess
 import { toast } from "sonner";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
+import { PostMetricsEditor } from "@/components/PostMetricsEditor";
 import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
@@ -151,6 +152,31 @@ const CampaignDetail = () => {
     if (error) return toast.error(error.message);
     toast.success("Post deleted");
     setPreviewPost((current: any) => current?.id === postRow.id ? null : current);
+    load();
+  };
+
+  const saveMetrics = async (postId: string, fields: { views: number; likes: number; comments: number; shares: number; saves?: number }) => {
+    const { error } = await supabase.from("post_metrics").insert({ post_id: postId, ...fields });
+    if (error) return toast.error(error.message);
+    toast.success("Metrics saved");
+    load();
+  };
+
+  const autoFetchPost = async (postId: string) => {
+    toast.loading("Fetching public stats…", { id: `pf-${postId}` });
+    const { data, error } = await supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } });
+    if (error) return toast.error(error.message, { id: `pf-${postId}` });
+    const r = data?.results?.[0];
+    if (r?.ok) toast.success("Stats fetched", { id: `pf-${postId}` });
+    else toast.error(r?.error || "Could not fetch — enter manually", { id: `pf-${postId}` });
+    load();
+  };
+
+  const autoFetchAll = async () => {
+    toast.loading("Auto-fetching all posts…", { id: "pf-all" });
+    const { data, error } = await supabase.functions.invoke("fetch-public-metrics", { body: { campaign_id: id } });
+    if (error) return toast.error(error.message, { id: "pf-all" });
+    toast.success(`Fetched ${data?.ok ?? 0} of ${data?.total ?? 0} posts`, { id: "pf-all" });
     load();
   };
 
@@ -918,6 +944,7 @@ const CampaignDetail = () => {
               toast.success(`Polled ${(data?.results ?? []).reduce((a: number, r: any) => a + (r.polled ?? 0), 0)} posts`, { id: "tt" });
               load();
             }}><RefreshCw className="w-3 h-3 mr-1" /> Refresh TikTok</Button>
+            <Button variant="outline" size="sm" onClick={autoFetchAll}><Sparkles className="w-3 h-3 mr-1" /> Auto-fetch all</Button>
             <Dialog open={postOpen} onOpenChange={setPostOpen}>
               <DialogTrigger asChild><Button size="sm" className="bg-primary" disabled={ci.length === 0}><Plus className="w-3 h-3 mr-1" /> Add post</Button></DialogTrigger>
               <DialogContent>
@@ -986,14 +1013,12 @@ const CampaignDetail = () => {
                       </div>
                     </div>
                   </div>
-                  {m && (
-                    <div className="grid grid-cols-4 gap-1 px-2 py-2 text-center border-t border-border">
-                      <div><div className="font-display text-sm">{fmt(m.views || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Views</div></div>
-                      <div><div className="font-display text-sm">{fmt(m.likes || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Likes</div></div>
-                      <div><div className="font-display text-sm">{fmt(m.comments || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Cmts</div></div>
-                      <div><div className="font-display text-sm">{fmt(m.shares || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Shares</div></div>
-                    </div>
-                  )}
+                  <PostMetricsEditor
+                    post={p}
+                    metrics={m}
+                    onSave={async (fields) => { await saveMetrics(p.id, fields); }}
+                    onAutoFetch={async () => { await autoFetchPost(p.id); }}
+                  />
                 </li>
               );
             })}
