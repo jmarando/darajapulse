@@ -1012,14 +1012,12 @@ const CampaignDetail = () => {
                       </div>
                     </div>
                   </div>
-                  {m && (
-                    <div className="grid grid-cols-4 gap-1 px-2 py-2 text-center border-t border-border">
-                      <div><div className="font-display text-sm">{fmt(m.views || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Views</div></div>
-                      <div><div className="font-display text-sm">{fmt(m.likes || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Likes</div></div>
-                      <div><div className="font-display text-sm">{fmt(m.comments || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Cmts</div></div>
-                      <div><div className="font-display text-sm">{fmt(m.shares || 0)}</div><div className="text-[9px] uppercase tracking-wider text-muted-foreground">Shares</div></div>
-                    </div>
-                  )}
+                  <PostMetricsEditor
+                    post={p}
+                    metrics={m}
+                    onSave={(fields) => saveMetrics(p.id, fields)}
+                    onAutoFetch={() => autoFetchPost(p.id)}
+                  />
                 </li>
               );
             })}
