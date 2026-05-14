@@ -22,12 +22,12 @@ const LandingBento = () => (
           <Link to="/auth" className="self-start"><Button className="bg-accent text-accent-foreground hover:bg-accent/90">Open the console <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
         </div>
 
-        {/* M-Pesa */}
+        {/* Payouts */}
         <div className="col-span-6 md:col-span-4 rounded-2xl bg-card border border-border p-5 flex flex-col justify-between">
           <Wallet className="w-5 h-5 text-accent" />
           <div>
             <div className="font-display text-3xl">9 min</div>
-            <div className="text-xs text-muted-foreground">avg M-Pesa payout</div>
+            <div className="text-xs text-muted-foreground">avg creator payout</div>
           </div>
         </div>
 
