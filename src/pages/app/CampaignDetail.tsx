@@ -16,6 +16,7 @@ import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, Mess
 import { toast } from "sonner";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
+import { PostMetricsEditor } from "@/components/PostMetricsEditor";
 import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
