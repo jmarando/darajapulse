@@ -50,12 +50,16 @@ const PublicBrief = () => {
     { icon: Banknote, label: "M-Pesa payout", desc: "Net fee sent to your phone" },
   ];
 
+  const breakdown = normalizeBreakdown(b.deliverables_breakdown, b.influencer?.primary_platform || "tiktok");
+  const platforms = Object.keys(breakdown);
+  const hasTikTok = platforms.includes("tiktok");
+
   return (
     <div className="min-h-screen bg-background pb-28 md:pb-10">
       <div className="max-w-3xl mx-auto p-6 md:p-10">
         <div className="text-xs uppercase tracking-widest text-muted-foreground">{b.client.name} · Creator brief</div>
         <h1 className="font-display text-4xl md:text-5xl font-semibold mt-2">{b.campaign.name}</h1>
-        <p className="text-muted-foreground mt-3">Hi {b.influencer.full_name?.split(" ")[0]}, you've been invited to collaborate.</p>
+        <p className="text-muted-foreground mt-3">Hi {b.influencer.full_name?.split(" ")[0]}, you've been invited to collaborate{platforms.length > 1 ? ` across ${platforms.map(p => PLATFORM_LABEL[p] || p).join(" & ")}` : ""}.</p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border rounded-lg overflow-hidden mt-8 border border-border">
           <div className="bg-card p-4">
@@ -65,9 +69,9 @@ const PublicBrief = () => {
           <div className="bg-card p-4">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Deliverables</div>
             <div className="font-display text-xl mt-1">{b.deliverables_count}</div>
-            {b.deliverables_breakdown && Object.keys(b.deliverables_breakdown).length > 0 && (
+            {platforms.length > 0 && (
               <div className="text-[10px] text-muted-foreground mt-1">
-                {Object.entries(b.deliverables_breakdown).filter(([,n]: any) => Number(n) > 0).map(([t, n]: any) => `${n} ${t}${Number(n) === 1 ? "" : "s"}`).join(" · ")}
+                {platforms.length} platform{platforms.length === 1 ? "" : "s"}
               </div>
             )}
           </div>
@@ -80,6 +84,43 @@ const PublicBrief = () => {
             <div className="font-display text-base mt-1">{b.campaign.start_date || "—"} → {b.campaign.end_date || "—"}</div>
           </div>
         </div>
+
+        {/* Per-platform deliverables breakdown — one brief covers everything */}
+        {platforms.length > 0 && (
+          <Card className="p-6 mt-6">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Deliverables by platform</div>
+            <h3 className="font-display text-xl mt-1 mb-4">{platforms.length === 1 ? "What we need from you" : "One brief, multiple platforms"}</h3>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {platforms.map((plat) => {
+                const Icon = PLATFORM_ICON[plat] || Music2;
+                const items = Object.entries(breakdown[plat] || {}).filter(([, n]) => Number(n) > 0);
+                const total = items.reduce((a, [, n]) => a + Number(n), 0);
+                return (
+                  <div key={plat} className="rounded-md border border-border p-4 bg-secondary/30">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-md bg-card flex items-center justify-center"><Icon className="w-4 h-4" /></div>
+                        <div className="font-medium">{PLATFORM_LABEL[plat] || plat}</div>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">{total} piece{total === 1 ? "" : "s"}</Badge>
+                    </div>
+                    <ul className="mt-3 space-y-1 text-sm">
+                      {items.map(([t, n]) => (
+                        <li key={t} className="flex items-center gap-2 text-muted-foreground">
+                          <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
+                          <span><span className="text-foreground font-medium">{n}</span> {t}{Number(n) === 1 ? "" : "s"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+            {platforms.length > 1 && (
+              <p className="text-xs text-muted-foreground mt-4">This is your single brief — please don't expect a separate invite per platform. Confirm once and you're booked across all of the above.</p>
+            )}
+          </Card>
+        )}
 
         {b.campaign.objective && (
           <Card className="p-6 mt-6">
