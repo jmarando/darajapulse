@@ -90,21 +90,58 @@ async function scrapeTikTok(url: string) {
   return { stats, thumb, caption };
 }
 
+const APIFY_TOKEN = Deno.env.get("APIFY_API_TOKEN");
+
+async function scrapeInstagramViaApify(url: string) {
+  if (!APIFY_TOKEN) throw new Error("APIFY_API_TOKEN not configured");
+  // apify/instagram-scraper - run-sync-get-dataset-items returns parsed posts directly
+  const endpoint = `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
+  const r = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      directUrls: [url],
+      resultsType: "posts",
+      resultsLimit: 1,
+      addParentData: false,
+    }),
+  });
+  if (!r.ok) {
+    const txt = await r.text();
+    throw new Error(`Apify HTTP ${r.status}: ${txt.slice(0, 200)}`);
+  }
+  const items = await r.json();
+  const item = Array.isArray(items) ? items[0] : null;
+  if (!item) throw new Error("Apify returned no data for this URL");
+  return {
+    stats: {
+      views: item.videoViewCount ?? item.videoPlayCount ?? item.igtvVideoViewCount ?? 0,
+      likes: item.likesCount ?? 0,
+      comments: item.commentsCount ?? 0,
+      shares: 0,
+      saves: 0,
+    },
+    thumb: item.displayUrl ?? null,
+    caption: item.caption ?? null,
+  };
+}
+
 async function scrapeInstagram(url: string) {
-  // Try oEmbed first (gives thumbnail + html, no stats but useful)
+  // Try Apify first if token is set (reliable for posts + reels)
+  if (APIFY_TOKEN) {
+    try { return await scrapeInstagramViaApify(url); }
+    catch (e) { console.error("Apify IG failed, falling back to og-tags:", e); }
+  }
+  // Fallback: og-tags (rarely contains stats anymore)
   const html = await fetchHtml(url);
-  // Try to extract from og:description like "1,234 likes, 56 comments - @user on ..."
   const ogDesc = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i)?.[1];
   const ogImage = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i)?.[1];
   const ogTitle = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i)?.[1];
   let likes: number | null = null, comments: number | null = null, views: number | null = null;
   if (ogDesc) {
-    const likeM = ogDesc.match(/([\d.,]+[KMB]?)\s+likes/i);
-    const commentM = ogDesc.match(/([\d.,]+[KMB]?)\s+comments/i);
-    const viewM = ogDesc.match(/([\d.,]+[KMB]?)\s+(?:views|plays)/i);
-    likes = parseShortcount(likeM?.[1]);
-    comments = parseShortcount(commentM?.[1]);
-    views = parseShortcount(viewM?.[1]);
+    likes = parseShortcount(ogDesc.match(/([\d.,]+[KMB]?)\s+likes/i)?.[1]);
+    comments = parseShortcount(ogDesc.match(/([\d.,]+[KMB]?)\s+comments/i)?.[1]);
+    views = parseShortcount(ogDesc.match(/([\d.,]+[KMB]?)\s+(?:views|plays)/i)?.[1]);
   }
   if (likes == null && comments == null && views == null) {
     throw new Error("Instagram requires login for stats. Use manual entry.");
