@@ -254,7 +254,7 @@ const PublicBrief = () => {
           {final && b.status === "declined" && <span className="text-sm text-muted-foreground">Thanks — your response has been recorded.</span>}
         </div>
 
-        {b.status === "confirmed" && b.influencer?.id && (
+        {b.status === "confirmed" && b.influencer?.id && hasTikTok && (
           <Card className="p-6 mt-8 bg-gradient-ink text-primary-foreground border-0">
             <div className="flex items-center gap-4 flex-wrap">
               <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0">
