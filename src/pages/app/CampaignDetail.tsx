@@ -20,7 +20,7 @@ import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
-import { DeliverablesEditor, breakdownTotal, breakdownSummary, type Breakdown } from "@/components/DeliverablesEditor";
+import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
 
 
 const CampaignDetail = () => {
@@ -41,10 +41,10 @@ const CampaignDetail = () => {
   const [rosterSearch, setRosterSearch] = useState("");
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
   const [addFee, setAddFee] = useState<string>("");
-  const [addBreakdown, setAddBreakdown] = useState<Breakdown>({ post: 1 });
+  const [addBreakdown, setAddBreakdown] = useState<Breakdown>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFee, setEditFee] = useState<string>("");
-  const [editBreakdown, setEditBreakdown] = useState<Breakdown>({ post: 1 });
+  const [editBreakdown, setEditBreakdown] = useState<Breakdown>({});
   const [selectedCi, setSelectedCi] = useState<any>(null);
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
@@ -102,7 +102,7 @@ const CampaignDetail = () => {
     const deliv = total > 0 ? total : 1;
     const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: inflId, fee_kes: fee, deliverables_count: deliv, deliverables_breakdown: addBreakdown as any });
     if (error) return toast.error(error.message);
-    toast.success("Added"); setAddFee(""); setAddBreakdown({ post: 1 }); setPicked(null); setRosterOpen(false); load();
+    toast.success("Added"); setAddFee(""); setAddBreakdown({}); setPicked(null); setRosterOpen(false); load();
   };
 
   const updateCi = async (ciId: string, patch: any) => {
@@ -684,7 +684,7 @@ const CampaignDetail = () => {
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
             <h2 className="font-display text-2xl">Creators</h2>
           </div>
-          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddBreakdown({ post: 1 }); } }}>
+          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddBreakdown({}); } }}>
             <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add creator</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -701,7 +701,8 @@ const CampaignDetail = () => {
                   </div>
                   <div><Label>Fee (KES)</Label><Input type="number" autoFocus value={addFee} onChange={e => setAddFee(e.target.value)} placeholder="0" /></div>
                   <div>
-                    <Label>Deliverables</Label>
+                    <Label>Deliverables across platforms</Label>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Add a row per platform — one combined brief covers all of them, no separate invites.</p>
                     <div className="mt-1.5"><DeliverablesEditor value={addBreakdown} onChange={setAddBreakdown} /></div>
                   </div>
                   <div className="flex gap-2">
@@ -740,7 +741,7 @@ const CampaignDetail = () => {
                       .filter(r => !ci.some(x => x.influencer_id === r.id))
                       .filter(r => !rosterSearch || `${r.full_name} ${r.handle ?? ""}`.toLowerCase().includes(rosterSearch.toLowerCase()))
                       .map(r => (
-                        <button key={r.id} onClick={() => setPicked(r)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
+                        <button key={r.id} onClick={() => { setPicked(r); setAddBreakdown({ [r.primary_platform || "tiktok"]: { video: 1 } }); }} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
                           <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
                           <Plus className="w-4 h-4" />
                         </button>
@@ -872,7 +873,7 @@ const CampaignDetail = () => {
                                 </DropdownMenuItem>
                               ))}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); setEditBreakdown((x.deliverables_breakdown && Object.keys(x.deliverables_breakdown).length) ? x.deliverables_breakdown : { post: Number(x.deliverables_count) || 1 }); }}>
+                              <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); const norm = normalizeBreakdown(x.deliverables_breakdown, x.influencers?.primary_platform || "tiktok"); setEditBreakdown(Object.keys(norm).length ? norm : { [x.influencers?.primary_platform || "tiktok"]: { video: Number(x.deliverables_count) || 1 } }); }}>
                                 <Pencil className="w-4 h-4 mr-2" /> Edit fee & posts
                               </DropdownMenuItem>
                             </DropdownMenuContent>
