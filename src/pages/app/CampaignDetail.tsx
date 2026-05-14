@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles } from "lucide-react";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
@@ -142,6 +142,16 @@ const CampaignDetail = () => {
     const { error } = await supabase.from("posts").insert({ ...post, campaign_id: id, status: "live", posted_at: new Date().toISOString() });
     if (error) return toast.error(error.message);
     toast.success("Post added"); setPostOpen(false); setPost({ influencer_id: "", platform: "tiktok", post_url: "", caption: "" }); load();
+  };
+
+  const deletePost = async (postRow: any) => {
+    const label = postRow.influencers?.full_name || postRow.post_url || "this post";
+    if (!confirm(`Delete ${label}'s content from this campaign? Metrics for this post will also be removed.`)) return;
+    const { error } = await supabase.from("posts").delete().eq("id", postRow.id);
+    if (error) return toast.error(error.message);
+    toast.success("Post deleted");
+    setPreviewPost((current: any) => current?.id === postRow.id ? null : current);
+    load();
   };
 
   const generateLink = async () => {
@@ -966,9 +976,14 @@ const CampaignDetail = () => {
                     )}
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                       {postedAt && <span>{postedAt}</span>}
-                      <button type="button" onClick={() => setPreviewPost(p)} className="inline-flex items-center gap-1 hover:text-foreground">
-                        <Eye className="w-3 h-3" /> Preview
-                      </button>
+                      <div className="inline-flex items-center gap-2">
+                        <button type="button" onClick={() => setPreviewPost(p)} className="inline-flex items-center gap-1 hover:text-foreground">
+                          <Eye className="w-3 h-3" /> Preview
+                        </button>
+                        <button type="button" onClick={() => deletePost(p)} className="inline-flex items-center gap-1 hover:text-destructive" aria-label="Delete post">
+                          <Trash2 className="w-3 h-3" /> Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                   {m && (
