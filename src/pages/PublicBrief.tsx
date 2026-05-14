@@ -4,8 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Hash, Wallet, Calendar, CheckCircle2, XCircle, Music2, Check, X, AtSign, Link as LinkIcon, FileText, Clapperboard, Smartphone, Eye, Banknote } from "lucide-react";
+import { Hash, Wallet, Calendar, CheckCircle2, XCircle, Music2, Check, X, AtSign, Link as LinkIcon, FileText, Clapperboard, Smartphone, Eye, Banknote, Instagram, Youtube, Twitter, Facebook } from "lucide-react";
 import { toast } from "sonner";
+import { normalizeBreakdown } from "@/components/DeliverablesEditor";
+
+const PLATFORM_ICON: Record<string, any> = {
+  tiktok: Music2, instagram: Instagram, youtube: Youtube, twitter: Twitter, facebook: Facebook,
+};
+const PLATFORM_LABEL: Record<string, string> = {
+  tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", twitter: "X / Twitter", facebook: "Facebook",
+};
 
 const PublicBrief = () => {
   const { token } = useParams();
