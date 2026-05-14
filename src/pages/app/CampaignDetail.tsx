@@ -154,7 +154,30 @@ const CampaignDetail = () => {
     load();
   };
 
-  const generateLink = async () => {
+  const saveMetrics = async (postId: string, fields: { views: number; likes: number; comments: number; shares: number; saves?: number }) => {
+    const { error } = await supabase.from("post_metrics").insert({ post_id: postId, ...fields });
+    if (error) return toast.error(error.message);
+    toast.success("Metrics saved");
+    load();
+  };
+
+  const autoFetchPost = async (postId: string) => {
+    toast.loading("Fetching public stats…", { id: `pf-${postId}` });
+    const { data, error } = await supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } });
+    if (error) return toast.error(error.message, { id: `pf-${postId}` });
+    const r = data?.results?.[0];
+    if (r?.ok) toast.success("Stats fetched", { id: `pf-${postId}` });
+    else toast.error(r?.error || "Could not fetch — enter manually", { id: `pf-${postId}` });
+    load();
+  };
+
+  const autoFetchAll = async () => {
+    toast.loading("Auto-fetching all posts…", { id: "pf-all" });
+    const { data, error } = await supabase.functions.invoke("fetch-public-metrics", { body: { campaign_id: id } });
+    if (error) return toast.error(error.message, { id: "pf-all" });
+    toast.success(`Fetched ${data?.ok ?? 0} of ${data?.total ?? 0} posts`, { id: "pf-all" });
+    load();
+  };
     const { error } = await supabase.from("report_links").insert({ campaign_id: id });
     if (error) return toast.error(error.message);
     load();
