@@ -27,6 +27,7 @@ import PublicBrief from "./pages/PublicBrief";
 import PublicContestSubmit from "./pages/PublicContestSubmit";
 import ConnectTikTok from "./pages/ConnectTikTok";
 import NotFound from "./pages/NotFound.tsx";
+import Unsubscribe from "./pages/Unsubscribe";
 import LandingPicker from "./pages/landings/LandingPicker";
 import LandingEditorial from "./pages/landings/LandingEditorial";
 import LandingCinematic from "./pages/landings/LandingCinematic";
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/r/:token" element={<PublicReport />} />
             <Route path="/p/:token" element={<PublicPlan />} />
             <Route path="/:clientSlug/:campaignSlug/plan/:token" element={<PublicPlan />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/b/:token" element={<PublicBrief />} />
