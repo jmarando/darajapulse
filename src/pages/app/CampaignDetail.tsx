@@ -178,6 +178,8 @@ const CampaignDetail = () => {
     toast.success(`Fetched ${data?.ok ?? 0} of ${data?.total ?? 0} posts`, { id: "pf-all" });
     load();
   };
+
+  const generateLink = async () => {
     const { error } = await supabase.from("report_links").insert({ campaign_id: id });
     if (error) return toast.error(error.message);
     load();
