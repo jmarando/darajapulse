@@ -1016,8 +1016,8 @@ const CampaignDetail = () => {
                   <PostMetricsEditor
                     post={p}
                     metrics={m}
-                    onSave={(fields) => saveMetrics(p.id, fields)}
-                    onAutoFetch={() => autoFetchPost(p.id)}
+                    onSave={async (fields) => { await saveMetrics(p.id, fields); }}
+                    onAutoFetch={async () => { await autoFetchPost(p.id); }}
                   />
                 </li>
               );
