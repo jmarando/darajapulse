@@ -439,6 +439,7 @@ const CampaignDetail = () => {
                 {c.brief_templates?.objective || c.brief || c.brief_templates?.brief}
               </p>
             )}
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Select value={c.status} onValueChange={setStatus}>
