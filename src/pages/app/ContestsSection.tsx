@@ -318,6 +318,95 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
           )}
         </>
       )}
+      <Dialog open={!!editEntry} onOpenChange={(o) => !o && setEditEntry(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit contest entry</DialogTitle></DialogHeader>
+          {editEntry && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-md bg-secondary/40 border border-border">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Original post</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Platform</Label>
+                    <Select value={editEntry.platform} onValueChange={v => setEditEntry({ ...editEntry, platform: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Handle</Label><Input value={editEntry.handle || ""} onChange={e => setEditEntry({ ...editEntry, handle: e.target.value })} /></div>
+                </div>
+                <div className="mt-2"><Label>Post URL</Label><Input value={editEntry.post_url || ""} onChange={e => setEditEntry({ ...editEntry, post_url: e.target.value })} /></div>
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  <div><Label>Views</Label><Input type="number" value={editEntry.views ?? 0} onChange={e => setEditEntry({ ...editEntry, views: e.target.value })} /></div>
+                  <div><Label>Likes</Label><Input type="number" value={editEntry.likes ?? 0} onChange={e => setEditEntry({ ...editEntry, likes: e.target.value })} /></div>
+                  <div><Label>Comments</Label><Input type="number" value={editEntry.comments ?? 0} onChange={e => setEditEntry({ ...editEntry, comments: e.target.value })} /></div>
+                  <div><Label>Shares</Label><Input type="number" value={editEntry.shares ?? 0} onChange={e => setEditEntry({ ...editEntry, shares: e.target.value })} /></div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Crossposts</div>
+                    <p className="text-xs text-muted-foreground">Add the same video on other platforms — stats will roll into the total score.</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setEditEntry({ ...editEntry, cross_posts: [...(editEntry.cross_posts || []), { platform: "instagram", post_url: "", views: 0, likes: 0, comments: 0, shares: 0 }] })}>
+                    <Plus className="w-3 h-3 mr-1" /> Add crosspost
+                  </Button>
+                </div>
+                {(editEntry.cross_posts || []).length === 0 && <div className="text-xs text-muted-foreground italic">No crossposts yet.</div>}
+                <div className="space-y-3">
+                  {(editEntry.cross_posts || []).map((x: any, idx: number) => (
+                    <div key={idx} className="p-3 rounded-md border border-border bg-card">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Crosspost #{idx + 1}</div>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => {
+                          const next = [...editEntry.cross_posts];
+                          next.splice(idx, 1);
+                          setEditEntry({ ...editEntry, cross_posts: next });
+                        }}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div><Label className="text-xs">Platform</Label>
+                          <Select value={x.platform} onValueChange={v => {
+                            const next = [...editEntry.cross_posts]; next[idx] = { ...next[idx], platform: v }; setEditEntry({ ...editEntry, cross_posts: next });
+                          }}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>{PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2"><Label className="text-xs">Post URL</Label>
+                          <Input value={x.post_url || ""} onChange={e => {
+                            const next = [...editEntry.cross_posts]; next[idx] = { ...next[idx], post_url: e.target.value }; setEditEntry({ ...editEntry, cross_posts: next });
+                          }} placeholder="https://..." />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 mt-2">
+                        {["views","likes","comments","shares"].map(field => (
+                          <div key={field}><Label className="text-xs capitalize">{field}</Label>
+                            <Input type="number" value={x[field] ?? 0} onChange={e => {
+                              const next = [...editEntry.cross_posts]; next[idx] = { ...next[idx], [field]: e.target.value }; setEditEntry({ ...editEntry, cross_posts: next });
+                            }} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-md bg-primary/10 border border-primary/30">
+                <div className="text-sm">Total score across all platforms</div>
+                <div className="font-display text-2xl font-semibold">{Math.round(totalScore({ ...editEntry, cross_posts: (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim()) }))}</div>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setEditEntry(null)}>Cancel</Button>
+                <Button className="bg-primary" onClick={saveEditEntry}>Save changes</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
