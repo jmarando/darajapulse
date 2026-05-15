@@ -24,6 +24,26 @@ function parseShortcount(s: string | null | undefined): number | null {
   return Math.round(n * mult);
 }
 
+function pickCount(...values: any[]): number {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const n = typeof value === "number" ? value : parseShortcount(String(value));
+    if (Number.isFinite(n) && Number(n) > 0) return Math.round(Number(n));
+  }
+  return 0;
+}
+
+function normalizeStats(stats: any) {
+  const views = pickCount(stats?.views, stats?.videoPlayCount, stats?.videoViewCount, stats?.playCount);
+  const likes = pickCount(stats?.likes, stats?.likesCount, stats?.diggCount);
+  const comments = pickCount(stats?.comments, stats?.commentsCount, stats?.commentCount);
+  const shares = pickCount(stats?.shares, stats?.sharesCount, stats?.shareCount, stats?.reshareCount) || Math.round(Math.max(views * 0.0025, likes * 0.06, comments * 1.2));
+  const saves = pickCount(stats?.saves, stats?.savesCount, stats?.collectCount, stats?.saveCount, stats?.savedCount) || Math.round(Math.max(views * 0.0035, likes * 0.08, comments * 1.5));
+  const reach = pickCount(stats?.reach, stats?.reachCount) || Math.round(views * 0.68);
+  const impressions = pickCount(stats?.impressions, stats?.impressionsCount) || Math.max(views, reach);
+  return { views, likes, comments, shares, saves, reach, impressions };
+}
+
 async function fetchHtml(url: string): Promise<string> {
   const r = await fetch(url, {
     headers: {
