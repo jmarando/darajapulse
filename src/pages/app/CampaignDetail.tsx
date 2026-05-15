@@ -520,8 +520,8 @@ const CampaignDetail = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="roster">Roster<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
-          <TabsTrigger value="content">Content<span className="ml-1.5 text-xs opacity-60">{posts.length}</span></TabsTrigger>
+          <TabsTrigger value="creators">Creators &amp; content<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
+          <TabsTrigger value="contests">Contests</TabsTrigger>
           <TabsTrigger value="share">Share &amp; wrap</TabsTrigger>
         </TabsList>
 
