@@ -32,3 +32,22 @@ export const buildPeakMetricsByPost = (rows: MetricSnapshot[] = []) => {
   for (const [postId, list] of grouped) peaks.set(postId, { post_id: postId, ...peakMetricSnapshot(list) });
   return peaks;
 };
+
+export const fetchAllPostMetrics = async (client: any, postIds: string[], columns = "*") => {
+  const rows: MetricSnapshot[] = [];
+  for (let i = 0; i < postIds.length; i += 100) {
+    const ids = postIds.slice(i, i + 100);
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await client
+        .from("post_metrics")
+        .select(columns)
+        .in("post_id", ids)
+        .order("captured_at", { ascending: true })
+        .range(from, from + 999);
+      if (error) throw error;
+      rows.push(...(data ?? []));
+      if (!data || data.length < 1000) break;
+    }
+  }
+  return rows;
+};
