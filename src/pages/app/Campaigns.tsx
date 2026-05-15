@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Megaphone, ArrowUpRight, Eye, BarChart3, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { buildPeakMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
 
 const statusColor: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -47,21 +48,10 @@ const Campaigns = () => {
     if (ids.length) {
       const { data: ps } = await supabase.from("posts").select("id, campaign_id").in("campaign_id", ids);
       const postIds = (ps ?? []).map((p) => p.id);
-      // Fetch latest metric per post (order by captured_at desc, dedupe client-side).
+      // Fetch metric history per post and use peak values so bad zero polls do not erase performance.
       // Batch by 100 post ids to keep URLs short and avoid the 1000-row default cap.
-      const ms: any[] = [];
-      for (let i = 0; i < postIds.length; i += 100) {
-        const slice = postIds.slice(i, i + 100);
-        const { data } = await supabase
-          .from("post_metrics")
-          .select("post_id, views, likes, comments, shares, saves, captured_at")
-          .in("post_id", slice)
-          .order("captured_at", { ascending: false })
-          .limit(1000);
-        if (data) ms.push(...data);
-      }
-      const latest = new Map<string, any>();
-      for (const m of ms) if (!latest.has(m.post_id)) latest.set(m.post_id, m);
+      const ms = await fetchAllPostMetrics(supabase, postIds, "post_id, views, likes, comments, shares, saves, captured_at");
+      const latest = buildPeakMetricsByPost(ms);
       const map: Record<string, { views: number; er: number; posts: number; eng: number }> = {};
       for (const p of ps ?? []) {
         const cur = map[p.campaign_id] ?? { views: 0, er: 0, posts: 0, eng: 0 };

@@ -80,6 +80,8 @@ async function pollInfluencer(influencer_id: string, campaign_id?: string) {
   for (const v of j.data.videos) {
     const post = posts.find(p => p.tiktok_video_id === v.id);
     if (!post) continue;
+    const hasMetricSignal = [v.view_count, v.like_count, v.comment_count, v.share_count].some((n) => Number(n || 0) > 0);
+    if (!hasMetricSignal) continue;
     await supabase.from("post_metrics").insert({
       post_id: post.id,
       views: v.view_count ?? 0,
