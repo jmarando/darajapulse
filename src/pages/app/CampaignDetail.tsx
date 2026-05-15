@@ -640,14 +640,13 @@ const CampaignDetail = () => {
             <h2 className="font-display text-2xl mt-1">{metricLabel[metric]} over time</h2>
             <div className="text-xs text-muted-foreground mt-1">Click any metric above to switch the chart.</div>
           </div>
-          <div className="flex items-center gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !dateRange?.from && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                  {dateRange?.from ? (
-                    dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
-                  ) : "All time"}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CalendarIcon className="h-3.5 w-3.5" />
+            {dateRange?.from ? (
+              dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
+            ) : "All time"}
+            {/* legacy popover replaced by the Reporting window above */}
+            <span className="hidden">{(() => null)()}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
