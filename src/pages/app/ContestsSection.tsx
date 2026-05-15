@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2 } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
@@ -21,6 +21,35 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [polling, setPolling] = useState(false);
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
+  const [editEntry, setEditEntry] = useState<any>(null);
+
+  const scoreOf = (stats: { shares?: any; comments?: any; likes?: any }) =>
+    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
+  const totalScore = (e: any) => {
+    const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
+    return scoreOf(e) + xs.reduce((s: number, x: any) => s + scoreOf(x), 0);
+  };
+
+  const saveEditEntry = async () => {
+    if (!editEntry) return;
+    const cleanedCross = (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim());
+    const score = scoreOf(editEntry) + cleanedCross.reduce((s: number, x: any) => s + scoreOf(x), 0);
+    const { error } = await supabase.from("contest_entries").update({
+      handle: editEntry.handle,
+      post_url: editEntry.post_url,
+      platform: editEntry.platform,
+      views: Number(editEntry.views) || 0,
+      likes: Number(editEntry.likes) || 0,
+      comments: Number(editEntry.comments) || 0,
+      shares: Number(editEntry.shares) || 0,
+      cross_posts: cleanedCross,
+      score,
+    }).eq("id", editEntry.id);
+    if (error) return toast.error(error.message);
+    toast.success("Entry updated");
+    setEditEntry(null);
+    load();
+  };
 
   const load = async () => {
     const { data: cs } = await supabase.from("contests").select("*").eq("campaign_id", campaignId).order("created_at", { ascending: false });
