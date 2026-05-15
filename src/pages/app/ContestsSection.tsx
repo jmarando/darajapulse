@@ -182,7 +182,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
           <h2 className="font-display text-2xl flex items-center gap-2"><Trophy className="w-5 h-5 text-highlight" /> Hashtag contests</h2>
           <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1).</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {active && <Button size="sm" variant="outline" onClick={syncContestants} disabled={syncing}><Users className={`w-3 h-3 mr-1 ${syncing ? "animate-pulse" : ""}`} /> Sync contestants</Button>}
+          {active && <Button size="sm" variant="outline" onClick={() => discoverPosts()} disabled={discovering}><Sparkles className={`w-3 h-3 mr-1 ${discovering ? "animate-pulse" : ""}`} /> Discover posts</Button>}
           {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
           <Dialog open={open} onOpenChange={setOpen}>
