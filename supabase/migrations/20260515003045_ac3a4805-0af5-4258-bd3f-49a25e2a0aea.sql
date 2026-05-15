@@ -1,0 +1,2 @@
+UPDATE public.clients SET logo_url = 'https://ucxlveehobmeywkiynpy.supabase.co/storage/v1/object/public/client-logos/omo.png' WHERE id = '084dd167-4b8a-41eb-aa2f-27bbb9edd260';
+UPDATE public.clients SET logo_url = 'https://ucxlveehobmeywkiynpy.supabase.co/storage/v1/object/public/client-logos/vaseline.png' WHERE id = 'c7cc1659-d6f2-44df-af8c-146125fd2428';

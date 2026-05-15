@@ -37,7 +37,7 @@ const Campaigns = () => {
   const [form, setForm] = useState<any>({ client_id: "", name: "", brief: "", hashtag: "", budget_kes: 0, status: "draft", brief_template_id: "" });
 
   const load = async () => {
-    const { data } = await supabase.from("campaigns").select("*, clients(name)").order("created_at", { ascending: false });
+    const { data } = await supabase.from("campaigns").select("*, clients(name, logo_url)").order("created_at", { ascending: false });
     setRows(data ?? []);
     const { data: cs } = await supabase.from("clients").select("id,name");
     setClients(cs ?? []);
@@ -151,10 +151,19 @@ const Campaigns = () => {
           {rows.map(r => (
             <Link key={r.id} to={`/app/campaigns/${r.id}`}>
               <Card className="p-5 hover:shadow-elegant transition-all hover:-translate-y-0.5 group h-full">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                <div className="flex items-start gap-3">
+                  {r.clients?.logo_url ? (
+                    <div className="w-11 h-11 rounded-md bg-white border border-border shrink-0 flex items-center justify-center overflow-hidden">
+                      <img src={r.clients.logo_url} alt={`${r.clients?.name} logo`} className="max-w-[80%] max-h-[80%] object-contain" loading="lazy" />
+                    </div>
+                  ) : (
+                    <div className="w-11 h-11 rounded-md bg-muted shrink-0 flex items-center justify-center text-xs font-display text-muted-foreground">
+                      {(r.clients?.name || "?").slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
                     <div className="text-xs uppercase tracking-widest text-muted-foreground truncate">{r.clients?.name}</div>
-                    <div className="font-display text-2xl mt-1 truncate">{r.name}</div>
+                    <div className="font-display text-xl mt-0.5 leading-tight break-words">{r.name}</div>
                   </div>
                   <Badge className={`${statusColor[r.status]} shrink-0`}>{r.status}</Badge>
                 </div>
