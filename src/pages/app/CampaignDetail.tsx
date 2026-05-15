@@ -969,13 +969,6 @@ const CampaignDetail = () => {
             <h2 className="font-display text-2xl">Posts</h2>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={async () => {
-              toast.loading("Refreshing TikTok metrics…", { id: "tt" });
-              const { data, error } = await supabase.functions.invoke("tiktok-poll", { body: { campaign_id: id } });
-              if (error) return toast.error(error.message, { id: "tt" });
-              toast.success(`Polled ${(data?.results ?? []).reduce((a: number, r: any) => a + (r.polled ?? 0), 0)} posts`, { id: "tt" });
-              load();
-            }}><RefreshCw className="w-3 h-3 mr-1" /> Refresh TikTok</Button>
             <Button variant="outline" size="sm" onClick={autoFetchAll}><Sparkles className="w-3 h-3 mr-1" /> Auto-fetch all</Button>
             <Dialog open={postOpen} onOpenChange={setPostOpen}>
               <DialogTrigger asChild><Button size="sm" className="bg-primary" disabled={ci.length === 0}><Plus className="w-3 h-3 mr-1" /> Add post</Button></DialogTrigger>
