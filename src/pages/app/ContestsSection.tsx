@@ -261,6 +261,15 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
           <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1).</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {active && (
+            <>
+              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCsv(f); }} />
+              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <Upload className={`w-3 h-3 mr-1 ${uploading ? "animate-pulse" : ""}`} /> {uploading ? "Uploading…" : "Upload CSV"}
+              </Button>
+            </>
+          )}
           {active && <Button size="sm" variant="outline" onClick={syncContestants} disabled={syncing}><Users className={`w-3 h-3 mr-1 ${syncing ? "animate-pulse" : ""}`} /> Sync contestants</Button>}
           {active && <Button size="sm" variant="outline" onClick={() => discoverPosts()} disabled={discovering}><Sparkles className={`w-3 h-3 mr-1 ${discovering ? "animate-pulse" : ""}`} /> Discover posts</Button>}
           {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
