@@ -1043,7 +1043,7 @@ const CampaignDetail = () => {
           </div>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {posts.map(p => {
+            {posts.filter(p => !creatorFilter || p.influencer_id === creatorFilter).map(p => {
               const m = latestByPost.get(p.id);
               const postedAt = p.posted_at ? new Date(p.posted_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
               return (
@@ -1101,8 +1101,11 @@ const CampaignDetail = () => {
         </div>
         <a href={`/app/content?campaign=${id}`} className="text-sm text-accent hover:underline">Open in Content module →</a>
       </Card>
-      <ContestsSection campaignId={id!} />
 
+        </TabsContent>
+
+        <TabsContent value="contests" className="space-y-6 mt-0">
+          <ContestsSection campaignId={id!} />
         </TabsContent>
 
         <TabsContent value="share" className="space-y-6 mt-0">
