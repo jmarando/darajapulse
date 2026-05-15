@@ -62,7 +62,7 @@ export async function exportReportToPptx(d: ReportExportData) {
   s3.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.3, w: 6.1, h: 5.5, fill: { color: "0F172A" } });
   s3.addText("ESTIMATED VALUE", { x: 0.8, y: 1.6, w: 5.5, h: 0.4, fontSize: 11, color: "94A3B8", bold: true, charSpacing: 3 });
   s3.addText(`KES ${fmt(d.emv)}`, { x: 0.8, y: 2.1, w: 5.5, h: 1.6, fontSize: 56, color: "FFFFFF", bold: true });
-  s3.addText("vs. paid media at KES 12 CPM benchmark", { x: 0.8, y: 4.0, w: 5.5, h: 0.6, fontSize: 14, color: "CBD5E1" });
+  s3.addText("Estimated at KES 250 CPM (Kenya influencer benchmark)", { x: 0.8, y: 4.0, w: 5.5, h: 0.6, fontSize: 14, color: "CBD5E1" });
   if (d.topPerformer) {
     s3.addText("TOP PERFORMER", { x: 7.0, y: 1.6, w: 5.5, h: 0.4, fontSize: 11, color: "64748B", bold: true, charSpacing: 3 });
     s3.addText(d.topPerformer.name, { x: 7.0, y: 2.1, w: 5.8, h: 0.9, fontSize: 32, bold: true });

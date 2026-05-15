@@ -12,6 +12,7 @@ import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
+import { computeEmv, EMV_CPM_KES, EMV_DISCLAIMER } from "@/lib/emv";
 
 type PostWithMetrics = any;
 
@@ -103,7 +104,7 @@ const PublicReport = () => {
   }), { views:0, likes:0, comments:0, shares:0, saves:0, reach:0, impressions:0 });
 
   const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares + totals.saves) / totals.views * 100) : 0;
-  const emv = Math.round((totals.impressions || totals.views) * 0.012);
+  const emv = computeEmv(totals.views, totals.impressions);
   const cpm = totals.impressions > 0 && campaign.budget_kes > 0 ? (campaign.budget_kes / totals.impressions * 1000) : 0;
   const cpv = totals.views > 0 && campaign.budget_kes > 0 ? (campaign.budget_kes / totals.views) : 0;
 
@@ -328,7 +329,7 @@ const PublicReport = () => {
           <Card className="p-6 bg-gradient-ink text-primary-foreground border-0">
             <div className="text-[10px] uppercase tracking-widest opacity-70">Earned media value</div>
             <div className="font-display text-5xl font-semibold mt-2">{fmtKes(emv)}</div>
-            <p className="opacity-80 text-sm mt-3">Estimated value vs. paid media at a KES 12 CPM benchmark.</p>
+            <p className="opacity-80 text-sm mt-3">{EMV_DISCLAIMER}</p>
             <div className="mt-5 pt-5 border-t border-white/10 grid grid-cols-2 gap-4">
               <div>
                 <div className="text-[10px] uppercase tracking-widest opacity-60">Total interactions</div>
