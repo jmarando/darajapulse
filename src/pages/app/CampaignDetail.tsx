@@ -582,6 +582,24 @@ const CampaignDetail = () => {
             <h2 className="font-display text-2xl mt-1">{metricLabel[metric]} over time</h2>
             <div className="text-xs text-muted-foreground mt-1">Click any metric above to switch the chart.</div>
           </div>
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !dateRange?.from && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  {dateRange?.from ? (
+                    dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
+                  ) : "All time"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+            {dateRange?.from && (
+              <Button size="sm" variant="ghost" onClick={() => setDateRange(undefined)}><X className="w-3 h-3" /></Button>
+            )}
+          </div>
         </div>
         {trend.length === 0 ? (
           <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">No metric history yet.</div>
