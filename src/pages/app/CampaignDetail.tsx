@@ -167,7 +167,7 @@ const CampaignDetail = () => {
     load();
   };
 
-  const saveMetrics = async (postId: string, fields: { views: number; likes: number; comments: number; shares: number; saves?: number }) => {
+  const saveMetrics = async (postId: string, fields: { views: number; likes: number; comments: number; shares: number; saves?: number; reach?: number }) => {
     const { error } = await supabase.from("post_metrics").insert({ post_id: postId, ...fields });
     if (error) return toast.error(error.message);
     toast.success("Metrics saved");
