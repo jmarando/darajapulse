@@ -22,6 +22,8 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [polling, setPolling] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [discovering, setDiscovering] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [lastRun, setLastRun] = useState<any>(null);
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
