@@ -359,7 +359,7 @@ const CampaignDetail = () => {
   };
   const trend = useMemo(() => {
     // Sum across all posts at each capture timestamp (latest <= bucket time)
-    const sorted = [...metrics].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
+    const sorted = [...metricsFiltered].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
     if (sorted.length === 0) return [];
     const min = +new Date(sorted[0].captured_at);
     const max = +new Date(sorted[sorted.length - 1].captured_at);
