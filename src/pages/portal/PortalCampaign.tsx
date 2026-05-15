@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { PostThumb } from "@/components/PostThumb";
+import { buildPeakMetricsByPost } from "@/lib/metrics";
 
 const PortalCampaign = () => {
   const { id } = useParams();
@@ -20,13 +21,7 @@ const PortalCampaign = () => {
       const ids = (p ?? []).map((x: any) => x.id);
       if (ids.length) {
         const { data: m } = await supabase.from("post_metrics").select("*").in("post_id", ids);
-        const latest: Record<string, any> = {};
-        for (const row of m ?? []) {
-          if (!latest[row.post_id] || new Date(row.captured_at) > new Date(latest[row.post_id].captured_at)) {
-            latest[row.post_id] = row;
-          }
-        }
-        setMetrics(latest);
+        setMetrics(Object.fromEntries(buildPeakMetricsByPost(m ?? [])));
       }
     })();
   }, [id]);
