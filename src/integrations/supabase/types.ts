@@ -503,6 +503,7 @@ export type Database = {
           comments: number | null
           contest_id: string
           created_at: string
+          cross_posts: Json
           handle: string | null
           id: string
           influencer_id: string | null
@@ -527,6 +528,7 @@ export type Database = {
           comments?: number | null
           contest_id: string
           created_at?: string
+          cross_posts?: Json
           handle?: string | null
           id?: string
           influencer_id?: string | null
@@ -551,6 +553,7 @@ export type Database = {
           comments?: number | null
           contest_id?: string
           created_at?: string
+          cross_posts?: Json
           handle?: string | null
           id?: string
           influencer_id?: string | null
