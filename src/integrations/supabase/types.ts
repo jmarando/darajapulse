@@ -499,18 +499,26 @@ export type Database = {
       }
       contest_entries: {
         Row: {
+          address: string | null
           caption: string | null
           comments: number | null
           contest_id: string
           created_at: string
           cross_posts: Json
+          external_registration_id: string | null
+          facebook_handle: string | null
+          full_name: string | null
           handle: string | null
           id: string
           influencer_id: string | null
+          instagram_handle: string | null
           last_polled_at: string | null
+          lga: string | null
           likes: number | null
+          metadata: Json
+          phone: string | null
           platform: Database["public"]["Enums"]["platform"]
-          post_url: string
+          post_url: string | null
           posted_at: string | null
           round_number: number | null
           saves: number | null
@@ -521,21 +529,30 @@ export type Database = {
           submitter_email: string | null
           submitter_name: string | null
           thumbnail_url: string | null
+          tiktok_handle: string | null
           views: number | null
         }
         Insert: {
+          address?: string | null
           caption?: string | null
           comments?: number | null
           contest_id: string
           created_at?: string
           cross_posts?: Json
+          external_registration_id?: string | null
+          facebook_handle?: string | null
+          full_name?: string | null
           handle?: string | null
           id?: string
           influencer_id?: string | null
+          instagram_handle?: string | null
           last_polled_at?: string | null
+          lga?: string | null
           likes?: number | null
+          metadata?: Json
+          phone?: string | null
           platform: Database["public"]["Enums"]["platform"]
-          post_url: string
+          post_url?: string | null
           posted_at?: string | null
           round_number?: number | null
           saves?: number | null
@@ -546,21 +563,30 @@ export type Database = {
           submitter_email?: string | null
           submitter_name?: string | null
           thumbnail_url?: string | null
+          tiktok_handle?: string | null
           views?: number | null
         }
         Update: {
+          address?: string | null
           caption?: string | null
           comments?: number | null
           contest_id?: string
           created_at?: string
           cross_posts?: Json
+          external_registration_id?: string | null
+          facebook_handle?: string | null
+          full_name?: string | null
           handle?: string | null
           id?: string
           influencer_id?: string | null
+          instagram_handle?: string | null
           last_polled_at?: string | null
+          lga?: string | null
           likes?: number | null
+          metadata?: Json
+          phone?: string | null
           platform?: Database["public"]["Enums"]["platform"]
-          post_url?: string
+          post_url?: string | null
           posted_at?: string | null
           round_number?: number | null
           saves?: number | null
@@ -571,6 +597,7 @@ export type Database = {
           submitter_email?: string | null
           submitter_name?: string | null
           thumbnail_url?: string | null
+          tiktok_handle?: string | null
           views?: number | null
         }
         Relationships: [
@@ -589,6 +616,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      contestant_sync_runs: {
+        Row: {
+          contest_id: string | null
+          errors: Json
+          fetched: number
+          finished_at: string | null
+          id: string
+          source: string
+          started_at: string
+          status: string
+          triggered_by: string
+          upserted: number
+        }
+        Insert: {
+          contest_id?: string | null
+          errors?: Json
+          fetched?: number
+          finished_at?: string | null
+          id?: string
+          source?: string
+          started_at?: string
+          status?: string
+          triggered_by?: string
+          upserted?: number
+        }
+        Update: {
+          contest_id?: string | null
+          errors?: Json
+          fetched?: number
+          finished_at?: string | null
+          id?: string
+          source?: string
+          started_at?: string
+          status?: string
+          triggered_by?: string
+          upserted?: number
+        }
+        Relationships: []
       }
       contests: {
         Row: {

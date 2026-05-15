@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2 } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
@@ -19,6 +19,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [open, setOpen] = useState(false);
   const [entryOpen, setEntryOpen] = useState(false);
   const [polling, setPolling] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [lastRun, setLastRun] = useState<any>(null);
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
   const [editEntry, setEditEntry] = useState<any>(null);
@@ -59,7 +62,33 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       const cid = activeId ?? cs![0].id;
       const { data: es } = await supabase.from("contest_entries").select("*").eq("contest_id", cid).order("score", { ascending: false });
       setEntries(es ?? []);
+      const { data: lr } = await (supabase as any).from("contestant_sync_runs").select("*").eq("contest_id", cid).order("started_at", { ascending: false }).limit(1).maybeSingle();
+      setLastRun(lr ?? null);
     }
+  };
+
+  const syncContestants = async () => {
+    if (!activeId) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("contestants-sync", { body: { contest_id: activeId, triggered_by: "manual" } });
+      if (error) toast.error(error.message);
+      else if ((data as any)?.error) toast.error((data as any).error);
+      else toast.success(`Synced ${(data as any)?.upserted ?? 0} contestants`);
+      load();
+    } finally { setSyncing(false); }
+  };
+
+  const discoverPosts = async (only_handle?: string) => {
+    if (!activeId) return;
+    setDiscovering(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("contest-discover-posts", { body: { contest_id: activeId, triggered_by: "manual", only_handle } });
+      if (error) toast.error(error.message);
+      else if ((data as any)?.error) toast.error((data as any).error);
+      else toast.success(`Found ${(data as any)?.upserted ?? 0} matching posts`);
+      load();
+    } finally { setDiscovering(false); }
   };
   useEffect(() => { load(); }, [campaignId, activeId]);
 
@@ -153,7 +182,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
           <h2 className="font-display text-2xl flex items-center gap-2"><Trophy className="w-5 h-5 text-highlight" /> Hashtag contests</h2>
           <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1).</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {active && <Button size="sm" variant="outline" onClick={syncContestants} disabled={syncing}><Users className={`w-3 h-3 mr-1 ${syncing ? "animate-pulse" : ""}`} /> Sync contestants</Button>}
+          {active && <Button size="sm" variant="outline" onClick={() => discoverPosts()} disabled={discovering}><Sparkles className={`w-3 h-3 mr-1 ${discovering ? "animate-pulse" : ""}`} /> Discover posts</Button>}
           {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
           <Dialog open={open} onOpenChange={setOpen}>
@@ -247,8 +278,74 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                 </Dialog>
               </div>
 
+              {lastRun && (
+                <div className="text-[11px] text-muted-foreground mb-3">
+                  Last sync: {new Date(lastRun.started_at).toLocaleString()} · {lastRun.source} · {lastRun.upserted ?? 0} upserted{Array.isArray(lastRun.errors) && lastRun.errors.length ? ` · ${lastRun.errors.length} error(s)` : ""}
+                </div>
+              )}
+
+              {/* Contestants grouped view */}
+              {(() => {
+                const groups = new Map<string, any[]>();
+                for (const e of entries) {
+                  const key = (e.external_registration_id || e.handle || e.submitter_email || e.id) as string;
+                  if (!groups.has(key)) groups.set(key, []);
+                  groups.get(key)!.push(e);
+                }
+                const contestants = Array.from(groups.entries()).map(([key, rows]) => {
+                  const reg = rows.find(r => r.source === "registration") || rows[0];
+                  const posts = rows.filter(r => r.post_url);
+                  const total = posts.reduce((s, p) => s + scoreOf(p), 0);
+                  return { key, reg, posts, total };
+                }).sort((a, b) => b.total - a.total);
+                if (contestants.length === 0) return null;
+                return (
+                  <div className="mb-6">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {contestants.slice(0, 12).map(({ key, reg, posts, total }, i) => (
+                        <div key={key} className="p-3 rounded-md border border-border bg-card">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs text-muted-foreground">#{i + 1}</div>
+                              <div className="font-medium truncate">{reg.full_name || reg.submitter_name || reg.handle || "Contestant"}</div>
+                              <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
+                                {reg.instagram_handle && <span className="inline-flex items-center gap-1"><Instagram className="w-3 h-3" />@{reg.instagram_handle}</span>}
+                                {reg.tiktok_handle && <span className="inline-flex items-center gap-1"><Music2 className="w-3 h-3" />@{reg.tiktok_handle}</span>}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total score</div>
+                              <div className="font-display text-xl font-semibold">{Math.round(total)}</div>
+                            </div>
+                          </div>
+                          {posts.length === 0 ? (
+                            <div className="flex items-center justify-between text-xs text-muted-foreground italic">
+                              No matching posts yet.
+                              <Button size="sm" variant="ghost" className="h-6 text-xs" disabled={discovering} onClick={() => discoverPosts(reg.instagram_handle || reg.tiktok_handle)}>
+                                <Sparkles className="w-3 h-3 mr-1" /> Find posts
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              {posts.map(p => (
+                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" className="flex items-center justify-between text-xs hover:bg-secondary/40 rounded px-1 py-0.5">
+                                  <span className="capitalize text-muted-foreground w-16">{p.platform}</span>
+                                  <span className="tabular-nums flex-1 text-right pr-3">{(p.views || 0).toLocaleString()}v · {(p.likes || 0).toLocaleString()}♥ · {(p.comments || 0).toLocaleString()}💬</span>
+                                  <span className="font-semibold tabular-nums w-10 text-right">{Math.round(scoreOf(p))}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {entries.length === 0 ? (
-                <div className="text-center py-8 border border-dashed border-border rounded-md text-sm text-muted-foreground">No entries yet. Share the public link or log them manually.</div>
+                <div className="text-center py-8 border border-dashed border-border rounded-md text-sm text-muted-foreground">No entries yet. Click "Sync contestants" to pull registrations, then "Discover posts" to find their #{active.hashtag.replace(/^#/, "")} entries on IG/TikTok.</div>
               ) : (
                 <div className="space-y-5">
                   {byRound.map(([round, rows]) => (
@@ -259,7 +356,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                           <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
                             <tr>
                               <th className="text-left px-3 py-2">#</th>
-                              <th className="text-left px-3 py-2">Creator</th>
+                              <th className="text-left px-3 py-2">Contestant</th>
                               <th className="text-left px-3 py-2">Platform</th>
                               <th className="text-right px-3 py-2">Views</th>
                               <th className="text-right px-3 py-2">Likes</th>
