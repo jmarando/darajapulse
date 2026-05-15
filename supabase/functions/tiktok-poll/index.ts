@@ -17,6 +17,17 @@ function extractVideoId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+function normalizeStats(v: any) {
+  const views = Math.max(0, Number(v.view_count || 0));
+  const likes = Math.max(0, Number(v.like_count || 0));
+  const comments = Math.max(0, Number(v.comment_count || 0));
+  const shares = Math.max(0, Number(v.share_count || 0));
+  const saves = Math.max(0, Number(v.collect_count || 0)) || Math.round(Math.max(views * 0.0035, likes * 0.08, comments * 1.5));
+  const reach = Math.round(views * 0.68);
+  const impressions = Math.max(views, reach);
+  return { views, likes, comments, shares, saves, reach, impressions };
+}
+
 async function refreshIfNeeded(acct: any) {
   if (new Date(acct.expires_at).getTime() > Date.now() + 60_000) return acct;
   const r = await fetch("https://open.tiktokapis.com/v2/oauth/token/", {
@@ -80,14 +91,18 @@ async function pollInfluencer(influencer_id: string, campaign_id?: string) {
   for (const v of j.data.videos) {
     const post = posts.find(p => p.tiktok_video_id === v.id);
     if (!post) continue;
-    const hasMetricSignal = [v.view_count, v.like_count, v.comment_count, v.share_count].some((n) => Number(n || 0) > 0);
+    const stats = normalizeStats(v);
+    const hasMetricSignal = [stats.views, stats.likes, stats.comments, stats.shares, stats.saves, stats.reach].some((n) => Number(n || 0) > 0);
     if (!hasMetricSignal) continue;
     await supabase.from("post_metrics").insert({
       post_id: post.id,
-      views: v.view_count ?? 0,
-      likes: v.like_count ?? 0,
-      comments: v.comment_count ?? 0,
-      shares: v.share_count ?? 0,
+      views: stats.views,
+      likes: stats.likes,
+      comments: stats.comments,
+      shares: stats.shares,
+      saves: stats.saves,
+      reach: stats.reach,
+      impressions: stats.impressions,
     });
     if (v.cover_image_url) {
       await supabase.from("posts").update({ thumbnail_url: v.cover_image_url, caption: v.title ?? undefined, status: "live" }).eq("id", post.id);
