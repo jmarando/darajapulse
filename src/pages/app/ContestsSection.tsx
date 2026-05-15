@@ -70,6 +70,81 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
     }
   };
 
+  const cleanHandle = (s?: string) =>
+    (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || null;
+
+  const pick = (row: any, ...keys: string[]) => {
+    const norm = (s: string) => s.toLowerCase().replace(/[\s_\-#]/g, "");
+    const lookup: Record<string, any> = {};
+    for (const k of Object.keys(row)) lookup[norm(k)] = row[k];
+    for (const k of keys) {
+      const v = lookup[norm(k)];
+      if (v != null && String(v).trim() !== "") return String(v).trim();
+    }
+    return null;
+  };
+
+  const uploadCsv = async (file: File) => {
+    if (!activeId) return toast.error("Pick a contest first");
+    setUploading(true);
+    try {
+      const text = await file.text();
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const rows = (parsed.data as any[]).filter(Boolean);
+      if (!rows.length) { toast.error("No rows in CSV"); return; }
+
+      const upserts = rows.map((r, i) => {
+        const ig = cleanHandle(pick(r, "instagram", "instagram handle", "ig"));
+        const tt = cleanHandle(pick(r, "tiktok", "tiktok handle"));
+        const fb = cleanHandle(pick(r, "facebook", "facebook handle", "fb"));
+        const ext = pick(r, "response", "response #", "id", "submission id", "registration id") || `csv-${Date.now()}-${i}`;
+        return {
+          contest_id: activeId,
+          external_registration_id: String(ext),
+          platform: (tt ? "tiktok" : ig ? "instagram" : "facebook") as any,
+          status: "registered",
+          source: "registration",
+          full_name: pick(r, "full name", "name", "fullname"),
+          submitter_name: pick(r, "full name", "name", "fullname"),
+          submitter_email: pick(r, "email", "email address"),
+          phone: pick(r, "phone", "phone number", "mobile"),
+          address: pick(r, "address"),
+          lga: pick(r, "lga", "local government area"),
+          instagram_handle: ig,
+          tiktok_handle: tt,
+          facebook_handle: fb,
+          handle: ig || tt || fb,
+          metadata: { raw: r },
+        };
+      }).filter(r => r.submitter_email || r.instagram_handle || r.tiktok_handle || r.facebook_handle || r.phone);
+
+      if (!upserts.length) { toast.error("No valid contestants found in CSV"); return; }
+
+      const chunkSize = 200;
+      let ok = 0;
+      const errors: string[] = [];
+      for (let i = 0; i < upserts.length; i += chunkSize) {
+        const chunk = upserts.slice(i, i + chunkSize);
+        const { error } = await supabase.from("contest_entries")
+          .upsert(chunk, { onConflict: "contest_id,external_registration_id", ignoreDuplicates: false });
+        if (error) errors.push(error.message); else ok += chunk.length;
+      }
+      await (supabase as any).from("contestant_sync_runs").insert({
+        contest_id: activeId, source: "csv_upload", triggered_by: "manual",
+        fetched: rows.length, upserted: ok, status: errors.length ? "partial" : "ok",
+        errors: errors.map(msg => ({ msg })), finished_at: new Date().toISOString(),
+      });
+      if (errors.length) toast.error(`Upserted ${ok}/${upserts.length} — ${errors[0]}`);
+      else toast.success(`Imported ${ok} contestants from CSV`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "CSV upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
   const syncContestants = async () => {
     if (!activeId) return;
     setSyncing(true);
