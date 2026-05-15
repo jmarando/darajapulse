@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2 } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
@@ -19,6 +19,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [open, setOpen] = useState(false);
   const [entryOpen, setEntryOpen] = useState(false);
   const [polling, setPolling] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [lastRun, setLastRun] = useState<any>(null);
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
   const [editEntry, setEditEntry] = useState<any>(null);
@@ -59,7 +62,33 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       const cid = activeId ?? cs![0].id;
       const { data: es } = await supabase.from("contest_entries").select("*").eq("contest_id", cid).order("score", { ascending: false });
       setEntries(es ?? []);
+      const { data: lr } = await (supabase as any).from("contestant_sync_runs").select("*").eq("contest_id", cid).order("started_at", { ascending: false }).limit(1).maybeSingle();
+      setLastRun(lr ?? null);
     }
+  };
+
+  const syncContestants = async () => {
+    if (!activeId) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("contestants-sync", { body: { contest_id: activeId, triggered_by: "manual" } });
+      if (error) toast.error(error.message);
+      else if ((data as any)?.error) toast.error((data as any).error);
+      else toast.success(`Synced ${(data as any)?.upserted ?? 0} contestants`);
+      load();
+    } finally { setSyncing(false); }
+  };
+
+  const discoverPosts = async (only_handle?: string) => {
+    if (!activeId) return;
+    setDiscovering(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("contest-discover-posts", { body: { contest_id: activeId, triggered_by: "manual", only_handle } });
+      if (error) toast.error(error.message);
+      else if ((data as any)?.error) toast.error((data as any).error);
+      else toast.success(`Found ${(data as any)?.upserted ?? 0} matching posts`);
+      load();
+    } finally { setDiscovering(false); }
   };
   useEffect(() => { load(); }, [campaignId, activeId]);
 
