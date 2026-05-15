@@ -235,10 +235,23 @@ const CampaignDetail = () => {
     });
   }, [metrics, dateRange]);
 
-  // Latest metric per post (within filter window)
+  // Best (max) per metric per post within filter window. Cumulative counts
+  // (views/likes/etc) only ever go up, so a single bad poll returning 0
+  // shouldn't wipe out the totals — take the peak we've recorded instead.
   const latestByPost = useMemo(() => {
     const map = new Map<string, any>();
-    for (const m of metricsFiltered) if (!map.has(m.post_id)) map.set(m.post_id, m);
+    for (const m of metricsFiltered) {
+      const cur = map.get(m.post_id) ?? { post_id: m.post_id, views: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0, impressions: 0, captured_at: m.captured_at };
+      cur.views = Math.max(cur.views, Number(m.views || 0));
+      cur.likes = Math.max(cur.likes, Number(m.likes || 0));
+      cur.comments = Math.max(cur.comments, Number(m.comments || 0));
+      cur.shares = Math.max(cur.shares, Number(m.shares || 0));
+      cur.saves = Math.max(cur.saves, Number(m.saves || 0));
+      cur.reach = Math.max(cur.reach, Number(m.reach || 0));
+      cur.impressions = Math.max(cur.impressions, Number(m.impressions || 0));
+      if (new Date(m.captured_at) > new Date(cur.captured_at)) cur.captured_at = m.captured_at;
+      map.set(m.post_id, cur);
+    }
     return map;
   }, [metricsFiltered]);
 
@@ -528,6 +541,50 @@ const CampaignDetail = () => {
 
         <TabsContent value="overview" className="space-y-6 mt-0">
 
+      {/* Reporting window */}
+      {(() => {
+        const today = new Date();
+        const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
+        const endOfDay = (d: Date) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
+        const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+        // Week starts Monday
+        const startOfWeek = (d: Date) => { const x = startOfDay(d); const day = (x.getDay() + 6) % 7; return addDays(x, -day); };
+        const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+        const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+        const presets: { label: string; range: DateRange }[] = [
+          { label: "This week", range: { from: startOfWeek(today), to: endOfDay(today) } },
+          { label: "Last 7 days", range: { from: startOfDay(addDays(today, -6)), to: endOfDay(today) } },
+          { label: "Last 14 days", range: { from: startOfDay(addDays(today, -13)), to: endOfDay(today) } },
+          { label: "This month", range: { from: startOfMonth(today), to: endOfDay(today) } },
+          { label: "Last month", range: { from: startOfMonth(addDays(startOfMonth(today), -1)), to: endOfMonth(addDays(startOfMonth(today), -1)) } },
+        ];
+        const sameDay = (a?: Date, b?: Date) => a && b && +startOfDay(a) === +startOfDay(b);
+        const activePreset = presets.find(p => sameDay(p.range.from, dateRange?.from) && sameDay(p.range.to, dateRange?.to));
+        return (
+          <Card className="p-4 flex flex-wrap items-center gap-2">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mr-2">Reporting window</div>
+            <Button size="sm" variant={!dateRange?.from ? "default" : "outline"} onClick={() => setDateRange(undefined)}>All time</Button>
+            {presets.map(p => (
+              <Button key={p.label} size="sm" variant={activePreset?.label === p.label ? "default" : "outline"} onClick={() => setDateRange(p.range)}>{p.label}</Button>
+            ))}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline" className={cn("ml-auto", !activePreset && dateRange?.from && "border-accent")}>
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  {dateRange?.from ? (
+                    dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
+                  ) : "Custom range"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+          </Card>
+        );
+      })()}
+
+
       {/* Performance band */}
       {(() => {
         const tiles = [
@@ -583,23 +640,11 @@ const CampaignDetail = () => {
             <h2 className="font-display text-2xl mt-1">{metricLabel[metric]} over time</h2>
             <div className="text-xs text-muted-foreground mt-1">Click any metric above to switch the chart.</div>
           </div>
-          <div className="flex items-center gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !dateRange?.from && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                  {dateRange?.from ? (
-                    dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
-                  ) : "All time"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} initialFocus className={cn("p-3 pointer-events-auto")} />
-              </PopoverContent>
-            </Popover>
-            {dateRange?.from && (
-              <Button size="sm" variant="ghost" onClick={() => setDateRange(undefined)}><X className="w-3 h-3" /></Button>
-            )}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CalendarIcon className="h-3.5 w-3.5" />
+            {dateRange?.from ? (
+              dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
+            ) : "All time"}
           </div>
         </div>
         {trend.length === 0 ? (
