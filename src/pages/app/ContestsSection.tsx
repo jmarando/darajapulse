@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2 } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
@@ -21,6 +21,35 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [polling, setPolling] = useState(false);
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
+  const [editEntry, setEditEntry] = useState<any>(null);
+
+  const scoreOf = (stats: { shares?: any; comments?: any; likes?: any }) =>
+    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
+  const totalScore = (e: any) => {
+    const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
+    return scoreOf(e) + xs.reduce((s: number, x: any) => s + scoreOf(x), 0);
+  };
+
+  const saveEditEntry = async () => {
+    if (!editEntry) return;
+    const cleanedCross = (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim());
+    const score = scoreOf(editEntry) + cleanedCross.reduce((s: number, x: any) => s + scoreOf(x), 0);
+    const { error } = await supabase.from("contest_entries").update({
+      handle: editEntry.handle,
+      post_url: editEntry.post_url,
+      platform: editEntry.platform,
+      views: Number(editEntry.views) || 0,
+      likes: Number(editEntry.likes) || 0,
+      comments: Number(editEntry.comments) || 0,
+      shares: Number(editEntry.shares) || 0,
+      cross_posts: cleanedCross,
+      score,
+    }).eq("id", editEntry.id);
+    if (error) return toast.error(error.message);
+    toast.success("Entry updated");
+    setEditEntry(null);
+    load();
+  };
 
   const load = async () => {
     const { data: cs } = await supabase.from("contests").select("*").eq("campaign_id", campaignId).order("created_at", { ascending: false });
@@ -242,16 +271,27 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                             </tr>
                           </thead>
                           <tbody>
-                            {rows.sort((a, b) => b.score - a.score).map((e, i) => (
+                            {rows.sort((a, b) => totalScore(b) - totalScore(a)).map((e, i) => {
+                              const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
+                              const tViews = (e.views || 0) + xs.reduce((s: number, x: any) => s + Number(x.views || 0), 0);
+                              const tLikes = (e.likes || 0) + xs.reduce((s: number, x: any) => s + Number(x.likes || 0), 0);
+                              const tComments = (e.comments || 0) + xs.reduce((s: number, x: any) => s + Number(x.comments || 0), 0);
+                              const tShares = (e.shares || 0) + xs.reduce((s: number, x: any) => s + Number(x.shares || 0), 0);
+                              return (
                               <tr key={e.id} className="border-t border-border">
                                 <td className="px-3 py-2 tabular-nums">{i + 1}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
-                                <td className="px-3 py-2"><a href={e.post_url} target="_blank" rel="noreferrer" className="hover:text-accent">{e.handle || e.submitter_name || "—"}</a></td>
-                                <td className="px-3 py-2 capitalize text-muted-foreground">{e.platform}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{(e.views ?? 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{(e.likes ?? 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{(e.comments ?? 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{(e.shares ?? 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(e.score)}</td>
+                                <td className="px-3 py-2">
+                                  <a href={e.post_url} target="_blank" rel="noreferrer" className="hover:text-accent">{e.handle || e.submitter_name || "—"}</a>
+                                  {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{xs.length} crosspost{xs.length === 1 ? "" : "s"}</div>}
+                                </td>
+                                <td className="px-3 py-2 capitalize text-muted-foreground">
+                                  {e.platform}{xs.length > 0 && <div className="text-[10px]">+{Array.from(new Set(xs.map((x: any) => x.platform))).join(", ")}</div>}
+                                </td>
+                                <td className="px-3 py-2 text-right tabular-nums">{tViews.toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{tLikes.toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{tComments.toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{tShares.toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(totalScore(e))}</td>
                                 <td className="px-3 py-2 text-right"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
                                 <td className="px-3 py-2 text-right">
                                   <div className="inline-flex gap-1">
@@ -261,11 +301,12 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                                         <Button size="icon" className="h-7 w-7 bg-primary" onClick={() => setStatus(e.id, "approved")}><Check className="w-4 h-4" /></Button>
                                       </>
                                     )}
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditEntry({ ...e, cross_posts: Array.isArray(e.cross_posts) ? e.cross_posts : [] })} aria-label="Edit entry"><Pencil className="w-4 h-4" /></Button>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteEntry(e)} aria-label="Delete contest entry"><Trash2 className="w-4 h-4" /></Button>
                                   </div>
                                 </td>
                               </tr>
-                            ))}
+                            );})}
                           </tbody>
                         </table>
                       </div>
@@ -277,6 +318,95 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
           )}
         </>
       )}
+      <Dialog open={!!editEntry} onOpenChange={(o) => !o && setEditEntry(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit contest entry</DialogTitle></DialogHeader>
+          {editEntry && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-md bg-secondary/40 border border-border">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Original post</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Platform</Label>
+                    <Select value={editEntry.platform} onValueChange={v => setEditEntry({ ...editEntry, platform: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Handle</Label><Input value={editEntry.handle || ""} onChange={e => setEditEntry({ ...editEntry, handle: e.target.value })} /></div>
+                </div>
+                <div className="mt-2"><Label>Post URL</Label><Input value={editEntry.post_url || ""} onChange={e => setEditEntry({ ...editEntry, post_url: e.target.value })} /></div>
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  <div><Label>Views</Label><Input type="number" value={editEntry.views ?? 0} onChange={e => setEditEntry({ ...editEntry, views: e.target.value })} /></div>
+                  <div><Label>Likes</Label><Input type="number" value={editEntry.likes ?? 0} onChange={e => setEditEntry({ ...editEntry, likes: e.target.value })} /></div>
+                  <div><Label>Comments</Label><Input type="number" value={editEntry.comments ?? 0} onChange={e => setEditEntry({ ...editEntry, comments: e.target.value })} /></div>
+                  <div><Label>Shares</Label><Input type="number" value={editEntry.shares ?? 0} onChange={e => setEditEntry({ ...editEntry, shares: e.target.value })} /></div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Crossposts</div>
+                    <p className="text-xs text-muted-foreground">Add the same video on other platforms — stats will roll into the total score.</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setEditEntry({ ...editEntry, cross_posts: [...(editEntry.cross_posts || []), { platform: "instagram", post_url: "", views: 0, likes: 0, comments: 0, shares: 0 }] })}>
+                    <Plus className="w-3 h-3 mr-1" /> Add crosspost
+                  </Button>
+                </div>
+                {(editEntry.cross_posts || []).length === 0 && <div className="text-xs text-muted-foreground italic">No crossposts yet.</div>}
+                <div className="space-y-3">
+                  {(editEntry.cross_posts || []).map((x: any, idx: number) => (
+                    <div key={idx} className="p-3 rounded-md border border-border bg-card">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Crosspost #{idx + 1}</div>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => {
+                          const next = [...editEntry.cross_posts];
+                          next.splice(idx, 1);
+                          setEditEntry({ ...editEntry, cross_posts: next });
+                        }}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div><Label className="text-xs">Platform</Label>
+                          <Select value={x.platform} onValueChange={v => {
+                            const next = [...editEntry.cross_posts]; next[idx] = { ...next[idx], platform: v }; setEditEntry({ ...editEntry, cross_posts: next });
+                          }}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>{PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2"><Label className="text-xs">Post URL</Label>
+                          <Input value={x.post_url || ""} onChange={e => {
+                            const next = [...editEntry.cross_posts]; next[idx] = { ...next[idx], post_url: e.target.value }; setEditEntry({ ...editEntry, cross_posts: next });
+                          }} placeholder="https://..." />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 mt-2">
+                        {["views","likes","comments","shares"].map(field => (
+                          <div key={field}><Label className="text-xs capitalize">{field}</Label>
+                            <Input type="number" value={x[field] ?? 0} onChange={e => {
+                              const next = [...editEntry.cross_posts]; next[idx] = { ...next[idx], [field]: e.target.value }; setEditEntry({ ...editEntry, cross_posts: next });
+                            }} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-md bg-primary/10 border border-primary/30">
+                <div className="text-sm">Total score across all platforms</div>
+                <div className="font-display text-2xl font-semibold">{Math.round(totalScore({ ...editEntry, cross_posts: (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim()) }))}</div>
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setEditEntry(null)}>Cancel</Button>
+                <Button className="bg-primary" onClick={saveEditEntry}>Save changes</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

@@ -70,7 +70,7 @@ const CampaignDetail = () => {
   };
 
   const load = async () => {
-    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug), brief_templates:brief_template_id(*)").eq("id", id).single();
+    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug, logo_url), brief_templates:brief_template_id(*)").eq("id", id).single();
     setC(c1);
     setLearnings(c1?.learnings ?? "");
     if (c1?.client_id) {
@@ -399,9 +399,17 @@ const CampaignDetail = () => {
       {/* Hero */}
       <div className="mb-8">
         <div className="flex justify-between items-start gap-6">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 flex items-start gap-4">
+            {c.clients?.logo_url ? (
+              <img src={c.clients.logo_url} alt={`${c.clients?.name} logo`} className="w-14 h-14 rounded-md object-contain bg-white border border-border p-1 shrink-0" />
+            ) : (
+              <div className="w-14 h-14 rounded-md bg-secondary border border-border flex items-center justify-center font-display text-lg shrink-0">
+                {c.clients?.name?.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
             <div className="text-xs uppercase tracking-widest text-muted-foreground">{c.clients?.name}</div>
-            <h1 className="font-display text-4xl font-semibold mt-1 truncate">{c.name}</h1>
+            <h1 className="font-display text-3xl md:text-4xl font-semibold mt-1 break-words">{c.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-sm text-muted-foreground">
               {(c.hashtag || c.brief_templates?.hashtag) && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(c.hashtag || c.brief_templates?.hashtag).replace(/^#/, "")}</span>}
               {c.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />Budget KES {Number(c.budget_kes).toLocaleString()}</span>}
@@ -431,6 +439,7 @@ const CampaignDetail = () => {
                 {c.brief_templates?.objective || c.brief || c.brief_templates?.brief}
               </p>
             )}
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Select value={c.status} onValueChange={setStatus}>

@@ -1,0 +1,1 @@
+ALTER TABLE public.contest_entries ADD COLUMN IF NOT EXISTS cross_posts jsonb NOT NULL DEFAULT '[]'::jsonb;
