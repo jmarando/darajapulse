@@ -185,6 +185,8 @@ async function processPost(p: any) {
   if (!p.post_url) return { id: p.id, ok: false, error: "no_url" };
   try {
     const { stats, thumb, caption } = await scrape(p.platform, p.post_url);
+    const hasMetricSignal = [stats.views, stats.likes, stats.comments, stats.shares, stats.saves].some((v) => Number(v || 0) > 0);
+    if (!hasMetricSignal) return { id: p.id, ok: false, error: "no_public_metrics" };
     await supabase.from("post_metrics").insert({
       post_id: p.id,
       views: stats.views,
