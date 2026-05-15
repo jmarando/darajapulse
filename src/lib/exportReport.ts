@@ -15,6 +15,7 @@ export type ReportExportData = {
   platformRows: { platform: string; posts: number; creators: number; views: number; reach: number }[];
   posts: { creator: string; platform: string; views: number; likes: number; comments: number; shares: number; url?: string }[];
   learnings?: string | null;
+  clientLogoUrl?: string | null;
 };
 
 export async function exportReportToPptx(d: ReportExportData) {
@@ -24,8 +25,11 @@ export async function exportReportToPptx(d: ReportExportData) {
   // Cover
   const s1 = pptx.addSlide();
   s1.background = { color: "0F172A" };
-  s1.addText(d.clientName.toUpperCase(), { x: 0.6, y: 0.6, w: 12, h: 0.4, fontSize: 12, color: "94A3B8", bold: true, charSpacing: 4 });
-  s1.addText(d.campaignName, { x: 0.6, y: 1.2, w: 12, h: 1.6, fontSize: 48, color: "FFFFFF", bold: true, fontFace: "Calibri" });
+  if (d.clientLogoUrl) {
+    try { s1.addImage({ path: d.clientLogoUrl, x: 0.6, y: 0.5, w: 1.2, h: 1.2, sizing: { type: "contain", w: 1.2, h: 1.2 } }); } catch {}
+  }
+  s1.addText(d.clientName.toUpperCase(), { x: 2.0, y: 0.7, w: 10, h: 0.4, fontSize: 12, color: "94A3B8", bold: true, charSpacing: 4 });
+  s1.addText(d.campaignName, { x: 0.6, y: 2.0, w: 12, h: 2.2, fontSize: 44, color: "FFFFFF", bold: true, fontFace: "Calibri" });
   const meta = [d.hashtag, d.budgetKes ? `KES ${Number(d.budgetKes).toLocaleString()}` : null, d.rangeLabel].filter(Boolean).join("   ·   ");
   if (meta) s1.addText(meta, { x: 0.6, y: 3.0, w: 12, h: 0.5, fontSize: 16, color: "CBD5E1" });
   s1.addText("Campaign Report", { x: 0.6, y: 6.6, w: 12, h: 0.4, fontSize: 12, color: "94A3B8", italic: true });
