@@ -385,7 +385,7 @@ const CampaignDetail = () => {
       points.push({ d: `${date.getMonth()+1}/${date.getDate()}`, v: total });
     }
     return points;
-  }, [metrics, metric]);
+  }, [metricsFiltered, metric]);
 
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
