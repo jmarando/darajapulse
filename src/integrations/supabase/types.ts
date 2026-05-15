@@ -1238,8 +1238,26 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_agency_team: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
       get_brief_by_token: { Args: { _token: string }; Returns: Json }
       get_contest_by_token: { Args: { _token: string }; Returns: Json }
+      get_profiles_by_ids: {
+        Args: { _ids: string[] }
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
