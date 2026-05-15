@@ -28,7 +28,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "rec
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
 import { computeEmv, EMV_DISCLAIMER } from "@/lib/emv";
-import { buildPeakMetricsByPost } from "@/lib/metrics";
+import { buildPeakMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
 
 
 const CampaignDetail = () => {
@@ -93,8 +93,12 @@ const CampaignDetail = () => {
     setPosts(p ?? []);
     const postIds = (p ?? []).map((x: any) => x.id);
     if (postIds.length) {
-      const { data: m } = await supabase.from("post_metrics").select("*").in("post_id", postIds).order("captured_at", { ascending: false });
-      setMetrics(m ?? []);
+      try {
+        setMetrics(await fetchAllPostMetrics(supabase, postIds));
+      } catch (error: any) {
+        toast.error(error.message || "Could not load metrics");
+        setMetrics([]);
+      }
     } else setMetrics([]);
     const { data: l } = await supabase.from("report_links").select("*").eq("campaign_id", id).maybeSingle();
     setLink(l);
