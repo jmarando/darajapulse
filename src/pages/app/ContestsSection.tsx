@@ -270,7 +270,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
               </Button>
             </>
           )}
-          {active && <Button size="sm" variant="outline" onClick={syncContestants} disabled={syncing}><Users className={`w-3 h-3 mr-1 ${syncing ? "animate-pulse" : ""}`} /> Sync contestants</Button>}
+          
           {active && <Button size="sm" variant="outline" onClick={() => discoverPosts()} disabled={discovering}><Sparkles className={`w-3 h-3 mr-1 ${discovering ? "animate-pulse" : ""}`} /> Discover posts</Button>}
           {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
