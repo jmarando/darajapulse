@@ -111,7 +111,7 @@ export const AgencyTeamPicker = ({ scope, title = "Agency team" }: Props) => {
           {rows.map((r) => (
             <div key={r.id} className="flex items-center justify-between border rounded-md px-3 py-2 bg-background">
               <div className="min-w-0">
-                <div className="text-sm font-medium truncate">{r.profile?.full_name || r.profile?.email || r.user_id}</div>
+                <div className="text-sm font-medium truncate">{r.profile?.full_name || r.profile?.email || "Unknown teammate"}</div>
                 {r.profile?.email && r.profile?.full_name && (
                   <div className="text-[10px] text-muted-foreground truncate">{r.profile.email}</div>
                 )}
