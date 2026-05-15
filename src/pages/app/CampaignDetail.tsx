@@ -58,6 +58,7 @@ const CampaignDetail = () => {
   const [generatingLearnings, setGeneratingLearnings] = useState(false);
   const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement"|"emv">("views");
   const [previewPost, setPreviewPost] = useState<any>(null);
+  const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
@@ -520,8 +521,8 @@ const CampaignDetail = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="roster">Roster<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
-          <TabsTrigger value="content">Content<span className="ml-1.5 text-xs opacity-60">{posts.length}</span></TabsTrigger>
+          <TabsTrigger value="creators">Creators &amp; content<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
+          <TabsTrigger value="contests">Contests</TabsTrigger>
           <TabsTrigger value="share">Share &amp; wrap</TabsTrigger>
         </TabsList>
 
@@ -771,7 +772,7 @@ const CampaignDetail = () => {
 
         </TabsContent>
 
-        <TabsContent value="roster" className="space-y-6 mt-0">
+        <TabsContent value="creators" className="space-y-6 mt-0">
 
       {/* Agency team on this campaign */}
       {c?.id && (
@@ -904,7 +905,7 @@ const CampaignDetail = () => {
                   const mailto = `mailto:${x.influencers?.email ?? ""}?subject=${encodeURIComponent(`${c.clients?.name} × ${c.name} — collaboration brief`)}&body=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""},\n\nWe'd love to have you on this campaign. View your brief and confirm here:\n${briefUrl}\n\nThanks!`)}`;
                   const wa = x.influencers?.phone_mpesa ? `https://wa.me/${String(x.influencers.phone_mpesa).replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${x.influencers?.full_name?.split(" ")[0] ?? ""}! ${c.clients?.name} × ${c.name} brief: ${briefUrl}`)}` : null;
                   return (
-                    <tr key={x.id} onClick={(e) => { if ((e.target as HTMLElement).closest("button,a,input,[role=menu]")) return; setSelectedCi(x); }} className="border-b border-border last:border-0 hover:bg-secondary/40 transition-colors group cursor-pointer">
+                    <tr key={x.id} onClick={(e) => { if ((e.target as HTMLElement).closest("button,a,input,[role=menu]")) return; setCreatorFilter(x.influencer_id); document.getElementById("posts-section")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className={`border-b border-border last:border-0 hover:bg-secondary/40 transition-colors group cursor-pointer ${creatorFilter === x.influencer_id ? "bg-accent/10" : ""}`}>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center font-display text-base shrink-0">{x.influencers?.full_name?.[0]}</div>
@@ -993,16 +994,21 @@ const CampaignDetail = () => {
         )}
       </Card>
 
-        </TabsContent>
-
-        <TabsContent value="content" className="space-y-6 mt-0">
-
-      {/* Posts — full width below */}
-      <Card className="p-5 mb-6">
+      {/* Posts grid (merged from old Content tab) */}
+      <Card id="posts-section" className="p-5 mb-6">
         <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-          <div>
+          <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Activity</div>
             <h2 className="font-display text-2xl">Posts</h2>
+            {creatorFilter && (() => {
+              const c = ci.find(x => x.influencer_id === creatorFilter);
+              return (
+                <button onClick={() => setCreatorFilter(null)} className="mt-2 inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-accent/15 border border-accent/30 hover:bg-accent/25">
+                  Filtered: {c?.influencers?.full_name ?? "creator"}
+                  <X className="w-3 h-3" />
+                </button>
+              );
+            })()}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={autoFetchAll}><Sparkles className="w-3 h-3 mr-1" /> Auto-fetch all</Button>
@@ -1037,7 +1043,7 @@ const CampaignDetail = () => {
           </div>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {posts.map(p => {
+            {posts.filter(p => !creatorFilter || p.influencer_id === creatorFilter).map(p => {
               const m = latestByPost.get(p.id);
               const postedAt = p.posted_at ? new Date(p.posted_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
               return (
@@ -1095,8 +1101,11 @@ const CampaignDetail = () => {
         </div>
         <a href={`/app/content?campaign=${id}`} className="text-sm text-accent hover:underline">Open in Content module →</a>
       </Card>
-      <ContestsSection campaignId={id!} />
 
+        </TabsContent>
+
+        <TabsContent value="contests" className="space-y-6 mt-0">
+          <ContestsSection campaignId={id!} />
         </TabsContent>
 
         <TabsContent value="share" className="space-y-6 mt-0">
