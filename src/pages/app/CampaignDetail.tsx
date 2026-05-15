@@ -58,6 +58,7 @@ const CampaignDetail = () => {
   const [generatingLearnings, setGeneratingLearnings] = useState(false);
   const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement"|"emv">("views");
   const [previewPost, setPreviewPost] = useState<any>(null);
+  const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
