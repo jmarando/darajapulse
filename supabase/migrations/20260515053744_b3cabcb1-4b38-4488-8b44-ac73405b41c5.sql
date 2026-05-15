@@ -1,0 +1,3 @@
+UPDATE public.clients SET logo_url='https://ucxlveehobmeywkiynpy.supabase.co/storage/v1/object/public/client-logos/royco-v2.jpeg' WHERE id='45e0a9f6-f471-47bf-8d1f-992e069a2ec3';
+UPDATE public.clients SET logo_url='https://ucxlveehobmeywkiynpy.supabase.co/storage/v1/object/public/client-logos/vaseline-v2.jpeg' WHERE id='c7cc1659-d6f2-44df-af8c-146125fd2428';
+UPDATE public.clients SET logo_url='https://ucxlveehobmeywkiynpy.supabase.co/storage/v1/object/public/client-logos/omo-v2.jpeg' WHERE id='084dd167-4b8a-41eb-aa2f-27bbb9edd260';
