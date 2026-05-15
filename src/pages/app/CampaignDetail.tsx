@@ -361,33 +361,51 @@ const CampaignDetail = () => {
     return Number((m as any)[metric] || 0);
   };
   const trend = useMemo(() => {
-    // Sum across all posts at each capture timestamp using the best value recorded so far.
-    const sorted = [...metricsFiltered].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
+    const sorted = [...metrics].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
     if (sorted.length === 0) return [];
-    const min = +new Date(sorted[0].captured_at);
-    const max = +new Date(sorted[sorted.length - 1].captured_at);
-    const span = Math.max(max - min, 1);
-    const N = 24;
-    // For each post, capture value evolution; for each bucket use latest value <= bucket time
+
+    // Determine x-axis bounds:
+    // - If user picked a range, use it.
+    // - Else span from earliest signal (first post posted_at OR first metric captured_at) to now.
+    const postedTimes = (posts || []).map((p: any) => p.posted_at ? +new Date(p.posted_at) : null).filter((x): x is number => !!x);
+    const firstCapture = +new Date(sorted[0].captured_at);
+    const lastCapture = +new Date(sorted[sorted.length - 1].captured_at);
+    const naturalMin = Math.min(firstCapture, ...(postedTimes.length ? postedTimes : [firstCapture]));
+    const naturalMax = Math.max(lastCapture, Date.now());
+
+    const minDay = dateRange?.from ? +new Date(new Date(dateRange.from).setHours(0,0,0,0)) : new Date(naturalMin).setHours(0,0,0,0);
+    const maxDay = dateRange?.to ? +new Date(new Date(dateRange.to).setHours(23,59,59,999)) : new Date(naturalMax).setHours(23,59,59,999);
+
+    const dayMs = 86400000;
+    const totalDays = Math.max(1, Math.ceil((maxDay - minDay) / dayMs));
+    // Bucket by day if range <= 60 days, else aggregate to ~30 buckets.
+    const N = totalDays <= 1 ? 8 : Math.min(totalDays, 30);
+    const span = Math.max(maxDay - minDay, 1);
+
+    // Group all metric rows by post for fast lookup.
     const byPost = new Map<string, any[]>();
     for (const m of sorted) {
       const arr = byPost.get(m.post_id) || [];
       arr.push(m);
       byPost.set(m.post_id, arr);
     }
+
     const points: { d: string; v: number }[] = [];
     for (let i = 0; i < N; i++) {
-      const t = min + (span * i) / (N - 1);
+      const t = minDay + (span * (i + 1)) / N; // end of bucket
       let total = 0;
       for (const arr of byPost.values()) {
         const seen = arr.filter((m) => +new Date(m.captured_at) <= t);
         if (seen.length) total += valOf(buildPeakMetricsByPost(seen).get(seen[0].post_id) ?? seen[seen.length - 1]);
       }
       const date = new Date(t);
-      points.push({ d: `${date.getMonth()+1}/${date.getDate()}`, v: total });
+      const label = totalDays <= 1
+        ? `${date.getHours().toString().padStart(2,'0')}:00`
+        : `${date.getMonth()+1}/${date.getDate()}`;
+      points.push({ d: label, v: total });
     }
     return points;
-  }, [metricsFiltered, metric]);
+  }, [metrics, posts, dateRange, metric]);
 
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
