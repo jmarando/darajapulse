@@ -34,23 +34,20 @@ export const AgencyTeamPicker = ({ scope, title = "Agency team" }: Props) => {
   const load = async () => {
     const { data } = await (supabase as any).from(table).select("*").eq(fkCol, fkVal);
     const userIds = (data ?? []).map((r: any) => r.user_id);
-    let profiles: any[] = [];
-    if (userIds.length) {
-      const { data: p } = await supabase.from("profiles").select("id, full_name, email, avatar_url").in("id", userIds);
-      profiles = p ?? [];
+
+    // Fetch all agency teammates via SECURITY DEFINER RPC (RLS-safe)
+    const { data: team } = await (supabase as any).rpc("get_agency_team");
+    const agency = (team ?? []) as any[];
+    setAgencyUsers(agency);
+
+    // Map assigned rows to profiles (fall back to RPC for non-agency users)
+    let profiles: any[] = agency.filter((p) => userIds.includes(p.id));
+    const missing = userIds.filter((id: string) => !profiles.find((p) => p.id === id));
+    if (missing.length) {
+      const { data: extra } = await (supabase as any).rpc("get_profiles_by_ids", { _ids: missing });
+      profiles = profiles.concat(extra ?? []);
     }
     setRows((data ?? []).map((r: any) => ({ ...r, profile: profiles.find((p) => p.id === r.user_id) })));
-
-    // load all agency users (admin + AM roles)
-    const { data: agencyRoles } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .in("role", ["agency_admin", "account_manager"]);
-    const aUserIds = Array.from(new Set((agencyRoles ?? []).map((r: any) => r.user_id)));
-    if (aUserIds.length) {
-      const { data: ap } = await supabase.from("profiles").select("id, full_name, email").in("id", aUserIds);
-      setAgencyUsers(ap ?? []);
-    }
   };
 
   useEffect(() => { load(); }, [fkVal]);
