@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2 } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
@@ -21,6 +22,8 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [polling, setPolling] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [discovering, setDiscovering] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [lastRun, setLastRun] = useState<any>(null);
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
@@ -64,6 +67,81 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       setEntries(es ?? []);
       const { data: lr } = await (supabase as any).from("contestant_sync_runs").select("*").eq("contest_id", cid).order("started_at", { ascending: false }).limit(1).maybeSingle();
       setLastRun(lr ?? null);
+    }
+  };
+
+  const cleanHandle = (s?: string) =>
+    (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || null;
+
+  const pick = (row: any, ...keys: string[]) => {
+    const norm = (s: string) => s.toLowerCase().replace(/[\s_\-#]/g, "");
+    const lookup: Record<string, any> = {};
+    for (const k of Object.keys(row)) lookup[norm(k)] = row[k];
+    for (const k of keys) {
+      const v = lookup[norm(k)];
+      if (v != null && String(v).trim() !== "") return String(v).trim();
+    }
+    return null;
+  };
+
+  const uploadCsv = async (file: File) => {
+    if (!activeId) return toast.error("Pick a contest first");
+    setUploading(true);
+    try {
+      const text = await file.text();
+      const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+      const rows = (parsed.data as any[]).filter(Boolean);
+      if (!rows.length) { toast.error("No rows in CSV"); return; }
+
+      const upserts = rows.map((r, i) => {
+        const ig = cleanHandle(pick(r, "instagram", "instagram handle", "ig"));
+        const tt = cleanHandle(pick(r, "tiktok", "tiktok handle"));
+        const fb = cleanHandle(pick(r, "facebook", "facebook handle", "fb"));
+        const ext = pick(r, "response", "response #", "id", "submission id", "registration id") || `csv-${Date.now()}-${i}`;
+        return {
+          contest_id: activeId,
+          external_registration_id: String(ext),
+          platform: (tt ? "tiktok" : ig ? "instagram" : "facebook") as any,
+          status: "registered",
+          source: "registration",
+          full_name: pick(r, "full name", "name", "fullname"),
+          submitter_name: pick(r, "full name", "name", "fullname"),
+          submitter_email: pick(r, "email", "email address"),
+          phone: pick(r, "phone", "phone number", "mobile"),
+          address: pick(r, "address"),
+          lga: pick(r, "lga", "local government area"),
+          instagram_handle: ig,
+          tiktok_handle: tt,
+          facebook_handle: fb,
+          handle: ig || tt || fb,
+          metadata: { raw: r },
+        };
+      }).filter(r => r.submitter_email || r.instagram_handle || r.tiktok_handle || r.facebook_handle || r.phone);
+
+      if (!upserts.length) { toast.error("No valid contestants found in CSV"); return; }
+
+      const chunkSize = 200;
+      let ok = 0;
+      const errors: string[] = [];
+      for (let i = 0; i < upserts.length; i += chunkSize) {
+        const chunk = upserts.slice(i, i + chunkSize);
+        const { error } = await supabase.from("contest_entries")
+          .upsert(chunk, { onConflict: "contest_id,external_registration_id", ignoreDuplicates: false });
+        if (error) errors.push(error.message); else ok += chunk.length;
+      }
+      await (supabase as any).from("contestant_sync_runs").insert({
+        contest_id: activeId, source: "csv_upload", triggered_by: "manual",
+        fetched: rows.length, upserted: ok, status: errors.length ? "partial" : "ok",
+        errors: errors.map(msg => ({ msg })), finished_at: new Date().toISOString(),
+      });
+      if (errors.length) toast.error(`Upserted ${ok}/${upserts.length} — ${errors[0]}`);
+      else toast.success(`Imported ${ok} contestants from CSV`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "CSV upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
@@ -183,6 +261,15 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
           <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1).</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {active && (
+            <>
+              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCsv(f); }} />
+              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <Upload className={`w-3 h-3 mr-1 ${uploading ? "animate-pulse" : ""}`} /> {uploading ? "Uploading…" : "Upload CSV"}
+              </Button>
+            </>
+          )}
           {active && <Button size="sm" variant="outline" onClick={syncContestants} disabled={syncing}><Users className={`w-3 h-3 mr-1 ${syncing ? "animate-pulse" : ""}`} /> Sync contestants</Button>}
           {active && <Button size="sm" variant="outline" onClick={() => discoverPosts()} disabled={discovering}><Sparkles className={`w-3 h-3 mr-1 ${discovering ? "animate-pulse" : ""}`} /> Discover posts</Button>}
           {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
