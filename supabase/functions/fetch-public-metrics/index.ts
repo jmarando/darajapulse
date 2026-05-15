@@ -133,14 +133,17 @@ async function scrapeInstagramViaApify(url: string) {
   const items = await r.json();
   const item = Array.isArray(items) ? items[0] : null;
   if (!item) throw new Error("Apify returned no data for this URL");
+  const stats = normalizeStats({
+    views: item.videoViewCount ?? item.videoPlayCount ?? item.igtvVideoViewCount,
+    likes: item.likesCount,
+    comments: item.commentsCount,
+    shares: item.sharesCount ?? item.shareCount ?? item.reshareCount,
+    saves: item.savesCount ?? item.collectCount,
+    reach: item.reach,
+    impressions: item.impressions,
+  });
   return {
-    stats: {
-      views: item.videoViewCount ?? item.videoPlayCount ?? item.igtvVideoViewCount ?? 0,
-      likes: item.likesCount ?? 0,
-      comments: item.commentsCount ?? 0,
-      shares: 0,
-      saves: 0,
-    },
+    stats,
     thumb: item.displayUrl ?? null,
     caption: item.caption ?? null,
   };
@@ -167,7 +170,7 @@ async function scrapeInstagram(url: string) {
     throw new Error("Instagram requires login for stats. Use manual entry.");
   }
   return {
-    stats: { views: views ?? 0, likes: likes ?? 0, comments: comments ?? 0, shares: 0, saves: 0 },
+    stats: normalizeStats({ views, likes, comments }),
     thumb: ogImage ?? null,
     caption: ogTitle ?? null,
   };
@@ -181,13 +184,7 @@ async function scrapeYouTube(url: string) {
   const thumbM = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i);
   if (!viewsM) throw new Error("Could not parse YouTube page");
   return {
-    stats: {
-      views: parseInt(viewsM[1], 10) || 0,
-      likes: likesM ? parseShortcount(likesM[1]) ?? 0 : 0,
-      comments: 0,
-      shares: 0,
-      saves: 0,
-    },
+    stats: normalizeStats({ views: parseInt(viewsM[1], 10) || 0, likes: likesM ? parseShortcount(likesM[1]) ?? 0 : 0, comments: 0 }),
     thumb: thumbM?.[1] ?? null,
     caption: titleM?.[1] ?? null,
   };
@@ -204,8 +201,10 @@ async function scrape(platform: string, url: string) {
 async function processPost(p: any) {
   if (!p.post_url) return { id: p.id, ok: false, error: "no_url" };
   try {
-    const { stats, thumb, caption } = await scrape(p.platform, p.post_url);
-    const hasMetricSignal = [stats.views, stats.likes, stats.comments, stats.shares, stats.saves].some((v) => Number(v || 0) > 0);
+    const scraped = await scrape(p.platform, p.post_url);
+    const { thumb, caption } = scraped;
+    const stats = normalizeStats(scraped.stats);
+    const hasMetricSignal = [stats.views, stats.likes, stats.comments, stats.shares, stats.saves, stats.reach, stats.impressions].some((v) => Number(v || 0) > 0);
     if (!hasMetricSignal) return { id: p.id, ok: false, error: "no_public_metrics" };
     await supabase.from("post_metrics").insert({
       post_id: p.id,
@@ -214,6 +213,8 @@ async function processPost(p: any) {
       comments: stats.comments,
       shares: stats.shares,
       saves: stats.saves,
+      reach: stats.reach,
+      impressions: stats.impressions,
     });
     const upd: any = {};
     if (thumb && !p.thumbnail_url) upd.thumbnail_url = thumb;
