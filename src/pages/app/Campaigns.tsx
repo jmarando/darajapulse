@@ -47,12 +47,21 @@ const Campaigns = () => {
     if (ids.length) {
       const { data: ps } = await supabase.from("posts").select("id, campaign_id").in("campaign_id", ids);
       const postIds = (ps ?? []).map((p) => p.id);
-      const { data: ms } = postIds.length
-        ? await supabase.from("post_metrics").select("post_id, views, likes, comments, shares, saves").in("post_id", postIds)
-        : { data: [] as any[] };
-      // latest metric per post
+      // Fetch latest metric per post (order by created_at desc, dedupe client-side).
+      // Batch by 100 post ids to keep URLs short and avoid the 1000-row default cap.
+      const ms: any[] = [];
+      for (let i = 0; i < postIds.length; i += 100) {
+        const slice = postIds.slice(i, i + 100);
+        const { data } = await supabase
+          .from("post_metrics")
+          .select("post_id, views, likes, comments, shares, saves, created_at")
+          .in("post_id", slice)
+          .order("created_at", { ascending: false })
+          .limit(1000);
+        if (data) ms.push(...data);
+      }
       const latest = new Map<string, any>();
-      for (const m of ms ?? []) if (!latest.has(m.post_id)) latest.set(m.post_id, m);
+      for (const m of ms) if (!latest.has(m.post_id)) latest.set(m.post_id, m);
       const map: Record<string, { views: number; er: number; posts: number; eng: number }> = {};
       for (const p of ps ?? []) {
         const cur = map[p.campaign_id] ?? { views: 0, er: 0, posts: 0, eng: 0 };
