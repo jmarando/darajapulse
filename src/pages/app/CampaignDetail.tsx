@@ -22,6 +22,7 @@ import { ContestsSection } from "./ContestsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
+import { computeEmv, EMV_DISCLAIMER } from "@/lib/emv";
 
 
 const CampaignDetail = () => {
@@ -234,7 +235,7 @@ const CampaignDetail = () => {
       impressions += Number(m.impressions || 0);
     }
     const er = views ? ((likes + comments + shares + saves) / views) * 100 : 0;
-    const emv = Math.round((impressions || views) * 0.012);
+    const emv = computeEmv(views, impressions);
     return { views, likes, comments, shares, saves, reach, impressions, er, emv };
   }, [latestByPost]);
 
@@ -335,7 +336,7 @@ const CampaignDetail = () => {
   const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement", emv: "Earned Media (KES)" };
   const valOf = (m: any) => {
     if (metric === "engagement") return (m.likes||0)+(m.comments||0)+(m.shares||0)+(m.saves||0);
-    if (metric === "emv") return Math.round(((m.impressions || m.views) || 0) * 0.012);
+    if (metric === "emv") return computeEmv(Number(m.views || 0), Number(m.impressions || 0));
     return Number((m as any)[metric] || 0);
   };
   const trend = useMemo(() => {
@@ -509,29 +510,51 @@ const CampaignDetail = () => {
         <TabsContent value="overview" className="space-y-6 mt-0">
 
       {/* Performance band */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
-        {([
-          { key: "views", label: "Views", value: fmt(totals.views), icon: Eye },
-          { key: "likes", label: "Likes", value: fmt(totals.likes), icon: Heart },
-          { key: "comments", label: "Comments", value: fmt(totals.comments), icon: MessageCircle },
-          { key: "shares", label: "Shares", value: fmt(totals.shares), icon: Share2 },
-          { key: "saves", label: "Saves", value: fmt(totals.saves), icon: Bookmark },
-          { key: "reach", label: "Reach", value: fmt(totals.reach), icon: Radio },
-          { key: "engagement", label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3 },
-          { key: "emv", label: "Earned Media", value: fmtKes(totals.emv), icon: Wallet },
-        ] as const).map((s) => {
-          const active = metric === s.key;
-          return (
-            <button key={s.key} type="button" onClick={() => setMetric(s.key as any)} className={`text-left bg-card p-5 transition-colors hover:bg-secondary/40 ${active ? "outline outline-2 -outline-offset-2 outline-accent bg-secondary/30 relative z-10" : ""}`}>
-              <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
-                {s.icon && <s.icon className={`w-3.5 h-3.5 ${active ? "text-accent" : "text-muted-foreground"}`} />}
-              </div>
-              <div className="font-display text-2xl mt-2">{s.value}</div>
-            </button>
-          );
-        })}
-      </div>
+      {(() => {
+        const tiles = [
+          { key: "views", label: "Views", value: fmt(totals.views), icon: Eye, raw: totals.views, available: true },
+          { key: "likes", label: "Likes", value: fmt(totals.likes), icon: Heart, raw: totals.likes, available: true },
+          { key: "comments", label: "Comments", value: fmt(totals.comments), icon: MessageCircle, raw: totals.comments, available: true },
+          { key: "engagement", label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3, raw: totals.er, available: true },
+          { key: "shares", label: "Shares", value: fmt(totals.shares), icon: Share2, raw: totals.shares, available: totals.shares > 0 },
+          { key: "saves", label: "Saves", value: fmt(totals.saves), icon: Bookmark, raw: totals.saves, available: totals.saves > 0 },
+          { key: "reach", label: "Reach", value: fmt(totals.reach), icon: Radio, raw: totals.reach, available: totals.reach > 0 },
+          { key: "emv", label: "Earned Media", value: fmtKes(totals.emv), icon: Wallet, raw: totals.emv, available: true },
+        ] as const;
+        const hasUnavailable = tiles.some(t => !t.available);
+        return (
+          <div className="mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden border border-border">
+              {tiles.map((s) => {
+                const active = metric === s.key;
+                const dim = !s.available;
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setMetric(s.key as any)}
+                    className={`text-left bg-card px-3 py-4 transition-colors hover:bg-secondary/40 ${active ? "outline outline-2 -outline-offset-2 outline-accent bg-secondary/30 relative z-10" : ""}`}
+                  >
+                    <div className="flex items-start justify-between gap-2 min-h-[1.25rem]">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground leading-tight whitespace-normal break-words">{s.label}</div>
+                      {s.icon && <s.icon className={`w-3.5 h-3.5 shrink-0 ${active ? "text-accent" : "text-muted-foreground"}`} />}
+                    </div>
+                    <div className={`font-display text-2xl mt-2 tabular-nums ${dim ? "text-muted-foreground/60" : ""}`}>
+                      {dim ? "—" : s.value}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {hasUnavailable && (
+              <p className="text-[11px] text-muted-foreground mt-2 px-1">
+                Reach, shares and saves aren't returned by Instagram's public metrics — they appear once added manually or pulled from creators' insights.
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground mt-1 px-1">{EMV_DISCLAIMER}</p>
+          </div>
+        );
+      })()}
 
       {/* Trend chart for selected metric */}
       <Card className="p-6 mb-6">
