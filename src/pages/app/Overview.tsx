@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buildPeakMetricsByPost } from "@/lib/metrics";
 
 const fmt = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : `${n}`;
 
@@ -94,11 +95,10 @@ const Overview = () => {
       setMetrics(pm.data ?? []);
       setRecentCampaigns(recent.data ?? []);
 
-      // Latest metric per post → totals + top performer
-      const latest: Record<string, any> = {};
-      (pm.data ?? []).forEach((m: any) => { latest[m.post_id] = m; });
+      // Peak metric per post → totals + top performer. This avoids a bad zero poll wiping views out.
+      const latest = buildPeakMetricsByPost(pm.data ?? []);
       const t = { views: 0, likes: 0, comments: 0, shares: 0, reach: 0 };
-      Object.values(latest).forEach((m: any) => {
+      Array.from(latest.values()).forEach((m: any) => {
         t.views += m.views || 0; t.likes += m.likes || 0; t.comments += m.comments || 0;
         t.shares += m.shares || 0; t.reach += m.reach || 0;
       });
