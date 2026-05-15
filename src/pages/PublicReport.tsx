@@ -230,6 +230,7 @@ const PublicReport = () => {
                   platformRows: platformRows.map(([k, v]) => ({ platform: k, posts: v.posts, creators: v.creators.size, views: v.views, reach: v.reach })),
                   posts: filteredPosts.map(p => ({ creator: p.influencers?.full_name ?? "—", platform: p.platform ?? "—", views: p.metrics.views || 0, likes: p.metrics.likes || 0, comments: p.metrics.comments || 0, shares: p.metrics.shares || 0, url: p.post_url })),
                   learnings: campaign.learnings,
+                  clientLogoUrl: client?.logo_url,
                 });
               } finally { setExporting(false); }
             }}><Download className="w-3.5 h-3.5 mr-1.5" />{exporting ? "…" : "PPT"}</Button>
@@ -244,20 +245,29 @@ const PublicReport = () => {
       <main className="max-w-7xl mx-auto p-8">
         {/* Header — matches CampaignDetail */}
         <div className="flex justify-between items-start gap-6 mb-8">
-          <div className="min-w-0">
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">{client?.name ?? "Client"}</div>
-            <h1 className="font-display text-4xl md:text-5xl font-semibold mt-1 truncate">{campaign.name}</h1>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm text-muted-foreground">
-              {campaign.hashtag && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{campaign.hashtag.replace(/^#/, "")}</span>}
-              {campaign.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(campaign.budget_kes).toLocaleString()}</span>}
-              <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{influencers.length} creator{influencers.length === 1 ? "" : "s"}</span>
-            </div>
-            {campaign.objective && (
-              <div className="mt-3 max-w-2xl">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Campaign goal</div>
-                <p className="text-muted-foreground text-sm leading-relaxed">{campaign.objective}</p>
+          <div className="min-w-0 flex items-start gap-4 flex-1">
+            {client?.logo_url ? (
+              <img src={client.logo_url} alt={`${client?.name} logo`} className="w-16 h-16 rounded-md object-contain bg-white border border-border p-1.5 shrink-0" />
+            ) : (
+              <div className="w-16 h-16 rounded-md bg-secondary border border-border flex items-center justify-center font-display text-xl shrink-0">
+                {client?.name?.slice(0, 2).toUpperCase()}
               </div>
             )}
+            <div className="min-w-0 flex-1">
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">{client?.name ?? "Client"}</div>
+              <h1 className="font-display text-3xl md:text-5xl font-semibold mt-1 break-words">{campaign.name}</h1>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm text-muted-foreground">
+                {campaign.hashtag && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{campaign.hashtag.replace(/^#/, "")}</span>}
+                {campaign.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(campaign.budget_kes).toLocaleString()}</span>}
+                <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{influencers.length} creator{influencers.length === 1 ? "" : "s"}</span>
+              </div>
+              {campaign.objective && (
+                <div className="mt-3 max-w-2xl">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Campaign goal</div>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{campaign.objective}</p>
+                </div>
+              )}
+            </div>
           </div>
           <Badge variant="outline" className="capitalize">{campaign.status}</Badge>
         </div>
