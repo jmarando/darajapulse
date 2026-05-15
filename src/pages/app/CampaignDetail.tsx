@@ -28,6 +28,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "rec
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
 import { computeEmv, EMV_DISCLAIMER } from "@/lib/emv";
+import { buildPeakMetricsByPost } from "@/lib/metrics";
 
 
 const CampaignDetail = () => {
@@ -235,24 +236,8 @@ const CampaignDetail = () => {
     });
   }, [metrics, dateRange]);
 
-  // Best (max) per metric per post within filter window. Cumulative counts
-  // (views/likes/etc) only ever go up, so a single bad poll returning 0
-  // shouldn't wipe out the totals — take the peak we've recorded instead.
   const latestByPost = useMemo(() => {
-    const map = new Map<string, any>();
-    for (const m of metricsFiltered) {
-      const cur = map.get(m.post_id) ?? { post_id: m.post_id, views: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0, impressions: 0, captured_at: m.captured_at };
-      cur.views = Math.max(cur.views, Number(m.views || 0));
-      cur.likes = Math.max(cur.likes, Number(m.likes || 0));
-      cur.comments = Math.max(cur.comments, Number(m.comments || 0));
-      cur.shares = Math.max(cur.shares, Number(m.shares || 0));
-      cur.saves = Math.max(cur.saves, Number(m.saves || 0));
-      cur.reach = Math.max(cur.reach, Number(m.reach || 0));
-      cur.impressions = Math.max(cur.impressions, Number(m.impressions || 0));
-      if (new Date(m.captured_at) > new Date(cur.captured_at)) cur.captured_at = m.captured_at;
-      map.set(m.post_id, cur);
-    }
-    return map;
+    return buildPeakMetricsByPost(metricsFiltered);
   }, [metricsFiltered]);
 
   const totals = useMemo(() => {
@@ -372,7 +357,7 @@ const CampaignDetail = () => {
     return Number((m as any)[metric] || 0);
   };
   const trend = useMemo(() => {
-    // Sum across all posts at each capture timestamp (latest <= bucket time)
+    // Sum across all posts at each capture timestamp using the best value recorded so far.
     const sorted = [...metricsFiltered].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
     if (sorted.length === 0) return [];
     const min = +new Date(sorted[0].captured_at);
@@ -391,9 +376,8 @@ const CampaignDetail = () => {
       const t = min + (span * i) / (N - 1);
       let total = 0;
       for (const arr of byPost.values()) {
-        let last: any = null;
-        for (const m of arr) { if (+new Date(m.captured_at) <= t) last = m; else break; }
-        if (last) total += valOf(last);
+        const seen = arr.filter((m) => +new Date(m.captured_at) <= t);
+        if (seen.length) total += valOf(buildPeakMetricsByPost(seen).get(seen[0].post_id) ?? seen[seen.length - 1]);
       }
       const date = new Date(t);
       points.push({ d: `${date.getMonth()+1}/${date.getDate()}`, v: total });
