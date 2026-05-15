@@ -235,10 +235,23 @@ const CampaignDetail = () => {
     });
   }, [metrics, dateRange]);
 
-  // Latest metric per post (within filter window)
+  // Best (max) per metric per post within filter window. Cumulative counts
+  // (views/likes/etc) only ever go up, so a single bad poll returning 0
+  // shouldn't wipe out the totals — take the peak we've recorded instead.
   const latestByPost = useMemo(() => {
     const map = new Map<string, any>();
-    for (const m of metricsFiltered) if (!map.has(m.post_id)) map.set(m.post_id, m);
+    for (const m of metricsFiltered) {
+      const cur = map.get(m.post_id) ?? { post_id: m.post_id, views: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0, impressions: 0, captured_at: m.captured_at };
+      cur.views = Math.max(cur.views, Number(m.views || 0));
+      cur.likes = Math.max(cur.likes, Number(m.likes || 0));
+      cur.comments = Math.max(cur.comments, Number(m.comments || 0));
+      cur.shares = Math.max(cur.shares, Number(m.shares || 0));
+      cur.saves = Math.max(cur.saves, Number(m.saves || 0));
+      cur.reach = Math.max(cur.reach, Number(m.reach || 0));
+      cur.impressions = Math.max(cur.impressions, Number(m.impressions || 0));
+      if (new Date(m.captured_at) > new Date(cur.captured_at)) cur.captured_at = m.captured_at;
+      map.set(m.post_id, cur);
+    }
     return map;
   }, [metricsFiltered]);
 
