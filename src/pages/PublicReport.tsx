@@ -13,7 +13,7 @@ import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
 import { computeEmv, EMV_CPM_KES, EMV_DISCLAIMER } from "@/lib/emv";
-import { fetchAllPostMetrics, peakMetricSnapshot } from "@/lib/metrics";
+import { fetchAllPostMetrics, peakMetricSnapshot, withMetricFallbacks } from "@/lib/metrics";
 
 type PostWithMetrics = any;
 
@@ -148,8 +148,9 @@ const PublicReport = () => {
   }
   const platformRows = Array.from(platformMap.entries()).sort((a,b) => b[1].views - a[1].views);
   const valOf = (h: any) => {
-    if (metric === "engagement") return (h.likes||0)+(h.comments||0)+(h.shares||0)+(h.saves||0);
-    return Number(h[metric] || 0);
+    const normalized = withMetricFallbacks(h);
+    if (metric === "engagement") return (normalized.likes||0)+(normalized.comments||0)+(normalized.shares||0)+(normalized.saves||0);
+    return Number(normalized[metric] || 0);
   };
   // Real daily time-series: bucket per ISO date, take max value (cumulative metric snapshot)
   const allHistory = filteredPosts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: valOf(h) })));
