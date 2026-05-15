@@ -645,17 +645,6 @@ const CampaignDetail = () => {
             {dateRange?.from ? (
               dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
             ) : "All time"}
-            {/* legacy popover replaced by the Reporting window above */}
-            <span className="hidden">{(() => null)()}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} initialFocus className={cn("p-3 pointer-events-auto")} />
-              </PopoverContent>
-            </Popover>
-            {dateRange?.from && (
-              <Button size="sm" variant="ghost" onClick={() => setDateRange(undefined)}><X className="w-3 h-3" /></Button>
-            )}
           </div>
         </div>
         {trend.length === 0 ? (
