@@ -13,6 +13,7 @@ import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
 import { computeEmv, EMV_CPM_KES, EMV_DISCLAIMER } from "@/lib/emv";
+import { peakMetricSnapshot } from "@/lib/metrics";
 
 type PostWithMetrics = any;
 
@@ -52,8 +53,8 @@ const PublicReport = () => {
     const { data: ms } = await supabase.from("post_metrics").select("*").in("post_id", (ps ?? []).map(p => p.id));
     const grouped = (ps ?? []).map(p => {
       const list = (ms ?? []).filter(m => m.post_id === p.id).sort((a,b) => +new Date(a.captured_at) - +new Date(b.captured_at));
-      const last = list[list.length - 1] || { views:0, likes:0, comments:0, shares:0, reach:0, impressions:0 };
-      return { ...p, metrics: last, history: list };
+      const peak = peakMetricSnapshot(list);
+      return { ...p, metrics: peak, history: list };
     });
     setPosts(grouped);
     const { data: ci } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", link.campaign_id);
