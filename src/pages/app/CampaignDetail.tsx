@@ -995,12 +995,20 @@ const CampaignDetail = () => {
       </Card>
 
       {/* Posts grid (merged from old Content tab) */}
-      {/* Posts — full width below */}
-      <Card className="p-5 mb-6">
+      <Card id="posts-section" className="p-5 mb-6">
         <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-          <div>
+          <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Activity</div>
             <h2 className="font-display text-2xl">Posts</h2>
+            {creatorFilter && (() => {
+              const c = ci.find(x => x.influencer_id === creatorFilter);
+              return (
+                <button onClick={() => setCreatorFilter(null)} className="mt-2 inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-accent/15 border border-accent/30 hover:bg-accent/25">
+                  Filtered: {c?.influencers?.full_name ?? "creator"}
+                  <X className="w-3 h-3" />
+                </button>
+              );
+            })()}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={autoFetchAll}><Sparkles className="w-3 h-3 mr-1" /> Auto-fetch all</Button>
