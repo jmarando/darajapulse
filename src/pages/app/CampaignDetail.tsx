@@ -12,7 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles, Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
@@ -216,12 +221,25 @@ const CampaignDetail = () => {
     toast.success("Learnings saved");
   };
 
-  // Latest metric per post
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+  // Filter metrics by selected date range (captured_at)
+  const metricsFiltered = useMemo(() => {
+    if (!dateRange?.from && !dateRange?.to) return metrics;
+    const fromMs = dateRange.from ? +new Date(new Date(dateRange.from).setHours(0,0,0,0)) : -Infinity;
+    const toMs = dateRange.to ? +new Date(new Date(dateRange.to).setHours(23,59,59,999)) : Infinity;
+    return metrics.filter(m => {
+      const t = +new Date(m.captured_at);
+      return t >= fromMs && t <= toMs;
+    });
+  }, [metrics, dateRange]);
+
+  // Latest metric per post (within filter window)
   const latestByPost = useMemo(() => {
     const map = new Map<string, any>();
-    for (const m of metrics) if (!map.has(m.post_id)) map.set(m.post_id, m);
+    for (const m of metricsFiltered) if (!map.has(m.post_id)) map.set(m.post_id, m);
     return map;
-  }, [metrics]);
+  }, [metricsFiltered]);
 
   const totals = useMemo(() => {
     let views = 0, likes = 0, comments = 0, shares = 0, saves = 0, reach = 0, impressions = 0;
@@ -341,7 +359,7 @@ const CampaignDetail = () => {
   };
   const trend = useMemo(() => {
     // Sum across all posts at each capture timestamp (latest <= bucket time)
-    const sorted = [...metrics].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
+    const sorted = [...metricsFiltered].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
     if (sorted.length === 0) return [];
     const min = +new Date(sorted[0].captured_at);
     const max = +new Date(sorted[sorted.length - 1].captured_at);
@@ -367,7 +385,7 @@ const CampaignDetail = () => {
       points.push({ d: `${date.getMonth()+1}/${date.getDate()}`, v: total });
     }
     return points;
-  }, [metrics, metric]);
+  }, [metricsFiltered, metric]);
 
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
@@ -563,6 +581,24 @@ const CampaignDetail = () => {
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Trend</div>
             <h2 className="font-display text-2xl mt-1">{metricLabel[metric]} over time</h2>
             <div className="text-xs text-muted-foreground mt-1">Click any metric above to switch the chart.</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal", !dateRange?.from && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  {dateRange?.from ? (
+                    dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
+                  ) : "All time"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+            {dateRange?.from && (
+              <Button size="sm" variant="ghost" onClick={() => setDateRange(undefined)}><X className="w-3 h-3" /></Button>
+            )}
           </div>
         </div>
         {trend.length === 0 ? (
