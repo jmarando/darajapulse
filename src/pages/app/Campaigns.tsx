@@ -47,16 +47,16 @@ const Campaigns = () => {
     if (ids.length) {
       const { data: ps } = await supabase.from("posts").select("id, campaign_id").in("campaign_id", ids);
       const postIds = (ps ?? []).map((p) => p.id);
-      // Fetch latest metric per post (order by created_at desc, dedupe client-side).
+      // Fetch latest metric per post (order by captured_at desc, dedupe client-side).
       // Batch by 100 post ids to keep URLs short and avoid the 1000-row default cap.
       const ms: any[] = [];
       for (let i = 0; i < postIds.length; i += 100) {
         const slice = postIds.slice(i, i + 100);
         const { data } = await supabase
           .from("post_metrics")
-          .select("post_id, views, likes, comments, shares, saves, created_at")
+          .select("post_id, views, likes, comments, shares, saves, captured_at")
           .in("post_id", slice)
-          .order("created_at", { ascending: false })
+          .order("captured_at", { ascending: false })
           .limit(1000);
         if (data) ms.push(...data);
       }
