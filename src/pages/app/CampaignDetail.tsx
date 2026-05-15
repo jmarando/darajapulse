@@ -221,12 +221,25 @@ const CampaignDetail = () => {
     toast.success("Learnings saved");
   };
 
-  // Latest metric per post
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+
+  // Filter metrics by selected date range (captured_at)
+  const metricsFiltered = useMemo(() => {
+    if (!dateRange?.from && !dateRange?.to) return metrics;
+    const fromMs = dateRange.from ? +new Date(new Date(dateRange.from).setHours(0,0,0,0)) : -Infinity;
+    const toMs = dateRange.to ? +new Date(new Date(dateRange.to).setHours(23,59,59,999)) : Infinity;
+    return metrics.filter(m => {
+      const t = +new Date(m.captured_at);
+      return t >= fromMs && t <= toMs;
+    });
+  }, [metrics, dateRange]);
+
+  // Latest metric per post (within filter window)
   const latestByPost = useMemo(() => {
     const map = new Map<string, any>();
-    for (const m of metrics) if (!map.has(m.post_id)) map.set(m.post_id, m);
+    for (const m of metricsFiltered) if (!map.has(m.post_id)) map.set(m.post_id, m);
     return map;
-  }, [metrics]);
+  }, [metricsFiltered]);
 
   const totals = useMemo(() => {
     let views = 0, likes = 0, comments = 0, shares = 0, saves = 0, reach = 0, impressions = 0;
