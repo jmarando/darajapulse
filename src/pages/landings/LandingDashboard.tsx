@@ -52,10 +52,6 @@ const LandingDashboard = () => {
       {/* HERO */}
       <section className="relative max-w-7xl mx-auto px-6 pt-12 pb-20 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
         <div className="animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-[11px] uppercase tracking-[0.25em] text-foreground/70 mb-6 shadow-soft">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            Built for modern agencies
-          </div>
           <h1 className="font-display text-6xl md:text-7xl lg:text-[5.5rem] leading-[0.98] font-semibold text-balance tracking-tight">
             Influence,<br />
             <span className="text-accent italic relative inline-block">
