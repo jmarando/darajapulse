@@ -69,6 +69,18 @@ const PublicReport = () => {
     return () => clearInterval(i);
   }, [token]);
 
+  const fromTs = from ? +new Date(from) : -Infinity;
+  const toTs = to ? +new Date(to) + 86399999 : Infinity;
+  const hasRange = !!(from || to);
+
+  // When a window is active, recompute per-post metrics as the delta
+  // captured within [from, to]; otherwise use lifetime peak.
+  const windowMetricsByPost = useMemo(() => {
+    if (!hasRange) return null;
+    const all = posts.flatMap((p: any) => (p.history || []).map((h: any) => ({ ...h, post_id: p.id })));
+    return buildWindowMetricsByPost(all, fromTs, toTs);
+  }, [posts, hasRange, fromTs, toTs]);
+
   if (notFound) return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="flex-1 flex items-center justify-center p-6">
@@ -86,18 +98,6 @@ const PublicReport = () => {
     </div>
   );
   if (!campaign) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading report…</div>;
-
-  const fromTs = from ? +new Date(from) : -Infinity;
-  const toTs = to ? +new Date(to) + 86399999 : Infinity;
-  const hasRange = !!(from || to);
-
-  // When a window is active, recompute per-post metrics as the delta
-  // captured within [from, to]; otherwise use lifetime peak.
-  const windowMetricsByPost = useMemo(() => {
-    if (!hasRange) return null;
-    const all = posts.flatMap((p: any) => (p.history || []).map((h: any) => ({ ...h, post_id: p.id })));
-    return buildWindowMetricsByPost(all, fromTs, toTs);
-  }, [posts, hasRange, fromTs, toTs]);
 
   const filteredPosts = posts
     .filter(p => {
