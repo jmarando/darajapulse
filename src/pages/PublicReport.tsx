@@ -69,6 +69,18 @@ const PublicReport = () => {
     return () => clearInterval(i);
   }, [token]);
 
+  const fromTs = from ? +new Date(from) : -Infinity;
+  const toTs = to ? +new Date(to) + 86399999 : Infinity;
+  const hasRange = !!(from || to);
+
+  // When a window is active, recompute per-post metrics as the delta
+  // captured within [from, to]; otherwise use lifetime peak.
+  const windowMetricsByPost = useMemo(() => {
+    if (!hasRange) return null;
+    const all = posts.flatMap((p: any) => (p.history || []).map((h: any) => ({ ...h, post_id: p.id })));
+    return buildWindowMetricsByPost(all, fromTs, toTs);
+  }, [posts, hasRange, fromTs, toTs]);
+
   if (notFound) return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="flex-1 flex items-center justify-center p-6">
@@ -87,24 +99,13 @@ const PublicReport = () => {
   );
   if (!campaign) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading report…</div>;
 
-  const fromTs = from ? +new Date(from) : -Infinity;
-  const toTs = to ? +new Date(to) + 86399999 : Infinity;
-  const hasRange = !!(from || to);
-
-  // When a window is active, recompute per-post metrics as the delta
-  // captured within [from, to]; otherwise use lifetime peak.
-  const windowMetricsByPost = useMemo(() => {
-    if (!hasRange) return null;
-    const all = posts.flatMap((p: any) => (p.history || []).map((h: any) => ({ ...h, post_id: p.id })));
-    return buildWindowMetricsByPost(all, fromTs, toTs);
-  }, [posts, hasRange, fromTs, toTs]);
-
   const filteredPosts = posts
     .filter(p => {
-      // Keep posts that either were posted in-range OR have metric activity in-range
+      // Keep posts that either were posted in-range OR have any metric value by the selected end date.
       const t = p.posted_at ? +new Date(p.posted_at) : +new Date(p.created_at);
       const postedIn = t >= fromTs && t <= toTs;
-      const hasActivity = windowMetricsByPost ? windowMetricsByPost.has(p.id) : true;
+      const m = windowMetricsByPost?.get(p.id);
+      const hasActivity = m ? [m.views, m.likes, m.comments, m.shares, m.saves, m.reach, m.impressions].some((v) => Number(v || 0) > 0) : true;
       return !hasRange || postedIn || hasActivity;
     })
     .map(p => hasRange && windowMetricsByPost?.has(p.id)
@@ -169,18 +170,23 @@ const PublicReport = () => {
     if (metric === "engagement") return (normalized.likes||0)+(normalized.comments||0)+(normalized.shares||0)+(normalized.saves||0);
     return Number(normalized[metric] || 0);
   };
-  // Real daily time-series: bucket per ISO date, take max value (cumulative metric snapshot)
-  const allHistory = filteredPosts.flatMap(p => (p.history ?? []).map((h: any) => ({ t: +new Date(h.captured_at), v: valOf(h) })));
+  // Real daily time-series. In a selected range, show range-to-date delta instead of lifetime totals.
+  const allHistory = posts.flatMap(p => (p.history ?? []).map((h: any) => ({ ...h, post_id: p.id, t: +new Date(h.captured_at) })));
   let trend: { d: string; v: number }[] = [];
   if (allHistory.length > 0) {
-    const dayBuckets = new Map<string, number>();
-    allHistory.forEach(h => {
-      const d = new Date(h.t).toISOString().slice(0, 10);
-      dayBuckets.set(d, Math.max(dayBuckets.get(d) ?? 0, h.v));
-    });
-    trend = Array.from(dayBuckets.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([d, v]) => ({ d: d.slice(5), v }));
+    const minT = Number.isFinite(fromTs) ? fromTs : Math.min(...allHistory.map((h: any) => h.t));
+    const maxT = Number.isFinite(toTs) ? toTs : Math.max(...allHistory.map((h: any) => h.t));
+    const start = new Date(minT); start.setHours(0, 0, 0, 0);
+    const end = new Date(maxT); end.setHours(23, 59, 59, 999);
+    const days = Math.max(1, Math.ceil((+end - +start) / 86400000));
+    for (let i = 0; i <= days; i++) {
+      const dayEnd = +start + i * 86400000 + 86399999;
+      const byPost = buildWindowMetricsByPost(allHistory, hasRange ? fromTs : -Infinity, dayEnd);
+      let v = 0;
+      for (const m of byPost.values()) v += valOf(m);
+      const d = new Date(dayEnd).toISOString().slice(0, 10);
+      trend.push({ d: d.slice(5), v });
+    }
   }
   const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", impressions: "Impressions", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
 
@@ -228,9 +234,9 @@ const PublicReport = () => {
           </div>
           <div className="flex flex-wrap items-center gap-2 no-print">
             <div className="flex items-center gap-2">
-              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="From date" />
+              <Input type="date" value={from} onInput={e => setFrom((e.target as HTMLInputElement).value)} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="From date" />
               <span className="text-xs text-muted-foreground hidden sm:inline">→</span>
-              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="To date" />
+              <Input type="date" value={to} onInput={e => setTo((e.target as HTMLInputElement).value)} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="To date" />
               {(from || to) && <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFrom(""); setTo(""); }}>Clear</Button>}
             </div>
             <Button variant="outline" size="sm" className="h-8" onClick={exportCsv}><Download className="w-3.5 h-3.5 mr-1.5" />CSV</Button>

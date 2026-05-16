@@ -79,13 +79,13 @@ export const buildWindowMetricsByPost = (
       continue;
     }
     const before = list.filter(r => +new Date(r.captured_at || 0) < fromMs);
-    const within = list.filter(r => {
-      const t = +new Date(r.captured_at || 0);
-      return t >= fromMs && t <= toMs;
-    });
-    if (within.length === 0) continue; // post has no activity in window
+    const throughWindowEnd = list.filter(r => +new Date(r.captured_at || 0) <= toMs);
+    if (throughWindowEnd.length === 0) {
+      out.set(postId, { post_id: postId, views: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0, impressions: 0 });
+      continue;
+    }
     const baseline = peakMetricSnapshot(before);
-    const endPeak = peakMetricSnapshot(within);
+    const endPeak = peakMetricSnapshot(throughWindowEnd);
     const delta: MetricSnapshot = { post_id: postId, captured_at: endPeak.captured_at };
     for (const key of METRIC_KEYS) {
       const d = Number(endPeak[key] || 0) - Number(baseline[key] || 0);
