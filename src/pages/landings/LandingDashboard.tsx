@@ -52,10 +52,6 @@ const LandingDashboard = () => {
       {/* HERO */}
       <section className="relative max-w-7xl mx-auto px-6 pt-12 pb-20 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
         <div className="animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-[11px] uppercase tracking-[0.25em] text-foreground/70 mb-6 shadow-soft">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            Built for modern agencies
-          </div>
           <h1 className="font-display text-6xl md:text-7xl lg:text-[5.5rem] leading-[0.98] font-semibold text-balance tracking-tight">
             Influence,<br />
             <span className="text-accent italic relative inline-block">
@@ -98,11 +94,6 @@ const LandingDashboard = () => {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> 5 platforms, one inbox</div>
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Live tokenized reports</div>
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Built for Kenyan agencies</div>
-          </div>
         </div>
 
         {/* Live report mock */}
@@ -170,22 +161,6 @@ const LandingDashboard = () => {
         </div>
       </section>
 
-      {/* USP STRIP */}
-      <section className="relative border-y border-border bg-card/40 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { n: "5", l: "Platforms unified" },
-            { n: "<5 min", l: "From brief to live" },
-            { n: "Live", l: "Client reports" },
-            { n: "0", l: "Spreadsheets" },
-          ].map(s => (
-            <div key={s.l} className="text-center md:text-left">
-              <div className="font-display text-3xl md:text-4xl font-semibold text-accent">{s.n}</div>
-              <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1">{s.l}</div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* USP DEEP DIVE */}
       <section className="relative max-w-7xl mx-auto px-6 py-24">
@@ -245,9 +220,6 @@ const LandingDashboard = () => {
 
       {/* CLOSING CTA */}
       <section className="relative max-w-5xl mx-auto px-6 py-24 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-[11px] uppercase tracking-[0.25em] mb-6">
-          <Zap className="w-3 h-3" /> Built for Kenyan agencies
-        </div>
         <h2 className="font-display text-5xl md:text-7xl font-semibold leading-[1.02] text-balance">
           Stop losing nights<br />
           <span className="italic text-accent">to spreadsheets.</span>
