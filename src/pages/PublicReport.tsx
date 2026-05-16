@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3, Download, FileText } from "lucide-react";
+import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3, Download, FileText, Instagram, Music2, Crown } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
@@ -33,6 +33,8 @@ const PublicReport = () => {
   const [client, setClient] = useState<any>(null);
   const [posts, setPosts] = useState<PostWithMetrics[]>([]);
   const [influencers, setInfluencers] = useState<any[]>([]);
+  const [contests, setContests] = useState<any[]>([]);
+  const [contestEntries, setContestEntries] = useState<any[]>([]);
   const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
   const [notFound, setNotFound] = useState(false);
   const [from, setFrom] = useState<string>("");
@@ -60,6 +62,15 @@ const PublicReport = () => {
     setPosts(grouped);
     const { data: ci } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", link.campaign_id);
     setInfluencers(ci ?? []);
+    const { data: cts } = await supabase.from("contests").select("*").eq("campaign_id", link.campaign_id).order("created_at", { ascending: false });
+    setContests(cts ?? []);
+    const contestIds = (cts ?? []).map((c: any) => c.id);
+    if (contestIds.length) {
+      const { data: ces } = await supabase.from("contest_entries").select("*").in("contest_id", contestIds).order("score", { ascending: false });
+      setContestEntries(ces ?? []);
+    } else {
+      setContestEntries([]);
+    }
     setUpdatedAt(new Date());
   };
 
@@ -561,6 +572,107 @@ const PublicReport = () => {
                 </div>
               </div>
             </Card>
+          );
+        })()}
+
+        {/* Hashtag contests */}
+        {contests.length > 0 && (() => {
+          const scoreOf = (s: any) => Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0);
+          return (
+            <div className="space-y-6 mb-6">
+              {contests.map((ct) => {
+                const entries = contestEntries.filter((e) => e.contest_id === ct.id);
+                if (!entries.length) return null;
+                const groups = new Map<string, any[]>();
+                for (const e of entries) {
+                  const key = (e.external_registration_id || e.handle || e.submitter_email || e.id) as string;
+                  if (!groups.has(key)) groups.set(key, []);
+                  groups.get(key)!.push(e);
+                }
+                const contestants = Array.from(groups.entries()).map(([key, rows]) => {
+                  const reg = rows.find((r) => r.source === "registration") || rows[0];
+                  const postsR = rows.filter((r) => r.post_url);
+                  const total = postsR.reduce((s, p) => s + scoreOf(p), 0);
+                  const tViews = postsR.reduce((s, p) => s + Number(p.views || 0), 0);
+                  const tLikes = postsR.reduce((s, p) => s + Number(p.likes || 0), 0);
+                  const tComments = postsR.reduce((s, p) => s + Number(p.comments || 0), 0);
+                  const tShares = postsR.reduce((s, p) => s + Number(p.shares || 0), 0);
+                  return { key, reg, posts: postsR, total, tViews, tLikes, tComments, tShares };
+                }).filter(c => c.posts.length > 0).sort((a, b) => b.total - a.total);
+                const ctTotals = contestants.reduce((a, c) => ({
+                  views: a.views + c.tViews, likes: a.likes + c.tLikes, comments: a.comments + c.tComments, shares: a.shares + c.tShares, posts: a.posts + c.posts.length,
+                }), { views: 0, likes: 0, comments: 0, shares: 0, posts: 0 });
+                return (
+                  <Card key={ct.id} className="p-6">
+                    <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1"><Trophy className="w-3 h-3 text-highlight" /> Hashtag contest</div>
+                        <h2 className="font-display text-2xl mt-1">{ct.name} <span className="font-mono text-base text-muted-foreground ml-1">{ct.hashtag}</span></h2>
+                        <div className="text-xs text-muted-foreground mt-1">{ct.start_date} → {ct.end_date}{ct.prize ? ` · Prize: ${ct.prize}` : ""}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Contestants</div>
+                        <div className="font-display text-2xl">{contestants.length}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden border border-border mb-5">
+                      {[
+                        { l: "Posts", v: ctTotals.posts },
+                        { l: "Views", v: fmt(ctTotals.views) },
+                        { l: "Likes", v: fmt(ctTotals.likes) },
+                        { l: "Comments", v: fmt(ctTotals.comments) },
+                        { l: "Shares", v: fmt(ctTotals.shares) },
+                      ].map((s) => (
+                        <div key={s.l} className="bg-card p-4">
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.l}</div>
+                          <div className="font-display text-xl mt-1">{s.v}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Leaderboard</div>
+                    <div className="overflow-x-auto border border-border rounded-md">
+                      <table className="w-full text-sm">
+                        <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
+                          <tr>
+                            <th className="text-left px-3 py-2">#</th>
+                            <th className="text-left px-3 py-2">Contestant</th>
+                            <th className="text-left px-3 py-2">Handles</th>
+                            <th className="text-right px-3 py-2">Posts</th>
+                            <th className="text-right px-3 py-2">Views</th>
+                            <th className="text-right px-3 py-2">Likes</th>
+                            <th className="text-right px-3 py-2">Comments</th>
+                            <th className="text-right px-3 py-2">Shares</th>
+                            <th className="text-right px-3 py-2">Score</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {contestants.slice(0, 25).map((c, i) => (
+                            <tr key={c.key} className="border-t border-border align-top">
+                              <td className="px-3 py-2 tabular-nums">{i + 1}{i === 0 && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
+                              <td className="px-3 py-2">{c.reg.full_name || c.reg.submitter_name || c.reg.handle || "Contestant"}</td>
+                              <td className="px-3 py-2 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {c.reg.instagram_handle && <span className="inline-flex items-center gap-1"><Instagram className="w-3 h-3" />@{c.reg.instagram_handle}</span>}
+                                  {c.reg.tiktok_handle && <span className="inline-flex items-center gap-1"><Music2 className="w-3 h-3" />@{c.reg.tiktok_handle}</span>}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 text-right tabular-nums">{c.posts.length}</td>
+                              <td className="px-3 py-2 text-right tabular-nums">{fmt(c.tViews)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums">{fmt(c.tLikes)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums">{fmt(c.tComments)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums">{fmt(c.tShares)}</td>
+                              <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(c.total).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           );
         })()}
 
