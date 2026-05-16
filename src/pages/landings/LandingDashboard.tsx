@@ -245,9 +245,6 @@ const LandingDashboard = () => {
 
       {/* CLOSING CTA */}
       <section className="relative max-w-5xl mx-auto px-6 py-24 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-[11px] uppercase tracking-[0.25em] mb-6">
-          <Zap className="w-3 h-3" /> Built for Kenyan agencies
-        </div>
         <h2 className="font-display text-5xl md:text-7xl font-semibold leading-[1.02] text-balance">
           Stop losing nights<br />
           <span className="italic text-accent">to spreadsheets.</span>
