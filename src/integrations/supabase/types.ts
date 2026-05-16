@@ -868,6 +868,72 @@ export type Database = {
         }
         Relationships: []
       }
+      instagram_accounts: {
+        Row: {
+          created_at: string
+          id: string
+          ig_user_id: string
+          influencer_id: string
+          name: string | null
+          page_access_token: string
+          page_id: string | null
+          profile_picture_url: string | null
+          scope: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_access_token: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ig_user_id: string
+          influencer_id: string
+          name?: string | null
+          page_access_token: string
+          page_id?: string | null
+          profile_picture_url?: string | null
+          scope?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_access_token?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ig_user_id?: string
+          influencer_id?: string
+          name?: string | null
+          page_access_token?: string
+          page_id?: string | null
+          profile_picture_url?: string | null
+          scope?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_access_token?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      instagram_oauth_states: {
+        Row: {
+          created_at: string
+          influencer_id: string
+          state: string
+        }
+        Insert: {
+          created_at?: string
+          influencer_id: string
+          state: string
+        }
+        Update: {
+          created_at?: string
+          influencer_id?: string
+          state?: string
+        }
+        Relationships: []
+      }
       payouts: {
         Row: {
           campaign_id: string
