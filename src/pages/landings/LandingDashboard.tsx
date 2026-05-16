@@ -116,46 +116,77 @@ const LandingDashboard = () => {
             </div>
           </div>
 
-          <div className="relative rounded-2xl bg-card border border-border shadow-elegant overflow-hidden">
-            <div className="px-5 py-3 border-b border-border flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> Live · Hustler Fund</div>
-              <div className="text-muted-foreground">updated just now</div>
+          <div className="relative rounded-3xl bg-card border border-border shadow-elegant overflow-hidden flex">
+            {/* Mini sidebar */}
+            <div className="hidden md:flex w-14 bg-sidebar text-sidebar-foreground flex-col items-center py-4 gap-3 border-r border-sidebar-border">
+              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-accent-foreground text-xs font-bold">DP</div>
+              <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center"><BarChart3 className="w-4 h-4 text-accent" /></div>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center opacity-50"><Users className="w-4 h-4" /></div>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center opacity-50"><Trophy className="w-4 h-4" /></div>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center opacity-50"><FileText className="w-4 h-4" /></div>
+              <div className="mt-auto w-8 h-8 rounded-full bg-gradient-warm flex items-center justify-center text-[10px] font-bold text-accent-foreground">J</div>
             </div>
-            <div className="p-6">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Total views</div>
-              <div className="font-display text-5xl mt-1 tabular-nums">{views.toLocaleString()}</div>
-              <div className="h-28 mt-4 -mx-2">
-                <ResponsiveContainer>
-                  <AreaChart data={seed}>
-                    <defs>
-                      <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(0 99% 57%)" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="hsl(0 99% 57%)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="x" hide />
-                    <Area type="monotone" dataKey="v" stroke="hsl(0 99% 57%)" strokeWidth={2.5} fill="url(#g)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+
+            <div className="flex-1 min-w-0">
+              {/* Top bar */}
+              <div className="px-5 py-3 border-b border-border flex items-center justify-between text-xs bg-background/50">
+                <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> Hustler Fund · Live</div>
+                <div className="text-muted-foreground">updated just now</div>
               </div>
-              <div className="grid grid-cols-4 gap-3 mt-4">
-                {[
-                  { i: Eye, l: "Views", v: "2.4M" },
-                  { i: Heart, l: "Likes", v: "184k" },
-                  { i: MessageCircle, l: "Comments", v: "9.2k" },
-                  { i: Share2, l: "Shares", v: "21k" },
-                ].map(({ i: I, l, v }) => (
-                  <div key={l} className="rounded-lg bg-secondary/60 p-3 hover:bg-secondary transition-colors">
-                    <I className="w-3.5 h-3.5 text-muted-foreground" />
-                    <div className="font-display text-lg mt-1">{v}</div>
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{l}</div>
+
+              <div className="p-6">
+                {/* Two stat tiles like the fintech ref */}
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  <div className="rounded-2xl bg-secondary/60 p-4 border border-border/50">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total views</div>
+                    <div className="font-display text-3xl mt-1 tabular-nums">{views.toLocaleString()}</div>
+                    <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-medium">
+                      <TrendingUp className="w-3 h-3" /> +12.4% this week
+                    </div>
                   </div>
-                ))}
+                  <div className="rounded-2xl bg-primary text-primary-foreground p-4">
+                    <div className="text-[10px] uppercase tracking-widest opacity-60">EMV (KES)</div>
+                    <div className="font-display text-3xl mt-1 tabular-nums">29,372</div>
+                    <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-highlight/20 text-highlight text-[10px] font-medium">
+                      <Sparkles className="w-3 h-3" /> vs KES 12 CPM
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-24 -mx-2">
+                  <ResponsiveContainer>
+                    <AreaChart data={seed}>
+                      <defs>
+                        <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(0 99% 57%)" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="hsl(0 99% 57%)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="x" hide />
+                      <Area type="monotone" dataKey="v" stroke="hsl(0 99% 57%)" strokeWidth={2.5} fill="url(#g)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2 mt-4">
+                  {[
+                    { i: Eye, l: "Views", v: "2.4M" },
+                    { i: Heart, l: "Likes", v: "184k" },
+                    { i: MessageCircle, l: "Comments", v: "9.2k" },
+                    { i: Share2, l: "Shares", v: "21k" },
+                  ].map(({ i: I, l, v }) => (
+                    <div key={l} className="rounded-xl bg-secondary/50 p-3">
+                      <I className="w-3.5 h-3.5 text-muted-foreground" />
+                      <div className="font-display text-base mt-1 tabular-nums">{v}</div>
+                      <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{l}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="px-5 py-3 bg-secondary/40 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-              <span>14 creators · 21 posts</span>
-              <span className="font-mono">daraja.pulse/r/h7s2k</span>
+              <div className="px-5 py-3 bg-secondary/40 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                <span>14 creators · 21 posts</span>
+                <span className="font-mono">daraja.pulse/r/h7s2k</span>
+              </div>
             </div>
           </div>
         </div>
