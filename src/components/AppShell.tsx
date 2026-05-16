@@ -40,8 +40,12 @@ const navGroups: { label?: string; items: { to: string; icon: any; label: string
 
 const SidebarBody = ({ user, isAdmin, onSignOut, onNavigate }: any) => (
   <>
-    <div className="p-6 border-b border-sidebar-border bg-white">
-      <img src={logo} alt="Daraja Pulse — Influencer Intelligence" className="h-20 w-auto mx-auto" />
+    <div className="px-5 py-5 border-b border-sidebar-border bg-white flex items-center gap-3">
+      <img src={logo} alt="Daraja Pulse" className="h-10 w-auto" />
+      <div className="leading-tight">
+        <div className="font-display text-base font-semibold text-primary">DarajaPulse</div>
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Influencer OS</div>
+      </div>
     </div>
     <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
       {navGroups.map((group, gi) => (
@@ -54,7 +58,7 @@ const SidebarBody = ({ user, isAdmin, onSignOut, onNavigate }: any) => (
           {group.items.map(({ to, icon: Icon, label, end }) => (
             <NavLink key={to} to={to} end={end as any} onClick={onNavigate}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50'}`}>
+                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-accent/15 text-accent font-medium' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}>
               <Icon className="w-4 h-4" /> {label}
             </NavLink>
           ))}
@@ -63,11 +67,18 @@ const SidebarBody = ({ user, isAdmin, onSignOut, onNavigate }: any) => (
       {isAdmin && (
         <NavLink to="/app/team" onClick={onNavigate}
           className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'hover:bg-sidebar-accent/50'}`}>
+            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-accent/15 text-accent font-medium' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}>
           <UserCog className="w-4 h-4" /> Team
         </NavLink>
       )}
     </nav>
+    <div className="m-3 rounded-xl p-4 bg-gradient-to-br from-highlight/25 via-highlight/10 to-transparent border border-highlight/30">
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-highlight">
+        <Sparkles className="w-3 h-3" /> Pro tier
+      </div>
+      <div className="font-display text-sm text-sidebar-foreground mt-1 leading-snug">Unlock unlimited campaigns & AI learnings</div>
+      <Button size="sm" className="w-full mt-3 bg-highlight text-primary hover:bg-highlight/90 h-8 text-xs font-semibold">Upgrade plan</Button>
+    </div>
     <div className="p-3 border-t border-sidebar-border">
       <div className="px-3 py-2 text-xs text-sidebar-foreground/70 truncate">{user.email}</div>
       <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={onSignOut}>
@@ -76,6 +87,24 @@ const SidebarBody = ({ user, isAdmin, onSignOut, onNavigate }: any) => (
     </div>
   </>
 );
+
+const TopBar = ({ user }: any) => {
+  const initial = (user.email || "?")[0].toUpperCase();
+  return (
+    <header className="hidden lg:flex items-center gap-4 px-8 h-16 border-b border-border bg-background/80 backdrop-blur sticky top-0 z-20">
+      <div className="flex-1 max-w-md relative">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input placeholder="Search campaigns, creators, briefs…" className="pl-9 h-10 bg-secondary/50 border-secondary rounded-lg text-sm" />
+      </div>
+      <div className="ml-auto flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full"><Bell className="w-4 h-4" /></Button>
+        <div className="h-10 w-10 rounded-full bg-gradient-warm text-accent-foreground flex items-center justify-center font-semibold text-sm shadow-soft">
+          {initial}
+        </div>
+      </div>
+    </header>
+  );
+};
 
 const AppShell = () => {
   const { user, loading, signOut, isAgency, isClient, roles } = useAuth();
