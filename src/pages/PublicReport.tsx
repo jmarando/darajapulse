@@ -234,9 +234,9 @@ const PublicReport = () => {
           </div>
           <div className="flex flex-wrap items-center gap-2 no-print">
             <div className="flex items-center gap-2">
-              <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="From date" />
+              <Input type="date" value={from} onInput={e => setFrom((e.target as HTMLInputElement).value)} onChange={e => setFrom(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="From date" />
               <span className="text-xs text-muted-foreground hidden sm:inline">→</span>
-              <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="To date" />
+              <Input type="date" value={to} onInput={e => setTo((e.target as HTMLInputElement).value)} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="To date" />
               {(from || to) && <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFrom(""); setTo(""); }}>Clear</Button>}
             </div>
             <Button variant="outline" size="sm" className="h-8" onClick={exportCsv}><Download className="w-3.5 h-3.5 mr-1.5" />CSV</Button>
