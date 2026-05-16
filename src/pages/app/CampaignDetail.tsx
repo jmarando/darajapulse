@@ -238,14 +238,6 @@ const CampaignDetail = () => {
     return { fromMs: f, toMs: t, hasRange: !!(dateRange?.from || dateRange?.to) };
   }, [dateRange]);
 
-  const metricsFiltered = useMemo(() => {
-    if (!hasRange) return metrics;
-    return metrics.filter(m => {
-      const t = +new Date(m.captured_at);
-      return t >= fromMs && t <= toMs;
-    });
-  }, [metrics, hasRange, fromMs, toMs]);
-
   const latestByPost = useMemo(() => {
     return hasRange
       ? buildWindowMetricsByPost(metrics, fromMs, toMs)
@@ -402,9 +394,11 @@ const CampaignDetail = () => {
     for (let i = 0; i < N; i++) {
       const t = minDay + (span * (i + 1)) / N; // end of bucket
       let total = 0;
-      for (const arr of byPost.values()) {
-        const seen = arr.filter((m) => +new Date(m.captured_at) <= t);
-        if (seen.length) total += valOf(buildPeakMetricsByPost(seen).get(seen[0].post_id) ?? seen[seen.length - 1]);
+      for (const [postId, arr] of byPost.entries()) {
+        const pointMetrics = hasRange
+          ? buildWindowMetricsByPost(arr, minDay, t).get(postId)
+          : buildPeakMetricsByPost(arr.filter((m) => +new Date(m.captured_at) <= t)).get(postId);
+        if (pointMetrics) total += valOf(pointMetrics);
       }
       const date = new Date(t);
       const label = totalDays <= 1
@@ -413,7 +407,7 @@ const CampaignDetail = () => {
       points.push({ d: label, v: total });
     }
     return points;
-  }, [metrics, posts, dateRange, metric]);
+  }, [metrics, posts, dateRange, metric, hasRange]);
 
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
