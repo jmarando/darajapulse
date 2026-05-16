@@ -9,25 +9,33 @@ import { Badge } from "@/components/ui/badge";
 import {
   Megaphone, Users, Building2, Wallet, TrendingUp, Eye, Heart, MessageCircle,
   Share2, FileText, Trophy, ArrowUpRight, Sparkles, Activity, Rows3, LayoutGrid,
+  Plus, Send, FileSignature, Zap,
 } from "lucide-react";
-import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { BarChart, Bar, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buildPeakMetricsByPost } from "@/lib/metrics";
 
 const fmt = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : `${n}`;
 
-const Stat = ({ icon: Icon, label, value, sub, to }: any) => {
+const Stat = ({ icon: Icon, label, value, sub, delta, to }: any) => {
   const inner = (
-    <Card className="p-5 h-full hover:shadow-elegant hover:-translate-y-0.5 transition-all group cursor-pointer">
+    <Card className="p-5 h-full rounded-2xl border-border/60 bg-card hover:shadow-elegant hover:-translate-y-0.5 transition-all group cursor-pointer">
       <div className="flex items-center justify-between">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
-        <Icon className="w-4 h-4 text-accent" />
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+        <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
+          <Icon className="w-3.5 h-3.5 text-accent" />
+        </div>
       </div>
-      <div className="font-display text-4xl font-semibold mt-3 flex items-end gap-2">
+      <div className="font-display text-3xl font-semibold mt-3 tabular-nums flex items-end gap-2">
         {value}
-        {to && <ArrowUpRight className="w-4 h-4 mb-2 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity" />}
+        {to && <ArrowUpRight className="w-4 h-4 mb-1.5 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity" />}
       </div>
-      {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
+      {delta && (
+        <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-medium">
+          <TrendingUp className="w-3 h-3" /> {delta}
+        </div>
+      )}
+      {sub && !delta && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
     </Card>
   );
   return to ? <Link to={to}>{inner}</Link> : inner;
