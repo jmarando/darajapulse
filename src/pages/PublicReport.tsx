@@ -62,6 +62,15 @@ const PublicReport = () => {
     setPosts(grouped);
     const { data: ci } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", link.campaign_id);
     setInfluencers(ci ?? []);
+    const { data: cts } = await supabase.from("contests").select("*").eq("campaign_id", link.campaign_id).order("created_at", { ascending: false });
+    setContests(cts ?? []);
+    const contestIds = (cts ?? []).map((c: any) => c.id);
+    if (contestIds.length) {
+      const { data: ces } = await supabase.from("contest_entries").select("*").in("contest_id", contestIds).order("score", { ascending: false });
+      setContestEntries(ces ?? []);
+    } else {
+      setContestEntries([]);
+    }
     setUpdatedAt(new Date());
   };
 
