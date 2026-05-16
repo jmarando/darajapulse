@@ -33,6 +33,8 @@ const PublicReport = () => {
   const [client, setClient] = useState<any>(null);
   const [posts, setPosts] = useState<PostWithMetrics[]>([]);
   const [influencers, setInfluencers] = useState<any[]>([]);
+  const [contests, setContests] = useState<any[]>([]);
+  const [contestEntries, setContestEntries] = useState<any[]>([]);
   const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
   const [notFound, setNotFound] = useState(false);
   const [from, setFrom] = useState<string>("");
