@@ -28,7 +28,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "rec
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
 import { computeEmv, EMV_DISCLAIMER } from "@/lib/emv";
-import { buildPeakMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
+import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
 
 
 const CampaignDetail = () => {
