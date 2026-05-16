@@ -9,25 +9,33 @@ import { Badge } from "@/components/ui/badge";
 import {
   Megaphone, Users, Building2, Wallet, TrendingUp, Eye, Heart, MessageCircle,
   Share2, FileText, Trophy, ArrowUpRight, Sparkles, Activity, Rows3, LayoutGrid,
+  Plus, Send, FileSignature, Zap,
 } from "lucide-react";
-import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { BarChart, Bar, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buildPeakMetricsByPost } from "@/lib/metrics";
 
 const fmt = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : `${n}`;
 
-const Stat = ({ icon: Icon, label, value, sub, to }: any) => {
+const Stat = ({ icon: Icon, label, value, sub, delta, to }: any) => {
   const inner = (
-    <Card className="p-5 h-full hover:shadow-elegant hover:-translate-y-0.5 transition-all group cursor-pointer">
+    <Card className="p-5 h-full rounded-2xl border-border/60 bg-card hover:shadow-elegant hover:-translate-y-0.5 transition-all group cursor-pointer">
       <div className="flex items-center justify-between">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
-        <Icon className="w-4 h-4 text-accent" />
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+        <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
+          <Icon className="w-3.5 h-3.5 text-accent" />
+        </div>
       </div>
-      <div className="font-display text-4xl font-semibold mt-3 flex items-end gap-2">
+      <div className="font-display text-3xl font-semibold mt-3 tabular-nums flex items-end gap-2">
         {value}
-        {to && <ArrowUpRight className="w-4 h-4 mb-2 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity" />}
+        {to && <ArrowUpRight className="w-4 h-4 mb-1.5 opacity-0 group-hover:opacity-100 text-muted-foreground transition-opacity" />}
       </div>
-      {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
+      {delta && (
+        <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-medium">
+          <TrendingUp className="w-3 h-3" /> {delta}
+        </div>
+      )}
+      {sub && !delta && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
     </Card>
   );
   return to ? <Link to={to}>{inner}</Link> : inner;
@@ -206,7 +214,7 @@ const Overview = () => {
       {/* Primary KPIs */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <Stat icon={Building2} label="Clients" value={s.clients} to="/app/clients" />
-        <Stat icon={Megaphone} label="Campaigns" value={s.campaigns} sub={`${s.live} live`} to="/app/campaigns" />
+        <Stat icon={Megaphone} label="Campaigns" value={s.campaigns} delta={`${s.live} live now`} to="/app/campaigns" />
         <Stat icon={Users} label="Influencers" value={s.influencers} to="/app/influencers" />
         <Stat icon={Wallet} label="Paid (KES)" value={s.payouts.toLocaleString()} to="/app/payouts" />
       </div>
@@ -219,48 +227,70 @@ const Overview = () => {
         <Stat icon={Sparkles} label="EMV (KES)" value={fmt(emv)} sub="vs KES 12 CPM" />
       </div>
 
-      {/* Performance metrics row */}
-      <Card className="p-6 mb-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">Performance to date</div>
-            <h2 className="font-display text-2xl mt-1">Across all live campaigns</h2>
-          </div>
-          <Badge variant="secondary" className="text-sm">{er.toFixed(2)}% engagement</Badge>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {[
-            { i: Eye, l: "Views", v: fmt(totals.views) },
-            { i: TrendingUp, l: "Reach", v: fmt(totals.reach) },
-            { i: Heart, l: "Likes", v: fmt(totals.likes) },
-            { i: MessageCircle, l: "Comments", v: fmt(totals.comments) },
-            { i: Share2, l: "Shares", v: fmt(totals.shares) },
-          ].map(({ i: I, l, v }) => (
-            <div key={l} className="p-4 rounded-lg bg-secondary/50">
-              <I className="w-4 h-4 text-muted-foreground mb-2" />
-              <div className="font-display text-2xl">{v}</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{l}</div>
+      {/* Performance + Quick Actions */}
+      <div className="grid lg:grid-cols-[1fr_300px] gap-4 mb-6">
+        <Card className="p-6 rounded-2xl border-border/60">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance to date</div>
+              <h2 className="font-display text-2xl mt-1">Across all live campaigns</h2>
             </div>
-          ))}
-        </div>
-      </Card>
+            <Badge variant="secondary" className="text-sm">{er.toFixed(2)}% engagement</Badge>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {[
+              { i: Eye, l: "Views", v: fmt(totals.views) },
+              { i: TrendingUp, l: "Reach", v: fmt(totals.reach) },
+              { i: Heart, l: "Likes", v: fmt(totals.likes) },
+              { i: MessageCircle, l: "Comments", v: fmt(totals.comments) },
+              { i: Share2, l: "Shares", v: fmt(totals.shares) },
+            ].map(({ i: I, l, v }) => (
+              <div key={l} className="p-4 rounded-xl bg-secondary/60">
+                <I className="w-4 h-4 text-muted-foreground mb-2" />
+                <div className="font-display text-2xl tabular-nums">{v}</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{l}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-6 rounded-2xl border-border/60 flex flex-col">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Quick actions</div>
+          <Link to="/app/campaigns"><Button className="w-full justify-start bg-primary text-primary-foreground hover:bg-primary/90 mb-2 h-10 rounded-lg"><Plus className="w-4 h-4 mr-2" /> New campaign</Button></Link>
+          <Link to="/app/briefs"><Button variant="outline" className="w-full justify-start mb-2 h-10 rounded-lg"><FileSignature className="w-4 h-4 mr-2" /> Send brief</Button></Link>
+          <Link to="/app/influencers"><Button variant="outline" className="w-full justify-start mb-4 h-10 rounded-lg"><Send className="w-4 h-4 mr-2" /> Invite creator</Button></Link>
+          <div className="mt-auto pt-4 border-t border-border/60">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Live now</div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> {s.live} active</span>
+              <span className="text-muted-foreground tabular-nums">{s.posts} posts</span>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       {/* Velocity chart */}
-      <Card className="p-6 mb-6">
+      <Card className="p-6 mb-6 rounded-2xl border-border/60">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">Engagement velocity</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement velocity</div>
             <h2 className="font-display text-2xl mt-1">{from} → {to}</h2>
           </div>
           <div className="flex items-center gap-2 text-success text-sm"><TrendingUp className="w-4 h-4" /> {totalEng.toLocaleString()} interactions</div>
         </div>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={series}>
-              <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-              <Line type="monotone" dataKey="v" stroke="hsl(var(--accent))" strokeWidth={2.5} dot={false} />
-            </LineChart>
+            <BarChart data={series}>
+              <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={11} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: "hsl(var(--secondary) / 0.5)" }} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+              <Bar dataKey="v" radius={[6, 6, 0, 0]}>
+                {series.map((entry, i) => {
+                  const max = Math.max(...series.map(s => s.v));
+                  const isPeak = entry.v === max && entry.v > 0;
+                  return <Cell key={i} fill={isPeak ? "hsl(var(--primary))" : "hsl(var(--accent) / 0.35)"} />;
+                })}
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </Card>
