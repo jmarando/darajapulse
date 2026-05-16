@@ -26,6 +26,7 @@ import Privacy from "./pages/Privacy";
 import PublicBrief from "./pages/PublicBrief";
 import PublicContestSubmit from "./pages/PublicContestSubmit";
 import ConnectTikTok from "./pages/ConnectTikTok";
+import ConnectInstagram from "./pages/ConnectInstagram";
 import NotFound from "./pages/NotFound.tsx";
 import Unsubscribe from "./pages/Unsubscribe";
 import LandingPicker from "./pages/landings/LandingPicker";
@@ -68,6 +69,8 @@ const App = () => (
             <Route path="/:clientSlug/:campaignSlug/brief/:token" element={<PublicBrief />} />
             <Route path="/connect/tiktok/:influencerId" element={<ConnectTikTok />} />
             <Route path="/connect/tiktok/done" element={<ConnectTikTok />} />
+            <Route path="/connect/instagram/:influencerId" element={<ConnectInstagram />} />
+            <Route path="/connect/instagram/done" element={<ConnectInstagram />} />
             <Route path="/portal" element={<PortalShell />}>
               <Route index element={<PortalOverview />} />
               <Route path="campaigns" element={<PortalOverview />} />
