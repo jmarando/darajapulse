@@ -57,6 +57,45 @@ export const buildPeakMetricsByPost = (rows: MetricSnapshot[] = []) => {
   return peaks;
 };
 
+// Window-delta metrics: views/likes/etc. on social platforms are cumulative,
+// so to express "what was earned during [from, to]" we subtract the baseline
+// peak captured before `from` from the peak captured within [from, to].
+// If `from`/`to` are not provided, falls back to lifetime peak per post.
+export const buildWindowMetricsByPost = (
+  rows: MetricSnapshot[] = [],
+  fromMs: number = -Infinity,
+  toMs: number = Infinity,
+) => {
+  const grouped = new Map<string, MetricSnapshot[]>();
+  for (const row of rows) {
+    if (!row.post_id) continue;
+    grouped.set(row.post_id, [...(grouped.get(row.post_id) ?? []), row]);
+  }
+  const out = new Map<string, MetricSnapshot>();
+  const hasRange = isFinite(fromMs) || isFinite(toMs);
+  for (const [postId, list] of grouped) {
+    if (!hasRange) {
+      out.set(postId, { post_id: postId, ...peakMetricSnapshot(list) });
+      continue;
+    }
+    const before = list.filter(r => +new Date(r.captured_at || 0) < fromMs);
+    const within = list.filter(r => {
+      const t = +new Date(r.captured_at || 0);
+      return t >= fromMs && t <= toMs;
+    });
+    if (within.length === 0) continue; // post has no activity in window
+    const baseline = peakMetricSnapshot(before);
+    const endPeak = peakMetricSnapshot(within);
+    const delta: MetricSnapshot = { post_id: postId, captured_at: endPeak.captured_at };
+    for (const key of METRIC_KEYS) {
+      const d = Number(endPeak[key] || 0) - Number(baseline[key] || 0);
+      delta[key] = Math.max(0, d);
+    }
+    out.set(postId, withMetricFallbacks(delta));
+  }
+  return out;
+};
+
 export const fetchAllPostMetrics = async (client: any, postIds: string[], columns = "*") => {
   const rows: MetricSnapshot[] = [];
   for (let i = 0; i < postIds.length; i += 100) {
