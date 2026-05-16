@@ -100,22 +100,6 @@ const LandingDashboard = () => {
         <div className="relative animate-fade-in">
           <div className="absolute -inset-8 bg-gradient-warm opacity-25 blur-3xl rounded-full" />
 
-          {/* Floating mini-cards */}
-          <div className="absolute -top-6 -left-6 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs" style={{ animation: "fade-in 0.6s ease-out, float 4s ease-in-out 0.6s infinite" }}>
-            <CheckCircle2 className="w-4 h-4 text-success" />
-            <div>
-              <div className="font-semibold">Content approved</div>
-              <div className="text-[10px] text-muted-foreground">Round 2 · 1m ago</div>
-            </div>
-          </div>
-          <div className="absolute -bottom-4 -right-4 z-20 px-3 py-2 rounded-lg bg-card border border-border shadow-elegant flex items-center gap-2 text-xs" style={{ animation: "float 5s ease-in-out infinite" }}>
-            <Trophy className="w-4 h-4 text-highlight" />
-            <div>
-              <div className="font-semibold">38 contest entries</div>
-              <div className="text-[10px] text-muted-foreground">#BoltKE · today</div>
-            </div>
-          </div>
-
           <div className="relative rounded-3xl bg-card border border-border shadow-elegant overflow-hidden flex">
             {/* Mini sidebar */}
             <div className="hidden md:flex w-14 bg-sidebar text-sidebar-foreground flex-col items-center py-4 gap-3 border-r border-sidebar-border">
