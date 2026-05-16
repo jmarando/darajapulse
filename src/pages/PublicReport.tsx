@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3, Download, FileText } from "lucide-react";
+import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3, Download, FileText, Instagram, Music2, Crown } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
