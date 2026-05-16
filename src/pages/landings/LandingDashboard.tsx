@@ -94,11 +94,6 @@ const LandingDashboard = () => {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> 5 platforms, one inbox</div>
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Live tokenized reports</div>
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-success" /> Built for Kenyan agencies</div>
-          </div>
         </div>
 
         {/* Live report mock */}
@@ -166,22 +161,6 @@ const LandingDashboard = () => {
         </div>
       </section>
 
-      {/* USP STRIP */}
-      <section className="relative border-y border-border bg-card/40 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { n: "5", l: "Platforms unified" },
-            { n: "<5 min", l: "From brief to live" },
-            { n: "Live", l: "Client reports" },
-            { n: "0", l: "Spreadsheets" },
-          ].map(s => (
-            <div key={s.l} className="text-center md:text-left">
-              <div className="font-display text-3xl md:text-4xl font-semibold text-accent">{s.n}</div>
-              <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1">{s.l}</div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* USP DEEP DIVE */}
       <section className="relative max-w-7xl mx-auto px-6 py-24">
