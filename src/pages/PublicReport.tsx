@@ -89,10 +89,27 @@ const PublicReport = () => {
 
   const fromTs = from ? +new Date(from) : -Infinity;
   const toTs = to ? +new Date(to) + 86399999 : Infinity;
-  const filteredPosts = posts.filter(p => {
-    const t = p.posted_at ? +new Date(p.posted_at) : +new Date(p.created_at);
-    return t >= fromTs && t <= toTs;
-  });
+  const hasRange = !!(from || to);
+
+  // When a window is active, recompute per-post metrics as the delta
+  // captured within [from, to]; otherwise use lifetime peak.
+  const windowMetricsByPost = useMemo(() => {
+    if (!hasRange) return null;
+    const all = posts.flatMap((p: any) => (p.history || []).map((h: any) => ({ ...h, post_id: p.id })));
+    return buildWindowMetricsByPost(all, fromTs, toTs);
+  }, [posts, hasRange, fromTs, toTs]);
+
+  const filteredPosts = posts
+    .filter(p => {
+      // Keep posts that either were posted in-range OR have metric activity in-range
+      const t = p.posted_at ? +new Date(p.posted_at) : +new Date(p.created_at);
+      const postedIn = t >= fromTs && t <= toTs;
+      const hasActivity = windowMetricsByPost ? windowMetricsByPost.has(p.id) : true;
+      return !hasRange || postedIn || hasActivity;
+    })
+    .map(p => hasRange && windowMetricsByPost?.has(p.id)
+      ? { ...p, metrics: windowMetricsByPost.get(p.id) }
+      : p);
   const rangeLabel = from || to ? `${from || "start"} → ${to || "now"}` : "All time";
 
   const totals = filteredPosts.reduce((a, p) => ({
