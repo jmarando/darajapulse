@@ -13,7 +13,7 @@ import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
 import { computeEmv, EMV_CPM_KES, EMV_DISCLAIMER } from "@/lib/emv";
-import { fetchAllPostMetrics, peakMetricSnapshot, withMetricFallbacks } from "@/lib/metrics";
+import { fetchAllPostMetrics, peakMetricSnapshot, buildWindowMetricsByPost, withMetricFallbacks } from "@/lib/metrics";
 
 type PostWithMetrics = any;
 
