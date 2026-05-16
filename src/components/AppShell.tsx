@@ -142,6 +142,7 @@ const AppShell = () => {
           </Sheet>
           <img src={logo} alt="Daraja Pulse" className="h-8 w-auto" />
         </header>
+        <TopBar user={user} />
         <main className="flex-1 overflow-auto">
           <Outlet />
         </main>
