@@ -28,7 +28,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "rec
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
 import { computeEmv, EMV_DISCLAIMER } from "@/lib/emv";
-import { buildPeakMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
+import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
 
 
 const CampaignDetail = () => {
@@ -229,20 +229,28 @@ const CampaignDetail = () => {
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
-  // Filter metrics by selected date range (captured_at)
+  // Filter metrics by selected date range (captured_at), using window deltas
+  // because social metrics are cumulative — a sum of lifetime peaks would not
+  // change as the user moves the date range around.
+  const { fromMs, toMs, hasRange } = useMemo(() => {
+    const f = dateRange?.from ? +new Date(new Date(dateRange.from).setHours(0,0,0,0)) : -Infinity;
+    const t = dateRange?.to ? +new Date(new Date(dateRange.to).setHours(23,59,59,999)) : Infinity;
+    return { fromMs: f, toMs: t, hasRange: !!(dateRange?.from || dateRange?.to) };
+  }, [dateRange]);
+
   const metricsFiltered = useMemo(() => {
-    if (!dateRange?.from && !dateRange?.to) return metrics;
-    const fromMs = dateRange.from ? +new Date(new Date(dateRange.from).setHours(0,0,0,0)) : -Infinity;
-    const toMs = dateRange.to ? +new Date(new Date(dateRange.to).setHours(23,59,59,999)) : Infinity;
+    if (!hasRange) return metrics;
     return metrics.filter(m => {
       const t = +new Date(m.captured_at);
       return t >= fromMs && t <= toMs;
     });
-  }, [metrics, dateRange]);
+  }, [metrics, hasRange, fromMs, toMs]);
 
   const latestByPost = useMemo(() => {
-    return buildPeakMetricsByPost(metricsFiltered);
-  }, [metricsFiltered]);
+    return hasRange
+      ? buildWindowMetricsByPost(metrics, fromMs, toMs)
+      : buildPeakMetricsByPost(metrics);
+  }, [metrics, hasRange, fromMs, toMs]);
 
   const totals = useMemo(() => {
     let views = 0, likes = 0, comments = 0, shares = 0, saves = 0, reach = 0, impressions = 0;
