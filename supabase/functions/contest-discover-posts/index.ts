@@ -73,39 +73,7 @@ async function discoverInstagram(sb: any, tags: string[]) {
     }
   }
 
-  // 3) Upsert posts whose caption actually contains a contest tag (defensive)
-  let upserted = 0;
-  for (const p of posts) {
-    const caption = p.caption || "";
-    if (!captionHas(caption, tags)) continue;
-    const post_url = p.permalink;
-    if (!post_url) continue;
-    const thumb = p.thumbnail_url || p.media_url || p?.children?.data?.[0]?.thumbnail_url || p?.children?.data?.[0]?.media_url || null;
-    // Hashtag search responses don't reveal owner username — leave handle null,
-    // we'll try to attribute by matching captions/handles later if needed.
-    const stats = { views: 0, likes: Number(p.like_count || 0), comments: Number(p.comments_count || 0), shares: 0 };
-    const { error } = await sb.from("contest_entries").upsert(
-      {
-        contest_id: undefined as any, // filled by caller
-        platform: "instagram",
-        post_url,
-        handle: null,
-        caption: caption.slice(0, 1000),
-        thumbnail_url: thumb,
-        posted_at: p.timestamp || null,
-        ...stats,
-        score: score(stats),
-        status: "approved",
-        source: "meta_graph",
-        last_polled_at: new Date().toISOString(),
-      },
-      { onConflict: "contest_id,post_url" },
-    );
-    if (error) errors.push({ post_url, msg: error.message });
-    else upserted++;
-  }
-
-  return { fetched: posts.length, upserted, errors, _posts: posts };
+  return { fetched: posts.length, upserted: 0, errors, _posts: posts };
 }
 
 // ---------- TikTok via EnsembleData ----------
