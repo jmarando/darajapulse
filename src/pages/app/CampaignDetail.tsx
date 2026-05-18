@@ -105,6 +105,12 @@ const CampaignDetail = () => {
     setLink(l);
     const { data: pl } = await supabase.from("plan_links").select("*").eq("campaign_id", id).maybeSingle();
     setPlanLink(pl);
+    const { data: contests } = await supabase.from("contests").select("id").eq("campaign_id", id);
+    const contestIds = (contests ?? []).map((x: any) => x.id);
+    if (contestIds.length) {
+      const { data: ce } = await supabase.from("contest_entries").select("views,likes,comments,shares,saves").in("contest_id", contestIds);
+      setContestEntries(ce ?? []);
+    } else setContestEntries([]);
   };
   useEffect(() => { load(); }, [id]);
 
