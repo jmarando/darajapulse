@@ -158,57 +158,86 @@ const Influencers = () => {
           <h3 className="font-display text-2xl mt-4">No influencers in your roster</h3>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(r => {
             const primary = (r.primary_platform as string) || "tiktok";
+            const PIcon = PLATFORM_ICON[primary] || Music2;
+            const niches = (r.niche || "").split(/[•,·|\/]+/).map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
+            const handleRaw = (r.handle ?? "").replace(/^@?/, "");
+            const looksLikeUrl = /^https?:\/\//i.test(handleRaw);
             return (
-            <Card key={r.id} className="p-5 flex flex-col">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-11 h-11 shrink-0 rounded-full bg-secondary flex items-center justify-center font-display text-lg">{r.full_name?.[0] ?? "?"}</div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-display text-lg truncate" title={r.full_name}>{r.full_name}</div>
-                    <div className="text-xs text-muted-foreground truncate" title={`${r.handle ?? ""} · ${primary}`}>
-                      {r.handle ? `${r.handle} · ` : ""}{primary}
-                    </div>
+            <Card key={r.id} className="p-5 flex flex-col group hover:shadow-md hover:border-accent/40 transition-all">
+              {/* Header: avatar + name + edit */}
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-secondary to-secondary/40 border border-border flex items-center justify-center font-display text-lg uppercase">
+                  {r.full_name?.[0] ?? "?"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-display text-base leading-tight truncate" title={r.full_name}>{r.full_name}</div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1 min-w-0">
+                    <PIcon className="w-3 h-3 shrink-0" />
+                    <span className="truncate" title={handleRaw}>
+                      {looksLikeUrl ? handleRaw : handleRaw ? `@${handleRaw}` : "—"}
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Badge variant="secondary" className="gap-1"><ShieldCheck className="w-3 h-3" /> {Math.round(Number(r.authenticity_score || 0))}</Badge>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)} title="Edit influencer">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => openEdit(r)} title="Edit influencer">
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
               </div>
-              <div className="grid grid-cols-3 mt-4 gap-2 text-center min-w-0">
-                <div className="min-w-0">
-                  <InlineNumber value={Number(r.follower_count)} format={(v) => v.toLocaleString()} onSave={(v) => updateField(r.id, "follower_count", v)} />
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Followers</div>
+
+              {/* Stat strip — compact numbers so the grid actually fits */}
+              <div className="grid grid-cols-3 mt-4 rounded-md border border-border bg-secondary/30 divide-x divide-border overflow-hidden">
+                <div className="p-2.5 text-center min-w-0">
+                  <InlineNumber value={Number(r.follower_count)} format={fmtCompact} onSave={(v) => updateField(r.id, "follower_count", v)} />
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Followers</div>
                 </div>
-                <div className="min-w-0">
+                <div className="p-2.5 text-center min-w-0">
                   <InlineNumber value={Number(r.engagement_rate)} step={0.1} format={(v) => `${v.toFixed(1)}%`} onSave={(v) => updateField(r.id, "engagement_rate", v)} />
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">ER</div>
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Engagement</div>
                 </div>
-                <div className="min-w-0">
-                  <div className="font-display text-lg truncate" title={r.region ?? ""}>{r.region ?? "—"}</div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Region</div>
+                <div className="p-2.5 text-center min-w-0">
+                  <div className="font-display text-base inline-flex items-center gap-1 justify-center max-w-full">
+                    <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="truncate" title={r.region ?? ""}>{r.region ?? "—"}</span>
+                  </div>
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Region</div>
                 </div>
               </div>
-              {r.niche && <div className="mt-3 text-xs text-muted-foreground truncate" title={r.niche}>{r.niche}</div>}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full mt-3">
-                    <Link2 className="w-3 h-3 mr-1" /> Copy invite link <ChevronDown className="w-3 h-3 ml-auto" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => copyInvite(r, "tiktok")}>TikTok invite link</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => copyInvite(r, "instagram")}>Instagram invite link</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => copyInvite(r, "youtube")}>YouTube invite link</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => copyInvite(r, "twitter")}>X invite link</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => copyInvite(r, "facebook")}>Facebook invite link</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+
+              {/* Niche chips + trust score */}
+              <div className="mt-3 flex items-center justify-between gap-2 flex-wrap min-h-[22px]">
+                <div className="flex flex-wrap gap-1 min-w-0">
+                  {niches.map((n: string) => (
+                    <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5">{n}</Badge>
+                  ))}
+                </div>
+                <div className="inline-flex items-center gap-1 text-[10px] text-muted-foreground shrink-0" title="Authenticity score">
+                  <ShieldCheck className="w-3 h-3 text-success" />
+                  <span className="tabular-nums">{Math.round(Number(r.authenticity_score || 0))}</span>
+                </div>
+              </div>
+
+              {/* Invite action — split button keeps copy intent visible while platform picker is one tap away */}
+              <div className="mt-3 flex gap-1">
+                <Button variant="outline" size="sm" className="flex-1 min-w-0" onClick={() => copyInvite(r, primary)}>
+                  <Link2 className="w-3 h-3 mr-1.5 shrink-0" /> <span className="truncate">Invite via {primary}</span>
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="px-2 shrink-0" aria-label="Other platforms">
+                      <ChevronDown className="w-3 h-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => copyInvite(r, "tiktok")}><Music2 className="w-3 h-3 mr-2" /> TikTok</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => copyInvite(r, "instagram")}><Instagram className="w-3 h-3 mr-2" /> Instagram</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => copyInvite(r, "youtube")}><Youtube className="w-3 h-3 mr-2" /> YouTube</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => copyInvite(r, "twitter")}><Twitter className="w-3 h-3 mr-2" /> X / Twitter</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => copyInvite(r, "facebook")}><Facebook className="w-3 h-3 mr-2" /> Facebook</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </Card>
             );
           })}
