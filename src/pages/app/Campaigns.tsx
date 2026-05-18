@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Megaphone, ArrowUpRight, Eye, BarChart3, FileText } from "lucide-react";
+import { Plus, Megaphone, ArrowUpRight, Eye, BarChart3, FileText, Trophy, Users, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { buildPeakMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
 
@@ -29,13 +29,18 @@ const fmtNum = (n: number) => {
   return `${Math.round(n)}`;
 };
 
+type ContestPerf = { contests: number; contestants: number; entries: number; views: number };
+
 const Campaigns = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [perf, setPerf] = useState<Record<string, { views: number; er: number; posts: number }>>({});
+  const [contestPerf, setContestPerf] = useState<Record<string, ContestPerf>>({});
   const [clients, setClients] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ client_id: "", name: "", brief: "", hashtag: "", budget_kes: 0, status: "draft", brief_template_id: "" });
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  const [savingName, setSavingName] = useState(false);
 
   const load = async () => {
     const { data } = await supabase.from("campaigns").select("*, clients(name, logo_url)").order("created_at", { ascending: false });
@@ -71,8 +76,56 @@ const Campaigns = () => {
     } else {
       setPerf({});
     }
+
+    // Contest aggregates per campaign
+    if (ids.length) {
+      const { data: ctsts } = await supabase.from("contests").select("id, campaign_id").in("campaign_id", ids);
+      const contestToCampaign = new Map<string, string>();
+      const cmap: Record<string, ContestPerf> = {};
+      for (const c of ctsts ?? []) {
+        contestToCampaign.set(c.id, c.campaign_id);
+        const cur = cmap[c.campaign_id] ?? { contests: 0, contestants: 0, entries: 0, views: 0 };
+        cur.contests += 1;
+        cmap[c.campaign_id] = cur;
+      }
+      const contestIds = (ctsts ?? []).map(c => c.id);
+      if (contestIds.length) {
+        const { data: es } = await supabase.from("contest_entries").select("contest_id, handle, views").in("contest_id", contestIds);
+        const handlesByCampaign: Record<string, Set<string>> = {};
+        for (const e of es ?? []) {
+          const cid = contestToCampaign.get(e.contest_id);
+          if (!cid) continue;
+          const cur = cmap[cid] ?? { contests: 0, contestants: 0, entries: 0, views: 0 };
+          cur.entries += 1;
+          cur.views += Number(e.views || 0);
+          if (e.handle) {
+            (handlesByCampaign[cid] ||= new Set()).add(String(e.handle).toLowerCase());
+          }
+          cmap[cid] = cur;
+        }
+        for (const [cid, set] of Object.entries(handlesByCampaign)) {
+          if (cmap[cid]) cmap[cid].contestants = set.size;
+        }
+      }
+      setContestPerf(cmap);
+    } else {
+      setContestPerf({});
+    }
   };
   useEffect(() => { load(); }, []);
+
+  const saveName = async () => {
+    if (!editing) return;
+    const name = editing.name.trim();
+    if (!name) return toast.error("Name required");
+    setSavingName(true);
+    const { error } = await supabase.from("campaigns").update({ name }).eq("id", editing.id);
+    setSavingName(false);
+    if (error) return toast.error(error.message);
+    toast.success("Renamed");
+    setEditing(null);
+    load();
+  };
 
   useEffect(() => {
     if (!form.client_id) { setTemplates([]); return; }
@@ -153,7 +206,18 @@ const Campaigns = () => {
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="text-xs uppercase tracking-widest text-muted-foreground truncate">{r.clients?.name}</div>
-                    <div className="font-display text-xl mt-0.5 leading-tight break-words">{r.name}</div>
+                    <div className="flex items-start gap-1.5">
+                      <div className="font-display text-xl mt-0.5 leading-tight break-words flex-1">{r.name}</div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditing({ id: r.id, name: r.name }); }}
+                        className="mt-1 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        aria-label="Rename campaign"
+                        title="Rename campaign"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <Badge className={`${statusColor[r.status]} shrink-0`}>{r.status}</Badge>
                 </div>
@@ -161,21 +225,44 @@ const Campaigns = () => {
                   <span className="truncate">{r.hashtag || "—"}</span>
                   <span className="font-display text-foreground shrink-0 ml-3">KES {Number(r.budget_kes).toLocaleString()}</span>
                 </div>
-                {/* Performance preview */}
-                <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-3">
-                  <div>
-                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
-                    <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(perf[r.id]?.views ?? 0)}</div>
+                {/* Performance preview — contest metrics when a contest exists, otherwise post performance */}
+                {contestPerf[r.id]?.contests ? (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                      <Trophy className="w-3 h-3 text-highlight" /> Contest
+                      <span className="ml-auto normal-case tracking-normal text-muted-foreground/70">{contestPerf[r.id].contests} active</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Users className="w-3 h-3" /> Contestants</div>
+                        <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(contestPerf[r.id].contestants)}</div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Entries</div>
+                        <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(contestPerf[r.id].entries)}</div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
+                        <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(contestPerf[r.id].views)}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><BarChart3 className="w-3 h-3" /> ER</div>
-                    <div className="font-display text-lg mt-0.5 tabular-nums">{(perf[r.id]?.er ?? 0).toFixed(1)}%</div>
+                ) : (
+                  <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-3">
+                    <div>
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
+                      <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(perf[r.id]?.views ?? 0)}</div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><BarChart3 className="w-3 h-3" /> ER</div>
+                      <div className="font-display text-lg mt-0.5 tabular-nums">{(perf[r.id]?.er ?? 0).toFixed(1)}%</div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Posts</div>
+                      <div className="font-display text-lg mt-0.5 tabular-nums">{perf[r.id]?.posts ?? 0}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Posts</div>
-                    <div className="font-display text-lg mt-0.5 tabular-nums">{perf[r.id]?.posts ?? 0}</div>
-                  </div>
-                </div>
+                )}
                 <div className="flex justify-end mt-2">
                   <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
@@ -184,6 +271,28 @@ const Campaigns = () => {
           ))}
         </div>
       )}
+
+      {/* Rename dialog */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="font-display text-xl">Rename campaign</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Campaign name</Label>
+              <Input
+                autoFocus
+                value={editing?.name ?? ""}
+                onChange={(e) => setEditing(editing ? { ...editing, name: e.target.value } : null)}
+                onKeyDown={(e) => { if (e.key === "Enter") saveName(); }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button className="bg-primary" onClick={saveName} disabled={savingName}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
