@@ -547,27 +547,25 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                             </tr>
                           </thead>
                           <tbody>
-                            {rows.sort((a, b) => totalScore(b) - totalScore(a)).map((e, i) => {
+                            {rows.sort((a, b) => bestScore(b) - bestScore(a)).map((e, i) => {
                               const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-                              const tViews = (e.views || 0) + xs.reduce((s: number, x: any) => s + Number(x.views || 0), 0);
-                              const tLikes = (e.likes || 0) + xs.reduce((s: number, x: any) => s + Number(x.likes || 0), 0);
-                              const tComments = (e.comments || 0) + xs.reduce((s: number, x: any) => s + Number(x.comments || 0), 0);
-                              const tShares = (e.shares || 0) + xs.reduce((s: number, x: any) => s + Number(x.shares || 0), 0);
+                              const auto = isAuto(e);
                               return (
                               <tr key={e.id} className="border-t border-border">
                                 <td className="px-3 py-2 tabular-nums">{i + 1}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
                                 <td className="px-3 py-2">
                                   <a href={e.post_url} target="_blank" rel="noreferrer" className="hover:text-accent">{e.handle || e.submitter_name || "—"}</a>
-                                  {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{xs.length} crosspost{xs.length === 1 ? "" : "s"}</div>}
+                                  <span className={`ml-2 text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
+                                  {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{xs.length} other post{xs.length === 1 ? "" : "s"} (best wins)</div>}
                                 </td>
                                 <td className="px-3 py-2 capitalize text-muted-foreground">
                                   {e.platform}{xs.length > 0 && <div className="text-[10px]">+{Array.from(new Set(xs.map((x: any) => x.platform))).join(", ")}</div>}
                                 </td>
-                                <td className="px-3 py-2 text-right tabular-nums">{tViews.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{tLikes.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{tComments.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{tShares.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(totalScore(e))}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{(e.views || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{(e.likes || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{(e.comments || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{(e.shares || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(bestScore(e))}</td>
                                 <td className="px-3 py-2 text-right"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
                                 <td className="px-3 py-2 text-right">
                                   <div className="inline-flex gap-1">
