@@ -59,14 +59,37 @@ Deno.serve(async (req) => {
     ? new Date(Date.now() + ll.expires_in * 1000).toISOString()
     : null;
 
-  // 3. List pages → grab first Page with linked IG Business account
+  // 3. List pages → grab first Page with linked IG Business/Creator account
   const pagesRes = await fetch(
-    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}&access_token=${userToken}`,
+    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,profile_picture_url},connected_instagram_account{id,username}&access_token=${userToken}`,
   );
   const pages = await pagesRes.json();
+  if (!pagesRes.ok || pages.error) {
+    console.error("ig pages error", {
+      status: pagesRes.status,
+      message: pages.error?.message,
+      type: pages.error?.type,
+      code: pages.error?.code,
+      fbtrace_id: pages.error?.fbtrace_id,
+    });
+    return Response.redirect(`${APP_ORIGIN}/connect/instagram/done?status=error&reason=pages_permission`, 302);
+  }
+
+  const pageCount = Array.isArray(pages.data) ? pages.data.length : 0;
   const page = (pages.data ?? []).find((p: any) => p.instagram_business_account);
   if (!page) {
-    return Response.redirect(`${APP_ORIGIN}/connect/instagram/done?status=error&reason=no_ig_business`, 302);
+    const connectedPage = (pages.data ?? []).find((p: any) => p.connected_instagram_account);
+    console.error("ig business account not found", {
+      pageCount,
+      hasConnectedInstagram: Boolean(connectedPage),
+      pageNames: (pages.data ?? []).map((p: any) => p.name).slice(0, 10),
+    });
+    const reason = pageCount === 0
+      ? "no_pages"
+      : connectedPage
+        ? "ig_not_professional"
+        : "no_ig_business";
+    return Response.redirect(`${APP_ORIGIN}/connect/instagram/done?status=error&reason=${reason}`, 302);
   }
 
   const ig = page.instagram_business_account;
