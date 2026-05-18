@@ -63,7 +63,10 @@ const CampaignDetail = () => {
   const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "overview";
+  // When a campaign has no creator roster but does have contest activity, treat it as contest-only:
+  // default the active tab to "contests" and adapt hero KPIs / hide the empty creators tab.
+  const isContestOnly = ci.length === 0 && contestEntries.length > 0;
+  const activeTab = searchParams.get("tab") || (isContestOnly ? "contests" : "overview");
   const setActiveTab = (v: string) => setSearchParams((sp) => { sp.set("tab", v); return sp; }, { replace: true });
 
   const generateLearnings = async () => {
