@@ -38,6 +38,7 @@ const CampaignDetail = () => {
   const [ci, setCi] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
+  const [contestEntries, setContestEntries] = useState<any[]>([]);
   const [link, setLink] = useState<any>(null);
   const [planLink, setPlanLink] = useState<any>(null);
   const [postOpen, setPostOpen] = useState(false);
@@ -104,6 +105,12 @@ const CampaignDetail = () => {
     setLink(l);
     const { data: pl } = await supabase.from("plan_links").select("*").eq("campaign_id", id).maybeSingle();
     setPlanLink(pl);
+    const { data: contests } = await supabase.from("contests").select("id").eq("campaign_id", id);
+    const contestIds = (contests ?? []).map((x: any) => x.id);
+    if (contestIds.length) {
+      const { data: ce } = await supabase.from("contest_entries").select("views,likes,comments,shares,saves").in("contest_id", contestIds);
+      setContestEntries(ce ?? []);
+    } else setContestEntries([]);
   };
   useEffect(() => { load(); }, [id]);
 
@@ -246,19 +253,30 @@ const CampaignDetail = () => {
 
   const totals = useMemo(() => {
     let views = 0, likes = 0, comments = 0, shares = 0, saves = 0, reach = 0, impressions = 0;
-    for (const m of latestByPost.values()) {
-      views += Number(m.views || 0);
-      likes += Number(m.likes || 0);
-      comments += Number(m.comments || 0);
-      shares += Number(m.shares || 0);
-      saves += Number(m.saves || 0);
-      reach += Number(m.reach || 0);
-      impressions += Number(m.impressions || 0);
+    if (contestEntries.length > 0) {
+      // Contest-driven campaign: use contest entry metrics as the source of truth.
+      for (const e of contestEntries) {
+        views += Number(e.views || 0);
+        likes += Number(e.likes || 0);
+        comments += Number(e.comments || 0);
+        shares += Number(e.shares || 0);
+        saves += Number(e.saves || 0);
+      }
+    } else {
+      for (const m of latestByPost.values()) {
+        views += Number(m.views || 0);
+        likes += Number(m.likes || 0);
+        comments += Number(m.comments || 0);
+        shares += Number(m.shares || 0);
+        saves += Number(m.saves || 0);
+        reach += Number(m.reach || 0);
+        impressions += Number(m.impressions || 0);
+      }
     }
     const er = views ? ((likes + comments + shares + saves) / views) * 100 : 0;
     const emv = computeEmv(views, impressions);
     return { views, likes, comments, shares, saves, reach, impressions, er, emv };
-  }, [latestByPost]);
+  }, [latestByPost, contestEntries]);
 
   // Per-platform breakdown (mirrors public report)
   const platformRows = useMemo(() => {
