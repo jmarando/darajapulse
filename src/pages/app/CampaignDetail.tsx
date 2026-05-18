@@ -496,11 +496,26 @@ const CampaignDetail = () => {
                 <Link to="/app/briefs" className="inline-flex items-center gap-1 hover:text-foreground" title="Manage briefs"><ExternalLink className="w-3 h-3" /></Link>
               </span>
             </div>
-            {(c.brief_templates?.objective || c.brief || c.brief_templates?.brief) && (
-              <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed line-clamp-2">
-                {c.brief_templates?.objective || c.brief || c.brief_templates?.brief}
-              </p>
-            )}
+            {(c.brief_templates?.objective || c.brief || c.brief_templates?.brief) && (() => {
+              const briefText = c.brief_templates?.objective || c.brief || c.brief_templates?.brief;
+              const isLong = briefText.length > 220;
+              return (
+                <div className="mt-3 max-w-2xl">
+                  <p className={`text-muted-foreground text-sm leading-relaxed whitespace-pre-line ${!briefExpanded && isLong ? "line-clamp-3" : ""}`}>
+                    {briefText}
+                  </p>
+                  {isLong && (
+                    <button
+                      type="button"
+                      onClick={() => setBriefExpanded(v => !v)}
+                      className="mt-1 text-xs uppercase tracking-widest text-accent hover:text-accent/80"
+                    >
+                      {briefExpanded ? "Show less" : "Show more"}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
