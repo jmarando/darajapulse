@@ -829,6 +829,72 @@ export type Database = {
         }
         Relationships: []
       }
+      facebook_accounts: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          influencer_id: string
+          page_access_token: string
+          page_id: string
+          page_name: string | null
+          page_username: string | null
+          picture_url: string | null
+          scope: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_access_token: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          influencer_id: string
+          page_access_token: string
+          page_id: string
+          page_name?: string | null
+          page_username?: string | null
+          picture_url?: string | null
+          scope?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_access_token?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          influencer_id?: string
+          page_access_token?: string
+          page_id?: string
+          page_name?: string | null
+          page_username?: string | null
+          picture_url?: string | null
+          scope?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_access_token?: string | null
+        }
+        Relationships: []
+      }
+      facebook_oauth_states: {
+        Row: {
+          created_at: string
+          influencer_id: string
+          state: string
+        }
+        Insert: {
+          created_at?: string
+          influencer_id: string
+          state: string
+        }
+        Update: {
+          created_at?: string
+          influencer_id?: string
+          state?: string
+        }
+        Relationships: []
+      }
       influencers: {
         Row: {
           audience_age_breakdown: Json | null
