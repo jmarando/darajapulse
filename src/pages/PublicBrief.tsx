@@ -59,6 +59,11 @@ const PublicBrief = () => {
     }
   }
   const platforms = Object.keys(byPlatform);
+  // For the Connect step we always want at least one option, even when the
+  // deliverables breakdown is empty — fall back to the influencer's primary platform.
+  const connectPlatforms = platforms.length > 0
+    ? platforms
+    : (b.influencer?.primary_platform ? [b.influencer.primary_platform] : []);
   const hasTikTok = platforms.includes("tiktok");
 
   return (
