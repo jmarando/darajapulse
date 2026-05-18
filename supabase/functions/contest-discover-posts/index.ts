@@ -1,29 +1,106 @@
-// For every registered contestant in a contest, scrape their IG + TikTok
-// recent posts via Apify and upsert any post whose caption contains the
-// contest hashtag as a `contest_entries` row (status='approved', source='apify').
+// Discover contest posts by hashtag.
+//   Instagram → Meta Graph API Hashtag Search (free, uses a connected IG Business account).
+//   TikTok    → EnsembleData hashtag search.
+// Falls back gracefully if either provider is not configured / returns no data.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
-const APIFY_TOKEN = Deno.env.get("APIFY_API_TOKEN")!;
+const ENSEMBLEDATA_TOKEN = Deno.env.get("ENSEMBLEDATA_API_TOKEN");
+const META_GRAPH_VERSION = "v21.0";
 
 const score = (e: { shares?: any; comments?: any; likes?: any }) =>
   Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0);
 
-async function runApify(actorId: string, input: any): Promise<any[]> {
-  const url = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${APIFY_TOKEN}&clean=true&format=json&timeout=120`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) throw new Error(`Apify ${actorId} ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  return await res.json();
-}
-
 function captionHas(text: string | undefined, tags: string[]): boolean {
   if (!text) return false;
   const lc = text.toLowerCase();
-  return tags.some(t => lc.includes(t.toLowerCase()));
+  return tags.some((t) => lc.includes(t.toLowerCase()));
+}
+
+function stripHash(t: string) {
+  return t.replace(/^#/, "");
+}
+
+// ---------- Instagram via Meta Graph Hashtag Search ----------
+async function discoverInstagram(sb: any, tags: string[]) {
+  // Pick any connected IG Business account to act as the "querier"
+  const { data: igAcct } = await sb
+    .from("instagram_accounts")
+    .select("ig_user_id, page_access_token, user_access_token, username")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!igAcct) {
+    return { upserted: 0, fetched: 0, error: "no_ig_account_connected" };
+  }
+  const token = igAcct.page_access_token || igAcct.user_access_token;
+  const userId = igAcct.ig_user_id;
+  if (!token || !userId) return { upserted: 0, fetched: 0, error: "ig_account_missing_token" };
+
+  const posts: any[] = [];
+  const errors: any[] = [];
+
+  for (const rawTag of tags) {
+    const tag = stripHash(rawTag);
+    try {
+      // 1) Resolve hashtag id
+      const idRes = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/ig_hashtag_search?user_id=${userId}&q=${encodeURIComponent(tag)}&access_token=${token}`,
+      );
+      const idJson = await idRes.json();
+      const tagId = idJson?.data?.[0]?.id;
+      if (!tagId) {
+        errors.push({ tag, msg: idJson?.error?.message || "hashtag_not_found" });
+        continue;
+      }
+
+      // 2) Pull recent + top media for that hashtag
+      const fields = "id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count,children{media_url,thumbnail_url},thumbnail_url";
+      for (const endpoint of ["recent_media", "top_media"]) {
+        const r = await fetch(
+          `https://graph.facebook.com/${META_GRAPH_VERSION}/${tagId}/${endpoint}?user_id=${userId}&fields=${fields}&access_token=${token}`,
+        );
+        const j = await r.json();
+        if (j?.error) {
+          errors.push({ tag, endpoint, msg: j.error.message });
+          continue;
+        }
+        for (const m of j?.data ?? []) posts.push(m);
+      }
+    } catch (e) {
+      errors.push({ tag, msg: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  return { fetched: posts.length, upserted: 0, errors, _posts: posts };
+}
+
+// ---------- TikTok via EnsembleData ----------
+async function discoverTikTokED(tags: string[]) {
+  if (!ENSEMBLEDATA_TOKEN) return { fetched: 0, upserted: 0, error: "ensembledata_not_configured", _posts: [] };
+  const posts: any[] = [];
+  const errors: any[] = [];
+
+  for (const rawTag of tags) {
+    const tag = stripHash(rawTag);
+    try {
+      // EnsembleData TikTok hashtag posts. 1 page = up to ~30 posts.
+      const url = `https://ensembledata.com/apis/tt/hashtag/posts?name=${encodeURIComponent(tag)}&cursor=0&token=${ENSEMBLEDATA_TOKEN}`;
+      const r = await fetch(url);
+      const j = await r.json();
+      if (!r.ok) {
+        errors.push({ tag, msg: `ED ${r.status}: ${JSON.stringify(j).slice(0, 200)}` });
+        continue;
+      }
+      const items = j?.data?.data ?? j?.data ?? [];
+      for (const it of items) posts.push(it);
+    } catch (e) {
+      errors.push({ tag, msg: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  return { fetched: posts.length, upserted: 0, errors, _posts: posts };
 }
 
 Deno.serve(async (req) => {
@@ -32,148 +109,148 @@ Deno.serve(async (req) => {
   let runId: string | null = null;
 
   try {
-    if (!APIFY_TOKEN) throw new Error("APIFY_API_TOKEN not configured");
     const body = await req.json().catch(() => ({}));
     const contest_id: string | undefined = body.contest_id;
-    const only_handle: string | undefined = body.only_handle;
     if (!contest_id) {
-      return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "contest_id required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const { data: contest } = await sb.from("contests").select("*, campaigns(hashtag, hashtags_extra)").eq("id", contest_id).single();
+    const { data: contest } = await sb
+      .from("contests")
+      .select("*, campaigns(hashtag, hashtags_extra)")
+      .eq("id", contest_id)
+      .single();
     if (!contest) throw new Error("contest not found");
 
     const tags: string[] = [contest.hashtag, contest.campaigns?.hashtag, ...(contest.campaigns?.hashtags_extra || [])]
       .filter(Boolean)
-      .map((t: string) => t.startsWith("#") ? t : `#${t}`);
+      .map((t: string) => (t.startsWith("#") ? t : `#${t}`));
     if (tags.length === 0) throw new Error("contest hashtag missing");
 
-    let q = sb.from("contest_entries").select("id, instagram_handle, tiktok_handle").eq("contest_id", contest_id);
-    const { data: contestants } = await q;
-    let regs = (contestants || []).filter(c => c.instagram_handle || c.tiktok_handle);
-    if (only_handle) {
-      const h = only_handle.replace(/^@/, "").toLowerCase();
-      regs = regs.filter(c => c.instagram_handle === h || c.tiktok_handle === h);
-    }
-
-    const { data: run } = await sb.from("contestant_sync_runs").insert({
-      contest_id, source: "apify", triggered_by: body.triggered_by ?? "manual", status: "running",
-    }).select("id").single();
+    const { data: run } = await sb
+      .from("contestant_sync_runs")
+      .insert({ contest_id, source: "hashtag", triggered_by: body.triggered_by ?? "manual", status: "running" })
+      .select("id")
+      .single();
     runId = run?.id ?? null;
 
     let upserted = 0;
+    let fetched = 0;
     const errors: any[] = [];
 
-    // Build deduped lists
-    const igHandles = Array.from(new Set(regs.map(r => r.instagram_handle).filter(Boolean) as string[]));
-    const ttHandles = Array.from(new Set(regs.map(r => r.tiktok_handle).filter(Boolean) as string[]));
-
-    // Instagram — apify/instagram-profile-scraper
-    if (igHandles.length) {
-      try {
-        const items = await runApify("apify~instagram-profile-scraper", {
-          usernames: igHandles,
-          resultsLimit: 30,
-        });
-        for (const it of items) {
-          const handle = (it.ownerUsername || it.username || "").toLowerCase();
-          const posts = Array.isArray(it.latestPosts) ? it.latestPosts : (it.url ? [it] : []);
-          for (const p of posts) {
-            const caption = p.caption || p.text || "";
-            if (!captionHas(caption, tags)) continue;
-            const post_url = p.url || p.shortcode ? (p.url || `https://www.instagram.com/p/${p.shortcode}/`) : null;
-            if (!post_url) continue;
-            const stats = {
-              views: Number(p.videoViewCount || p.videoPlayCount || p.views || 0),
-              likes: Number(p.likesCount || 0),
-              comments: Number(p.commentsCount || 0),
-              shares: 0,
-            };
-            const { error } = await sb.from("contest_entries").upsert({
-              contest_id,
-              platform: "instagram",
-              post_url,
-              handle,
-              caption: caption.slice(0, 1000),
-              thumbnail_url: p.displayUrl || p.thumbnailUrl || null,
-              posted_at: p.timestamp || p.takenAt || null,
-              ...stats,
-              score: score(stats),
-              status: "approved",
-              source: "apify",
-              last_polled_at: new Date().toISOString(),
-            }, { onConflict: "contest_id,post_url" });
-            if (error) errors.push({ handle, url: post_url, msg: error.message });
-            else upserted++;
-          }
-        }
-      } catch (e) {
-        errors.push({ source: "instagram", msg: e instanceof Error ? e.message : String(e) });
-      }
+    // ---- Instagram ----
+    const ig = await discoverInstagram(sb, tags);
+    fetched += ig.fetched;
+    if (ig.error) errors.push({ source: "instagram", msg: ig.error });
+    if (ig.errors) errors.push(...ig.errors.map((e: any) => ({ source: "instagram", ...e })));
+    for (const p of ig._posts ?? []) {
+      const caption = p.caption || "";
+      if (!captionHas(caption, tags)) continue;
+      const post_url = p.permalink;
+      if (!post_url) continue;
+      const thumb = p.thumbnail_url || p.media_url || p?.children?.data?.[0]?.thumbnail_url || p?.children?.data?.[0]?.media_url || null;
+      const stats = { views: 0, likes: Number(p.like_count || 0), comments: Number(p.comments_count || 0), shares: 0 };
+      const { error } = await sb.from("contest_entries").upsert(
+        {
+          contest_id,
+          platform: "instagram",
+          post_url,
+          handle: null,
+          caption: caption.slice(0, 1000),
+          thumbnail_url: thumb,
+          posted_at: p.timestamp || null,
+          ...stats,
+          score: score(stats),
+          status: "approved",
+          source: "meta_graph",
+          last_polled_at: new Date().toISOString(),
+        },
+        { onConflict: "contest_id,post_url" },
+      );
+      if (error) errors.push({ source: "instagram", post_url, msg: error.message });
+      else upserted++;
     }
 
-    // TikTok — clockworks/tiktok-scraper
-    if (ttHandles.length) {
-      try {
-        const items = await runApify("clockworks~tiktok-scraper", {
-          profiles: ttHandles,
-          resultsPerPage: 30,
-          shouldDownloadVideos: false,
-          shouldDownloadCovers: false,
-        });
-        for (const p of items) {
-          const caption = p.text || p.desc || "";
-          if (!captionHas(caption, tags)) continue;
-          const handle = (p.authorMeta?.name || p.authorUsername || "").toLowerCase();
-          const post_url = p.webVideoUrl || p.videoUrl;
-          if (!post_url) continue;
-          const stats = {
-            views: Number(p.playCount || 0),
-            likes: Number(p.diggCount || p.likes || 0),
-            comments: Number(p.commentCount || 0),
-            shares: Number(p.shareCount || 0),
-          };
-          const { error } = await sb.from("contest_entries").upsert({
-            contest_id,
-            platform: "tiktok",
-            post_url,
-            handle,
-            caption: caption.slice(0, 1000),
-            thumbnail_url: p.videoMeta?.coverUrl || p.covers?.[0] || null,
-            posted_at: p.createTimeISO || (p.createTime ? new Date(p.createTime * 1000).toISOString() : null),
-            ...stats,
-            score: score(stats),
-            status: "approved",
-            source: "apify",
-            last_polled_at: new Date().toISOString(),
-          }, { onConflict: "contest_id,post_url" });
-          if (error) errors.push({ handle, url: post_url, msg: error.message });
-          else upserted++;
-        }
-      } catch (e) {
-        errors.push({ source: "tiktok", msg: e instanceof Error ? e.message : String(e) });
-      }
+    // ---- TikTok (EnsembleData) ----
+    const tt = await discoverTikTokED(tags);
+    fetched += tt.fetched;
+    if (tt.error) errors.push({ source: "tiktok", msg: tt.error });
+    if (tt.errors) errors.push(...tt.errors.map((e: any) => ({ source: "tiktok", ...e })));
+    for (const v of tt._posts ?? []) {
+      // Normalize across EnsembleData TikTok response shapes
+      const aweme = v.aweme_detail || v;
+      const caption: string = aweme.desc || v.desc || "";
+      if (!captionHas(caption, tags)) continue;
+      const author = aweme.author?.unique_id || aweme.author?.uniqueId || v.author?.unique_id || "";
+      const videoId = aweme.aweme_id || aweme.id || v.id;
+      const post_url = aweme.share_url || (author && videoId ? `https://www.tiktok.com/@${author}/video/${videoId}` : null);
+      if (!post_url) continue;
+      const stats = {
+        views: Number(aweme.statistics?.play_count ?? v.play_count ?? 0),
+        likes: Number(aweme.statistics?.digg_count ?? v.digg_count ?? 0),
+        comments: Number(aweme.statistics?.comment_count ?? v.comment_count ?? 0),
+        shares: Number(aweme.statistics?.share_count ?? v.share_count ?? 0),
+      };
+      const thumb = aweme.video?.cover?.url_list?.[0] || aweme.video?.origin_cover?.url_list?.[0] || aweme.cover || null;
+      const postedAt = aweme.create_time
+        ? new Date(Number(aweme.create_time) * 1000).toISOString()
+        : v.createTimeISO || null;
+
+      const { error } = await sb.from("contest_entries").upsert(
+        {
+          contest_id,
+          platform: "tiktok",
+          post_url,
+          handle: author ? author.toLowerCase() : null,
+          caption: caption.slice(0, 1000),
+          thumbnail_url: thumb,
+          posted_at: postedAt,
+          ...stats,
+          score: score(stats),
+          status: "approved",
+          source: "ensembledata",
+          last_polled_at: new Date().toISOString(),
+        },
+        { onConflict: "contest_id,post_url" },
+      );
+      if (error) errors.push({ source: "tiktok", post_url, msg: error.message });
+      else upserted++;
     }
 
     if (runId) {
-      await sb.from("contestant_sync_runs").update({
-        finished_at: new Date().toISOString(),
-        fetched: igHandles.length + ttHandles.length,
-        upserted,
-        errors,
-        status: errors.length ? "partial" : "ok",
-      }).eq("id", runId);
+      await sb
+        .from("contestant_sync_runs")
+        .update({
+          finished_at: new Date().toISOString(),
+          fetched,
+          upserted,
+          errors,
+          status: errors.length ? "partial" : "ok",
+        })
+        .eq("id", runId);
     }
 
     // Recompute scores/rounds
-    try { await sb.functions.invoke("contest-poll", { body: { contest_id } }); } catch (_) { /* non-fatal */ }
+    try {
+      await sb.functions.invoke("contest-poll", { body: { contest_id } });
+    } catch (_) {}
 
-    return new Response(JSON.stringify({ ig: igHandles.length, tt: ttHandles.length, upserted, errors }), {
+    return new Response(JSON.stringify({ fetched, upserted, errors }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (runId) await sb.from("contestant_sync_runs").update({ finished_at: new Date().toISOString(), status: "error", errors: [{ msg }] }).eq("id", runId);
-    return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (runId)
+      await sb
+        .from("contestant_sync_runs")
+        .update({ finished_at: new Date().toISOString(), status: "error", errors: [{ msg }] })
+        .eq("id", runId);
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
