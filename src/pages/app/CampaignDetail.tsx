@@ -1544,6 +1544,11 @@ const CampaignDetail = () => {
           <ContestsSection campaignId={id!} />
         </TabsContent>
 
+        <TabsContent value="emails" className="space-y-6 mt-0">
+          <EmailReportsSection campaignId={id!} hasContests={true} />
+        </TabsContent>
+
+
         <TabsContent value="share" className="space-y-6 mt-0">
 
       {/* Learnings & recommendations */}
