@@ -386,15 +386,28 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
 
               {/* Contestants grouped view */}
               {(() => {
+                const isCreator = (e: any) => {
+                  const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean);
+                  return hs.some(h => creatorHandles.has(h));
+                };
                 const groups = new Map<string, any[]>();
                 for (const e of entries) {
-                  const key = (e.external_registration_id || e.handle || e.submitter_email || e.id) as string;
+                  if (isCreator(e)) continue;
+                  const key = (e.external_registration_id || cleanH(e.handle) || e.submitter_email || e.id) as string;
                   if (!groups.has(key)) groups.set(key, []);
                   groups.get(key)!.push(e);
                 }
                 const contestants = Array.from(groups.entries()).map(([key, rows]) => {
                   const reg = rows.find(r => r.source === "registration") || rows[0];
-                  const posts = rows.filter(r => r.post_url);
+                  // Dedupe posts by canonical URL — keep the highest-engagement row per video.
+                  const byUrl = new Map<string, any>();
+                  for (const r of rows) {
+                    if (!r.post_url) continue;
+                    const cu = canonicalPostUrl(r.post_url);
+                    const prev = byUrl.get(cu);
+                    if (!prev || scoreOf(r) > scoreOf(prev)) byUrl.set(cu, r);
+                  }
+                  const posts = Array.from(byUrl.values());
                   const total = posts.reduce((s, p) => s + scoreOf(p), 0);
                   return { key, reg, posts, total };
                 }).sort((a, b) => b.total - a.total);
