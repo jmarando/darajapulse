@@ -21,6 +21,21 @@ function stripHash(t: string) {
   return t.replace(/^#/, "");
 }
 
+function canonicalPostUrl(raw?: string | null): string {
+  if (!raw) return "";
+  const url = raw.trim();
+  const tt = url.match(/tiktok\.com\/.*?(?:\/video\/|\/v\/|share_item_id=)(\d{6,})/i);
+  if (tt) return `https://www.tiktok.com/video/${tt[1]}`;
+  const ig = url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
+  if (ig) return `https://www.instagram.com/p/${ig[1]}/`;
+  try {
+    const u = new URL(url);
+    return `${u.origin}${u.pathname}`.replace(/\/+$/, "");
+  } catch {
+    return url;
+  }
+}
+
 // ---------- Instagram via Meta Graph Hashtag Search ----------
 async function discoverInstagram(sb: any, tags: string[]) {
   // Pick any connected IG Business account to act as the "querier"
