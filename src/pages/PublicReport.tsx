@@ -460,6 +460,338 @@ const PublicReport = () => {
           </Card>
         )}
 
+        {/* ── Top 3 posts showcase ───────────────────────────────────── */}
+        {filteredPosts.length > 0 && (() => {
+          const withEng = filteredPosts.map(p => {
+            const m = p.metrics;
+            const eng = (m.likes||0)+(m.comments||0)+(m.shares||0)+(m.saves||0);
+            const erP = m.views ? (eng / m.views * 100) : 0;
+            const intent = (m.saves||0) + (m.shares||0);
+            return { p, m, eng, erP, intent };
+          });
+          const byViews = [...withEng].sort((a,b)=>(b.m.views||0)-(a.m.views||0))[0];
+          const byEr = [...withEng].filter(x=>x.m.views>=200).sort((a,b)=>b.erP-a.erP)[0] || withEng.sort((a,b)=>b.erP-a.erP)[0];
+          const byIntent = [...withEng].sort((a,b)=>b.intent-a.intent)[0];
+          const picks = [
+            { label: "Most viewed", icon: Eye, item: byViews, stat: byViews ? fmt(byViews.m.views||0) + " views" : "" },
+            { label: "Highest engagement", icon: Sparkles, item: byEr, stat: byEr ? `${byEr.erP.toFixed(1)}% ER` : "" },
+            { label: "Strongest intent", icon: Flame, item: byIntent, stat: byIntent ? `${fmt(byIntent.intent)} saves + shares` : "" },
+          ].filter(x => x.item);
+          const uniqueIds = new Set(picks.map(x => x.item!.p.id));
+          if (uniqueIds.size === 0) return null;
+          return (
+            <Card className="p-6 mb-6">
+              <div className="flex items-baseline justify-between mb-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Standout content</div>
+                  <h2 className="font-display text-2xl mt-1">Top posts</h2>
+                </div>
+                <div className="text-xs text-muted-foreground">Picked across three signals</div>
+              </div>
+              <div className="grid md:grid-cols-3 gap-4">
+                {picks.map(({ label, icon: Icon, item, stat }) => (
+                  <a key={label} href={item!.p.post_url || "#"} target="_blank" rel="noreferrer" className="group rounded-lg border border-border overflow-hidden hover:border-accent/50 transition-colors bg-card">
+                    <div className="aspect-[4/5] bg-secondary overflow-hidden">
+                      <PostThumb post={item!.p} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform" />
+                    </div>
+                    <div className="p-3">
+                      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-accent">
+                        <Icon className="w-3 h-3" /> {label}
+                      </div>
+                      <div className="font-display text-lg mt-1 truncate">{item!.p.influencers?.full_name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground truncate">@{(item!.p.influencers?.handle || "").replace(/^@/, "")} · {item!.p.platform}</div>
+                      <div className="mt-2 font-display text-xl tabular-nums">{stat}</div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </Card>
+          );
+        })()}
+
+        {/* ── Engagement quality mix ─────────────────────────────────── */}
+        {(totals.likes + totals.comments + totals.shares + totals.saves) > 0 && (() => {
+          const parts = [
+            { k: "Likes",    v: totals.likes,    icon: Heart,         color: "bg-accent",          hex: "hsl(var(--accent))" },
+            { k: "Comments", v: totals.comments, icon: MessageCircle, color: "bg-highlight",       hex: "hsl(var(--highlight))" },
+            { k: "Shares",   v: totals.shares,   icon: Share2,        color: "bg-success",         hex: "hsl(var(--success))" },
+            { k: "Saves",    v: totals.saves,    icon: Bookmark,      color: "bg-muted-foreground",hex: "hsl(var(--muted-foreground))" },
+          ];
+          const sum = parts.reduce((a,b)=>a+b.v,0) || 1;
+          const intentPct = ((totals.shares + totals.saves) / sum * 100);
+          return (
+            <Card className="p-6 mb-6">
+              <div className="flex items-baseline justify-between mb-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement quality</div>
+                  <h2 className="font-display text-2xl mt-1">What drove the engagement</h2>
+                </div>
+                <div className="text-xs text-muted-foreground hidden md:block">Saves &amp; shares signal stronger intent</div>
+              </div>
+              <div className="grid md:grid-cols-[1fr_auto] gap-6 items-center">
+                <div className="space-y-3">
+                  <div className="flex h-3 rounded-full overflow-hidden bg-secondary">
+                    {parts.map(p => (
+                      <div key={p.k} className={p.color} style={{ width: `${(p.v / sum * 100).toFixed(2)}%` }} title={`${p.k}: ${p.v}`} />
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {parts.map(({ k, v, icon: Icon, color }) => (
+                      <div key={k} className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
+                        <div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1"><Icon className="w-3 h-3" />{k}</div>
+                          <div className="font-display text-base tabular-nums">{fmt(v)} <span className="text-xs text-muted-foreground">({(v/sum*100).toFixed(0)}%)</span></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="text-center px-4 py-3 rounded-lg bg-secondary/40 border border-border min-w-[160px]">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Intent share</div>
+                  <div className="font-display text-3xl mt-1">{intentPct.toFixed(0)}%</div>
+                  <div className="text-[10px] text-muted-foreground mt-1">saves + shares of all interactions</div>
+                </div>
+              </div>
+            </Card>
+          );
+        })()}
+
+        {/* ── Posting cadence heatmap ────────────────────────────────── */}
+        {filteredPosts.some(p => p.posted_at) && (() => {
+          const dayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+          const cells = new Map<string, { posts: number; views: number }>();
+          for (const p of filteredPosts) {
+            if (!p.posted_at) continue;
+            const d = new Date(p.posted_at);
+            const dow = (d.getDay() + 6) % 7; // Mon=0
+            const hour = d.getHours();
+            const key = `${dow}-${hour}`;
+            const cur = cells.get(key) ?? { posts: 0, views: 0 };
+            cur.posts += 1;
+            cur.views += p.metrics.views || 0;
+            cells.set(key, cur);
+          }
+          const max = Math.max(1, ...Array.from(cells.values()).map(c => c.views));
+          let best = { dow: 0, hour: 0, views: 0 };
+          for (const [k, v] of cells.entries()) {
+            if (v.views > best.views) {
+              const [d, h] = k.split("-").map(Number);
+              best = { dow: d, hour: h, views: v.views };
+            }
+          }
+          const slotLabel = (h: number) => `${((h+11)%12)+1}${h<12?"am":"pm"}`;
+          const hours = [0,3,6,9,12,15,18,21];
+          return (
+            <Card className="p-6 mb-6">
+              <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Posting cadence</div>
+                  <h2 className="font-display text-2xl mt-1">When content lands &amp; what wins</h2>
+                </div>
+                {best.views > 0 && (
+                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-accent" />
+                    Peak slot · <span className="font-medium text-foreground">{dayLabels[best.dow]} {slotLabel(best.hour)}</span> · {fmt(best.views)} views
+                  </div>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <div className="min-w-[640px]">
+                  <div className="grid" style={{ gridTemplateColumns: `48px repeat(24, minmax(0, 1fr))` }}>
+                    <div />
+                    {Array.from({ length: 24 }).map((_, h) => (
+                      <div key={h} className="text-[9px] text-center text-muted-foreground pb-1">{hours.includes(h) ? slotLabel(h) : ""}</div>
+                    ))}
+                    {dayLabels.map((dl, di) => (
+                      <div key={dl} className="contents">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground self-center pr-2">{dl}</div>
+                        {Array.from({ length: 24 }).map((_, h) => {
+                          const c = cells.get(`${di}-${h}`);
+                          const intensity = c ? Math.max(0.08, c.views / max) : 0;
+                          return (
+                            <div
+                              key={h}
+                              title={c ? `${dl} ${slotLabel(h)} · ${c.posts} post${c.posts===1?"":"s"} · ${fmt(c.views)} views` : `${dl} ${slotLabel(h)}`}
+                              className="aspect-square m-[1px] rounded-sm border border-border/40"
+                              style={{ backgroundColor: c ? `hsl(var(--accent) / ${intensity})` : "hsl(var(--secondary))" }}
+                            />
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-end gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                Less
+                {[0.15, 0.35, 0.55, 0.8, 1].map(o => (
+                  <span key={o} className="w-3 h-3 rounded-sm border border-border/40" style={{ backgroundColor: `hsl(var(--accent) / ${o})` }} />
+                ))}
+                More
+              </div>
+            </Card>
+          );
+        })()}
+
+        {/* ── Creator leaderboard + reach efficiency ─────────────────── */}
+        {byCreator.size > 0 && (() => {
+          const rows = influencers
+            .map(ci => {
+              const s = byCreator.get(ci.influencer_id);
+              if (!s) return null;
+              const inf = ci.influencers ?? {};
+              const followers = Number(inf.follower_count || 0);
+              const eng = s.likes + s.comments + s.shares + s.saves;
+              const erP = s.views ? (eng / s.views * 100) : 0;
+              const eff = followers > 0 ? (s.views / followers) : 0;
+              return { ci, inf, s, followers, eng, erP, eff };
+            })
+            .filter(Boolean)
+            .sort((a: any, b: any) => b.s.views - a.s.views) as any[];
+          if (rows.length === 0) return null;
+          const maxViews = Math.max(1, ...rows.map(r => r.s.views));
+          return (
+            <Card className="p-5 mb-6 overflow-hidden">
+              <div className="mb-4">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Creator leaderboard</div>
+                <h2 className="font-display text-2xl">Who delivered &amp; who punched above their weight</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                      <th className="text-left font-medium py-2 pr-3">#</th>
+                      <th className="text-left font-medium py-2 pr-3">Creator</th>
+                      <th className="text-right font-medium py-2 px-3">Posts</th>
+                      <th className="text-right font-medium py-2 px-3">Views</th>
+                      <th className="text-right font-medium py-2 px-3">ER</th>
+                      <th className="text-right font-medium py-2 px-3"><span className="inline-flex items-center gap-1"><Gauge className="w-3 h-3" />Reach eff.</span></th>
+                      <th className="text-left font-medium py-2 pl-3">Share of campaign</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.slice(0, 12).map((r, i) => (
+                      <tr key={r.ci.id} className="border-b border-border last:border-0">
+                        <td className="py-2 pr-3 text-muted-foreground tabular-nums">{i + 1}</td>
+                        <td className="py-2 pr-3">
+                          <div className="font-medium truncate max-w-[180px]">{r.inf.full_name}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[180px]">@{(r.inf.handle || "").replace(/^@/, "")}</div>
+                        </td>
+                        <td className="py-2 px-3 text-right tabular-nums">{r.s.posts}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{fmt(r.s.views)}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{r.erP.toFixed(1)}%</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{r.followers > 0 ? `${(r.eff * 100).toFixed(0)}%` : "—"}</td>
+                        <td className="py-2 pl-3 min-w-[140px]">
+                          <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                            <div className="h-full bg-accent" style={{ width: `${(r.s.views / maxViews * 100).toFixed(1)}%` }} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3 text-[10px] text-muted-foreground">Reach eff. = views ÷ follower count. Above 100% means the post reached well beyond their own audience.</div>
+            </Card>
+          );
+        })()}
+
+        {/* ── Share of voice ─────────────────────────────────────────── */}
+        {totals.views > 0 && byCreator.size > 1 && (() => {
+          const rows = influencers
+            .map(ci => {
+              const s = byCreator.get(ci.influencer_id);
+              if (!s || s.views === 0) return null;
+              return { name: ci.influencers?.full_name ?? "—", views: s.views, share: s.views / totals.views * 100 };
+            })
+            .filter(Boolean)
+            .sort((a: any, b: any) => b!.views - a!.views) as { name: string; views: number; share: number }[];
+          const top = rows.slice(0, 8);
+          const restShare = rows.slice(8).reduce((a, r) => a + r.share, 0);
+          if (restShare > 0) top.push({ name: `+${rows.length - 8} others`, views: rows.slice(8).reduce((a,r)=>a+r.views,0), share: restShare });
+          return (
+            <Card className="p-6 mb-6">
+              <div className="flex items-baseline justify-between mb-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><PieIcon className="w-3 h-3" />Share of voice</div>
+                  <h2 className="font-display text-2xl mt-1">Who owns the campaign reach</h2>
+                </div>
+              </div>
+              <div className="space-y-2.5">
+                {top.map((r, i) => (
+                  <div key={r.name + i} className="flex items-center gap-3">
+                    <div className="w-40 truncate text-sm">{r.name}</div>
+                    <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                      <div className={`h-full ${i === 0 ? "bg-accent" : i === 1 ? "bg-highlight" : "bg-accent/60"}`} style={{ width: `${r.share.toFixed(1)}%` }} />
+                    </div>
+                    <div className="w-24 text-right tabular-nums text-sm">{r.share.toFixed(1)}%</div>
+                    <div className="w-20 text-right tabular-nums text-xs text-muted-foreground">{fmt(r.views)}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          );
+        })()}
+
+        {/* ── Cost efficiency per creator ────────────────────────────── */}
+        {campaign.budget_kes > 0 && byCreator.size > 0 && (() => {
+          const totalFee = influencers.reduce((a, x) => a + Number(x.fee_kes || 0), 0);
+          const fallbackBudget = totalFee > 0 ? totalFee : Number(campaign.budget_kes);
+          const rows = influencers
+            .map(ci => {
+              const s = byCreator.get(ci.influencer_id);
+              if (!s) return null;
+              const fee = Number(ci.fee_kes || 0) || (fallbackBudget / Math.max(1, influencers.length));
+              const eng = s.likes + s.comments + s.shares + s.saves;
+              const cpv = s.views > 0 ? fee / s.views : 0;
+              const cpe = eng > 0 ? fee / eng : 0;
+              const cpm = s.views > 0 ? (fee / s.views) * 1000 : 0;
+              return { ci, s, fee, eng, cpv, cpe, cpm };
+            })
+            .filter(Boolean)
+            .sort((a: any, b: any) => (a.cpv === 0 ? Infinity : a.cpv) - (b.cpv === 0 ? Infinity : b.cpv)) as any[];
+          if (rows.length === 0) return null;
+          return (
+            <Card className="p-5 mb-6 overflow-hidden">
+              <div className="mb-4">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Coins className="w-3 h-3" />Cost efficiency</div>
+                <h2 className="font-display text-2xl">Best value creators</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                      <th className="text-left font-medium py-2 pr-3">Creator</th>
+                      <th className="text-right font-medium py-2 px-3">Fee</th>
+                      <th className="text-right font-medium py-2 px-3">Views</th>
+                      <th className="text-right font-medium py-2 px-3">CPV</th>
+                      <th className="text-right font-medium py-2 px-3">CPM</th>
+                      <th className="text-right font-medium py-2 pl-3">CPE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.slice(0, 12).map((r) => (
+                      <tr key={r.ci.id} className="border-b border-border last:border-0">
+                        <td className="py-2 pr-3">
+                          <div className="font-medium truncate max-w-[200px]">{r.ci.influencers?.full_name}</div>
+                          <div className="text-xs text-muted-foreground truncate max-w-[200px]">@{(r.ci.influencers?.handle || "").replace(/^@/, "")}</div>
+                        </td>
+                        <td className="py-2 px-3 text-right tabular-nums">{r.fee > 0 ? fmtKes(r.fee) : "—"}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{fmt(r.s.views)}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{r.cpv > 0 ? `KES ${r.cpv.toFixed(2)}` : "—"}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">{r.cpm > 0 ? `KES ${r.cpm.toFixed(0)}` : "—"}</td>
+                        <td className="py-2 pl-3 text-right tabular-nums">{r.cpe > 0 ? `KES ${r.cpe.toFixed(2)}` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3 text-[10px] text-muted-foreground">CPV = cost per view · CPM = cost per 1,000 views · CPE = cost per engagement. Where individual fees aren't recorded, budget is split evenly.</div>
+            </Card>
+          );
+        })()}
+
         {/* Audience */}
         {influencers.length > 0 && (() => {
           const totalFollowers = influencers.reduce((a, x) => a + Number(x.influencers?.follower_count || 0), 0);
