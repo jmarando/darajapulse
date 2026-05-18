@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
     for (const p of ig._posts ?? []) {
       const caption = p.caption || "";
       if (!captionHas(caption, tags)) continue;
-      const post_url = p.permalink;
+      const post_url = canonicalPostUrl(p.permalink);
       if (!post_url) continue;
       const thumb = p.thumbnail_url || p.media_url || p?.children?.data?.[0]?.thumbnail_url || p?.children?.data?.[0]?.media_url || null;
       const stats = { views: 0, likes: Number(p.like_count || 0), comments: Number(p.comments_count || 0), shares: 0 };
