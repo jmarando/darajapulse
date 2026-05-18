@@ -29,13 +29,18 @@ const fmtNum = (n: number) => {
   return `${Math.round(n)}`;
 };
 
+type ContestPerf = { contests: number; contestants: number; entries: number; views: number };
+
 const Campaigns = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [perf, setPerf] = useState<Record<string, { views: number; er: number; posts: number }>>({});
+  const [contestPerf, setContestPerf] = useState<Record<string, ContestPerf>>({});
   const [clients, setClients] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ client_id: "", name: "", brief: "", hashtag: "", budget_kes: 0, status: "draft", brief_template_id: "" });
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  const [savingName, setSavingName] = useState(false);
 
   const load = async () => {
     const { data } = await supabase.from("campaigns").select("*, clients(name, logo_url)").order("created_at", { ascending: false });
