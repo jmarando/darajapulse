@@ -93,7 +93,7 @@ const Influencers = () => {
     if (error) { toast.error(error.message); load(); }
   };
 
-  const copyInvite = (r: any, platform: "tiktok" | "instagram") => {
+  const copyInvite = (r: any, platform: string) => {
     const link = `${window.location.origin}/connect/${platform}/${r.id}`;
     navigator.clipboard.writeText(link);
     toast.success(`${platform === "tiktok" ? "TikTok" : "Instagram"} invite link copied`);
