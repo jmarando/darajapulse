@@ -63,9 +63,31 @@ const PublicBrief = () => {
 
   return (
     <div className="min-h-screen bg-background pb-28 md:pb-10">
+      {/* Branded top bar */}
+      <div className="border-b border-border bg-gradient-to-r from-accent/10 via-background to-highlight/10">
+        <div className="max-w-3xl mx-auto px-6 md:px-10 py-4 flex items-center gap-3">
+          {b.client.logo_url ? (
+            <div className="w-10 h-10 rounded-md bg-white border border-border shrink-0 flex items-center justify-center overflow-hidden">
+              <img src={b.client.logo_url} alt={`${b.client.name} logo`} className="max-w-[80%] max-h-[80%] object-contain" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-md bg-secondary border border-border shrink-0 flex items-center justify-center font-display text-sm">
+              {(b.client.name || "?").slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground truncate">{b.client.name}</div>
+            <div className="text-[11px] text-muted-foreground/80">Creator brief</div>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-3xl mx-auto p-6 md:p-10">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">{b.client.name} · Creator brief</div>
-        <h1 className="font-display text-4xl md:text-5xl font-semibold mt-2">{b.campaign.name}</h1>
+        <div className="inline-flex items-center gap-2">
+          <span className="inline-block w-8 h-px bg-accent" />
+          <span className="text-[10px] uppercase tracking-widest text-accent font-medium">For {b.influencer.full_name?.split(" ")[0]}</span>
+        </div>
+        <h1 className="font-display text-4xl md:text-5xl font-semibold mt-3">{b.campaign.name}</h1>
         <p className="text-muted-foreground mt-3">Hi {b.influencer.full_name?.split(" ")[0]}, you've been invited to collaborate{platforms.length > 1 ? ` across ${platforms.map(p => PLATFORM_LABEL[p] || p).join(" & ")}` : ""}.</p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border rounded-lg overflow-hidden mt-8 border border-border">
