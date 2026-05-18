@@ -455,9 +455,11 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                     const prev = byUrl.get(cu);
                     if (!prev || scoreOf(r) > scoreOf(prev)) byUrl.set(cu, r);
                   }
-                  const posts = Array.from(byUrl.values());
-                  const total = posts.reduce((s, p) => s + scoreOf(p), 0);
-                  return { key, reg, posts, total };
+                  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+                  // Per contest rules: score is the BEST single post (not summed across platforms).
+                  const best = posts[0];
+                  const total = best ? scoreOf(best) : 0;
+                  return { key, reg, posts, total, bestId: best?.id };
                 }).sort((a, b) => b.total - a.total);
                 if (contestants.length === 0) return null;
                 return (
