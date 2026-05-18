@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Facebook } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, AlertCircle, Facebook } from "lucide-react";
 
 const ConnectFacebook = () => {
   const { influencerId } = useParams();
+  const [params] = useSearchParams();
+  const status = params.get("status");
+  const reason = params.get("reason");
   const [name, setName] = useState<string>("");
 
   useEffect(() => {
@@ -15,6 +19,19 @@ const ConnectFacebook = () => {
     }
   }, [influencerId]);
 
+  const start = () => {
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/facebook-oauth-start?influencer_id=${influencerId}`;
+    window.location.href = url;
+  };
+
+  const errorMessage = reason === "no_pages"
+    ? "Facebook didn't return any Pages for your account. Log in with the Facebook profile that has full control of the Page, then retry."
+    : reason === "pages_permission"
+      ? "Facebook didn't grant access to your Pages. Retry and accept the Page permissions when Meta asks."
+      : reason === "token"
+        ? "Facebook didn't issue an access token. Please retry the connection."
+        : "Something went wrong. Please try again.";
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-paper p-6">
       <Card className="max-w-md w-full p-8 text-center">
@@ -22,9 +39,32 @@ const ConnectFacebook = () => {
           <Facebook className="w-7 h-7" />
         </div>
         <h1 className="font-display text-3xl mt-4">Connect Facebook</h1>
-        <p className="text-muted-foreground mt-3">
-          {name ? `Hi ${name.split(" ")[0]} — ` : ""}Facebook integration is coming soon. Check back shortly to link your page.
-        </p>
+        {status === "ok" ? (
+          <div className="mt-6 space-y-3">
+            <CheckCircle2 className="w-10 h-10 mx-auto text-accent" />
+            <p className="text-muted-foreground">Your Facebook Page is connected. You can close this window.</p>
+          </div>
+        ) : status === "error" ? (
+          <div className="mt-6 space-y-3">
+            <AlertCircle className="w-10 h-10 mx-auto text-destructive" />
+            <p className="text-muted-foreground">
+              {errorMessage}
+            </p>
+            <Button onClick={start} disabled={!influencerId}>Retry</Button>
+          </div>
+        ) : (
+          <>
+            <p className="text-muted-foreground mt-3">
+              {name ? `Hi ${name.split(" ")[0]} — ` : ""}Daraja Pulse needs read-only access to your Facebook Page so we can report post performance for the brand. We never post on your behalf.
+            </p>
+            <Button onClick={start} className="mt-6 w-full bg-primary" disabled={!influencerId}>
+              Continue with Facebook
+            </Button>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-4">
+              Scopes: pages list · page engagement · page content · insights
+            </p>
+          </>
+        )}
       </Card>
     </div>
   );

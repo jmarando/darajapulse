@@ -23,6 +23,10 @@ project_id = "ucxlveehobmeywkiynpy"
     verify_jwt = false
   [functions.instagram-webhook]
     verify_jwt = false
+  [functions.facebook-oauth-start]
+    verify_jwt = false
+  [functions.facebook-oauth-callback]
+    verify_jwt = false
 
 [functions.send-transactional-email]
 verify_jwt = true
