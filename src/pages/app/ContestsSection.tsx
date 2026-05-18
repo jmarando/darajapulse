@@ -466,7 +466,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                   <div className="mb-6">
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.slice(0, 12).map(({ key, reg, posts, total }, i) => {
+                      {contestants.slice(0, 12).map(({ key, reg, posts, total, bestId }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
                         return (
@@ -481,8 +481,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                               </div>
                             </div>
                             <div className="text-right shrink-0">
-                              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total score</div>
+                              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Best score</div>
                               <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
+                              {posts.length > 1 && <div className="text-[10px] text-muted-foreground mt-0.5">of {posts.length} posts</div>}
                             </div>
                           </div>
                           {posts.length === 0 ? (
@@ -496,15 +497,21 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                             <div className="space-y-1.5 border-t border-border/60 pt-2">
                               {posts.map(p => {
                                 const PIcon = p.platform === "instagram" ? Instagram : p.platform === "tiktok" ? Music2 : Link2;
+                                const isBest = p.id === bestId;
+                                const auto = isAuto(p);
                                 return (
-                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-xs hover:bg-secondary/50 rounded px-1.5 py-1">
-                                  <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground"><PIcon className="w-3 h-3" />{p.platform}</span>
+                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" title={`Open post on ${p.platform}`} className={`grid grid-cols-[auto_1fr_auto] items-center gap-3 text-xs rounded px-1.5 py-1 transition-colors ${isBest ? "bg-accent/5 hover:bg-accent/10" : "hover:bg-secondary/50"}`}>
+                                  <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground">
+                                    <PIcon className="w-3 h-3" />{p.platform}
+                                    {isBest && <Crown className="w-3 h-3 text-highlight" aria-label="Counted score" />}
+                                    <span className={`text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
+                                  </span>
                                   <span className="tabular-nums text-muted-foreground flex items-center justify-end gap-3">
                                     <span className="inline-flex items-center gap-1" title="Views"><Eye className="w-3 h-3" />{(p.views || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Likes"><Heart className="w-3 h-3" />{(p.likes || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Comments"><MessageCircle className="w-3 h-3" />{(p.comments || 0).toLocaleString()}</span>
                                   </span>
-                                  <span className="font-semibold tabular-nums w-14 text-right text-foreground">{Math.round(scoreOf(p)).toLocaleString()}</span>
+                                  <span className={`font-semibold tabular-nums w-14 text-right ${isBest ? "text-accent" : "text-muted-foreground"}`}>{Math.round(scoreOf(p)).toLocaleString()}</span>
                                 </a>
                               );})}
                             </div>
