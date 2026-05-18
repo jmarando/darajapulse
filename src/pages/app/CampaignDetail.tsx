@@ -62,6 +62,7 @@ const CampaignDetail = () => {
   const [previewPost, setPreviewPost] = useState<any>(null);
   const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
+  const [briefExpanded, setBriefExpanded] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   // When a campaign has no creator roster but does have contest activity, treat it as contest-only:
   // default the active tab to "contests" and adapt hero KPIs / hide the empty creators tab.
