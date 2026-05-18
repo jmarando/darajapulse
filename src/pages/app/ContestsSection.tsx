@@ -33,10 +33,14 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
 
   const scoreOf = (stats: { shares?: any; comments?: any; likes?: any }) =>
     Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
-  const totalScore = (e: any) => {
+  // Per the contest rules: a contestant's score is the BEST single post — we do not sum across platforms.
+  const bestScore = (e: any) => {
     const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-    return scoreOf(e) + xs.reduce((s: number, x: any) => s + scoreOf(x), 0);
+    return Math.max(scoreOf(e), ...xs.map((x: any) => scoreOf(x)));
   };
+  // Identify whether an entry was auto-fetched from a public scraper or entered/registered by a human.
+  const AUTO_SOURCES = new Set(["meta_graph", "ensembledata", "tiktok_api", "instagram_api"]);
+  const isAuto = (e: any) => AUTO_SOURCES.has(String(e.source || "").toLowerCase());
 
   const saveEditEntry = async () => {
     if (!editEntry) return;
