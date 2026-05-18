@@ -76,8 +76,56 @@ const Campaigns = () => {
     } else {
       setPerf({});
     }
+
+    // Contest aggregates per campaign
+    if (ids.length) {
+      const { data: ctsts } = await supabase.from("contests").select("id, campaign_id").in("campaign_id", ids);
+      const contestToCampaign = new Map<string, string>();
+      const cmap: Record<string, ContestPerf> = {};
+      for (const c of ctsts ?? []) {
+        contestToCampaign.set(c.id, c.campaign_id);
+        const cur = cmap[c.campaign_id] ?? { contests: 0, contestants: 0, entries: 0, views: 0 };
+        cur.contests += 1;
+        cmap[c.campaign_id] = cur;
+      }
+      const contestIds = (ctsts ?? []).map(c => c.id);
+      if (contestIds.length) {
+        const { data: es } = await supabase.from("contest_entries").select("contest_id, handle, views").in("contest_id", contestIds);
+        const handlesByCampaign: Record<string, Set<string>> = {};
+        for (const e of es ?? []) {
+          const cid = contestToCampaign.get(e.contest_id);
+          if (!cid) continue;
+          const cur = cmap[cid] ?? { contests: 0, contestants: 0, entries: 0, views: 0 };
+          cur.entries += 1;
+          cur.views += Number(e.views || 0);
+          if (e.handle) {
+            (handlesByCampaign[cid] ||= new Set()).add(String(e.handle).toLowerCase());
+          }
+          cmap[cid] = cur;
+        }
+        for (const [cid, set] of Object.entries(handlesByCampaign)) {
+          if (cmap[cid]) cmap[cid].contestants = set.size;
+        }
+      }
+      setContestPerf(cmap);
+    } else {
+      setContestPerf({});
+    }
   };
   useEffect(() => { load(); }, []);
+
+  const saveName = async () => {
+    if (!editing) return;
+    const name = editing.name.trim();
+    if (!name) return toast.error("Name required");
+    setSavingName(true);
+    const { error } = await supabase.from("campaigns").update({ name }).eq("id", editing.id);
+    setSavingName(false);
+    if (error) return toast.error(error.message);
+    toast.success("Renamed");
+    setEditing(null);
+    load();
+  };
 
   useEffect(() => {
     if (!form.client_id) { setTemplates([]); return; }
