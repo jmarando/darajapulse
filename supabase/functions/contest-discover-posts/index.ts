@@ -201,7 +201,8 @@ Deno.serve(async (req) => {
       if (!captionHas(caption, tags)) continue;
       const author = aweme.author?.unique_id || aweme.author?.uniqueId || v.author?.unique_id || "";
       const videoId = aweme.aweme_id || aweme.id || v.id;
-      const post_url = aweme.share_url || (author && videoId ? `https://www.tiktok.com/@${author}/video/${videoId}` : null);
+      const rawUrl = aweme.share_url || (author && videoId ? `https://www.tiktok.com/@${author}/video/${videoId}` : null);
+      const post_url = canonicalPostUrl(rawUrl);
       if (!post_url) continue;
       const stats = {
         views: Number(aweme.statistics?.play_count ?? v.play_count ?? 0),
