@@ -72,13 +72,6 @@ const SidebarBody = ({ user, isAdmin, onSignOut, onNavigate }: any) => (
         </NavLink>
       )}
     </nav>
-    <div className="m-3 rounded-xl p-4 bg-gradient-to-br from-highlight/25 via-highlight/10 to-transparent border border-highlight/30">
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-highlight">
-        <Sparkles className="w-3 h-3" /> Pro tier
-      </div>
-      <div className="font-display text-sm text-sidebar-foreground mt-1 leading-snug">Unlock unlimited campaigns & AI learnings</div>
-      <Button size="sm" className="w-full mt-3 bg-highlight text-primary hover:bg-highlight/90 h-8 text-xs font-semibold">Upgrade plan</Button>
-    </div>
     <div className="p-3 border-t border-sidebar-border">
       <div className="px-3 py-2 text-xs text-sidebar-foreground/70 truncate">{user.email}</div>
       <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={onSignOut}>
