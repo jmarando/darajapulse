@@ -7,9 +7,20 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Users, Search, ShieldCheck, Link2, Pencil, ChevronDown } from "lucide-react";
+import { Plus, Users, Search, ShieldCheck, Link2, Pencil, ChevronDown, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformPicker } from "@/components/PlatformPicker";
+
+// Compact formatter so big follower counts (e.g. 130,000) don't blow up a 3-col stat grid.
+const fmtCompact = (n: number) => {
+  if (!Number.isFinite(n) || n === 0) return "0";
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
+  if (abs >= 1_000) return `${(n / 1_000).toFixed(abs >= 10_000 ? 0 : 1).replace(/\.0$/, "")}K`;
+  return n.toLocaleString();
+};
+
+const PLATFORM_ICON: Record<string, any> = { tiktok: Music2, instagram: Instagram, youtube: Youtube, twitter: Twitter, facebook: Facebook };
 
 const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", phone_mpesa: "" };
 
