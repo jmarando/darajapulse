@@ -24,6 +24,16 @@ const ConnectInstagram = () => {
     window.location.href = url;
   };
 
+  const errorMessage = reason === "no_pages"
+    ? "Facebook didn't return any Pages for your account. Log in with the Facebook profile that has full control of the Page, then retry."
+    : reason === "ig_not_professional"
+      ? "Your Page is connected to an Instagram account, but Meta isn't exposing it as a Business/Creator account yet. In Instagram, switch to Professional, choose Business or Creator, confirm the Page link, then retry."
+      : reason === "pages_permission"
+        ? "Facebook didn't grant access to your Pages. Retry and accept the Page permissions when Meta asks."
+        : reason === "no_ig_business"
+          ? "We couldn't find an Instagram Business account linked to a Facebook Page you manage. Convert your IG to a Business/Creator account and link it to a Page, then retry."
+          : "Something went wrong. Please try again.";
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-paper p-6">
       <Card className="max-w-md w-full p-8 text-center">
@@ -40,9 +50,7 @@ const ConnectInstagram = () => {
           <div className="mt-6 space-y-3">
             <AlertCircle className="w-10 h-10 mx-auto text-destructive" />
             <p className="text-muted-foreground">
-              {reason === "no_ig_business"
-                ? "We couldn't find an Instagram Business account linked to a Facebook Page you manage. Convert your IG to a Business/Creator account and link it to a Page, then retry."
-                : "Something went wrong. Please try again."}
+              {errorMessage}
             </p>
             <Button onClick={start}>Retry</Button>
           </div>
