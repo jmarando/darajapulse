@@ -76,6 +76,12 @@ const App = () => (
             <Route path="/connect/tiktok/done" element={<ConnectTikTok />} />
             <Route path="/connect/instagram/:influencerId" element={<ConnectInstagram />} />
             <Route path="/connect/instagram/done" element={<ConnectInstagram />} />
+            <Route path="/connect/youtube/:influencerId" element={<ConnectYouTube />} />
+            <Route path="/connect/youtube/done" element={<ConnectYouTube />} />
+            <Route path="/connect/twitter/:influencerId" element={<ConnectTwitter />} />
+            <Route path="/connect/twitter/done" element={<ConnectTwitter />} />
+            <Route path="/connect/facebook/:influencerId" element={<ConnectFacebook />} />
+            <Route path="/connect/facebook/done" element={<ConnectFacebook />} />
             <Route path="/portal" element={<PortalShell />}>
               <Route index element={<PortalOverview />} />
               <Route path="campaigns" element={<PortalOverview />} />
