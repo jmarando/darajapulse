@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.run_contest_auto_polling() FROM PUBLIC, anon, authenticated;
