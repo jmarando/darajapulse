@@ -539,14 +539,22 @@ const CampaignDetail = () => {
           </div>
         </div>
 
-        {/* 4 hero KPIs */}
+        {/* 4 hero KPIs — swap creator/fee tiles for contest stats on contest-only campaigns */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border rounded-lg overflow-hidden mt-6 border border-border">
-          {[
-            { l: "Views", v: fmt(totals.views), icon: Eye, sub: `${posts.length} post${posts.length === 1 ? "" : "s"}` },
-            { l: "Engagement", v: `${totals.er.toFixed(1)}%`, icon: BarChart3, sub: `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` },
-            { l: "Creators", v: `${rosterTotals.confirmed}/${ci.length}`, icon: Users, sub: "confirmed" },
-            { l: "Fees committed", v: rosterTotals.fees > 0 ? fmtKes(rosterTotals.fees) : "—", icon: Wallet, sub: `${rosterTotals.deliv} deliverable${rosterTotals.deliv === 1 ? "" : "s"}` },
-          ].map((s, i) => (
+          {(isContestOnly
+            ? [
+                { l: "Views", v: fmt(totals.views), icon: Eye, sub: `${contestEntries.length} entr${contestEntries.length === 1 ? "y" : "ies"}` },
+                { l: "Engagement", v: `${totals.er.toFixed(1)}%`, icon: BarChart3, sub: `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` },
+                { l: "Entries", v: fmt(contestEntries.length), icon: Trophy, sub: "contest submissions" },
+                { l: "Top engagement", v: fmt(totals.likes + totals.comments + totals.shares + totals.saves), icon: Heart, sub: "likes + comments + shares" },
+              ]
+            : [
+                { l: "Views", v: fmt(totals.views), icon: Eye, sub: `${posts.length} post${posts.length === 1 ? "" : "s"}` },
+                { l: "Engagement", v: `${totals.er.toFixed(1)}%`, icon: BarChart3, sub: `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` },
+                { l: "Creators", v: `${rosterTotals.confirmed}/${ci.length}`, icon: Users, sub: "confirmed" },
+                { l: "Fees committed", v: rosterTotals.fees > 0 ? fmtKes(rosterTotals.fees) : "—", icon: Wallet, sub: `${rosterTotals.deliv} deliverable${rosterTotals.deliv === 1 ? "" : "s"}` },
+              ]
+          ).map((s, i) => (
             <div key={i} className="bg-card p-5">
               <div className="flex items-center justify-between">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.l}</div>
@@ -563,7 +571,9 @@ const CampaignDetail = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="creators">Creators &amp; content<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
+          {!isContestOnly && (
+            <TabsTrigger value="creators">Creators &amp; content<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
+          )}
           <TabsTrigger value="contests">Contests</TabsTrigger>
           <TabsTrigger value="share">Share &amp; wrap</TabsTrigger>
         </TabsList>
