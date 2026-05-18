@@ -1444,6 +1444,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      run_contest_auto_polling: { Args: never; Returns: undefined }
       slugify: { Args: { _s: string }; Returns: string }
       submit_contest_entry: {
         Args: {
