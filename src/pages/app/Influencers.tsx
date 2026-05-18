@@ -6,12 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Users, Search, ShieldCheck, Link2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, Users, Search, ShieldCheck, Link2, Pencil, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformPicker } from "@/components/PlatformPicker";
 
-const platforms = ["tiktok", "instagram", "youtube", "twitter", "facebook"] as const;
+const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", phone_mpesa: "" };
 
 const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; format: (v: number) => string; onSave: (v: number) => void; step?: number }) => {
   const [editing, setEditing] = useState(false);
@@ -35,7 +35,7 @@ const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; form
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="font-display text-lg w-full hover:bg-secondary rounded px-1 transition-colors"
+      className="font-display text-lg w-full hover:bg-secondary rounded px-1 transition-colors truncate"
       title="Click to edit"
     >
       {format(value)}
@@ -47,7 +47,8 @@ const Influencers = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", phone_mpesa: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<any>(blankForm);
 
   const load = async () => {
     const { data } = await supabase.from("influencers").select("*").order("follower_count", { ascending: false });
@@ -55,17 +56,47 @@ const Influencers = () => {
   };
   useEffect(() => { load(); }, []);
 
+  const openAdd = () => { setEditingId(null); setForm(blankForm); setOpen(true); };
+  const openEdit = (r: any) => {
+    setEditingId(r.id);
+    setForm({
+      full_name: r.full_name ?? "",
+      handle: r.handle ?? "",
+      primary_platform: r.primary_platform ?? "tiktok",
+      niche: r.niche ?? "",
+      follower_count: r.follower_count ?? 0,
+      engagement_rate: r.engagement_rate ?? 0,
+      region: r.region ?? "Kenya",
+      phone_mpesa: r.phone_mpesa ?? "",
+    });
+    setOpen(true);
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from("influencers").insert({ ...form, follower_count: Number(form.follower_count), engagement_rate: Number(form.engagement_rate) });
-    if (error) return toast.error(error.message);
-    toast.success("Influencer added"); setOpen(false); load();
+    const payload = { ...form, follower_count: Number(form.follower_count), engagement_rate: Number(form.engagement_rate) };
+    if (editingId) {
+      const { error } = await (supabase.from("influencers") as any).update(payload).eq("id", editingId);
+      if (error) return toast.error(error.message);
+      toast.success("Influencer updated");
+    } else {
+      const { error } = await supabase.from("influencers").insert(payload);
+      if (error) return toast.error(error.message);
+      toast.success("Influencer added");
+    }
+    setOpen(false); load();
   };
 
   const updateField = async (id: string, field: string, value: number) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
     const { error } = await (supabase.from("influencers") as any).update({ [field]: value }).eq("id", id);
     if (error) { toast.error(error.message); load(); }
+  };
+
+  const copyInvite = (r: any, platform: "tiktok" | "instagram") => {
+    const link = `${window.location.origin}/connect/${platform}/${r.id}`;
+    navigator.clipboard.writeText(link);
+    toast.success(`${platform === "tiktok" ? "TikTok" : "Instagram"} invite link copied`);
   };
 
   const filtered = rows.filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()));
@@ -77,10 +108,10 @@ const Influencers = () => {
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Discovery</div>
           <h1 className="font-display text-4xl font-semibold mt-1">Influencer roster</h1>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button className="bg-primary"><Plus className="w-4 h-4 mr-2" /> Add influencer</Button></DialogTrigger>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingId(null); } }}>
+          <DialogTrigger asChild><Button className="bg-primary" onClick={openAdd}><Plus className="w-4 h-4 mr-2" /> Add influencer</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle className="font-display text-2xl">Add to roster</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="font-display text-2xl">{editingId ? "Edit influencer" : "Add to roster"}</DialogTitle></DialogHeader>
             <form onSubmit={submit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Full name</Label><Input required value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} /></div>
@@ -99,7 +130,7 @@ const Influencers = () => {
                 <div><Label>Region</Label><Input value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} /></div>
               </div>
               <div><Label>M-Pesa phone</Label><Input value={form.phone_mpesa} onChange={e => setForm({ ...form, phone_mpesa: e.target.value })} placeholder="2547..." /></div>
-              <Button type="submit" className="w-full bg-primary">Save</Button>
+              <Button type="submit" className="w-full bg-primary">{editingId ? "Save changes" : "Save"}</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -117,37 +148,59 @@ const Influencers = () => {
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(r => (
-            <Card key={r.id} className="p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-secondary flex items-center justify-center font-display text-lg">{r.full_name[0]}</div>
-                  <div>
-                    <div className="font-display text-lg">{r.full_name}</div>
-                    <div className="text-xs text-muted-foreground">{r.handle} · {r.primary_platform}</div>
+          {filtered.map(r => {
+            const primary = (r.primary_platform as string) || "tiktok";
+            const canInvite = primary === "tiktok" || primary === "instagram";
+            return (
+            <Card key={r.id} className="p-5 flex flex-col">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-11 h-11 shrink-0 rounded-full bg-secondary flex items-center justify-center font-display text-lg">{r.full_name?.[0] ?? "?"}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-display text-lg truncate" title={r.full_name}>{r.full_name}</div>
+                    <div className="text-xs text-muted-foreground truncate" title={`${r.handle ?? ""} · ${primary}`}>
+                      {r.handle ? `${r.handle} · ` : ""}{primary}
+                    </div>
                   </div>
                 </div>
-                <Badge variant="secondary" className="gap-1"><ShieldCheck className="w-3 h-3" /> {Math.round(Number(r.authenticity_score))}</Badge>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Badge variant="secondary" className="gap-1"><ShieldCheck className="w-3 h-3" /> {Math.round(Number(r.authenticity_score || 0))}</Badge>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)} title="Edit influencer">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
-              <div className="grid grid-cols-3 mt-4 gap-2 text-center">
-                <div>
+              <div className="grid grid-cols-3 mt-4 gap-2 text-center min-w-0">
+                <div className="min-w-0">
                   <InlineNumber value={Number(r.follower_count)} format={(v) => v.toLocaleString()} onSave={(v) => updateField(r.id, "follower_count", v)} />
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Followers</div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <InlineNumber value={Number(r.engagement_rate)} step={0.1} format={(v) => `${v.toFixed(1)}%`} onSave={(v) => updateField(r.id, "engagement_rate", v)} />
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground">ER</div>
                 </div>
-                <div><div className="font-display text-lg">{r.region?.slice(0, 4) ?? "—"}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Region</div></div>
+                <div className="min-w-0">
+                  <div className="font-display text-lg truncate" title={r.region ?? ""}>{r.region ?? "—"}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Region</div>
+                </div>
               </div>
-              {r.niche && <div className="mt-3 text-xs text-muted-foreground">{r.niche}</div>}
-              <Button variant="outline" size="sm" className="w-full mt-3" onClick={() => {
-                const link = `${window.location.origin}/connect/tiktok/${r.id}`;
-                navigator.clipboard.writeText(link);
-                toast.success("TikTok invite link copied");
-              }}><Link2 className="w-3 h-3 mr-1" /> Copy TikTok invite link</Button>
+              {r.niche && <div className="mt-3 text-xs text-muted-foreground truncate" title={r.niche}>{r.niche}</div>}
+              {canInvite && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full mt-3">
+                      <Link2 className="w-3 h-3 mr-1" /> Copy invite link <ChevronDown className="w-3 h-3 ml-auto" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => copyInvite(r, "tiktok")}>TikTok invite link</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => copyInvite(r, "instagram")}>Instagram invite link</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
