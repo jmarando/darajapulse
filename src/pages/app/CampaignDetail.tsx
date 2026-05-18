@@ -591,6 +591,7 @@ const CampaignDetail = () => {
             <TabsTrigger value="creators">Creators &amp; content<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
           )}
           <TabsTrigger value="contests">Contests</TabsTrigger>
+          <TabsTrigger value="emails">Email reports</TabsTrigger>
           <TabsTrigger value="share">Share &amp; wrap</TabsTrigger>
         </TabsList>
 
