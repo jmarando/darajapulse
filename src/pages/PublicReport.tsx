@@ -14,6 +14,7 @@ import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
 import { computeEmv, EMV_CPM_KES, EMV_DISCLAIMER } from "@/lib/emv";
 import { fetchAllPostMetrics, peakMetricSnapshot, buildWindowMetricsByPost, withMetricFallbacks } from "@/lib/metrics";
+import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 
 type PostWithMetrics = any;
 
