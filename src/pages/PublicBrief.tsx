@@ -51,7 +51,14 @@ const PublicBrief = () => {
   ];
 
   const breakdown = normalizeBreakdown(b.deliverables_breakdown, b.influencer?.primary_platform || "tiktok");
-  const platforms = Object.keys(breakdown);
+  // Group items by platform for display; cross-posted items appear under every platform with a "cross-post" badge.
+  const byPlatform: Record<string, { type: string; count: number; crossWith: string[] }[]> = {};
+  for (const it of breakdown.items) {
+    for (const p of it.platforms) {
+      (byPlatform[p] ||= []).push({ type: it.type, count: it.count, crossWith: it.platforms.filter(x => x !== p) });
+    }
+  }
+  const platforms = Object.keys(byPlatform);
   const hasTikTok = platforms.includes("tiktok");
 
   return (
@@ -93,8 +100,8 @@ const PublicBrief = () => {
             <div className="grid sm:grid-cols-2 gap-3">
               {platforms.map((plat) => {
                 const Icon = PLATFORM_ICON[plat] || Music2;
-                const items = Object.entries(breakdown[plat] || {}).filter(([, n]) => Number(n) > 0);
-                const total = items.reduce((a, [, n]) => a + Number(n), 0);
+                const items = byPlatform[plat] || [];
+                const total = items.reduce((a, it) => a + it.count, 0);
                 return (
                   <div key={plat} className="rounded-md border border-border p-4 bg-secondary/30">
                     <div className="flex items-center justify-between gap-2">
@@ -105,10 +112,13 @@ const PublicBrief = () => {
                       <Badge variant="outline" className="text-[10px]">{total} piece{total === 1 ? "" : "s"}</Badge>
                     </div>
                     <ul className="mt-3 space-y-1 text-sm">
-                      {items.map(([t, n]) => (
-                        <li key={t} className="flex items-center gap-2 text-muted-foreground">
+                      {items.map((it, idx) => (
+                        <li key={idx} className="flex items-center gap-2 text-muted-foreground">
                           <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
-                          <span><span className="text-foreground font-medium">{n}</span> {t}{Number(n) === 1 ? "" : "s"}</span>
+                          <span><span className="text-foreground font-medium">{it.count}</span> {it.type}{it.count === 1 ? "" : "s"}</span>
+                          {it.crossWith.length > 0 && (
+                            <Badge variant="secondary" className="text-[9px] h-4 px-1.5">also on {it.crossWith.map(p => PLATFORM_LABEL[p] || p).join(" + ")}</Badge>
+                          )}
                         </li>
                       ))}
                     </ul>

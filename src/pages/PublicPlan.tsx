@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Hash, Users, Wallet } from "lucide-react";
 import PublicFooter from "@/components/PublicFooter";
+import { breakdownSummary } from "@/components/DeliverablesEditor";
 
 const PublicPlan = () => {
   const { token } = useParams();
@@ -89,8 +90,7 @@ const PublicPlan = () => {
           </div>
           <div className="divide-y">
             {roster.map((r) => {
-              const bd = r.deliverables_breakdown as Record<string, number> | null;
-              const summary = bd ? Object.entries(bd).filter(([,n]) => Number(n) > 0).map(([t,n]) => `${n} ${t}${Number(n)===1?"":"s"}`).join(" · ") : "";
+              const summary = breakdownSummary(r.deliverables_breakdown as any);
               return (
               <div key={r.id} className="grid grid-cols-12 px-5 py-3 items-center text-sm">
                 <div className="col-span-5">
