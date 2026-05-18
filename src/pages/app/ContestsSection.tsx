@@ -679,8 +679,8 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
               </div>
 
               <div className="flex items-center justify-between p-3 rounded-md bg-primary/10 border border-primary/30">
-                <div className="text-sm">Total score across all platforms</div>
-                <div className="font-display text-2xl font-semibold">{Math.round(totalScore({ ...editEntry, cross_posts: (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim()) }))}</div>
+                <div className="text-sm">Best post score (counts toward leaderboard)</div>
+                <div className="font-display text-2xl font-semibold">{Math.round(bestScore({ ...editEntry, cross_posts: (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim()) }))}</div>
               </div>
 
               <div className="flex gap-2 justify-end">
