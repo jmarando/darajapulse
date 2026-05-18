@@ -44,8 +44,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
 
   const saveEditEntry = async () => {
     if (!editEntry) return;
-    const cleanedCross = (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim());
-    const score = scoreOf(editEntry) + cleanedCross.reduce((s: number, x: any) => s + scoreOf(x), 0);
+    const score = bestScore({ ...editEntry, cross_posts: cleanedCross });
     const { error } = await supabase.from("contest_entries").update({
       handle: editEntry.handle,
       post_url: editEntry.post_url,
