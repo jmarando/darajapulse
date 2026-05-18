@@ -267,10 +267,10 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
 
   return (
     <Card className="p-5 mb-6">
-      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
-        <div>
+      <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
+        <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement</div>
-          <h2 className="font-display text-2xl flex items-center gap-2"><Trophy className="w-5 h-5 text-highlight" /> Hashtag contests</h2>
+          <h2 className="font-display text-2xl flex items-center gap-2 mt-0.5"><Trophy className="w-5 h-5 text-highlight" /> Hashtag contests</h2>
           <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1).</p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -283,7 +283,6 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
               </Button>
             </>
           )}
-          
           {active && <Button size="sm" variant="outline" onClick={() => discoverPosts()} disabled={discovering}><Sparkles className={`w-3 h-3 mr-1 ${discovering ? "animate-pulse" : ""}`} /> Discover posts</Button>}
           {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
@@ -318,31 +317,82 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
         </div>
       ) : (
         <>
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {contests.map(c => (
-              <button key={c.id} onClick={() => setActiveId(c.id)}
-                className={`px-3 py-1.5 rounded-full text-sm border ${activeId === c.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-secondary"}`}>
-                {c.name} <span className="opacity-60 ml-1 font-mono text-xs">{c.hashtag}</span>
-              </button>
-            ))}
-          </div>
+          {/* Only show the contest switcher if there are multiple — otherwise it's clutter */}
+          {contests.length > 1 && (
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {contests.map(c => (
+                <button key={c.id} onClick={() => setActiveId(c.id)}
+                  className={`px-3 py-1.5 rounded-full text-sm border ${activeId === c.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-secondary"}`}>
+                  {c.name} <span className="opacity-60 ml-1 font-mono text-xs">{c.hashtag}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {active && (() => {
+            // Parse a prize string like "Mega: X • 1st R/U: Y • 2nd R/U: Z" into structured rows.
+            const fmtDate = (s?: string) => {
+              if (!s) return "—";
+              const d = new Date(s);
+              return isNaN(+d) ? s : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+            };
+            const days = Math.max(0, Math.ceil((+new Date(active.end_date) - +new Date(active.start_date)) / 86400000));
+            const prizeParts = (active.prize || "")
+              .split(/\s*[•·]\s*/)
+              .map((s: string) => s.trim())
+              .filter(Boolean);
+            const today = new Date();
+            const isLive = today >= new Date(active.start_date) && today <= new Date(active.end_date);
+            return (
+              <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">
+                {/* Hero strip */}
+                <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-4 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-display text-xl truncate">{active.name}</h3>
+                      <Badge variant={isLive ? "default" : "outline"} className={`text-[10px] ${isLive ? "bg-success text-success-foreground hover:bg-success" : ""}`}>{isLive ? "Live" : "Scheduled"}</Badge>
+                    </div>
+                    <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-secondary/60 border border-border font-mono break-all">
+                      <Trophy className="w-3 h-3 shrink-0 text-highlight" />
+                      <span className="truncate">{active.hashtag}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-6 text-sm shrink-0">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Window</div>
+                      <div className="mt-0.5 font-medium">{fmtDate(active.start_date)} → {fmtDate(active.end_date)}</div>
+                      <div className="text-[11px] text-muted-foreground">{days} days · rounds of {active.round_days}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Prize breakdown */}
+                {prizeParts.length > 0 && (
+                  <div className="px-5 py-4">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Prizes per round</div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {prizeParts.map((part: string, idx: number) => {
+                        const [labelRaw, ...rest] = part.split(":");
+                        const hasLabel = rest.length > 0;
+                        const label = hasLabel ? labelRaw.trim() : `Prize ${idx + 1}`;
+                        const value = hasLabel ? rest.join(":").trim() : part;
+                        const isMega = /mega/i.test(label);
+                        return (
+                          <div key={idx} className={`p-3 rounded-md border ${isMega ? "border-accent/40 bg-accent/5" : "border-border bg-secondary/30"}`}>
+                            <div className={`text-[10px] uppercase tracking-widest ${isMega ? "text-accent" : "text-muted-foreground"}`}>{label}</div>
+                            <div className="text-sm mt-1 leading-snug">{value}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {active && (
             <>
-              <div className="grid md:grid-cols-3 gap-3 mb-4">
-                <div className="p-3 rounded-md bg-secondary/40 border border-border">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Hashtag</div>
-                  <div className="font-mono mt-1">{active.hashtag}</div>
-                </div>
-                <div className="p-3 rounded-md bg-secondary/40 border border-border">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Window</div>
-                  <div className="text-sm mt-1">{active.start_date} → {active.end_date}</div>
-                </div>
-                <div className="p-3 rounded-md bg-secondary/40 border border-border">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Prize / round</div>
-                  <div className="text-sm mt-1">{active.prize || "—"} · every {active.round_days} days</div>
-                </div>
-              </div>
 
               <div className="flex items-center justify-end gap-2 mb-4">
                 <Dialog open={entryOpen} onOpenChange={setEntryOpen}>
