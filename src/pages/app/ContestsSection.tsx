@@ -70,6 +70,17 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       const { data: lr } = await (supabase as any).from("contestant_sync_runs").select("*").eq("contest_id", cid).order("started_at", { ascending: false }).limit(1).maybeSingle();
       setLastRun(lr ?? null);
     }
+    // Load campaign creators so we can exclude them from contestants.
+    const { data: ci } = await supabase
+      .from("campaign_influencers")
+      .select("influencers(handle)")
+      .eq("campaign_id", campaignId);
+    const set = new Set<string>();
+    for (const row of ci ?? []) {
+      const h = cleanH((row as any).influencers?.handle);
+      if (h) set.add(h);
+    }
+    setCreatorHandles(set);
   };
 
   const cleanHandle = (s?: string) =>
