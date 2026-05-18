@@ -24,6 +24,7 @@ import { PostThumb } from "@/components/PostThumb";
 import { PostMetricsEditor } from "@/components/PostMetricsEditor";
 import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
+import EmailReportsSection from "./EmailReportsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
