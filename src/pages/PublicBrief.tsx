@@ -43,7 +43,7 @@ const PublicBrief = () => {
   const final = ["confirmed","declined"].includes(b.status);
 
   const paymentSteps = [
-    { icon: CheckCircle2, label: "Brief accepted", desc: "You confirm and connect TikTok" },
+    { icon: CheckCircle2, label: "Brief accepted", desc: "You confirm and connect your accounts" },
     { icon: Clapperboard, label: "Content created", desc: "You shoot and submit drafts" },
     { icon: Eye, label: "Approved & live", desc: "Brand reviews, you publish" },
     { icon: Smartphone, label: "Performance tracked", desc: "Daily metric updates" },
@@ -264,25 +264,36 @@ const PublicBrief = () => {
           {final && b.status === "declined" && <span className="text-sm text-muted-foreground">Thanks — your response has been recorded.</span>}
         </div>
 
-        {b.status === "confirmed" && b.influencer?.id && hasTikTok && (
-          <Card className="p-6 mt-8 bg-gradient-ink text-primary-foreground border-0">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                <Music2 className="w-6 h-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] uppercase tracking-widest opacity-70">One last step</div>
-                <div className="font-display text-xl mt-0.5">Connect your TikTok</div>
-                <p className="text-sm opacity-80 mt-1">So we can track your post performance for the brand and pay you accurately. Read-only access — we never post on your behalf.</p>
-              </div>
-              <Button
-                onClick={() => { window.location.href = `/connect/tiktok/${b.influencer.id}`; }}
-                className="bg-accent text-accent-foreground hover:bg-accent/90"
-              >
-                <Music2 className="w-4 h-4 mr-2" /> Connect TikTok
-              </Button>
+        {b.status === "confirmed" && b.influencer?.id && platforms.length > 0 && (
+          <div className="mt-8 space-y-3">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">One last step</div>
+            <div className="font-display text-xl">Connect your {platforms.length === 1 ? PLATFORM_LABEL[platforms[0]] || platforms[0] : "accounts"}</div>
+            <p className="text-sm text-muted-foreground">So we can track your post performance for the brand and pay you accurately. Read-only access — we never post on your behalf.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {platforms.map((p) => {
+                const Icon = PLATFORM_ICON[p] || Music2;
+                const label = PLATFORM_LABEL[p] || p;
+                return (
+                  <Card key={p} className="p-4 bg-gradient-ink text-primary-foreground border-0 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium truncate">{label}</div>
+                      <div className="text-xs opacity-70">Read-only access</div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => { window.location.href = `/connect/${p}/${b.influencer.id}`; }}
+                      className="bg-accent text-accent-foreground hover:bg-accent/90"
+                    >
+                      Connect
+                    </Button>
+                  </Card>
+                );
+              })}
             </div>
-          </Card>
+          </div>
         )}
       </div>
 
