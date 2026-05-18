@@ -59,6 +59,11 @@ const PublicBrief = () => {
     }
   }
   const platforms = Object.keys(byPlatform);
+  // For the Connect step we always want at least one option, even when the
+  // deliverables breakdown is empty — fall back to the influencer's primary platform.
+  const connectPlatforms = platforms.length > 0
+    ? platforms
+    : (b.influencer?.primary_platform ? [b.influencer.primary_platform] : []);
   const hasTikTok = platforms.includes("tiktok");
 
   return (
@@ -286,13 +291,13 @@ const PublicBrief = () => {
           {final && b.status === "declined" && <span className="text-sm text-muted-foreground">Thanks — your response has been recorded.</span>}
         </div>
 
-        {b.status === "confirmed" && b.influencer?.id && platforms.length > 0 && (
+        {b.status === "confirmed" && b.influencer?.id && connectPlatforms.length > 0 && (
           <div className="mt-8 space-y-3">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">One last step</div>
-            <div className="font-display text-xl">Connect your {platforms.length === 1 ? PLATFORM_LABEL[platforms[0]] || platforms[0] : "accounts"}</div>
+            <div className="font-display text-xl">Connect your {connectPlatforms.length === 1 ? PLATFORM_LABEL[connectPlatforms[0]] || connectPlatforms[0] : "accounts"}</div>
             <p className="text-sm text-muted-foreground">So we can track your post performance for the brand and pay you accurately. Read-only access — we never post on your behalf.</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              {platforms.map((p) => {
+              {connectPlatforms.map((p) => {
                 const Icon = PLATFORM_ICON[p] || Music2;
                 const label = PLATFORM_LABEL[p] || p;
                 return (
