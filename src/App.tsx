@@ -27,6 +27,9 @@ import PublicBrief from "./pages/PublicBrief";
 import PublicContestSubmit from "./pages/PublicContestSubmit";
 import ConnectTikTok from "./pages/ConnectTikTok";
 import ConnectInstagram from "./pages/ConnectInstagram";
+import ConnectYouTube from "./pages/ConnectYouTube";
+import ConnectTwitter from "./pages/ConnectTwitter";
+import ConnectFacebook from "./pages/ConnectFacebook";
 import NotFound from "./pages/NotFound.tsx";
 import Unsubscribe from "./pages/Unsubscribe";
 import DataDeletion from "./pages/DataDeletion";
@@ -73,6 +76,12 @@ const App = () => (
             <Route path="/connect/tiktok/done" element={<ConnectTikTok />} />
             <Route path="/connect/instagram/:influencerId" element={<ConnectInstagram />} />
             <Route path="/connect/instagram/done" element={<ConnectInstagram />} />
+            <Route path="/connect/youtube/:influencerId" element={<ConnectYouTube />} />
+            <Route path="/connect/youtube/done" element={<ConnectYouTube />} />
+            <Route path="/connect/twitter/:influencerId" element={<ConnectTwitter />} />
+            <Route path="/connect/twitter/done" element={<ConnectTwitter />} />
+            <Route path="/connect/facebook/:influencerId" element={<ConnectFacebook />} />
+            <Route path="/connect/facebook/done" element={<ConnectFacebook />} />
             <Route path="/portal" element={<PortalShell />}>
               <Route index element={<PortalOverview />} />
               <Route path="campaigns" element={<PortalOverview />} />

@@ -93,7 +93,7 @@ const Influencers = () => {
     if (error) { toast.error(error.message); load(); }
   };
 
-  const copyInvite = (r: any, platform: "tiktok" | "instagram") => {
+  const copyInvite = (r: any, platform: string) => {
     const link = `${window.location.origin}/connect/${platform}/${r.id}`;
     navigator.clipboard.writeText(link);
     toast.success(`${platform === "tiktok" ? "TikTok" : "Instagram"} invite link copied`);
@@ -150,7 +150,6 @@ const Influencers = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(r => {
             const primary = (r.primary_platform as string) || "tiktok";
-            const canInvite = primary === "tiktok" || primary === "instagram";
             return (
             <Card key={r.id} className="p-5 flex flex-col">
               <div className="flex items-start justify-between gap-2">
@@ -185,19 +184,20 @@ const Influencers = () => {
                 </div>
               </div>
               {r.niche && <div className="mt-3 text-xs text-muted-foreground truncate" title={r.niche}>{r.niche}</div>}
-              {canInvite && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full mt-3">
-                      <Link2 className="w-3 h-3 mr-1" /> Copy invite link <ChevronDown className="w-3 h-3 ml-auto" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => copyInvite(r, "tiktok")}>TikTok invite link</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => copyInvite(r, "instagram")}>Instagram invite link</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full mt-3">
+                    <Link2 className="w-3 h-3 mr-1" /> Copy invite link <ChevronDown className="w-3 h-3 ml-auto" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => copyInvite(r, "tiktok")}>TikTok invite link</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => copyInvite(r, "instagram")}>Instagram invite link</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => copyInvite(r, "youtube")}>YouTube invite link</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => copyInvite(r, "twitter")}>X invite link</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => copyInvite(r, "facebook")}>Facebook invite link</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </Card>
             );
           })}
