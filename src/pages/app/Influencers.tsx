@@ -185,19 +185,20 @@ const Influencers = () => {
                 </div>
               </div>
               {r.niche && <div className="mt-3 text-xs text-muted-foreground truncate" title={r.niche}>{r.niche}</div>}
-              {canInvite && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full mt-3">
-                      <Link2 className="w-3 h-3 mr-1" /> Copy invite link <ChevronDown className="w-3 h-3 ml-auto" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => copyInvite(r, "tiktok")}>TikTok invite link</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => copyInvite(r, "instagram")}>Instagram invite link</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full mt-3">
+                    <Link2 className="w-3 h-3 mr-1" /> Copy invite link <ChevronDown className="w-3 h-3 ml-auto" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => copyInvite(r, "tiktok")}>TikTok invite link</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => copyInvite(r, "instagram")}>Instagram invite link</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => copyInvite(r, "youtube")}>YouTube invite link</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => copyInvite(r, "twitter")}>X invite link</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => copyInvite(r, "facebook")}>Facebook invite link</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </Card>
             );
           })}
