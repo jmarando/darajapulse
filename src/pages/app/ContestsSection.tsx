@@ -410,20 +410,23 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                   <div className="mb-6">
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.slice(0, 12).map(({ key, reg, posts, total }, i) => (
-                        <div key={key} className="p-3 rounded-md border border-border bg-card">
-                          <div className="flex items-start justify-between gap-2 mb-2">
+                      {contestants.slice(0, 12).map(({ key, reg, posts, total }, i) => {
+                        const rank = i + 1;
+                        const isTop3 = rank <= 3;
+                        return (
+                        <div key={key} className={`p-4 rounded-lg border bg-card transition-colors ${isTop3 ? "border-accent/40 shadow-sm" : "border-border"}`}>
+                          <div className="flex items-start justify-between gap-3 mb-3">
                             <div className="min-w-0 flex-1">
-                              <div className="text-xs text-muted-foreground">#{i + 1}</div>
-                              <div className="font-medium truncate">{reg.full_name || reg.submitter_name || reg.handle || "Contestant"}</div>
-                              <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
+                              <div className={`text-[11px] font-semibold ${isTop3 ? "text-accent" : "text-muted-foreground"}`}>#{rank}</div>
+                              <div className="font-medium truncate mt-0.5">{reg.full_name || reg.submitter_name || reg.handle || "Contestant"}</div>
+                              <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap mt-1">
                                 {reg.instagram_handle && <span className="inline-flex items-center gap-1"><Instagram className="w-3 h-3" />@{reg.instagram_handle}</span>}
                                 {reg.tiktok_handle && <span className="inline-flex items-center gap-1"><Music2 className="w-3 h-3" />@{reg.tiktok_handle}</span>}
                               </div>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right shrink-0">
                               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total score</div>
-                              <div className="font-display text-xl font-semibold">{Math.round(total)}</div>
+                              <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
                             </div>
                           </div>
                           {posts.length === 0 ? (
@@ -434,18 +437,24 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                               </Button>
                             </div>
                           ) : (
-                            <div className="space-y-1">
-                              {posts.map(p => (
-                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" className="flex items-center justify-between text-xs hover:bg-secondary/40 rounded px-1 py-0.5">
-                                  <span className="capitalize text-muted-foreground w-16">{p.platform}</span>
-                                  <span className="tabular-nums flex-1 text-right pr-3">{(p.views || 0).toLocaleString()}v · {(p.likes || 0).toLocaleString()}♥ · {(p.comments || 0).toLocaleString()}💬</span>
-                                  <span className="font-semibold tabular-nums w-10 text-right">{Math.round(scoreOf(p))}</span>
+                            <div className="space-y-1.5 border-t border-border/60 pt-2">
+                              {posts.map(p => {
+                                const PIcon = p.platform === "instagram" ? Instagram : p.platform === "tiktok" ? Music2 : Link2;
+                                return (
+                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-xs hover:bg-secondary/50 rounded px-1.5 py-1">
+                                  <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground"><PIcon className="w-3 h-3" />{p.platform}</span>
+                                  <span className="tabular-nums text-muted-foreground flex items-center justify-end gap-3">
+                                    <span className="inline-flex items-center gap-1" title="Views"><Eye className="w-3 h-3" />{(p.views || 0).toLocaleString()}</span>
+                                    <span className="inline-flex items-center gap-1" title="Likes"><Heart className="w-3 h-3" />{(p.likes || 0).toLocaleString()}</span>
+                                    <span className="inline-flex items-center gap-1" title="Comments"><MessageCircle className="w-3 h-3" />{(p.comments || 0).toLocaleString()}</span>
+                                  </span>
+                                  <span className="font-semibold tabular-nums w-14 text-right text-foreground">{Math.round(scoreOf(p)).toLocaleString()}</span>
                                 </a>
-                              ))}
+                              );})}
                             </div>
                           )}
                         </div>
-                      ))}
+                      );})}
                     </div>
                   </div>
                 );
