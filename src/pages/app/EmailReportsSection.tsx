@@ -107,7 +107,7 @@ export default function EmailReportsSection({ campaignId, hasContests }: { campa
   const toggleRecipient = async (r: Recipient, field: keyof Recipient) => {
     const next = { ...r, [field]: !r[field] };
     setRecipients((p) => p.map((x) => (x.id === r.id ? next : x)));
-    const { error } = await supabase.from("report_recipients").update({ [field]: next[field] }).eq("id", r.id);
+    const { error } = await supabase.from("report_recipients").update({ [field]: next[field] } as any).eq("id", r.id);
     if (error) toast.error(error.message);
   };
 
