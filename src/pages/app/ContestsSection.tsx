@@ -10,12 +10,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
 
 export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [contests, setContests] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
+  const [creatorHandles, setCreatorHandles] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [entryOpen, setEntryOpen] = useState(false);
@@ -68,6 +70,17 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       const { data: lr } = await (supabase as any).from("contestant_sync_runs").select("*").eq("contest_id", cid).order("started_at", { ascending: false }).limit(1).maybeSingle();
       setLastRun(lr ?? null);
     }
+    // Load campaign creators so we can exclude them from contestants.
+    const { data: ci } = await supabase
+      .from("campaign_influencers")
+      .select("influencers(handle)")
+      .eq("campaign_id", campaignId);
+    const set = new Set<string>();
+    for (const row of ci ?? []) {
+      const h = cleanH((row as any).influencers?.handle);
+      if (h) set.add(h);
+    }
+    setCreatorHandles(set);
   };
 
   const cleanHandle = (s?: string) =>
@@ -373,15 +386,28 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
 
               {/* Contestants grouped view */}
               {(() => {
+                const isCreator = (e: any) => {
+                  const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean);
+                  return hs.some(h => creatorHandles.has(h));
+                };
                 const groups = new Map<string, any[]>();
                 for (const e of entries) {
-                  const key = (e.external_registration_id || e.handle || e.submitter_email || e.id) as string;
+                  if (isCreator(e)) continue;
+                  const key = (e.external_registration_id || cleanH(e.handle) || e.submitter_email || e.id) as string;
                   if (!groups.has(key)) groups.set(key, []);
                   groups.get(key)!.push(e);
                 }
                 const contestants = Array.from(groups.entries()).map(([key, rows]) => {
                   const reg = rows.find(r => r.source === "registration") || rows[0];
-                  const posts = rows.filter(r => r.post_url);
+                  // Dedupe posts by canonical URL — keep the highest-engagement row per video.
+                  const byUrl = new Map<string, any>();
+                  for (const r of rows) {
+                    if (!r.post_url) continue;
+                    const cu = canonicalPostUrl(r.post_url);
+                    const prev = byUrl.get(cu);
+                    if (!prev || scoreOf(r) > scoreOf(prev)) byUrl.set(cu, r);
+                  }
+                  const posts = Array.from(byUrl.values());
                   const total = posts.reduce((s, p) => s + scoreOf(p), 0);
                   return { key, reg, posts, total };
                 }).sort((a, b) => b.total - a.total);

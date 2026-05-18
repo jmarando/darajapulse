@@ -21,6 +21,21 @@ function stripHash(t: string) {
   return t.replace(/^#/, "");
 }
 
+function canonicalPostUrl(raw?: string | null): string {
+  if (!raw) return "";
+  const url = raw.trim();
+  const tt = url.match(/tiktok\.com\/.*?(?:\/video\/|\/v\/|share_item_id=)(\d{6,})/i);
+  if (tt) return `https://www.tiktok.com/video/${tt[1]}`;
+  const ig = url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
+  if (ig) return `https://www.instagram.com/p/${ig[1]}/`;
+  try {
+    const u = new URL(url);
+    return `${u.origin}${u.pathname}`.replace(/\/+$/, "");
+  } catch {
+    return url;
+  }
+}
+
 // ---------- Instagram via Meta Graph Hashtag Search ----------
 async function discoverInstagram(sb: any, tags: string[]) {
   // Pick any connected IG Business account to act as the "querier"
@@ -149,7 +164,7 @@ Deno.serve(async (req) => {
     for (const p of ig._posts ?? []) {
       const caption = p.caption || "";
       if (!captionHas(caption, tags)) continue;
-      const post_url = p.permalink;
+      const post_url = canonicalPostUrl(p.permalink);
       if (!post_url) continue;
       const thumb = p.thumbnail_url || p.media_url || p?.children?.data?.[0]?.thumbnail_url || p?.children?.data?.[0]?.media_url || null;
       const stats = { views: 0, likes: Number(p.like_count || 0), comments: Number(p.comments_count || 0), shares: 0 };
@@ -186,7 +201,8 @@ Deno.serve(async (req) => {
       if (!captionHas(caption, tags)) continue;
       const author = aweme.author?.unique_id || aweme.author?.uniqueId || v.author?.unique_id || "";
       const videoId = aweme.aweme_id || aweme.id || v.id;
-      const post_url = aweme.share_url || (author && videoId ? `https://www.tiktok.com/@${author}/video/${videoId}` : null);
+      const rawUrl = aweme.share_url || (author && videoId ? `https://www.tiktok.com/@${author}/video/${videoId}` : null);
+      const post_url = canonicalPostUrl(rawUrl);
       if (!post_url) continue;
       const stats = {
         views: Number(aweme.statistics?.play_count ?? v.play_count ?? 0),
