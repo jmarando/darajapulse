@@ -9,4 +9,12 @@ export interface TemplateEntry {
   previewData?: Record<string, any>
 }
 
-export const TEMPLATES: Record<string, TemplateEntry> = {}
+import { template as contestDailySummary } from './contest-daily-summary.tsx'
+import { template as campaignWeeklyReport } from './campaign-weekly-report.tsx'
+import { template as contestDrawClosed } from './contest-draw-closed.tsx'
+
+export const TEMPLATES: Record<string, TemplateEntry> = {
+  'contest-daily-summary': contestDailySummary,
+  'campaign-weekly-report': campaignWeeklyReport,
+  'contest-draw-closed': contestDrawClosed,
+}

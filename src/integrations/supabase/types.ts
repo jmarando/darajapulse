@@ -1279,6 +1279,87 @@ export type Database = {
           },
         ]
       }
+      report_recipients: {
+        Row: {
+          audience: string
+          campaign_id: string
+          created_at: string
+          email: string
+          id: string
+          name: string | null
+          receives_campaign_weekly: boolean
+          receives_contest_daily: boolean
+          receives_draw_closed: boolean
+        }
+        Insert: {
+          audience: string
+          campaign_id: string
+          created_at?: string
+          email: string
+          id?: string
+          name?: string | null
+          receives_campaign_weekly?: boolean
+          receives_contest_daily?: boolean
+          receives_draw_closed?: boolean
+        }
+        Update: {
+          audience?: string
+          campaign_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string | null
+          receives_campaign_weekly?: boolean
+          receives_contest_daily?: boolean
+          receives_draw_closed?: boolean
+        }
+        Relationships: []
+      }
+      report_schedules: {
+        Row: {
+          campaign_id: string
+          contest_id: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          last_sent_at: string | null
+          report_type: string
+          send_dow: number | null
+          send_hour: number
+          send_minute: number
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          contest_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_sent_at?: string | null
+          report_type: string
+          send_dow?: number | null
+          send_hour?: number
+          send_minute?: number
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          contest_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_sent_at?: string | null
+          report_type?: string
+          send_dow?: number | null
+          send_hour?: number
+          send_minute?: number
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string

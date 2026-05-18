@@ -24,6 +24,7 @@ import { PostThumb } from "@/components/PostThumb";
 import { PostMetricsEditor } from "@/components/PostMetricsEditor";
 import { PlatformPicker } from "@/components/PlatformPicker";
 import { ContestsSection } from "./ContestsSection";
+import EmailReportsSection from "./EmailReportsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
@@ -591,6 +592,7 @@ const CampaignDetail = () => {
             <TabsTrigger value="creators">Creators &amp; content<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
           )}
           <TabsTrigger value="contests">Contests</TabsTrigger>
+          <TabsTrigger value="emails">Email reports</TabsTrigger>
           <TabsTrigger value="share">Share &amp; wrap</TabsTrigger>
         </TabsList>
 
@@ -1542,6 +1544,11 @@ const CampaignDetail = () => {
         <TabsContent value="contests" className="space-y-6 mt-0">
           <ContestsSection campaignId={id!} />
         </TabsContent>
+
+        <TabsContent value="emails" className="space-y-6 mt-0">
+          <EmailReportsSection campaignId={id!} hasContests={true} />
+        </TabsContent>
+
 
         <TabsContent value="share" className="space-y-6 mt-0">
 

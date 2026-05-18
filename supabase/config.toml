@@ -39,3 +39,9 @@ verify_jwt = false
 
 [functions.handle-email-suppression]
 verify_jwt = false
+
+[functions.send-campaign-report]
+verify_jwt = true
+
+[functions.run-report-schedules]
+verify_jwt = false
