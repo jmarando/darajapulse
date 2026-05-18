@@ -17,6 +17,7 @@ const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
 export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [contests, setContests] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
+  const [creatorHandles, setCreatorHandles] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [entryOpen, setEntryOpen] = useState(false);
