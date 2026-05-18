@@ -29,6 +29,7 @@ import ConnectTikTok from "./pages/ConnectTikTok";
 import ConnectInstagram from "./pages/ConnectInstagram";
 import NotFound from "./pages/NotFound.tsx";
 import Unsubscribe from "./pages/Unsubscribe";
+import DataDeletion from "./pages/DataDeletion";
 import LandingPicker from "./pages/landings/LandingPicker";
 import LandingEditorial from "./pages/landings/LandingEditorial";
 import LandingCinematic from "./pages/landings/LandingCinematic";
