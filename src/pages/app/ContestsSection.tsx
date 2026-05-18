@@ -344,13 +344,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 mb-4 p-3 rounded-md bg-accent/10 border border-accent/30 flex-wrap">
-                <div className="text-xs flex-1 min-w-0">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Public submission link</div>
-                  <div className="font-mono text-xs truncate">{submitUrl}</div>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(submitUrl); toast.success("Copied"); }}><Copy className="w-3 h-3 mr-1" /> Copy</Button>
-                <Button size="sm" variant="outline" asChild><a href={submitUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-3 h-3 mr-1" /> Open</a></Button>
+              <div className="flex items-center justify-end gap-2 mb-4">
                 <Dialog open={entryOpen} onOpenChange={setEntryOpen}>
                   <DialogTrigger asChild><Button size="sm" className="bg-primary"><Plus className="w-3 h-3 mr-1" /> Log entry</Button></DialogTrigger>
                   <DialogContent>
