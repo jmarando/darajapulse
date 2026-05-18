@@ -43,7 +43,7 @@ const PublicBrief = () => {
   const final = ["confirmed","declined"].includes(b.status);
 
   const paymentSteps = [
-    { icon: CheckCircle2, label: "Brief accepted", desc: "You confirm and connect TikTok" },
+    { icon: CheckCircle2, label: "Brief accepted", desc: "You confirm and connect your accounts" },
     { icon: Clapperboard, label: "Content created", desc: "You shoot and submit drafts" },
     { icon: Eye, label: "Approved & live", desc: "Brand reviews, you publish" },
     { icon: Smartphone, label: "Performance tracked", desc: "Daily metric updates" },
