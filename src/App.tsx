@@ -63,6 +63,7 @@ const App = () => (
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/data-deletion" element={<DataDeletion />} />
             <Route path="/b/:token" element={<PublicBrief />} />
             <Route path="/c/:token" element={<PublicContestSubmit />} />
             <Route path="/m/:token" element={<PublicModeration />} />
