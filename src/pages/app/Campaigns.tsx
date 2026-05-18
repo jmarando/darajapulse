@@ -206,7 +206,18 @@ const Campaigns = () => {
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="text-xs uppercase tracking-widest text-muted-foreground truncate">{r.clients?.name}</div>
-                    <div className="font-display text-xl mt-0.5 leading-tight break-words">{r.name}</div>
+                    <div className="flex items-start gap-1.5">
+                      <div className="font-display text-xl mt-0.5 leading-tight break-words flex-1">{r.name}</div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditing({ id: r.id, name: r.name }); }}
+                        className="mt-1 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        aria-label="Rename campaign"
+                        title="Rename campaign"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                   <Badge className={`${statusColor[r.status]} shrink-0`}>{r.status}</Badge>
                 </div>
@@ -214,21 +225,44 @@ const Campaigns = () => {
                   <span className="truncate">{r.hashtag || "—"}</span>
                   <span className="font-display text-foreground shrink-0 ml-3">KES {Number(r.budget_kes).toLocaleString()}</span>
                 </div>
-                {/* Performance preview */}
-                <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-3">
-                  <div>
-                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
-                    <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(perf[r.id]?.views ?? 0)}</div>
+                {/* Performance preview — contest metrics when a contest exists, otherwise post performance */}
+                {contestPerf[r.id]?.contests ? (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                      <Trophy className="w-3 h-3 text-highlight" /> Contest
+                      <span className="ml-auto normal-case tracking-normal text-muted-foreground/70">{contestPerf[r.id].contests} active</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Users className="w-3 h-3" /> Contestants</div>
+                        <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(contestPerf[r.id].contestants)}</div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Entries</div>
+                        <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(contestPerf[r.id].entries)}</div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
+                        <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(contestPerf[r.id].views)}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><BarChart3 className="w-3 h-3" /> ER</div>
-                    <div className="font-display text-lg mt-0.5 tabular-nums">{(perf[r.id]?.er ?? 0).toFixed(1)}%</div>
+                ) : (
+                  <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-3">
+                    <div>
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
+                      <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(perf[r.id]?.views ?? 0)}</div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><BarChart3 className="w-3 h-3" /> ER</div>
+                      <div className="font-display text-lg mt-0.5 tabular-nums">{(perf[r.id]?.er ?? 0).toFixed(1)}%</div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Posts</div>
+                      <div className="font-display text-lg mt-0.5 tabular-nums">{perf[r.id]?.posts ?? 0}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Posts</div>
-                    <div className="font-display text-lg mt-0.5 tabular-nums">{perf[r.id]?.posts ?? 0}</div>
-                  </div>
-                </div>
+                )}
                 <div className="flex justify-end mt-2">
                   <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
@@ -237,6 +271,28 @@ const Campaigns = () => {
           ))}
         </div>
       )}
+
+      {/* Rename dialog */}
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="font-display text-xl">Rename campaign</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Campaign name</Label>
+              <Input
+                autoFocus
+                value={editing?.name ?? ""}
+                onChange={(e) => setEditing(editing ? { ...editing, name: e.target.value } : null)}
+                onKeyDown={(e) => { if (e.key === "Enter") saveName(); }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button className="bg-primary" onClick={saveName} disabled={savingName}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
