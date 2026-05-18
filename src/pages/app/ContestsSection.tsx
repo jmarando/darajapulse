@@ -33,15 +33,19 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
 
   const scoreOf = (stats: { shares?: any; comments?: any; likes?: any }) =>
     Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
-  const totalScore = (e: any) => {
+  // Per the contest rules: a contestant's score is the BEST single post — we do not sum across platforms.
+  const bestScore = (e: any) => {
     const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-    return scoreOf(e) + xs.reduce((s: number, x: any) => s + scoreOf(x), 0);
+    return Math.max(scoreOf(e), ...xs.map((x: any) => scoreOf(x)));
   };
+  // Identify whether an entry was auto-fetched from a public scraper or entered/registered by a human.
+  const AUTO_SOURCES = new Set(["meta_graph", "ensembledata", "tiktok_api", "instagram_api"]);
+  const isAuto = (e: any) => AUTO_SOURCES.has(String(e.source || "").toLowerCase());
 
   const saveEditEntry = async () => {
     if (!editEntry) return;
     const cleanedCross = (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim());
-    const score = scoreOf(editEntry) + cleanedCross.reduce((s: number, x: any) => s + scoreOf(x), 0);
+    const score = bestScore({ ...editEntry, cross_posts: cleanedCross });
     const { error } = await supabase.from("contest_entries").update({
       handle: editEntry.handle,
       post_url: editEntry.post_url,
@@ -451,16 +455,18 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                     const prev = byUrl.get(cu);
                     if (!prev || scoreOf(r) > scoreOf(prev)) byUrl.set(cu, r);
                   }
-                  const posts = Array.from(byUrl.values());
-                  const total = posts.reduce((s, p) => s + scoreOf(p), 0);
-                  return { key, reg, posts, total };
+                  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+                  // Per contest rules: score is the BEST single post (not summed across platforms).
+                  const best = posts[0];
+                  const total = best ? scoreOf(best) : 0;
+                  return { key, reg, posts, total, bestId: best?.id };
                 }).sort((a, b) => b.total - a.total);
                 if (contestants.length === 0) return null;
                 return (
                   <div className="mb-6">
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.slice(0, 12).map(({ key, reg, posts, total }, i) => {
+                      {contestants.slice(0, 12).map(({ key, reg, posts, total, bestId }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
                         return (
@@ -475,8 +481,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                               </div>
                             </div>
                             <div className="text-right shrink-0">
-                              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total score</div>
+                              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Best score</div>
                               <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
+                              {posts.length > 1 && <div className="text-[10px] text-muted-foreground mt-0.5">of {posts.length} posts</div>}
                             </div>
                           </div>
                           {posts.length === 0 ? (
@@ -490,15 +497,21 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                             <div className="space-y-1.5 border-t border-border/60 pt-2">
                               {posts.map(p => {
                                 const PIcon = p.platform === "instagram" ? Instagram : p.platform === "tiktok" ? Music2 : Link2;
+                                const isBest = p.id === bestId;
+                                const auto = isAuto(p);
                                 return (
-                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" className="grid grid-cols-[auto_1fr_auto] items-center gap-3 text-xs hover:bg-secondary/50 rounded px-1.5 py-1">
-                                  <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground"><PIcon className="w-3 h-3" />{p.platform}</span>
+                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" title={`Open post on ${p.platform}`} className={`grid grid-cols-[auto_1fr_auto] items-center gap-3 text-xs rounded px-1.5 py-1 transition-colors ${isBest ? "bg-accent/5 hover:bg-accent/10" : "hover:bg-secondary/50"}`}>
+                                  <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground">
+                                    <PIcon className="w-3 h-3" />{p.platform}
+                                    {isBest && <Crown className="w-3 h-3 text-highlight" aria-label="Counted score" />}
+                                    <span className={`text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
+                                  </span>
                                   <span className="tabular-nums text-muted-foreground flex items-center justify-end gap-3">
                                     <span className="inline-flex items-center gap-1" title="Views"><Eye className="w-3 h-3" />{(p.views || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Likes"><Heart className="w-3 h-3" />{(p.likes || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Comments"><MessageCircle className="w-3 h-3" />{(p.comments || 0).toLocaleString()}</span>
                                   </span>
-                                  <span className="font-semibold tabular-nums w-14 text-right text-foreground">{Math.round(scoreOf(p)).toLocaleString()}</span>
+                                  <span className={`font-semibold tabular-nums w-14 text-right ${isBest ? "text-accent" : "text-muted-foreground"}`}>{Math.round(scoreOf(p)).toLocaleString()}</span>
                                 </a>
                               );})}
                             </div>
@@ -534,27 +547,25 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                             </tr>
                           </thead>
                           <tbody>
-                            {rows.sort((a, b) => totalScore(b) - totalScore(a)).map((e, i) => {
+                            {rows.sort((a, b) => bestScore(b) - bestScore(a)).map((e, i) => {
                               const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-                              const tViews = (e.views || 0) + xs.reduce((s: number, x: any) => s + Number(x.views || 0), 0);
-                              const tLikes = (e.likes || 0) + xs.reduce((s: number, x: any) => s + Number(x.likes || 0), 0);
-                              const tComments = (e.comments || 0) + xs.reduce((s: number, x: any) => s + Number(x.comments || 0), 0);
-                              const tShares = (e.shares || 0) + xs.reduce((s: number, x: any) => s + Number(x.shares || 0), 0);
+                              const auto = isAuto(e);
                               return (
                               <tr key={e.id} className="border-t border-border">
                                 <td className="px-3 py-2 tabular-nums">{i + 1}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
                                 <td className="px-3 py-2">
                                   <a href={e.post_url} target="_blank" rel="noreferrer" className="hover:text-accent">{e.handle || e.submitter_name || "—"}</a>
-                                  {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{xs.length} crosspost{xs.length === 1 ? "" : "s"}</div>}
+                                  <span className={`ml-2 text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
+                                  {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{xs.length} other post{xs.length === 1 ? "" : "s"} (best wins)</div>}
                                 </td>
                                 <td className="px-3 py-2 capitalize text-muted-foreground">
                                   {e.platform}{xs.length > 0 && <div className="text-[10px]">+{Array.from(new Set(xs.map((x: any) => x.platform))).join(", ")}</div>}
                                 </td>
-                                <td className="px-3 py-2 text-right tabular-nums">{tViews.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{tLikes.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{tComments.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{tShares.toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(totalScore(e))}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{(e.views || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{(e.likes || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{(e.comments || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums">{(e.shares || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(bestScore(e))}</td>
                                 <td className="px-3 py-2 text-right"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
                                 <td className="px-3 py-2 text-right">
                                   <div className="inline-flex gap-1">
@@ -668,8 +679,8 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
               </div>
 
               <div className="flex items-center justify-between p-3 rounded-md bg-primary/10 border border-primary/30">
-                <div className="text-sm">Total score across all platforms</div>
-                <div className="font-display text-2xl font-semibold">{Math.round(totalScore({ ...editEntry, cross_posts: (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim()) }))}</div>
+                <div className="text-sm">Best post score (counts toward leaderboard)</div>
+                <div className="font-display text-2xl font-semibold">{Math.round(bestScore({ ...editEntry, cross_posts: (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim()) }))}</div>
               </div>
 
               <div className="flex gap-2 justify-end">
