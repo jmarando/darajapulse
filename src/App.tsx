@@ -29,6 +29,7 @@ import ConnectTikTok from "./pages/ConnectTikTok";
 import ConnectInstagram from "./pages/ConnectInstagram";
 import NotFound from "./pages/NotFound.tsx";
 import Unsubscribe from "./pages/Unsubscribe";
+import DataDeletion from "./pages/DataDeletion";
 import LandingPicker from "./pages/landings/LandingPicker";
 import LandingEditorial from "./pages/landings/LandingEditorial";
 import LandingCinematic from "./pages/landings/LandingCinematic";
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/data-deletion" element={<DataDeletion />} />
             <Route path="/b/:token" element={<PublicBrief />} />
             <Route path="/c/:token" element={<PublicContestSubmit />} />
             <Route path="/m/:token" element={<PublicModeration />} />
