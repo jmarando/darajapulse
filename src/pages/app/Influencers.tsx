@@ -150,7 +150,6 @@ const Influencers = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(r => {
             const primary = (r.primary_platform as string) || "tiktok";
-            const canInvite = primary === "tiktok" || primary === "instagram";
             return (
             <Card key={r.id} className="p-5 flex flex-col">
               <div className="flex items-start justify-between gap-2">
