@@ -1168,6 +1168,9 @@ const PublicReport = () => {
             )}
           </Card>
         </div>
+          );
+        })()}
+
       </main>
 
       <PublicFooter />
