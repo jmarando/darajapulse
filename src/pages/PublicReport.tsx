@@ -452,7 +452,7 @@ const PublicReport = () => {
                   <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
                     <th className="text-left font-medium py-2 pr-3">Platform</th>
                     <th className="text-right font-medium py-2 px-3">Posts</th>
-                    <th className="text-right font-medium py-2 px-3">Creators</th>
+                    {campaign.id !== "67f4ba28-2a11-484c-8f6e-687ac422f5e3" && <th className="text-right font-medium py-2 px-3">Creators</th>}
                     <th className="text-right font-medium py-2 px-3">Views</th>
                     <th className="text-right font-medium py-2 px-3">Reach</th>
                     <th className="text-right font-medium py-2 pl-3">Followers</th>
@@ -463,7 +463,7 @@ const PublicReport = () => {
                     <tr key={k} className="border-b border-border last:border-0">
                       <td className="py-2 pr-3 capitalize">{k}</td>
                       <td className="py-2 px-3 text-right tabular-nums">{v.posts}</td>
-                      <td className="py-2 px-3 text-right tabular-nums">{v.creators.size}</td>
+                      {campaign.id !== "67f4ba28-2a11-484c-8f6e-687ac422f5e3" && <td className="py-2 px-3 text-right tabular-nums">{v.creators.size}</td>}
                       <td className="py-2 px-3 text-right tabular-nums">{fmt(v.views)}</td>
                       <td className="py-2 px-3 text-right tabular-nums">{fmt(v.reach)}</td>
                       <td className="py-2 pl-3 text-right tabular-nums">{fmt(v.followers)}</td>

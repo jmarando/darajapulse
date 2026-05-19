@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare, UserCog, Menu, Search, Bell, Sparkles } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare, UserCog, Menu, Search, Bell, Sparkles, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -17,6 +17,7 @@ const navGroups: { label?: string; items: { to: string; icon: any; label: string
     label: "Campaign Management",
     items: [
       { to: "/app/campaigns", icon: Megaphone, label: "Campaigns" },
+      { to: "/app/contests", icon: Trophy, label: "Contests" },
       { to: "/app/briefs", icon: FileSignature, label: "Briefs" },
       { to: "/app/content", icon: Calendar, label: "Content" },
       { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },

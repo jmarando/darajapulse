@@ -14,7 +14,7 @@ import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 
 const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
 
-export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
+export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string; contestId?: string }) => {
   const [contests, setContests] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
   const [creatorHandles, setCreatorHandles] = useState<Set<string>>(new Set());
@@ -107,25 +107,36 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   };
 
   const load = async () => {
-    const { data: cs } = await supabase.from("contests").select("*").eq("campaign_id", campaignId).order("created_at", { ascending: false });
-    setContests(cs ?? []);
-    if (cs && cs.length && !activeId) setActiveId(cs[0].id);
-    if (activeId || (cs && cs[0]?.id)) {
-      const cid = activeId ?? cs![0].id;
+    let cs: any[] = [];
+    if (contestId) {
+      const { data } = await supabase.from("contests").select("*").eq("id", contestId).limit(1);
+      cs = data ?? [];
+      if (cs.length && activeId !== cs[0].id) setActiveId(cs[0].id);
+    } else if (campaignId) {
+      const { data } = await supabase.from("contests").select("*").eq("campaign_id", campaignId).order("created_at", { ascending: false });
+      cs = data ?? [];
+      if (cs.length && !activeId) setActiveId(cs[0].id);
+    }
+    setContests(cs);
+    const cid = activeId ?? cs[0]?.id;
+    if (cid) {
       const { data: es } = await supabase.from("contest_entries").select("*").eq("contest_id", cid).order("score", { ascending: false });
       setEntries(es ?? []);
       const { data: lr } = await (supabase as any).from("contestant_sync_runs").select("*").eq("contest_id", cid).order("started_at", { ascending: false }).limit(1).maybeSingle();
       setLastRun(lr ?? null);
     }
-    // Load campaign creators so we can exclude them from contestants.
-    const { data: ci } = await supabase
-      .from("campaign_influencers")
-      .select("influencers(handle)")
-      .eq("campaign_id", campaignId);
+    // Exclude campaign-roster creators from contestants (only if scoped to a campaign).
+    const effectiveCampaignId = campaignId ?? cs[0]?.campaign_id;
     const set = new Set<string>();
-    for (const row of ci ?? []) {
-      const h = cleanH((row as any).influencers?.handle);
-      if (h) set.add(h);
+    if (effectiveCampaignId) {
+      const { data: ci } = await supabase
+        .from("campaign_influencers")
+        .select("influencers(handle)")
+        .eq("campaign_id", effectiveCampaignId);
+      for (const row of ci ?? []) {
+        const h = cleanH((row as any).influencers?.handle);
+        if (h) set.add(h);
+      }
     }
     setCreatorHandles(set);
   };
@@ -244,10 +255,11 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       load();
     } finally { setDiscovering(false); }
   };
-  useEffect(() => { load(); }, [campaignId, activeId]);
+  useEffect(() => { load(); }, [campaignId, contestId, activeId]);
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!campaignId) return toast.error("Use the Contests section to create a new contest");
     const { error } = await supabase.from("contests").insert({ ...form, campaign_id: campaignId });
     if (error) return toast.error(error.message);
     toast.success("Contest created"); setOpen(false);
@@ -355,6 +367,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
           {active && <Button size="sm" variant="outline" onClick={() => fetchByHandle()} disabled={discovering} title="Fetch each contestant's latest TikTok/Instagram posts and pick the best matching one"><RefreshCw className={`w-3 h-3 mr-1 ${discovering ? "animate-spin" : ""}`} /> Fetch by handle</Button>}
           {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
+          {campaignId && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button size="sm" className="bg-primary"><Plus className="w-3 h-3 mr-1" /> New contest</Button></DialogTrigger>
             <DialogContent>
@@ -377,6 +390,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </div>
 

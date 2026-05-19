@@ -658,7 +658,8 @@ export type Database = {
       }
       contests: {
         Row: {
-          campaign_id: string
+          campaign_id: string | null
+          client_id: string | null
           created_at: string
           end_date: string
           formula: string
@@ -673,7 +674,8 @@ export type Database = {
           submission_token: string
         }
         Insert: {
-          campaign_id: string
+          campaign_id?: string | null
+          client_id?: string | null
           created_at?: string
           end_date: string
           formula?: string
@@ -688,7 +690,8 @@ export type Database = {
           submission_token?: string
         }
         Update: {
-          campaign_id?: string
+          campaign_id?: string | null
+          client_id?: string | null
           created_at?: string
           end_date?: string
           formula?: string
@@ -1282,7 +1285,8 @@ export type Database = {
       report_recipients: {
         Row: {
           audience: string
-          campaign_id: string
+          campaign_id: string | null
+          contest_id: string | null
           created_at: string
           email: string
           id: string
@@ -1293,7 +1297,8 @@ export type Database = {
         }
         Insert: {
           audience: string
-          campaign_id: string
+          campaign_id?: string | null
+          contest_id?: string | null
           created_at?: string
           email: string
           id?: string
@@ -1304,7 +1309,8 @@ export type Database = {
         }
         Update: {
           audience?: string
-          campaign_id?: string
+          campaign_id?: string | null
+          contest_id?: string | null
           created_at?: string
           email?: string
           id?: string

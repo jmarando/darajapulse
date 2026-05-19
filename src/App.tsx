@@ -12,6 +12,9 @@ import Overview from "./pages/app/Overview";
 import Clients from "./pages/app/Clients";
 import Campaigns from "./pages/app/Campaigns";
 import CampaignDetail from "./pages/app/CampaignDetail";
+import ContestsList from "./pages/app/ContestsList";
+import ContestDetail from "./pages/app/ContestDetail";
+import PublicContestReport from "./pages/PublicContestReport";
 import Influencers from "./pages/app/Influencers";
 import Stub from "./pages/app/Stub";
 import Briefs from "./pages/app/Briefs";
@@ -61,6 +64,7 @@ const App = () => (
             <Route path="/landing/dashboard" element={<LandingDashboard />} />
             <Route path="/landing/bento" element={<LandingBento />} />
             <Route path="/r/:token" element={<PublicReport />} />
+            <Route path="/rc/:token" element={<PublicContestReport />} />
             <Route path="/p/:token" element={<PublicPlan />} />
             <Route path="/:clientSlug/:campaignSlug/plan/:token" element={<PublicPlan />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
@@ -92,6 +96,8 @@ const App = () => (
               <Route path="clients" element={<Clients />} />
               <Route path="campaigns" element={<Campaigns />} />
               <Route path="campaigns/:id" element={<CampaignDetail />} />
+              <Route path="contests" element={<ContestsList />} />
+              <Route path="contests/:id" element={<ContestDetail />} />
               <Route path="influencers" element={<Influencers />} />
               <Route path="briefs" element={<Briefs />} />
               <Route path="content" element={<Content />} />
