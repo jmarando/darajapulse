@@ -131,10 +131,13 @@ Deno.serve(async (req) => {
 
     for (const e of entries ?? []) {
       const candidates: { platform: "tiktok" | "instagram"; handle: string }[] = [];
-      if (e.tiktok_handle) candidates.push({ platform: "tiktok", handle: e.tiktok_handle });
-      if (e.instagram_handle) candidates.push({ platform: "instagram", handle: e.instagram_handle });
+      const tt = cleanHandle(e.tiktok_handle);
+      const ig = cleanHandle(e.instagram_handle);
+      const fallback = cleanHandle(e.handle);
+      if (tt) candidates.push({ platform: "tiktok", handle: tt });
+      if (ig) candidates.push({ platform: "instagram", handle: ig });
       if (!candidates.length && e.handle && (e.platform === "tiktok" || e.platform === "instagram")) {
-        candidates.push({ platform: e.platform as any, handle: e.handle });
+        candidates.push({ platform: e.platform as any, handle: fallback });
       }
       if (only && !candidates.some(c => c.handle.toLowerCase() === only.toLowerCase())) continue;
       if (!candidates.length) continue;
