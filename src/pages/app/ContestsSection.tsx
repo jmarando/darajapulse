@@ -367,6 +367,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
           {active && <Button size="sm" variant="outline" onClick={() => fetchByHandle()} disabled={discovering} title="Fetch each contestant's latest TikTok/Instagram posts and pick the best matching one"><RefreshCw className={`w-3 h-3 mr-1 ${discovering ? "animate-spin" : ""}`} /> Fetch by handle</Button>}
           {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
+          {campaignId && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button size="sm" className="bg-primary"><Plus className="w-3 h-3 mr-1" /> New contest</Button></DialogTrigger>
             <DialogContent>
