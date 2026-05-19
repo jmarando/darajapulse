@@ -249,9 +249,20 @@ Deno.serve(async (req) => {
         : report_type === 'campaign_weekly'
         ? 'receives_campaign_weekly'
         : 'receives_draw_closed'
-      const { data: rs } = await supa
-        .from('report_recipients').select('email').eq('campaign_id', campaign_id).eq(flag, true)
-      recipients = rs || []
+      // Union: campaign-scoped recipients + contest-scoped recipients (if contest_id given)
+      const { data: campRs } = await supa
+        .from('report_recipients').select('email').eq('campaign_id', campaign_id).is('contest_id', null).eq(flag, true)
+      let contestRs: any[] = []
+      if (contest_id) {
+        const { data } = await supa
+          .from('report_recipients').select('email').eq('contest_id', contest_id).eq(flag, true)
+        contestRs = data || []
+      }
+      const seen = new Set<string>()
+      recipients = [...(campRs || []), ...contestRs].filter((r: any) => {
+        if (seen.has(r.email)) return false
+        seen.add(r.email); return true
+      })
     }
 
     if (!recipients.length) {
