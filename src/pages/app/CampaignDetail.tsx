@@ -455,14 +455,14 @@ const CampaignDetail = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto">
       <Link to="/app/campaigns" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
         <ArrowLeft className="w-4 h-4 mr-1" /> All campaigns
       </Link>
 
       {/* Hero */}
       <div className="mb-8">
-        <div className="flex justify-between items-start gap-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 md:gap-6">
           <div className="min-w-0 flex-1 flex items-start gap-4">
             {c.clients?.logo_url ? (
               <img src={c.clients.logo_url} alt={`${c.clients?.name} logo`} className="w-14 h-14 rounded-md object-contain bg-white border border-border p-1 shrink-0" />
