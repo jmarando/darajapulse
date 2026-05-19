@@ -422,6 +422,43 @@ const Briefs = () => {
             </Card>
 
             <Card className="p-5">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="w-3.5 h-3.5 text-muted-foreground" />
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Source briefing document</div>
+                </div>
+                {t.source_file_url && (
+                  <Button variant="ghost" size="sm" onClick={removeSourceDoc} className="text-destructive h-7"><X className="w-3.5 h-3.5 mr-1" /> Remove</Button>
+                )}
+              </div>
+              {t.source_file_url ? (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-md bg-secondary/40">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{t.source_file_name || "Source document"}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">Original brand brief on file</div>
+                    </div>
+                  </div>
+                  <a href={t.source_file_url} target="_blank" rel="noreferrer" className="shrink-0">
+                    <Button variant="outline" size="sm"><Download className="w-3.5 h-3.5 mr-1" /> Open</Button>
+                  </a>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-xs text-muted-foreground">Attach the original PDF / DOCX so the team can always cross-check. The structured fields below stay editable.</p>
+                  <label className="cursor-pointer">
+                    <input type="file" accept=".pdf,.docx,.txt,.md,.ppt,.pptx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attachSourceDoc(f); e.currentTarget.value = ""; }} />
+                    <Button asChild variant="outline" size="sm" disabled={attachingFile}>
+                      <span>{attachingFile ? (<><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Uploading…</>) : (<><Upload className="w-3.5 h-3.5 mr-1" /> Attach file</>)}</span>
+                    </Button>
+                  </label>
+                </div>
+              )}
+            </Card>
+
+
+            <Card className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Assign to campaigns</div>
                 <span className="text-[10px] text-muted-foreground">{usage} linked · {campaigns.length} total for this client</span>
