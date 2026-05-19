@@ -505,7 +505,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                 const groups = new Map<string, any[]>();
                 for (const e of entries) {
                   if (isCreator(e)) continue;
-                  const key = (e.external_registration_id || cleanH(e.handle) || e.submitter_email || e.id) as string;
+                  const key = contestantKey(e);
                   if (!groups.has(key)) groups.set(key, []);
                   groups.get(key)!.push(e);
                 }
