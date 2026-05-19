@@ -175,6 +175,103 @@ const Briefs = () => {
     loadTemplates();
   };
 
+  // Upload a file to storage and return its path
+  const uploadToStorage = async (file: File): Promise<{ path: string; publicUrl: string } | null> => {
+    if (!selectedClientId) return null;
+    const ext = file.name.split(".").pop() || "bin";
+    const path = `${selectedClientId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("brief-docs").upload(path, file, { contentType: file.type || undefined, upsert: false });
+    if (error) { toast.error("Upload failed: " + error.message); return null; }
+    const { data: signed } = await supabase.storage.from("brief-docs").createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+    return { path, publicUrl: signed?.signedUrl ?? "" };
+  };
+
+  // Import from doc → create a new brief
+  const runImport = async () => {
+    if (!selectedClientId) return;
+    if (!importText.trim() && !importFile) return toast.error("Paste text or choose a file");
+    setImporting(true);
+    try {
+      let storage_path: string | undefined;
+      let file_name: string | undefined;
+      let attachedUrl: string | null = null;
+      if (importFile) {
+        const up = await uploadToStorage(importFile);
+        if (!up) { setImporting(false); return; }
+        storage_path = up.path;
+        file_name = importFile.name;
+        attachedUrl = up.publicUrl;
+      }
+      const { data, error } = await supabase.functions.invoke("brief-import", {
+        body: { text: importText.trim() || undefined, storage_path, file_name },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const f = (data as any).fields ?? {};
+      const payload = {
+        ...blank(selectedClientId),
+        client_id: selectedClientId,
+        name: (f.name && String(f.name).trim()) || importFile?.name?.replace(/\.[^.]+$/, "") || "Imported brief",
+        objective: f.objective ?? "",
+        brief: f.brief ?? "",
+        hashtag: f.hashtag ?? "",
+        content_format: f.content_format ?? "",
+        tone: f.tone ?? "",
+        dos: Array.isArray(f.dos) ? f.dos : [],
+        donts: Array.isArray(f.donts) ? f.donts : [],
+        mandatory_mentions: Array.isArray(f.mandatory_mentions) ? f.mandatory_mentions : [],
+        hashtags_extra: Array.isArray(f.hashtags_extra) ? f.hashtags_extra : [],
+        source_file_url: attachedUrl,
+        source_file_name: file_name ?? null,
+      };
+      const { data: row, error: insErr } = await supabase.from("brief_templates").insert(payload).select("*").single();
+      if (insErr) throw insErr;
+      toast.success("Brief imported");
+      setImportOpen(false); setImportText(""); setImportFile(null);
+      setSelectedId(row.id);
+      loadTemplates();
+    } catch (e: any) {
+      toast.error(e?.message || "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Attach / replace the source doc on the currently-open brief
+  const attachSourceDoc = async (file: File) => {
+    if (!t) return;
+    setAttachingFile(true);
+    try {
+      const up = await uploadToStorage(file);
+      if (!up) return;
+      const updated = { ...t, source_file_url: up.publicUrl, source_file_name: file.name };
+      setT(updated);
+      const { error } = await supabase.from("brief_templates").update({
+        source_file_url: up.publicUrl, source_file_name: file.name,
+      }).eq("id", t.id);
+      if (error) throw error;
+      toast.success("Source doc attached");
+      loadTemplates();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to attach");
+    } finally {
+      setAttachingFile(false);
+    }
+  };
+
+  const removeSourceDoc = async () => {
+    if (!t) return;
+    const updated = { ...t, source_file_url: null, source_file_name: null };
+    setT(updated);
+    const { error } = await supabase.from("brief_templates").update({
+      source_file_url: null, source_file_name: null,
+    }).eq("id", t.id);
+    if (error) return toast.error(error.message);
+    toast.success("Source doc removed");
+    loadTemplates();
+  };
+
+
   const ListEditor = ({ label, items, onChange, placeholder, icon: Icon }: any) => {
     const [v, setV] = useState("");
     const add = () => { if (!v.trim()) return; onChange([...(items ?? []), v.trim()]); setV(""); };
