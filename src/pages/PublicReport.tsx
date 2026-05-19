@@ -923,7 +923,7 @@ const PublicReport = () => {
 
         {/* Hashtag contests */}
         {contests.length > 0 && (() => {
-          const scoreOf = (s: any) => Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0);
+          const scoreOf = (s: any) => Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0) + Number(s.views || 0);
           return (
             <div className="space-y-6 mb-6">
               {contests.map((ct) => {
