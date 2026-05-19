@@ -652,7 +652,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.likes || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.comments || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.shares || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(bestScore(e))}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(bestScore(e)).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
                                 <td className="px-3 py-2 text-right">
                                   <div className="inline-flex gap-1">
