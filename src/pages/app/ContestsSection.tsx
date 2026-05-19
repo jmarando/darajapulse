@@ -536,7 +536,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                         const hasAutoCapable = !!(reg.instagram_handle || reg.tiktok_handle);
                         const fbOnly = !hasAutoCapable && !!reg.facebook_handle;
                         return (
-                        <div key={key} className={`p-4 rounded-lg border bg-card transition-colors ${isTop3 ? "border-accent/40 shadow-sm" : "border-border"}`}>
+                        <div key={key} className={`min-w-0 overflow-hidden p-4 rounded-lg border bg-card transition-colors ${isTop3 ? "border-accent/40 shadow-sm" : "border-border"}`}>
                           <div className="flex items-start justify-between gap-3 mb-3">
                             <div className="min-w-0 flex-1">
                               <div className={`text-[11px] font-semibold ${isTop3 ? "text-accent" : "text-muted-foreground"}`}>#{rank}</div>
