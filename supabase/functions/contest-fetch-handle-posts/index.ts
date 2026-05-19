@@ -79,7 +79,7 @@ async function fetchInstagramUserPosts(handle: string) {
   const userId = extractIgUserId(infoJson);
   if (!userId) throw new Error("instagram_user_id_not_found");
 
-  const url = `https://ensembledata.com/apis/instagram/user/posts?user_id=${encodeURIComponent(userId)}&depth=1&chunk_size=24&token=${ED}`;
+  const url = `https://ensembledata.com/apis/instagram/user/posts?user_id=${encodeURIComponent(userId)}&depth=1&chunk_size=20&token=${ED}`;
   const r = await fetch(url);
   const j = await r.json();
   if (!r.ok) throw new Error(`IG ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
