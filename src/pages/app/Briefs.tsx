@@ -336,8 +336,35 @@ const Briefs = () => {
               </div>
             </DialogContent>
           </Dialog>
+          <Dialog open={importOpen} onOpenChange={(o) => { setImportOpen(o); if (!o) { setImportText(""); setImportFile(null); } }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" disabled={!selectedClientId}><Wand2 className="w-4 h-4 mr-1.5" /> Import from doc</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader><DialogTitle className="font-display text-2xl">Import a briefing document</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">Upload the brand's brief (PDF, DOCX, or TXT) or paste the text — AI will fill in objective, tone, do's, don'ts, hashtags and mentions. The original file stays attached for reference.</p>
+                <div>
+                  <Label>Upload file</Label>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <Input type="file" accept=".pdf,.docx,.txt,.md" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
+                    {importFile && <button onClick={() => setImportFile(null)} className="text-xs text-muted-foreground"><X className="w-3.5 h-3.5" /></button>}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">PDF, DOCX, TXT — max ~25k characters parsed.</p>
+                </div>
+                <div className="text-center text-[10px] uppercase tracking-widest text-muted-foreground">or paste text</div>
+                <div>
+                  <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste the brief content here…" />
+                </div>
+                <Button onClick={runImport} disabled={importing || (!importText.trim() && !importFile)} className="w-full bg-primary">
+                  {importing ? (<><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Reading & extracting…</>) : (<><Sparkles className="w-4 h-4 mr-1.5" /> Import with AI</>)}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
+
 
       {!selectedClientId ? (
         <Card className="p-10 text-center text-muted-foreground">Add a client first, then create briefs.</Card>
