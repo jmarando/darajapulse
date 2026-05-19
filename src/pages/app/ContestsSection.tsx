@@ -49,6 +49,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
     const score = bestScore({ ...editEntry, cross_posts: cleanedCross });
     const { error } = await supabase.from("contest_entries").update({
       handle: editEntry.handle,
+      instagram_handle: editEntry.instagram_handle,
+      tiktok_handle: editEntry.tiktok_handle,
+      facebook_handle: editEntry.facebook_handle,
       post_url: editEntry.post_url,
       platform: editEntry.platform,
       views: Number(editEntry.views) || 0,
@@ -656,6 +659,11 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                     </Select>
                   </div>
                   <div><Label>Handle</Label><Input value={editEntry.handle || ""} onChange={e => setEditEntry({ ...editEntry, handle: e.target.value })} /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div><Label className="text-xs">Instagram username</Label><Input value={editEntry.instagram_handle || ""} onChange={e => setEditEntry({ ...editEntry, instagram_handle: e.target.value })} placeholder="username" /></div>
+                  <div><Label className="text-xs">TikTok username</Label><Input value={editEntry.tiktok_handle || ""} onChange={e => setEditEntry({ ...editEntry, tiktok_handle: e.target.value })} placeholder="username" /></div>
+                  <div><Label className="text-xs">Facebook name/page</Label><Input value={editEntry.facebook_handle || ""} onChange={e => setEditEntry({ ...editEntry, facebook_handle: e.target.value })} placeholder="manual" /></div>
                 </div>
                 <div className="mt-2"><Label>Post URL</Label><Input value={editEntry.post_url || ""} onChange={e => setEditEntry({ ...editEntry, post_url: e.target.value })} /></div>
                 <div className="grid grid-cols-4 gap-2 mt-2">
