@@ -136,10 +136,11 @@ Deno.serve(async (req) => {
       const fallback = cleanHandle(e.handle);
       if (tt) candidates.push({ platform: "tiktok", handle: tt });
       if (ig) candidates.push({ platform: "instagram", handle: ig });
-      if (!candidates.length && e.handle && (e.platform === "tiktok" || e.platform === "instagram")) {
+      if (!candidates.length && fallback && (e.platform === "tiktok" || e.platform === "instagram")) {
         candidates.push({ platform: e.platform as any, handle: fallback });
       }
-      if (only && !candidates.some(c => c.handle.toLowerCase() === only.toLowerCase())) continue;
+      const onlyHandle = cleanHandle(only);
+      if (onlyHandle && !candidates.some(c => c.handle.toLowerCase() === onlyHandle)) continue;
       if (!candidates.length) continue;
 
       let best: any = null;
