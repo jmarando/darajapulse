@@ -1050,7 +1050,16 @@ const PublicReport = () => {
         )}
 
         {/* Roster + Posts — mirrors CampaignDetail */}
-        <div className="grid lg:grid-cols-5 gap-6">
+        {/* Per client request, the Creators roster is hidden on the public
+            report for the "Taste Paradise with Royco" campaign only. */}
+        {(() => {
+          const HIDE_ROSTER_CAMPAIGN_IDS = new Set<string>([
+            "67f4ba28-2a11-484c-8f6e-687ac422f5e3",
+          ]);
+          const showRoster = !HIDE_ROSTER_CAMPAIGN_IDS.has(campaign.id);
+          return (
+        <div className={showRoster ? "grid lg:grid-cols-5 gap-6" : "grid grid-cols-1 gap-6"}>
+          {showRoster && (
           <Card className="p-5 lg:col-span-2">
             <div className="mb-4">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
@@ -1096,6 +1105,8 @@ const PublicReport = () => {
               </ul>
             )}
           </Card>
+          )}
+
 
           <Card className="p-5 lg:col-span-3">
             <div className="mb-4">
@@ -1157,6 +1168,9 @@ const PublicReport = () => {
             )}
           </Card>
         </div>
+          );
+        })()}
+
       </main>
 
       <PublicFooter />
