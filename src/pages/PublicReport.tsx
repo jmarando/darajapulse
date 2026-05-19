@@ -1105,6 +1105,8 @@ const PublicReport = () => {
               </ul>
             )}
           </Card>
+          )}
+
 
           <Card className="p-5 lg:col-span-3">
             <div className="mb-4">
