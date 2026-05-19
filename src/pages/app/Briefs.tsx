@@ -77,6 +77,11 @@ const Briefs = () => {
   const [newOpen, setNewOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPreset, setNewPreset] = useState<string>("blank");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [attachingFile, setAttachingFile] = useState(false);
 
   const loadClients = async () => {
     const { data } = await supabase.from("clients").select("id,name").order("name");
