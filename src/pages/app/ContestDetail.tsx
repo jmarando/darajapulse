@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Copy, ExternalLink, Trophy, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { ContestsSection } from "./ContestsSection";
+import ContestEmailReportsSection from "./ContestEmailReportsSection";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ContestDetail = () => {
   const { id } = useParams<{ id: string }>();
