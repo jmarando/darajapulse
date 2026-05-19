@@ -514,7 +514,14 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                           </div>
                           {posts.length === 0 ? (
                             <div className="flex items-center justify-between text-xs text-muted-foreground italic gap-2">
-                              {fbOnly ? "Facebook can't be auto-scraped — paste post URL & metrics." : "No matching posts yet."}
+                              {(() => {
+                                const handles = [reg.tiktok_handle, reg.instagram_handle, reg.handle].map(cleanH).filter(Boolean);
+                                const rowErrors = latestErrors.filter((err: any) => handles.includes(cleanH(err.handle)) || err.entry === reg.id);
+                                if (fbOnly) return "Facebook can't be auto-scraped — paste post URL & metrics.";
+                                if (rowErrors.some((err: any) => String(err.msg || "").includes("invalid_handle"))) return "Handle looks like a name, not a username — edit it or enter metrics.";
+                                if (rowErrors.length) return "Auto-fetch tried this handle but couldn't find matching public hashtag posts.";
+                                return "No matching posts yet.";
+                              })()}
                               {fbOnly ? (
                                 <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditEntry({ ...reg, cross_posts: Array.isArray(reg.cross_posts) ? reg.cross_posts : [] })}>
                                   <Pencil className="w-3 h-3 mr-1" /> Enter metrics
