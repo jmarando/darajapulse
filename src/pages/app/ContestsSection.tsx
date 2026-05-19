@@ -390,6 +390,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </div>
 
