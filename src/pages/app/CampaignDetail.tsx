@@ -23,7 +23,43 @@ import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
 import { PostMetricsEditor } from "@/components/PostMetricsEditor";
 import { PlatformPicker } from "@/components/PlatformPicker";
-import { ContestsSection } from "./ContestsSection";
+// ContestsSection moved to top-level /app/contests
+const LinkedContestsCard = ({ campaignId }: { campaignId: string }) => {
+  const [rows, setRows] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from("contests").select("id, name, hashtag, start_date, end_date, is_active").eq("campaign_id", campaignId).order("created_at", { ascending: false })
+      .then(({ data }) => setRows(data ?? []));
+  }, [campaignId]);
+  return (
+    <Card className="p-5">
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement</div>
+          <h2 className="font-display text-2xl flex items-center gap-2"><Trophy className="w-5 h-5 text-highlight" /> Linked contests</h2>
+          <p className="text-xs text-muted-foreground mt-1">Contests now live in their own section. Manage them from <Link to="/app/contests" className="underline">Contests</Link>.</p>
+        </div>
+        <Link to="/app/contests"><Button size="sm" variant="outline"><Plus className="w-3 h-3 mr-1" /> New contest</Button></Link>
+      </div>
+      {rows.length === 0 ? (
+        <div className="text-center py-8 border border-dashed border-border rounded-md">
+          <p className="text-sm text-muted-foreground">No contests linked to this campaign yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((c) => (
+            <Link key={c.id} to={`/app/contests/${c.id}`} className="flex items-center justify-between gap-3 p-3 rounded-md border border-border hover:bg-secondary/50 transition-colors">
+              <div className="min-w-0">
+                <div className="font-medium truncate">{c.name}</div>
+                <div className="text-xs text-muted-foreground font-mono truncate">{c.hashtag}</div>
+              </div>
+              <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
+            </Link>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+};
 import EmailReportsSection from "./EmailReportsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
