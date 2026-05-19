@@ -1542,7 +1542,7 @@ const CampaignDetail = () => {
         </TabsContent>
 
         <TabsContent value="contests" className="space-y-6 mt-0">
-          <ContestsSection campaignId={id!} />
+          <LinkedContestsCard campaignId={id!} />
         </TabsContent>
 
         <TabsContent value="emails" className="space-y-6 mt-0">
