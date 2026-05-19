@@ -259,6 +259,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!campaignId) return toast.error("Use the Contests section to create a new contest");
     const { error } = await supabase.from("contests").insert({ ...form, campaign_id: campaignId });
     if (error) return toast.error(error.message);
     toast.success("Contest created"); setOpen(false);
