@@ -30,6 +30,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
   const [editEntry, setEditEntry] = useState<any>(null);
+  const latestErrors = Array.isArray(lastRun?.errors) ? lastRun.errors : [];
 
   const scoreOf = (stats: { shares?: any; comments?: any; likes?: any }) =>
     Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
@@ -193,7 +194,11 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       const { data, error } = await supabase.functions.invoke("contest-fetch-handle-posts", { body: { contest_id: activeId, triggered_by: "manual", only_handle } });
       if (error) toast.error(error.message);
       else if ((data as any)?.error) toast.error((data as any).error);
-      else toast.success(`Updated ${(data as any)?.upserted ?? 0} contestants from their handles`);
+      else {
+        const count = (data as any)?.upserted ?? 0;
+        const errs = Array.isArray((data as any)?.errors) ? (data as any).errors.length : 0;
+        toast[count > 0 ? "success" : "message"](`Updated ${count} contestant${count === 1 ? "" : "s"} from handles${errs ? ` · ${errs} need valid handles/manual metrics` : ""}`);
+      }
       load();
     } finally { setDiscovering(false); }
   };
