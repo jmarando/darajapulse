@@ -12,6 +12,11 @@ const ED = Deno.env.get("ENSEMBLEDATA_API_TOKEN");
 const scoreOf = (s: { shares?: any; comments?: any; likes?: any }) =>
   Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0);
 
+const cleanHandle = (s?: string | null) =>
+  (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase();
+
+const isLikelyHandle = (handle: string) => /^[a-z0-9._]{2,30}$/i.test(handle);
+
 const captionHas = (text: string | undefined, tags: string[]) => {
   if (!text) return false;
   const lc = text.toLowerCase();
@@ -28,12 +33,22 @@ const canonical = (raw?: string | null): string => {
   try { const u = new URL(url); return `${u.origin}${u.pathname}`.replace(/\/+$/, ""); } catch { return url; }
 };
 
+const asArray = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.items)) return value.items;
+  if (Array.isArray(value?.posts)) return value.posts;
+  if (Array.isArray(value?.edges)) return value.edges.map((edge: any) => edge?.node ?? edge).filter(Boolean);
+  return [];
+};
+
 async function fetchTikTokUserPosts(handle: string) {
+  if (!isLikelyHandle(handle)) throw new Error("invalid_handle: expected a TikTok username, not a display name");
   const url = `https://ensembledata.com/apis/tt/user/posts?username=${encodeURIComponent(handle)}&depth=1&token=${ED}`;
   const r = await fetch(url);
   const j = await r.json();
   if (!r.ok) throw new Error(`TT ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
-  const items = j?.data?.data ?? j?.data ?? [];
+  const items = asArray(j?.data?.data ?? j?.data ?? j);
   return items.map((it: any) => {
     const a = it.aweme_detail || it;
     const author = a.author?.unique_id || a.author?.uniqueId || handle;
@@ -51,12 +66,33 @@ async function fetchTikTokUserPosts(handle: string) {
   }).filter((p: any) => p.post_url);
 }
 
+function extractIgUserId(payload: any): string | null {
+  const candidates = [
+    payload?.data?.user?.id,
+    payload?.data?.id,
+    payload?.user?.id,
+    payload?.id,
+    payload?.data?.pk,
+    payload?.user?.pk,
+    payload?.pk,
+  ];
+  return candidates.find((v) => v != null && String(v).trim())?.toString() ?? null;
+}
+
 async function fetchInstagramUserPosts(handle: string) {
-  const url = `https://ensembledata.com/apis/instagram/user/posts?username=${encodeURIComponent(handle)}&depth=1&token=${ED}`;
+  if (!isLikelyHandle(handle)) throw new Error("invalid_handle: expected an Instagram username, not a display name");
+  const infoUrl = `https://ensembledata.com/apis/instagram/user/info?username=${encodeURIComponent(handle)}&token=${ED}`;
+  const infoRes = await fetch(infoUrl);
+  const infoJson = await infoRes.json();
+  if (!infoRes.ok) throw new Error(`IG user lookup ${infoRes.status}: ${JSON.stringify(infoJson).slice(0, 200)}`);
+  const userId = extractIgUserId(infoJson);
+  if (!userId) throw new Error("instagram_user_id_not_found");
+
+  const url = `https://ensembledata.com/apis/instagram/user/posts?user_id=${encodeURIComponent(userId)}&depth=1&chunk_size=20&token=${ED}`;
   const r = await fetch(url);
   const j = await r.json();
   if (!r.ok) throw new Error(`IG ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
-  const items = j?.data?.data ?? j?.data ?? [];
+  const items = asArray(j?.data?.data ?? j?.data ?? j);
   return items.map((it: any) => {
     const caption = it.caption?.text || it.edge_media_to_caption?.edges?.[0]?.node?.text || it.caption || "";
     const code = it.code || it.shortcode;
@@ -104,12 +140,16 @@ Deno.serve(async (req) => {
 
     for (const e of entries ?? []) {
       const candidates: { platform: "tiktok" | "instagram"; handle: string }[] = [];
-      if (e.tiktok_handle) candidates.push({ platform: "tiktok", handle: e.tiktok_handle });
-      if (e.instagram_handle) candidates.push({ platform: "instagram", handle: e.instagram_handle });
-      if (!candidates.length && e.handle && (e.platform === "tiktok" || e.platform === "instagram")) {
-        candidates.push({ platform: e.platform as any, handle: e.handle });
+      const tt = cleanHandle(e.tiktok_handle);
+      const ig = cleanHandle(e.instagram_handle);
+      const fallback = cleanHandle(e.handle);
+      if (tt) candidates.push({ platform: "tiktok", handle: tt });
+      if (ig) candidates.push({ platform: "instagram", handle: ig });
+      if (!candidates.length && fallback && (e.platform === "tiktok" || e.platform === "instagram")) {
+        candidates.push({ platform: e.platform as any, handle: fallback });
       }
-      if (only && !candidates.some(c => c.handle.toLowerCase() === only.toLowerCase())) continue;
+      const onlyHandle = cleanHandle(only);
+      if (onlyHandle && !candidates.some(c => c.handle.toLowerCase() === onlyHandle)) continue;
       if (!candidates.length) continue;
 
       let best: any = null;

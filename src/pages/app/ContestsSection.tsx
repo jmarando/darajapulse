@@ -30,6 +30,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
   const [editEntry, setEditEntry] = useState<any>(null);
+  const latestErrors = Array.isArray(lastRun?.errors) ? lastRun.errors : [];
 
   const scoreOf = (stats: { shares?: any; comments?: any; likes?: any }) =>
     Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
@@ -48,6 +49,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
     const score = bestScore({ ...editEntry, cross_posts: cleanedCross });
     const { error } = await supabase.from("contest_entries").update({
       handle: editEntry.handle,
+      instagram_handle: editEntry.instagram_handle,
+      tiktok_handle: editEntry.tiktok_handle,
+      facebook_handle: editEntry.facebook_handle,
       post_url: editEntry.post_url,
       platform: editEntry.platform,
       views: Number(editEntry.views) || 0,
@@ -193,7 +197,11 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       const { data, error } = await supabase.functions.invoke("contest-fetch-handle-posts", { body: { contest_id: activeId, triggered_by: "manual", only_handle } });
       if (error) toast.error(error.message);
       else if ((data as any)?.error) toast.error((data as any).error);
-      else toast.success(`Updated ${(data as any)?.upserted ?? 0} contestants from their handles`);
+      else {
+        const count = (data as any)?.upserted ?? 0;
+        const errs = Array.isArray((data as any)?.errors) ? (data as any).errors.length : 0;
+        toast[count > 0 ? "success" : "message"](`Updated ${count} contestant${count === 1 ? "" : "s"} from handles${errs ? ` · ${errs} need valid handles/manual metrics` : ""}`);
+      }
       load();
     } finally { setDiscovering(false); }
   };
@@ -509,7 +517,14 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                           </div>
                           {posts.length === 0 ? (
                             <div className="flex items-center justify-between text-xs text-muted-foreground italic gap-2">
-                              {fbOnly ? "Facebook can't be auto-scraped — paste post URL & metrics." : "No matching posts yet."}
+                              {(() => {
+                                const handles = [reg.tiktok_handle, reg.instagram_handle, reg.handle].map(cleanH).filter(Boolean);
+                                const rowErrors = latestErrors.filter((err: any) => handles.includes(cleanH(err.handle)) || err.entry === reg.id);
+                                if (fbOnly) return "Facebook can't be auto-scraped — paste post URL & metrics.";
+                                if (rowErrors.some((err: any) => String(err.msg || "").includes("invalid_handle"))) return "Handle looks like a name, not a username — edit it or enter metrics.";
+                                if (rowErrors.length) return "Auto-fetch tried this handle but couldn't find matching public hashtag posts.";
+                                return "No matching posts yet.";
+                              })()}
                               {fbOnly ? (
                                 <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditEntry({ ...reg, cross_posts: Array.isArray(reg.cross_posts) ? reg.cross_posts : [] })}>
                                   <Pencil className="w-3 h-3 mr-1" /> Enter metrics
@@ -644,6 +659,11 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                     </Select>
                   </div>
                   <div><Label>Handle</Label><Input value={editEntry.handle || ""} onChange={e => setEditEntry({ ...editEntry, handle: e.target.value })} /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div><Label className="text-xs">Instagram username</Label><Input value={editEntry.instagram_handle || ""} onChange={e => setEditEntry({ ...editEntry, instagram_handle: e.target.value })} placeholder="username" /></div>
+                  <div><Label className="text-xs">TikTok username</Label><Input value={editEntry.tiktok_handle || ""} onChange={e => setEditEntry({ ...editEntry, tiktok_handle: e.target.value })} placeholder="username" /></div>
+                  <div><Label className="text-xs">Facebook name/page</Label><Input value={editEntry.facebook_handle || ""} onChange={e => setEditEntry({ ...editEntry, facebook_handle: e.target.value })} placeholder="manual" /></div>
                 </div>
                 <div className="mt-2"><Label>Post URL</Label><Input value={editEntry.post_url || ""} onChange={e => setEditEntry({ ...editEntry, post_url: e.target.value })} /></div>
                 <div className="grid grid-cols-4 gap-2 mt-2">
