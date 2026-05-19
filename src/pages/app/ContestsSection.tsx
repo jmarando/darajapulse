@@ -43,6 +43,44 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const AUTO_SOURCES = new Set(["meta_graph", "ensembledata", "tiktok_api", "instagram_api"]);
   const isAuto = (e: any) => AUTO_SOURCES.has(String(e.source || "").toLowerCase());
 
+  const normalizedText = (value?: string | null) => (value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const contestantKey = (e: any) => {
+    const handle = [e.instagram_handle, e.tiktok_handle, e.facebook_handle, e.handle].map(cleanH).find(Boolean);
+    if (handle) return `handle:${handle}`;
+    const email = normalizedText(e.submitter_email);
+    if (email) return `email:${email}`;
+    const phone = String(e.phone || "").replace(/\D/g, "");
+    if (phone) return `phone:${phone}`;
+    const name = normalizedText(e.full_name || e.submitter_name);
+    if (name) return `name:${name}`;
+    return `entry:${e.external_registration_id || e.id}`;
+  };
+
+  const mergeContestantRows = (rows: any[]) => {
+    const sorted = [...rows].sort((a, b) => bestScore(b) - bestScore(a));
+    const primary = sorted[0];
+    const seen = new Set<string>();
+    const remember = (post: any) => {
+      const key = canonicalPostUrl(post?.post_url);
+      if (!key) return false;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    };
+    remember(primary);
+    const crossPosts: any[] = [];
+    for (const post of Array.isArray(primary.cross_posts) ? primary.cross_posts : []) {
+      if (remember(post)) crossPosts.push(post);
+    }
+    for (const row of sorted.slice(1)) {
+      if (remember(row)) crossPosts.push(row);
+      for (const post of Array.isArray(row.cross_posts) ? row.cross_posts : []) {
+        if (remember(post)) crossPosts.push(post);
+      }
+    }
+    return { ...primary, cross_posts: crossPosts };
+  };
+
   const saveEditEntry = async () => {
     if (!editEntry) return;
     const cleanedCross = (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim());
@@ -255,13 +293,18 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const submitUrl = active ? `${window.location.origin}/c/${active.submission_token}` : "";
 
   const byRound = useMemo(() => {
-    const map = new Map<number, any[]>();
+    const map = new Map<number, Map<string, any[]>>();
     for (const e of entries) {
       const k = e.round_number || 1;
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(e);
+      if (!map.has(k)) map.set(k, new Map());
+      const key = contestantKey(e);
+      const round = map.get(k)!;
+      if (!round.has(key)) round.set(key, []);
+      round.get(key)!.push(e);
     }
-    return Array.from(map.entries()).sort((a, b) => a[0] - b[0]);
+    return Array.from(map.entries())
+      .map(([round, groups]) => [round, Array.from(groups.values()).map(mergeContestantRows)] as [number, any[]])
+      .sort((a, b) => a[0] - b[0]);
   }, [entries]);
 
   const exportCsv = () => {
