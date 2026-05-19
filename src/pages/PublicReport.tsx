@@ -27,6 +27,19 @@ const fmt = (n: number) => {
 };
 const fmtKes = (n: number) => n >= 1e6 ? `KES ${(n/1e6).toFixed(2)}M` : n >= 1e3 ? `KES ${(n/1e3).toFixed(0)}K` : `KES ${Math.round(n).toLocaleString()}`;
 
+const normalizedText = (value?: string | null) => (value || "").trim().toLowerCase().replace(/\s+/g, " ");
+const contestantKey = (e: any) => {
+  const handle = [e.instagram_handle, e.tiktok_handle, e.facebook_handle, e.handle].map(cleanH).find(Boolean);
+  if (handle) return `handle:${handle}`;
+  const email = normalizedText(e.submitter_email);
+  if (email) return `email:${email}`;
+  const phone = String(e.phone || "").replace(/\D/g, "");
+  if (phone) return `phone:${phone}`;
+  const name = normalizedText(e.full_name || e.submitter_name);
+  if (name) return `name:${name}`;
+  return `entry:${e.external_registration_id || e.id}`;
+};
+
 
 const PublicReport = () => {
   const { token } = useParams();
@@ -928,7 +941,7 @@ const PublicReport = () => {
                 const groups = new Map<string, any[]>();
                 for (const e of entries) {
                   if (isCreator(e)) continue;
-                  const key = (e.external_registration_id || cleanH(e.handle) || e.submitter_email || e.id) as string;
+                  const key = contestantKey(e);
                   if (!groups.has(key)) groups.set(key, []);
                   groups.get(key)!.push(e);
                 }
