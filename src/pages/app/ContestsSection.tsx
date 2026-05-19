@@ -185,6 +185,18 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       load();
     } finally { setDiscovering(false); }
   };
+
+  const fetchByHandle = async (only_handle?: string) => {
+    if (!activeId) return;
+    setDiscovering(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("contest-fetch-handle-posts", { body: { contest_id: activeId, triggered_by: "manual", only_handle } });
+      if (error) toast.error(error.message);
+      else if ((data as any)?.error) toast.error((data as any).error);
+      else toast.success(`Updated ${(data as any)?.upserted ?? 0} contestants from their handles`);
+      load();
+    } finally { setDiscovering(false); }
+  };
   useEffect(() => { load(); }, [campaignId, activeId]);
 
   const create = async (e: React.FormEvent) => {
