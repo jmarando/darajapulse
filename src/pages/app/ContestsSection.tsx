@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2, Upload, Eye, Heart, MessageCircle } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2, Upload, Eye, Heart, MessageCircle, Facebook, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 
@@ -185,6 +185,18 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
       load();
     } finally { setDiscovering(false); }
   };
+
+  const fetchByHandle = async (only_handle?: string) => {
+    if (!activeId) return;
+    setDiscovering(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("contest-fetch-handle-posts", { body: { contest_id: activeId, triggered_by: "manual", only_handle } });
+      if (error) toast.error(error.message);
+      else if ((data as any)?.error) toast.error((data as any).error);
+      else toast.success(`Updated ${(data as any)?.upserted ?? 0} contestants from their handles`);
+      load();
+    } finally { setDiscovering(false); }
+  };
   useEffect(() => { load(); }, [campaignId, activeId]);
 
   const create = async (e: React.FormEvent) => {
@@ -288,6 +300,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
             </>
           )}
           {active && <Button size="sm" variant="outline" onClick={() => discoverPosts()} disabled={discovering}><Sparkles className={`w-3 h-3 mr-1 ${discovering ? "animate-pulse" : ""}`} /> Discover posts</Button>}
+          {active && <Button size="sm" variant="outline" onClick={() => fetchByHandle()} disabled={discovering} title="Fetch each contestant's latest TikTok/Instagram posts and pick the best matching one"><RefreshCw className={`w-3 h-3 mr-1 ${discovering ? "animate-spin" : ""}`} /> Fetch by handle</Button>}
           {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
           <Dialog open={open} onOpenChange={setOpen}>
@@ -469,6 +482,8 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                       {contestants.slice(0, 12).map(({ key, reg, posts, total, bestId }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
+                        const hasAutoCapable = !!(reg.instagram_handle || reg.tiktok_handle);
+                        const fbOnly = !hasAutoCapable && !!reg.facebook_handle;
                         return (
                         <div key={key} className={`p-4 rounded-lg border bg-card transition-colors ${isTop3 ? "border-accent/40 shadow-sm" : "border-border"}`}>
                           <div className="flex items-start justify-between gap-3 mb-3">
@@ -478,7 +493,13 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                               <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap mt-1">
                                 {reg.instagram_handle && <span className="inline-flex items-center gap-1"><Instagram className="w-3 h-3" />@{reg.instagram_handle}</span>}
                                 {reg.tiktok_handle && <span className="inline-flex items-center gap-1"><Music2 className="w-3 h-3" />@{reg.tiktok_handle}</span>}
+                                {reg.facebook_handle && <span className="inline-flex items-center gap-1"><Facebook className="w-3 h-3" />@{reg.facebook_handle}</span>}
                               </div>
+                              {fbOnly && posts.length === 0 && (
+                                <div className="mt-2 inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                                  <AlertCircle className="w-3 h-3" /> Facebook · manual entry required
+                                </div>
+                              )}
                             </div>
                             <div className="text-right shrink-0">
                               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Best score</div>
@@ -487,11 +508,17 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                             </div>
                           </div>
                           {posts.length === 0 ? (
-                            <div className="flex items-center justify-between text-xs text-muted-foreground italic">
-                              No matching posts yet.
-                              <Button size="sm" variant="ghost" className="h-6 text-xs" disabled={discovering} onClick={() => discoverPosts(reg.instagram_handle || reg.tiktok_handle)}>
-                                <Sparkles className="w-3 h-3 mr-1" /> Find posts
-                              </Button>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground italic gap-2">
+                              {fbOnly ? "Facebook can't be auto-scraped — paste post URL & metrics." : "No matching posts yet."}
+                              {fbOnly ? (
+                                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditEntry({ ...reg, cross_posts: Array.isArray(reg.cross_posts) ? reg.cross_posts : [] })}>
+                                  <Pencil className="w-3 h-3 mr-1" /> Enter metrics
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="ghost" className="h-6 text-xs" disabled={discovering} onClick={() => fetchByHandle(reg.instagram_handle || reg.tiktok_handle)}>
+                                  <RefreshCw className={`w-3 h-3 mr-1 ${discovering ? "animate-spin" : ""}`} /> Fetch posts
+                                </Button>
+                              )}
                             </div>
                           ) : (
                             <div className="space-y-1.5 border-t border-border/60 pt-2">
