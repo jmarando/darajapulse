@@ -33,13 +33,22 @@ const canonical = (raw?: string | null): string => {
   try { const u = new URL(url); return `${u.origin}${u.pathname}`.replace(/\/+$/, ""); } catch { return url; }
 };
 
+const asArray = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.items)) return value.items;
+  if (Array.isArray(value?.posts)) return value.posts;
+  if (Array.isArray(value?.edges)) return value.edges.map((edge: any) => edge?.node ?? edge).filter(Boolean);
+  return [];
+};
+
 async function fetchTikTokUserPosts(handle: string) {
   if (!isLikelyHandle(handle)) throw new Error("invalid_handle: expected a TikTok username, not a display name");
   const url = `https://ensembledata.com/apis/tt/user/posts?username=${encodeURIComponent(handle)}&depth=1&token=${ED}`;
   const r = await fetch(url);
   const j = await r.json();
   if (!r.ok) throw new Error(`TT ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
-  const items = j?.data?.data ?? j?.data ?? [];
+  const items = asArray(j?.data?.data ?? j?.data ?? j);
   return items.map((it: any) => {
     const a = it.aweme_detail || it;
     const author = a.author?.unique_id || a.author?.uniqueId || handle;
@@ -83,7 +92,7 @@ async function fetchInstagramUserPosts(handle: string) {
   const r = await fetch(url);
   const j = await r.json();
   if (!r.ok) throw new Error(`IG ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
-  const items = j?.data?.data ?? j?.data ?? [];
+  const items = asArray(j?.data?.data ?? j?.data ?? j);
   return items.map((it: any) => {
     const caption = it.caption?.text || it.edge_media_to_caption?.edges?.[0]?.node?.text || it.caption || "";
     const code = it.code || it.shortcode;
