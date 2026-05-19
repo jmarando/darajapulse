@@ -520,7 +520,7 @@ const CampaignDetail = () => {
             })()}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 md:shrink-0 flex-wrap">
             <Select value={c.status} onValueChange={setStatus}>
               <SelectTrigger className={`w-36 capitalize border ${statusTone[c.status] ?? ""}`}><SelectValue /></SelectTrigger>
               <SelectContent>{["draft","pitched","won","live","reporting","closed"].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}</SelectContent>
