@@ -311,7 +311,9 @@ const PublicReport = () => {
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm text-muted-foreground">
                 {campaign.hashtag && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{campaign.hashtag.replace(/^#/, "")}</span>}
                 {campaign.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(campaign.budget_kes).toLocaleString()}</span>}
-                <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{influencers.length} creator{influencers.length === 1 ? "" : "s"}</span>
+                {campaign.id !== "67f4ba28-2a11-484c-8f6e-687ac422f5e3" && (
+                  <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{influencers.length} creator{influencers.length === 1 ? "" : "s"}</span>
+                )}
               </div>
               {campaign.objective && (
                 <div className="mt-3 max-w-2xl">
