@@ -89,7 +89,18 @@ const ContestDetail = () => {
         </div>
       </Card>
 
-      <ContestsSection contestId={id!} />
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="emails">Email reports</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview" className="mt-6">
+          <ContestsSection contestId={id!} />
+        </TabsContent>
+        <TabsContent value="emails" className="mt-6">
+          <ContestEmailReportsSection contestId={id!} campaignId={contest.campaign_id ?? null} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
