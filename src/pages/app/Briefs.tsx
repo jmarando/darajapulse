@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, FileText, Sparkles, Save, Hash, AtSign, Check, Link as LinkIcon, Trash2, Megaphone } from "lucide-react";
+import { Plus, X, FileText, Sparkles, Save, Hash, AtSign, Check, Link as LinkIcon, Trash2, Megaphone, Upload, Wand2, Download, Loader2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 
 type Client = { id: string; name: string };
