@@ -146,6 +146,8 @@ const Briefs = () => {
       hashtags_extra: t.hashtags_extra,
       references_urls: t.references_urls,
       wht_percent: Number(t.wht_percent) || 0,
+      source_file_url: t.source_file_url ?? null,
+      source_file_name: t.source_file_name ?? null,
     }).eq("id", t.id);
     setSaving(false);
     if (error) return toast.error(error.message);
