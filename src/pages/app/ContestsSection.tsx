@@ -32,8 +32,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [editEntry, setEditEntry] = useState<any>(null);
   const latestErrors = Array.isArray(lastRun?.errors) ? lastRun.errors : [];
 
-  const scoreOf = (stats: { shares?: any; comments?: any; likes?: any }) =>
-    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
+  const scoreOf = (stats: { shares?: any; comments?: any; likes?: any; views?: any }) =>
+    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0) + Number(stats.views || 0);
+
   // Per the contest rules: a contestant's score is the BEST single post — we do not sum across platforms.
   const bestScore = (e: any) => {
     const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
@@ -651,7 +652,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.likes || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.comments || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.shares || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(bestScore(e))}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(bestScore(e)).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
                                 <td className="px-3 py-2 text-right">
                                   <div className="inline-flex gap-1">
@@ -771,7 +772,7 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
 
               <div className="flex items-center justify-between p-3 rounded-md bg-primary/10 border border-primary/30">
                 <div className="text-sm">Best post score (counts toward leaderboard)</div>
-                <div className="font-display text-2xl font-semibold">{Math.round(bestScore({ ...editEntry, cross_posts: (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim()) }))}</div>
+                <div className="font-display text-2xl font-semibold">{Math.round(bestScore({ ...editEntry, cross_posts: (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim()) })).toLocaleString()}</div>
               </div>
 
               <div className="flex gap-2 justify-end">
