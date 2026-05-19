@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, FileText, Sparkles, Save, Hash, AtSign, Check, Link as LinkIcon, Trash2, Megaphone } from "lucide-react";
+import { Plus, X, FileText, Sparkles, Save, Hash, AtSign, Check, Link as LinkIcon, Trash2, Megaphone, Upload, Wand2, Download, Loader2, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 
 type Client = { id: string; name: string };
@@ -77,6 +77,11 @@ const Briefs = () => {
   const [newOpen, setNewOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newPreset, setNewPreset] = useState<string>("blank");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [attachingFile, setAttachingFile] = useState(false);
 
   const loadClients = async () => {
     const { data } = await supabase.from("clients").select("id,name").order("name");
@@ -141,6 +146,8 @@ const Briefs = () => {
       hashtags_extra: t.hashtags_extra,
       references_urls: t.references_urls,
       wht_percent: Number(t.wht_percent) || 0,
+      source_file_url: t.source_file_url ?? null,
+      source_file_name: t.source_file_name ?? null,
     }).eq("id", t.id);
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -167,6 +174,103 @@ const Briefs = () => {
     toast.success(isLinked ? `Unlinked from ${camp.name}` : `Linked to ${camp.name}`);
     loadTemplates();
   };
+
+  // Upload a file to storage and return its path
+  const uploadToStorage = async (file: File): Promise<{ path: string; publicUrl: string } | null> => {
+    if (!selectedClientId) return null;
+    const ext = file.name.split(".").pop() || "bin";
+    const path = `${selectedClientId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage.from("brief-docs").upload(path, file, { contentType: file.type || undefined, upsert: false });
+    if (error) { toast.error("Upload failed: " + error.message); return null; }
+    const { data: signed } = await supabase.storage.from("brief-docs").createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+    return { path, publicUrl: signed?.signedUrl ?? "" };
+  };
+
+  // Import from doc → create a new brief
+  const runImport = async () => {
+    if (!selectedClientId) return;
+    if (!importText.trim() && !importFile) return toast.error("Paste text or choose a file");
+    setImporting(true);
+    try {
+      let storage_path: string | undefined;
+      let file_name: string | undefined;
+      let attachedUrl: string | null = null;
+      if (importFile) {
+        const up = await uploadToStorage(importFile);
+        if (!up) { setImporting(false); return; }
+        storage_path = up.path;
+        file_name = importFile.name;
+        attachedUrl = up.publicUrl;
+      }
+      const { data, error } = await supabase.functions.invoke("brief-import", {
+        body: { text: importText.trim() || undefined, storage_path, file_name },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const f = (data as any).fields ?? {};
+      const payload = {
+        ...blank(selectedClientId),
+        client_id: selectedClientId,
+        name: (f.name && String(f.name).trim()) || importFile?.name?.replace(/\.[^.]+$/, "") || "Imported brief",
+        objective: f.objective ?? "",
+        brief: f.brief ?? "",
+        hashtag: f.hashtag ?? "",
+        content_format: f.content_format ?? "",
+        tone: f.tone ?? "",
+        dos: Array.isArray(f.dos) ? f.dos : [],
+        donts: Array.isArray(f.donts) ? f.donts : [],
+        mandatory_mentions: Array.isArray(f.mandatory_mentions) ? f.mandatory_mentions : [],
+        hashtags_extra: Array.isArray(f.hashtags_extra) ? f.hashtags_extra : [],
+        source_file_url: attachedUrl,
+        source_file_name: file_name ?? null,
+      };
+      const { data: row, error: insErr } = await supabase.from("brief_templates").insert(payload).select("*").single();
+      if (insErr) throw insErr;
+      toast.success("Brief imported");
+      setImportOpen(false); setImportText(""); setImportFile(null);
+      setSelectedId(row.id);
+      loadTemplates();
+    } catch (e: any) {
+      toast.error(e?.message || "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Attach / replace the source doc on the currently-open brief
+  const attachSourceDoc = async (file: File) => {
+    if (!t) return;
+    setAttachingFile(true);
+    try {
+      const up = await uploadToStorage(file);
+      if (!up) return;
+      const updated = { ...t, source_file_url: up.publicUrl, source_file_name: file.name };
+      setT(updated);
+      const { error } = await supabase.from("brief_templates").update({
+        source_file_url: up.publicUrl, source_file_name: file.name,
+      }).eq("id", t.id);
+      if (error) throw error;
+      toast.success("Source doc attached");
+      loadTemplates();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to attach");
+    } finally {
+      setAttachingFile(false);
+    }
+  };
+
+  const removeSourceDoc = async () => {
+    if (!t) return;
+    const updated = { ...t, source_file_url: null, source_file_name: null };
+    setT(updated);
+    const { error } = await supabase.from("brief_templates").update({
+      source_file_url: null, source_file_name: null,
+    }).eq("id", t.id);
+    if (error) return toast.error(error.message);
+    toast.success("Source doc removed");
+    loadTemplates();
+  };
+
 
   const ListEditor = ({ label, items, onChange, placeholder, icon: Icon }: any) => {
     const [v, setV] = useState("");
@@ -232,8 +336,35 @@ const Briefs = () => {
               </div>
             </DialogContent>
           </Dialog>
+          <Dialog open={importOpen} onOpenChange={(o) => { setImportOpen(o); if (!o) { setImportText(""); setImportFile(null); } }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" disabled={!selectedClientId}><Wand2 className="w-4 h-4 mr-1.5" /> Import from doc</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader><DialogTitle className="font-display text-2xl">Import a briefing document</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground">Upload the brand's brief (PDF, DOCX, or TXT) or paste the text — AI will fill in objective, tone, do's, don'ts, hashtags and mentions. The original file stays attached for reference.</p>
+                <div>
+                  <Label>Upload file</Label>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <Input type="file" accept=".pdf,.docx,.txt,.md" onChange={(e) => setImportFile(e.target.files?.[0] ?? null)} />
+                    {importFile && <button onClick={() => setImportFile(null)} className="text-xs text-muted-foreground"><X className="w-3.5 h-3.5" /></button>}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">PDF, DOCX, TXT — max ~25k characters parsed.</p>
+                </div>
+                <div className="text-center text-[10px] uppercase tracking-widest text-muted-foreground">or paste text</div>
+                <div>
+                  <Textarea rows={8} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste the brief content here…" />
+                </div>
+                <Button onClick={runImport} disabled={importing || (!importText.trim() && !importFile)} className="w-full bg-primary">
+                  {importing ? (<><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Reading & extracting…</>) : (<><Sparkles className="w-4 h-4 mr-1.5" /> Import with AI</>)}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
+
 
       {!selectedClientId ? (
         <Card className="p-10 text-center text-muted-foreground">Add a client first, then create briefs.</Card>
@@ -289,6 +420,43 @@ const Briefs = () => {
                 </div>
               </div>
             </Card>
+
+            <Card className="p-5">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="w-3.5 h-3.5 text-muted-foreground" />
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Source briefing document</div>
+                </div>
+                {t.source_file_url && (
+                  <Button variant="ghost" size="sm" onClick={removeSourceDoc} className="text-destructive h-7"><X className="w-3.5 h-3.5 mr-1" /> Remove</Button>
+                )}
+              </div>
+              {t.source_file_url ? (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-md bg-secondary/40">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{t.source_file_name || "Source document"}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">Original brand brief on file</div>
+                    </div>
+                  </div>
+                  <a href={t.source_file_url} target="_blank" rel="noreferrer" className="shrink-0">
+                    <Button variant="outline" size="sm"><Download className="w-3.5 h-3.5 mr-1" /> Open</Button>
+                  </a>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-xs text-muted-foreground">Attach the original PDF / DOCX so the team can always cross-check. The structured fields below stay editable.</p>
+                  <label className="cursor-pointer">
+                    <input type="file" accept=".pdf,.docx,.txt,.md,.ppt,.pptx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) attachSourceDoc(f); e.currentTarget.value = ""; }} />
+                    <Button asChild variant="outline" size="sm" disabled={attachingFile}>
+                      <span>{attachingFile ? (<><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> Uploading…</>) : (<><Upload className="w-3.5 h-3.5 mr-1" /> Attach file</>)}</span>
+                    </Button>
+                  </label>
+                </div>
+              )}
+            </Card>
+
 
             <Card className="p-5">
               <div className="flex items-center justify-between mb-3">
