@@ -32,8 +32,9 @@ export const ContestsSection = ({ campaignId }: { campaignId: string }) => {
   const [editEntry, setEditEntry] = useState<any>(null);
   const latestErrors = Array.isArray(lastRun?.errors) ? lastRun.errors : [];
 
-  const scoreOf = (stats: { shares?: any; comments?: any; likes?: any }) =>
-    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
+  const scoreOf = (stats: { shares?: any; comments?: any; likes?: any; views?: any }) =>
+    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0) + Number(stats.views || 0);
+
   // Per the contest rules: a contestant's score is the BEST single post — we do not sum across platforms.
   const bestScore = (e: any) => {
     const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
