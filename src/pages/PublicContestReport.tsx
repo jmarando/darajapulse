@@ -49,8 +49,7 @@ const PublicContestReport = () => {
       const { data: es } = await supabase
         .from("contest_entries")
         .select("*")
-        .eq("contest_id", cid)
-        .in("status", ["approved", "winner"]);
+        .eq("contest_id", cid);
       setEntries(es ?? []);
       setLoading(false);
     })();
