@@ -68,6 +68,8 @@ export type Database = {
           name: string
           objective: string | null
           references_urls: string[] | null
+          source_file_name: string | null
+          source_file_url: string | null
           tone: string | null
           updated_at: string
           wht_percent: number | null
@@ -87,6 +89,8 @@ export type Database = {
           name: string
           objective?: string | null
           references_urls?: string[] | null
+          source_file_name?: string | null
+          source_file_url?: string | null
           tone?: string | null
           updated_at?: string
           wht_percent?: number | null
@@ -106,6 +110,8 @@ export type Database = {
           name?: string
           objective?: string | null
           references_urls?: string[] | null
+          source_file_name?: string | null
+          source_file_url?: string | null
           tone?: string | null
           updated_at?: string
           wht_percent?: number | null
