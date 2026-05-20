@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { canonicalPostUrl } from "@/lib/postUrl";
 
-type Props = { url: string; platform?: string | null };
+type Props = { rawUrl: string; platform?: string | null };
+type InternalProps = { url: string; platform?: string | null };
 
 const SCRIPTS: Record<string, string> = {
   instagram: "https://www.instagram.com/embed.js",
