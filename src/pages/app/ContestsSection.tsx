@@ -298,7 +298,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const addEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeId) return;
-    const score = Number(entry.shares || 0) * 3 + Number(entry.comments || 0) * 2 + Number(entry.likes || 0);
+    const score = scoreOf(entry);
     const { error } = await supabase.from("contest_entries").insert({ ...entry, contest_id: activeId, status: "approved", source: "manual", score });
     if (error) return toast.error(error.message);
     toast.success("Entry added"); setEntryOpen(false);
