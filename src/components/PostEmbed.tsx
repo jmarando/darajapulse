@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { canonicalPostUrl } from "@/lib/postUrl";
 
 type Props = { url: string; platform?: string | null };
 
@@ -52,9 +53,10 @@ function getTikTokId(url: string): string | null {
   return m ? m[1] : null;
 }
 
-export const PostEmbed = ({ url, platform }: Props) => {
+export const PostEmbed = ({ url: rawUrl, platform }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [errored, setErrored] = useState(false);
+  const url = canonicalPostUrl(rawUrl) || rawUrl;
   const p = detectPlatform(url, platform);
 
   useEffect(() => {
