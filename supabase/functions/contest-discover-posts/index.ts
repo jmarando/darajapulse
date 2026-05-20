@@ -154,7 +154,19 @@ Deno.serve(async (req) => {
 
     let upserted = 0;
     let fetched = 0;
+    let skipped_creator = 0;
     const errors: any[] = [];
+
+    // Pull all influencer handles from the agency roster — these are paid
+    // creators and must NEVER appear as contestants in any contest.
+    const cleanH = (s?: string | null) =>
+      (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || "";
+    const { data: roster } = await sb.from("influencers").select("handle");
+    const rosterHandles = new Set<string>((roster ?? []).map((r: any) => cleanH(r.handle)).filter(Boolean));
+    const isCreator = (h?: string | null) => {
+      const c = cleanH(h);
+      return !!c && rosterHandles.has(c);
+    };
 
     // ---- Instagram ----
     const ig = await discoverInstagram(sb, tags);
