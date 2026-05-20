@@ -33,7 +33,33 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const latestErrors = Array.isArray(lastRun?.errors) ? lastRun.errors : [];
 
   const scoreOf = (stats: { shares?: any; comments?: any; likes?: any; views?: any }) =>
-    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0) + Number(stats.views || 0);
+    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
+
+  const postTime = (post: any) => {
+    const t = new Date(post?.posted_at || post?.created_at || 0).getTime();
+    return Number.isFinite(t) && t > 0 ? t : Number.MAX_SAFE_INTEGER;
+  };
+  const sourceRank = (post: any) => {
+    const source = String(post?.source || "").toLowerCase();
+    if (source === "manual" || source === "public_form") return 0;
+    if (source === "registration" || source === "csv_import" || source === "external_feed") return 1;
+    return 2;
+  };
+  const pickCountedPost = (rows: any[]) => {
+    const byUrl = new Map<string, any>();
+    for (const row of rows) {
+      const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
+      for (const post of candidates) {
+        const key = canonicalPostUrl(post?.post_url);
+        if (!key) continue;
+        const prev = byUrl.get(key);
+        if (!prev || sourceRank(post) < sourceRank(prev) || (sourceRank(post) === sourceRank(prev) && scoreOf(post) > scoreOf(prev))) {
+          byUrl.set(key, post);
+        }
+      }
+    }
+    return Array.from(byUrl.values()).sort((a, b) => sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b) || new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0] || null;
+  };
 
   // Per the contest rules: a contestant's score is the BEST single post — we do not sum across platforms.
   const bestScore = (e: any) => {
@@ -58,28 +84,21 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   };
 
   const mergeContestantRows = (rows: any[]) => {
-    const sorted = [...rows].sort((a, b) => bestScore(b) - bestScore(a));
-    const primary = sorted[0];
-    const seen = new Set<string>();
-    const remember = (post: any) => {
-      const key = canonicalPostUrl(post?.post_url);
-      if (!key) return false;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
+    const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
+    const counted = pickCountedPost(rows);
+    if (!counted) return { ...reg, cross_posts: [] };
+    return {
+      ...reg,
+      ...counted,
+      full_name: reg.full_name || counted.full_name,
+      submitter_name: reg.submitter_name || counted.submitter_name,
+      submitter_email: reg.submitter_email || counted.submitter_email,
+      instagram_handle: reg.instagram_handle || counted.instagram_handle,
+      tiktok_handle: reg.tiktok_handle || counted.tiktok_handle,
+      facebook_handle: reg.facebook_handle || counted.facebook_handle,
+      cross_posts: [],
+      score: scoreOf(counted),
     };
-    remember(primary);
-    const crossPosts: any[] = [];
-    for (const post of Array.isArray(primary.cross_posts) ? primary.cross_posts : []) {
-      if (remember(post)) crossPosts.push(post);
-    }
-    for (const row of sorted.slice(1)) {
-      if (remember(row)) crossPosts.push(row);
-      for (const post of Array.isArray(row.cross_posts) ? row.cross_posts : []) {
-        if (remember(post)) crossPosts.push(post);
-      }
-    }
-    return { ...primary, cross_posts: crossPosts };
   };
 
   const saveEditEntry = async () => {
