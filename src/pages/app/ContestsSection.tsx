@@ -59,7 +59,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
         }
       }
     }
-    return Array.from(byUrl.values()).sort((a, b) => sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b) || new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0] || null;
+    return Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a) || sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b) || new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0] || null;
   };
 
   // Per the contest rules: a contestant's score is the BEST single post — we do not sum across platforms.
