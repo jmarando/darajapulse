@@ -10,22 +10,24 @@ const SCRIPTS: Record<string, string> = {
   x: "https://platform.twitter.com/widgets.js",
 };
 
-function loadScript(src: string) {
+function processEmbeds() {
+  const w = window as any;
+  try { w.instgrm?.Embeds?.process(); } catch {}
+  try { w.twttr?.widgets?.load(); } catch {}
+  try {
+    // TikTok's embed.js exposes a global that re-scans <blockquote class="tiktok-embed">
+    if (typeof w.tiktokEmbedLoad === "function") w.tiktokEmbedLoad();
+  } catch {}
+}
+
+function loadScript(src: string): Promise<void> {
   return new Promise<void>((resolve) => {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
-    if (existing) {
-      // Re-process if available
-      // @ts-ignore
-      if ((window as any).instgrm?.Embeds) (window as any).instgrm.Embeds.process();
-      // @ts-ignore
-      if ((window as any).twttr?.widgets) (window as any).twttr.widgets.load();
-      resolve();
-      return;
-    }
+    if (existing) { processEmbeds(); resolve(); return; }
     const s = document.createElement("script");
     s.src = src;
     s.async = true;
-    s.onload = () => resolve();
+    s.onload = () => { processEmbeds(); resolve(); };
     document.body.appendChild(s);
   });
 }
