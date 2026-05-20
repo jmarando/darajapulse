@@ -551,7 +551,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                   groups.get(key)!.push(e);
                 }
                 const contestants = Array.from(groups.entries()).map(([key, rows]) => {
-                  const reg = rows.find(r => r.source === "registration") || rows[0];
+                  const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
                   const best = pickCountedPost(rows);
                   const posts = best ? [best] : [];
                   const total = best ? scoreOf(best) : 0;
@@ -674,7 +674,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                 <td className="px-3 py-2">
                                   <a href={e.post_url} target="_blank" rel="noreferrer" className="hover:text-accent">{e.handle || e.submitter_name || "—"}</a>
                                   <span className={`ml-2 text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
-                                  {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{xs.length} other post{xs.length === 1 ? "" : "s"} (best wins)</div>}
+                                  {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />1 counted video</div>}
                                 </td>
                                 <td className="px-3 py-2 capitalize text-muted-foreground">
                                   {e.platform}{xs.length > 0 && <div className="text-[10px]">+{Array.from(new Set(xs.map((x: any) => x.platform))).join(", ")}</div>}
