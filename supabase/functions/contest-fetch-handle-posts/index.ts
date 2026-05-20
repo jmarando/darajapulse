@@ -12,6 +12,11 @@ const ED = Deno.env.get("ENSEMBLEDATA_API_TOKEN");
 const scoreOf = (s: { shares?: any; comments?: any; likes?: any }) =>
   Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0);
 
+const postTime = (post: any) => {
+  const t = new Date(post?.posted_at || post?.created_at || 0).getTime();
+  return Number.isFinite(t) && t > 0 ? t : Number.MAX_SAFE_INTEGER;
+};
+
 const cleanHandle = (s?: string | null) =>
   (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase();
 
@@ -152,7 +157,8 @@ Deno.serve(async (req) => {
       if (onlyHandle && !candidates.some(c => c.handle.toLowerCase() === onlyHandle)) continue;
       if (!candidates.length) continue;
 
-      let best: any = null;
+      if (e.post_url) continue;
+      let first: any = null;
       for (const c of candidates) {
         try {
           const posts = c.platform === "tiktok"
@@ -161,23 +167,23 @@ Deno.serve(async (req) => {
           fetched += posts.length;
           const matching = posts.filter((p: any) => captionHas(p.caption, tags));
           for (const p of matching) {
-            const sc = scoreOf(p);
-            if (!best || sc > scoreOf(best)) best = { ...p, platform: c.platform, handle: c.handle };
+            const candidate = { ...p, platform: c.platform, handle: c.handle };
+            if (!first || postTime(candidate) < postTime(first)) first = candidate;
           }
         } catch (err) {
           errors.push({ entry: e.id, handle: c.handle, platform: c.platform, msg: err instanceof Error ? err.message : String(err) });
         }
       }
 
-      if (!best) continue;
+      if (!first) continue;
       const { error } = await sb.from("contest_entries").update({
-        platform: best.platform,
-        post_url: best.post_url,
-        thumbnail_url: best.thumbnail_url,
-        caption: (best.caption || "").slice(0, 1000),
-        posted_at: best.posted_at,
-        views: best.views, likes: best.likes, comments: best.comments, shares: best.shares,
-        score: scoreOf(best),
+        platform: first.platform,
+        post_url: first.post_url,
+        thumbnail_url: first.thumbnail_url,
+        caption: (first.caption || "").slice(0, 1000),
+        posted_at: first.posted_at,
+        views: first.views, likes: first.likes, comments: first.comments, shares: first.shares,
+        score: scoreOf(first),
         status: e.source === "registration" || e.source === "manual" ? "approved" : undefined,
         source: "ensembledata",
         last_polled_at: new Date().toISOString(),
