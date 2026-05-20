@@ -63,7 +63,14 @@ export const PostEmbed = ({ url: rawUrl, platform }: Props) => {
 
   useEffect(() => {
     const src = SCRIPTS[p];
-    if (src) loadScript(src);
+    if (!src) return;
+    let cancelled = false;
+    loadScript(src).then(() => {
+      // Embed scripts only scan on first load — re-poke them after our blockquote mounts.
+      // Multiple delayed passes cover late-mounting nodes (tabs, virtualized lists).
+      [50, 250, 800, 2000].forEach((d) => setTimeout(() => { if (!cancelled) processEmbeds(); }, d));
+    });
+    return () => { cancelled = true; };
   }, [p, url]);
 
   if (!url) return null;
