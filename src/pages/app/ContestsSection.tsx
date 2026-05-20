@@ -552,17 +552,8 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 }
                 const contestants = Array.from(groups.entries()).map(([key, rows]) => {
                   const reg = rows.find(r => r.source === "registration") || rows[0];
-                  // Dedupe posts by canonical URL — keep the highest-engagement row per video.
-                  const byUrl = new Map<string, any>();
-                  for (const r of rows) {
-                    if (!r.post_url) continue;
-                    const cu = canonicalPostUrl(r.post_url);
-                    const prev = byUrl.get(cu);
-                    if (!prev || scoreOf(r) > scoreOf(prev)) byUrl.set(cu, r);
-                  }
-                  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
-                  // Per contest rules: score is the BEST single post (not summed across platforms).
-                  const best = posts[0];
+                  const best = pickCountedPost(rows);
+                  const posts = best ? [best] : [];
                   const total = best ? scoreOf(best) : 0;
                   return { key, reg, posts, total, bestId: best?.id };
                 }).sort((a, b) => b.total - a.total);
@@ -596,7 +587,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             <div className="text-right shrink-0">
                               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Best score</div>
                               <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
-                              {posts.length > 1 && <div className="text-[10px] text-muted-foreground mt-0.5">of {posts.length} posts</div>}
+                              {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">1 counted video</div>}
                             </div>
                           </div>
                           {posts.length === 0 ? (
