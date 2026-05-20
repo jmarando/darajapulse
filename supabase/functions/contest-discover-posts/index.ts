@@ -178,6 +178,9 @@ Deno.serve(async (req) => {
       if (!captionHas(caption, tags)) continue;
       const post_url = canonicalPostUrl(p.permalink);
       if (!post_url) continue;
+      // Try to extract the author username from the permalink (best effort).
+      const igAuthor = (p.username || p.owner?.username || (p.permalink?.match(/instagram\.com\/([A-Za-z0-9._]+)\//i)?.[1])) ?? null;
+      if (isCreator(igAuthor)) { skipped_creator++; continue; }
       const thumb = p.thumbnail_url || p.media_url || p?.children?.data?.[0]?.thumbnail_url || p?.children?.data?.[0]?.media_url || null;
       const stats = { views: 0, likes: Number(p.like_count || 0), comments: Number(p.comments_count || 0), shares: 0 };
       const { error } = await sb.from("contest_entries").upsert(
@@ -185,7 +188,7 @@ Deno.serve(async (req) => {
           contest_id,
           platform: "instagram",
           post_url,
-          handle: null,
+          handle: cleanH(igAuthor) || null,
           caption: caption.slice(0, 1000),
           thumbnail_url: thumb,
           posted_at: p.timestamp || null,
