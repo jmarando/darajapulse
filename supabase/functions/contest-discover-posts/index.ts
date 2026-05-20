@@ -270,7 +270,7 @@ Deno.serve(async (req) => {
       await sb.functions.invoke("contest-poll", { body: { contest_id } });
     } catch (_) {}
 
-    return new Response(JSON.stringify({ fetched, upserted, errors }), {
+    return new Response(JSON.stringify({ fetched, upserted, skipped_creator, errors }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
