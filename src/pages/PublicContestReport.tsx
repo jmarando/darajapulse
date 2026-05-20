@@ -34,6 +34,7 @@ const PublicContestReport = () => {
   const [client, setClient] = useState<any | null>(null);
   const [campaign, setCampaign] = useState<any | null>(null);
   const [entries, setEntries] = useState<any[]>([]);
+  const [creatorHandles, setCreatorHandles] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -46,14 +47,29 @@ const PublicContestReport = () => {
       setClient((data as any).client);
       setCampaign((data as any).campaign);
       const cid = (data as any).id;
-      const { data: es } = await supabase
-        .from("contest_entries")
-        .select("*")
-        .eq("contest_id", cid);
+      const [{ data: es }, { data: inf }] = await Promise.all([
+        supabase.from("contest_entries").select("*").eq("contest_id", cid),
+        supabase.from("influencers").select("handle"),
+      ]);
       setEntries(es ?? []);
+      const s = new Set<string>();
+      for (const r of inf ?? []) {
+        const h = cleanH((r as any).handle);
+        if (h) s.add(h);
+      }
+      setCreatorHandles(s);
       setLoading(false);
     })();
   }, [token]);
+
+  // Paid creators (agency roster) must never appear in contestant standings.
+  const visibleEntries = useMemo(() => {
+    if (creatorHandles.size === 0) return entries;
+    return entries.filter((e) => {
+      const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean);
+      return !hs.some((h) => creatorHandles.has(h as string));
+    });
+  }, [entries, creatorHandles]);
 
   // Group entries by contestant key (handle, then fallbacks) and pick best post per contestant.
   const contestants = useMemo(() => {
@@ -63,7 +79,7 @@ const PublicContestReport = () => {
       return `entry:${e.id}`;
     };
     const groups = new Map<string, any[]>();
-    for (const e of entries) {
+    for (const e of visibleEntries) {
       const k = key(e);
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k)!.push(e);
@@ -83,22 +99,22 @@ const PublicContestReport = () => {
         return { reg, posts, best, score: best ? scoreOf(best) : 0 };
       })
       .sort((a, b) => b.score - a.score);
-  }, [entries]);
+  }, [visibleEntries]);
 
   const totals = useMemo(() => {
     let views = 0, likes = 0, comments = 0, shares = 0;
-    for (const e of entries) {
+    for (const e of visibleEntries) {
       views += Number(e.views || 0);
       likes += Number(e.likes || 0);
       comments += Number(e.comments || 0);
       shares += Number(e.shares || 0);
     }
     return { views, likes, comments, shares, eng: likes + comments + shares };
-  }, [entries]);
+  }, [visibleEntries]);
 
   const platformRows = useMemo(() => {
     const map = new Map<string, { posts: number; views: number; eng: number }>();
-    for (const e of entries) {
+    for (const e of visibleEntries) {
       const k = String(e.platform || "other");
       const cur = map.get(k) ?? { posts: 0, views: 0, eng: 0 };
       cur.posts += 1;
@@ -107,7 +123,7 @@ const PublicContestReport = () => {
       map.set(k, cur);
     }
     return Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views);
-  }, [entries]);
+  }, [visibleEntries]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (notFound || !contest) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Contest report not found or no longer active.</div>;
@@ -149,7 +165,7 @@ const PublicContestReport = () => {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
           {[
             { label: "Contestants", value: fmt(contestants.length), icon: Users },
-            { label: "Entries", value: fmt(entries.length), icon: Trophy },
+            { label: "Entries", value: fmt(visibleEntries.length), icon: Trophy },
             { label: "Views", value: fmt(totals.views), icon: Eye },
             { label: "Engagement", value: fmt(totals.eng), icon: Heart },
             { label: "Shares", value: fmt(totals.shares), icon: Share2 },

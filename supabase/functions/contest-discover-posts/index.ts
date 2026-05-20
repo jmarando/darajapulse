@@ -154,7 +154,19 @@ Deno.serve(async (req) => {
 
     let upserted = 0;
     let fetched = 0;
+    let skipped_creator = 0;
     const errors: any[] = [];
+
+    // Pull all influencer handles from the agency roster — these are paid
+    // creators and must NEVER appear as contestants in any contest.
+    const cleanH = (s?: string | null) =>
+      (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || "";
+    const { data: roster } = await sb.from("influencers").select("handle");
+    const rosterHandles = new Set<string>((roster ?? []).map((r: any) => cleanH(r.handle)).filter(Boolean));
+    const isCreator = (h?: string | null) => {
+      const c = cleanH(h);
+      return !!c && rosterHandles.has(c);
+    };
 
     // ---- Instagram ----
     const ig = await discoverInstagram(sb, tags);
@@ -166,6 +178,9 @@ Deno.serve(async (req) => {
       if (!captionHas(caption, tags)) continue;
       const post_url = canonicalPostUrl(p.permalink);
       if (!post_url) continue;
+      // Try to extract the author username from the permalink (best effort).
+      const igAuthor = (p.username || p.owner?.username || (p.permalink?.match(/instagram\.com\/([A-Za-z0-9._]+)\//i)?.[1])) ?? null;
+      if (isCreator(igAuthor)) { skipped_creator++; continue; }
       const thumb = p.thumbnail_url || p.media_url || p?.children?.data?.[0]?.thumbnail_url || p?.children?.data?.[0]?.media_url || null;
       const stats = { views: 0, likes: Number(p.like_count || 0), comments: Number(p.comments_count || 0), shares: 0 };
       const { error } = await sb.from("contest_entries").upsert(
@@ -173,7 +188,7 @@ Deno.serve(async (req) => {
           contest_id,
           platform: "instagram",
           post_url,
-          handle: null,
+          handle: cleanH(igAuthor) || null,
           caption: caption.slice(0, 1000),
           thumbnail_url: thumb,
           posted_at: p.timestamp || null,
@@ -200,6 +215,7 @@ Deno.serve(async (req) => {
       const caption: string = aweme.desc || v.desc || "";
       if (!captionHas(caption, tags)) continue;
       const author = aweme.author?.unique_id || aweme.author?.uniqueId || v.author?.unique_id || "";
+      if (isCreator(author)) { skipped_creator++; continue; }
       const videoId = aweme.aweme_id || aweme.id || v.id;
       const rawUrl = aweme.share_url || (author && videoId ? `https://www.tiktok.com/@${author}/video/${videoId}` : null);
       const post_url = canonicalPostUrl(rawUrl);
@@ -254,7 +270,7 @@ Deno.serve(async (req) => {
       await sb.functions.invoke("contest-poll", { body: { contest_id } });
     } catch (_) {}
 
-    return new Response(JSON.stringify({ fetched, upserted, errors }), {
+    return new Response(JSON.stringify({ fetched, upserted, skipped_creator, errors }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
