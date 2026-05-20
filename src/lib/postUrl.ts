@@ -19,5 +19,10 @@ export function canonicalPostUrl(raw?: string | null): string {
 }
 
 export function cleanHandle(s?: string | null): string {
-  return (s || "").trim().replace(/^@+/, "").toLowerCase();
+  return (s || "")
+    .trim()
+    .replace(/^@+/, "")
+    .replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "")
+    .replace(/[/?#].*$/, "")
+    .toLowerCase();
 }
