@@ -22,7 +22,7 @@ const fmtDate = (s?: string) => {
 
 // Score: shares ×3 + comments ×2 + likes ×1 + views ×0.01 (1 point per 100 views)
 const scoreOf = (e: { shares?: any; comments?: any; likes?: any; views?: any }) =>
-  Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0) * 0.01;
+  Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0);
 
 const postTime = (post: any) => {
   const t = new Date(post?.posted_at || post?.created_at || 0).getTime();
