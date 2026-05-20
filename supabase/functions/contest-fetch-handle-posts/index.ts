@@ -9,8 +9,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const ED = Deno.env.get("ENSEMBLEDATA_API_TOKEN");
 
-const scoreOf = (s: { shares?: any; comments?: any; likes?: any }) =>
-  Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0);
+const scoreOf = (s: { shares?: any; comments?: any; likes?: any; views?: any }) =>
+  Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0) + Number(s.views || 0) * 0.01;
 
 const postTime = (post: any) => {
   const t = new Date(post?.posted_at || post?.created_at || 0).getTime();
