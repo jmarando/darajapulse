@@ -30,15 +30,16 @@ function loadScript(src: string) {
 }
 
 function detectPlatform(url: string, hint?: string | null): string {
-  const h = (hint || "").toLowerCase();
-  if (h) return h;
-  const u = url.toLowerCase();
+  // URL wins over hint — the stored platform is often wrong (e.g. "instagram"
+  // saved against a tiktok.com URL), which renders an empty embed forever.
+  const u = (url || "").toLowerCase();
   if (u.includes("instagram.com")) return "instagram";
   if (u.includes("tiktok.com")) return "tiktok";
   if (u.includes("youtube.com") || u.includes("youtu.be")) return "youtube";
   if (u.includes("twitter.com") || u.includes("x.com")) return "twitter";
   if (u.includes("facebook.com") || u.includes("fb.watch")) return "facebook";
-  return "other";
+  const h = (hint || "").toLowerCase();
+  return h || "other";
 }
 
 function getYouTubeId(url: string): string | null {
