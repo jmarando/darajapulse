@@ -163,9 +163,25 @@ Deno.serve(async (req) => {
       (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || "";
     const { data: roster } = await sb.from("influencers").select("handle");
     const rosterHandles = new Set<string>((roster ?? []).map((r: any) => cleanH(r.handle)).filter(Boolean));
+    const { data: existingEntries } = await sb
+      .from("contest_entries")
+      .select("handle, instagram_handle, tiktok_handle, facebook_handle, post_url")
+      .eq("contest_id", contest_id);
+    const countedHandles = new Set<string>();
+    for (const entry of existingEntries ?? []) {
+      if (!entry.post_url) continue;
+      for (const handle of [entry.handle, entry.instagram_handle, entry.tiktok_handle, entry.facebook_handle]) {
+        const h = cleanH(handle);
+        if (h) countedHandles.add(h);
+      }
+    }
     const isCreator = (h?: string | null) => {
       const c = cleanH(h);
       return !!c && rosterHandles.has(c);
+    };
+    const alreadyCounted = (h?: string | null) => {
+      const c = cleanH(h);
+      return !!c && countedHandles.has(c);
     };
 
     // ---- Instagram ----
@@ -181,6 +197,7 @@ Deno.serve(async (req) => {
       // Try to extract the author username from the permalink (best effort).
       const igAuthor = (p.username || p.owner?.username || (p.permalink?.match(/instagram\.com\/([A-Za-z0-9._]+)\//i)?.[1])) ?? null;
       if (isCreator(igAuthor)) { skipped_creator++; continue; }
+      if (alreadyCounted(igAuthor)) continue;
       const thumb = p.thumbnail_url || p.media_url || p?.children?.data?.[0]?.thumbnail_url || p?.children?.data?.[0]?.media_url || null;
       const stats = { views: 0, likes: Number(p.like_count || 0), comments: Number(p.comments_count || 0), shares: 0 };
       const { error } = await sb.from("contest_entries").upsert(
@@ -201,7 +218,7 @@ Deno.serve(async (req) => {
         { onConflict: "contest_id,post_url" },
       );
       if (error) errors.push({ source: "instagram", post_url, msg: error.message });
-      else upserted++;
+      else { upserted++; if (igAuthor) countedHandles.add(cleanH(igAuthor)); }
     }
 
     // ---- TikTok (EnsembleData) ----
@@ -216,6 +233,7 @@ Deno.serve(async (req) => {
       if (!captionHas(caption, tags)) continue;
       const author = aweme.author?.unique_id || aweme.author?.uniqueId || v.author?.unique_id || "";
       if (isCreator(author)) { skipped_creator++; continue; }
+      if (alreadyCounted(author)) continue;
       const videoId = aweme.aweme_id || aweme.id || v.id;
       const rawUrl = aweme.share_url || (author && videoId ? `https://www.tiktok.com/@${author}/video/${videoId}` : null);
       const post_url = canonicalPostUrl(rawUrl);
@@ -249,7 +267,7 @@ Deno.serve(async (req) => {
         { onConflict: "contest_id,post_url" },
       );
       if (error) errors.push({ source: "tiktok", post_url, msg: error.message });
-      else upserted++;
+      else { upserted++; if (author) countedHandles.add(cleanH(author)); }
     }
 
     if (runId) {
