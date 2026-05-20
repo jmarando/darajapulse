@@ -32,8 +32,10 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const [editEntry, setEditEntry] = useState<any>(null);
   const latestErrors = Array.isArray(lastRun?.errors) ? lastRun.errors : [];
 
+  // Score formula: shares ×3 + comments ×2 + likes ×1 + views ×0.01
+  // (1 point per 100 views — keeps views meaningful without drowning engagement)
   const scoreOf = (stats: { shares?: any; comments?: any; likes?: any; views?: any }) =>
-    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0);
+    Number(stats.shares || 0) * 3 + Number(stats.comments || 0) * 2 + Number(stats.likes || 0) + Number(stats.views || 0) * 0.01;
 
   const postTime = (post: any) => {
     const t = new Date(post?.posted_at || post?.created_at || 0).getTime();
