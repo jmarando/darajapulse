@@ -21,7 +21,31 @@ const fmtDate = (s?: string) => {
 };
 
 const scoreOf = (e: { shares?: any; comments?: any; likes?: any; views?: any }) =>
-  Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0);
+  Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0);
+
+const postTime = (post: any) => {
+  const t = new Date(post?.posted_at || post?.created_at || 0).getTime();
+  return Number.isFinite(t) && t > 0 ? t : Number.MAX_SAFE_INTEGER;
+};
+const sourceRank = (post: any) => {
+  const source = String(post?.source || "").toLowerCase();
+  if (source === "manual" || source === "public_form") return 0;
+  if (source === "registration" || source === "csv_import" || source === "external_feed") return 1;
+  return 2;
+};
+const pickCountedPost = (rows: any[]) => {
+  const byUrl = new Map<string, any>();
+  for (const row of rows) {
+    const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
+    for (const post of candidates) {
+      const key = canonicalPostUrl(post?.post_url);
+      if (!key) continue;
+      const prev = byUrl.get(key);
+      if (!prev || sourceRank(post) < sourceRank(prev) || (sourceRank(post) === sourceRank(prev) && scoreOf(post) > scoreOf(prev))) byUrl.set(key, post);
+    }
+  }
+  return Array.from(byUrl.values()).sort((a, b) => sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b))[0] || null;
+};
 
 const PlatformIcon = ({ p, className }: { p: string; className?: string }) => {
   const Icon = p === "instagram" ? Instagram : p === "tiktok" ? Music2 : p === "facebook" ? Facebook : Link2;
@@ -86,16 +110,9 @@ const PublicContestReport = () => {
     }
     return Array.from(groups.values())
       .map((rows) => {
-        const byUrl = new Map<string, any>();
-        for (const r of rows) {
-          if (!r.post_url) continue;
-          const cu = canonicalPostUrl(r.post_url);
-          const prev = byUrl.get(cu);
-          if (!prev || scoreOf(r) > scoreOf(prev)) byUrl.set(cu, r);
-        }
-        const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
         const reg = rows.find((r) => r.source === "registration") || rows[0];
-        const best = posts[0];
+        const best = pickCountedPost(rows);
+        const posts = best ? [best] : [];
         return { reg, posts, best, score: best ? scoreOf(best) : 0 };
       })
       .sort((a, b) => b.score - a.score);
