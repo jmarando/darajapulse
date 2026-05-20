@@ -34,6 +34,7 @@ const PublicContestReport = () => {
   const [client, setClient] = useState<any | null>(null);
   const [campaign, setCampaign] = useState<any | null>(null);
   const [entries, setEntries] = useState<any[]>([]);
+  const [creatorHandles, setCreatorHandles] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -46,11 +47,17 @@ const PublicContestReport = () => {
       setClient((data as any).client);
       setCampaign((data as any).campaign);
       const cid = (data as any).id;
-      const { data: es } = await supabase
-        .from("contest_entries")
-        .select("*")
-        .eq("contest_id", cid);
+      const [{ data: es }, { data: inf }] = await Promise.all([
+        supabase.from("contest_entries").select("*").eq("contest_id", cid),
+        supabase.from("influencers").select("handle"),
+      ]);
       setEntries(es ?? []);
+      const s = new Set<string>();
+      for (const r of inf ?? []) {
+        const h = cleanH((r as any).handle);
+        if (h) s.add(h);
+      }
+      setCreatorHandles(s);
       setLoading(false);
     })();
   }, [token]);
