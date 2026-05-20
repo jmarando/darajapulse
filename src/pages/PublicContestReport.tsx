@@ -45,7 +45,7 @@ const pickCountedPost = (rows: any[]) => {
       if (!prev || sourceRank(post) < sourceRank(prev) || (sourceRank(post) === sourceRank(prev) && scoreOf(post) > scoreOf(prev))) byUrl.set(key, post);
     }
   }
-  return Array.from(byUrl.values()).sort((a, b) => sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b))[0] || null;
+  return Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a) || sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b))[0] || null;
 };
 
 const PlatformIcon = ({ p, className }: { p: string; className?: string }) => {
