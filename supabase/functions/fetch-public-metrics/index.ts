@@ -1,6 +1,9 @@
-// Best-effort public metrics scraper for TikTok / Instagram / YouTube.
-// No API auth required — parses publicly available HTML/oEmbed.
-// Designed to fail gracefully: returns per-post status so UI can fall back to manual entry.
+// Unified public metrics fetcher.
+// Primary: Ensemble Data (https://ensembledata.com) — single token covers
+//   TikTok, Instagram, YouTube, Facebook.
+// Fallback: lightweight HTML scrape (TikTok / YouTube) for the rare case where
+//   Ensemble returns nothing.
+// Per-post status is returned so the UI can surface "couldn't fetch — retry / enter manually".
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -10,10 +13,12 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ENSEMBLE_TOKEN = Deno.env.get("ENSEMBLEDATA_API_TOKEN") ?? Deno.env.get("ENSEMBLE_DATA_API_TOKEN") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
 
+// ----- helpers -----
 function parseShortcount(s: string | null | undefined): number | null {
   if (!s) return null;
   const m = String(s).replace(/,/g, "").trim().match(/([\d.]+)\s*([kmbKMB]?)/);
@@ -33,168 +38,193 @@ function pickCount(...values: any[]): number {
   return 0;
 }
 
+// Only estimate shares/saves/reach when we have a real view count.
+// Otherwise leave at 0 — "—" beats a made-up number.
 function normalizeStats(stats: any) {
-  const views = pickCount(stats?.views, stats?.videoPlayCount, stats?.videoViewCount, stats?.playCount);
-  const likes = pickCount(stats?.likes, stats?.likesCount, stats?.diggCount);
-  const comments = pickCount(stats?.comments, stats?.commentsCount, stats?.commentCount);
-  const shares = pickCount(stats?.shares, stats?.sharesCount, stats?.shareCount, stats?.reshareCount) || Math.round(Math.max(views * 0.0025, likes * 0.06, comments * 1.2));
-  const saves = pickCount(stats?.saves, stats?.savesCount, stats?.collectCount, stats?.saveCount, stats?.savedCount) || Math.round(Math.max(views * 0.0035, likes * 0.08, comments * 1.5));
-  const reach = pickCount(stats?.reach, stats?.reachCount) || Math.round(views * 0.68);
-  const impressions = pickCount(stats?.impressions, stats?.impressionsCount) || Math.max(views, reach);
+  const views = pickCount(stats?.views, stats?.videoPlayCount, stats?.videoViewCount, stats?.playCount, stats?.play_count, stats?.view_count);
+  const likes = pickCount(stats?.likes, stats?.likesCount, stats?.diggCount, stats?.like_count, stats?.digg_count);
+  const comments = pickCount(stats?.comments, stats?.commentsCount, stats?.commentCount, stats?.comment_count);
+  const sharesRaw = pickCount(stats?.shares, stats?.sharesCount, stats?.shareCount, stats?.share_count, stats?.reshareCount, stats?.reshare_count);
+  const savesRaw = pickCount(stats?.saves, stats?.savesCount, stats?.collectCount, stats?.collect_count, stats?.saveCount, stats?.savedCount);
+  const reachRaw = pickCount(stats?.reach, stats?.reachCount);
+  const impressionsRaw = pickCount(stats?.impressions, stats?.impressionsCount);
+
+  const shares = sharesRaw || (views > 0 ? Math.round(Math.max(views * 0.0025, likes * 0.06)) : 0);
+  const saves  = savesRaw  || (views > 0 ? Math.round(Math.max(views * 0.0035, likes * 0.08)) : 0);
+  const reach  = reachRaw  || (views > 0 ? Math.round(views * 0.68) : 0);
+  const impressions = impressionsRaw || (views > 0 ? Math.max(views, reach) : 0);
+
   return { views, likes, comments, shares, saves, reach, impressions };
 }
 
 async function fetchHtml(url: string): Promise<string> {
   const r = await fetch(url, {
-    headers: {
-      "User-Agent": UA,
-      "Accept": "text/html,application/xhtml+xml",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
+    headers: { "User-Agent": UA, "Accept": "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.9" },
     redirect: "follow",
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return await r.text();
 }
 
-async function scrapeTikTok(url: string) {
+// ----- Ensemble Data -----
+const ED_BASE = "https://ensembledata.com/apis";
+
+async function ed(path: string, params: Record<string, string>) {
+  if (!ENSEMBLE_TOKEN) throw new Error("ENSEMBLEDATA_API_TOKEN not configured");
+  const qs = new URLSearchParams({ ...params, token: ENSEMBLE_TOKEN }).toString();
+  const r = await fetch(`${ED_BASE}${path}?${qs}`, { headers: { "Accept": "application/json" } });
+  const text = await r.text();
+  let json: any;
+  try { json = JSON.parse(text); } catch { throw new Error(`Ensemble non-JSON [${r.status}]: ${text.slice(0, 200)}`); }
+  if (!r.ok) throw new Error(`Ensemble ${path} ${r.status}: ${JSON.stringify(json).slice(0, 300)}`);
+  return json;
+}
+
+function igShortcode(url: string): string | null {
+  return url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i)?.[1] ?? null;
+}
+function ttVideoId(url: string): string | null {
+  return url.match(/\/video\/(\d{6,})/)?.[1] ?? null;
+}
+function ytVideoId(url: string): string | null {
+  return url.match(/[?&]v=([A-Za-z0-9_-]{6,})/)?.[1]
+    ?? url.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/)?.[1]
+    ?? url.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{6,})/)?.[1]
+    ?? null;
+}
+
+// --- TikTok via Ensemble ---
+async function edTikTok(url: string) {
+  const j = await ed("/tt/post/info", { url });
+  const data = j?.data ?? j;
+  // Ensemble returns the TikTok itemStruct (or similar) — handle both shapes
+  const item = data?.aweme_detail ?? data?.itemInfo?.itemStruct ?? data?.item ?? data;
+  const stats = item?.statistics ?? item?.stats ?? item;
+  const cover = item?.video?.cover ?? item?.video?.cover?.url_list?.[0] ?? item?.video?.origin_cover?.url_list?.[0] ?? data?.cover ?? null;
+  const desc = item?.desc ?? item?.title ?? data?.desc ?? null;
+  return {
+    stats: {
+      views: stats?.play_count ?? stats?.playCount ?? stats?.view_count,
+      likes: stats?.digg_count ?? stats?.diggCount ?? stats?.like_count,
+      comments: stats?.comment_count ?? stats?.commentCount,
+      shares: stats?.share_count ?? stats?.shareCount,
+      saves: stats?.collect_count ?? stats?.collectCount,
+    },
+    thumb: typeof cover === "string" ? cover : cover?.url_list?.[0] ?? null,
+    caption: desc,
+  };
+}
+
+// --- Instagram via Ensemble ---
+async function edInstagram(url: string) {
+  const code = igShortcode(url);
+  if (!code) throw new Error("Could not parse Instagram shortcode from URL");
+  const j = await ed("/instagram/post/details", { code });
+  const data = j?.data ?? j;
+  const item = data?.shortcode_media ?? data?.items?.[0] ?? data;
+  return {
+    stats: {
+      views: item?.video_view_count ?? item?.video_play_count ?? item?.play_count ?? item?.videoViewCount,
+      likes: item?.edge_media_preview_like?.count ?? item?.like_count ?? item?.likesCount,
+      comments: item?.edge_media_to_comment?.count ?? item?.comment_count ?? item?.commentsCount,
+      shares: item?.reshare_count ?? item?.share_count,
+      saves: item?.save_count ?? item?.savesCount,
+    },
+    thumb: item?.display_url ?? item?.thumbnail_url ?? item?.image_versions2?.candidates?.[0]?.url ?? null,
+    caption: item?.edge_media_to_caption?.edges?.[0]?.node?.text ?? item?.caption?.text ?? item?.caption ?? null,
+  };
+}
+
+// --- YouTube via Ensemble ---
+async function edYouTube(url: string) {
+  const id = ytVideoId(url);
+  if (!id) throw new Error("Could not parse YouTube video id");
+  const j = await ed("/youtube/video/details", { id });
+  const data = j?.data ?? j;
+  const v = data?.videoDetails ?? data;
+  return {
+    stats: {
+      views: v?.viewCount ?? v?.view_count,
+      likes: v?.likeCount ?? v?.like_count ?? data?.likes,
+      comments: v?.commentCount ?? v?.comment_count ?? data?.comments,
+    },
+    thumb: v?.thumbnail?.thumbnails?.slice(-1)?.[0]?.url ?? data?.thumbnail ?? null,
+    caption: v?.title ?? data?.title ?? null,
+  };
+}
+
+// --- Facebook via Ensemble ---
+async function edFacebook(url: string) {
+  const j = await ed("/facebook/post/details", { url });
+  const data = j?.data ?? j;
+  return {
+    stats: {
+      views: data?.video_view_count ?? data?.views ?? data?.play_count,
+      likes: data?.likes_count ?? data?.reactions_count ?? data?.likes,
+      comments: data?.comments_count ?? data?.comments,
+      shares: data?.shares_count ?? data?.shares,
+    },
+    thumb: data?.thumbnail_url ?? data?.image ?? null,
+    caption: data?.message ?? data?.description ?? data?.caption ?? null,
+  };
+}
+
+// ----- HTML fallbacks (TikTok / YouTube only) -----
+async function scrapeTikTokHtml(url: string) {
   const html = await fetchHtml(url);
-  // TikTok embeds video stats in __UNIVERSAL_DATA_FOR_REHYDRATION__ script tag
   const m = html.match(/<script[^>]+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([\s\S]*?)<\/script>/);
-  let stats: any = null;
-  let thumb: string | null = null;
-  let caption: string | null = null;
-  if (m) {
-    try {
-      const j = JSON.parse(m[1]);
-      const scope = j?.__DEFAULT_SCOPE__ ?? j;
-      // Walk to find video detail
-      const videoDetail = scope?.["webapp.video-detail"]?.itemInfo?.itemStruct
-        ?? scope?.["seo.abtest"]?.canonical;
-      const item = scope?.["webapp.video-detail"]?.itemInfo?.itemStruct;
-      if (item?.stats) {
-        stats = {
-          views: item.stats.playCount ?? 0,
-          likes: item.stats.diggCount ?? 0,
-          comments: item.stats.commentCount ?? 0,
-          shares: item.stats.shareCount ?? 0,
-          saves: item.stats.collectCount ?? 0,
-        };
-        thumb = item?.video?.cover ?? item?.video?.dynamicCover ?? null;
-        caption = item?.desc ?? null;
-      }
-    } catch (_) { /* fallthrough */ }
-  }
-  // Fallback: SIGI_STATE (older markup)
-  if (!stats) {
-    const sm = html.match(/<script[^>]+id="SIGI_STATE"[^>]*>([\s\S]*?)<\/script>/);
-    if (sm) {
-      try {
-        const j = JSON.parse(sm[1]);
-        const item = Object.values(j?.ItemModule ?? {})[0] as any;
-        if (item?.stats) {
-          stats = {
-            views: item.stats.playCount ?? 0,
-            likes: item.stats.diggCount ?? 0,
-            comments: item.stats.commentCount ?? 0,
-            shares: item.stats.shareCount ?? 0,
-            saves: item.stats.collectCount ?? 0,
-          };
-          thumb = item?.video?.cover ?? null;
-          caption = item?.desc ?? null;
-        }
-      } catch (_) { /* noop */ }
-    }
-  }
-  if (!stats) throw new Error("Could not parse TikTok page (login wall or markup change)");
-  return { stats, thumb, caption };
-}
-
-const APIFY_TOKEN = Deno.env.get("APIFY_API_TOKEN");
-
-async function scrapeInstagramViaApify(url: string) {
-  if (!APIFY_TOKEN) throw new Error("APIFY_API_TOKEN not configured");
-  // apify/instagram-scraper - run-sync-get-dataset-items returns parsed posts directly
-  const endpoint = `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}`;
-  const r = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      directUrls: [url],
-      resultsType: "posts",
-      resultsLimit: 1,
-      addParentData: false,
-    }),
-  });
-  if (!r.ok) {
-    const txt = await r.text();
-    throw new Error(`Apify HTTP ${r.status}: ${txt.slice(0, 200)}`);
-  }
-  const items = await r.json();
-  const item = Array.isArray(items) ? items[0] : null;
-  if (!item) throw new Error("Apify returned no data for this URL");
-  const stats = normalizeStats({
-    views: item.videoViewCount ?? item.videoPlayCount ?? item.igtvVideoViewCount,
-    likes: item.likesCount,
-    comments: item.commentsCount,
-    shares: item.sharesCount ?? item.shareCount ?? item.reshareCount,
-    saves: item.savesCount ?? item.collectCount,
-    reach: item.reach,
-    impressions: item.impressions,
-  });
+  if (!m) throw new Error("TikTok page blocked");
+  const j = JSON.parse(m[1]);
+  const scope = j?.__DEFAULT_SCOPE__ ?? j;
+  const item = scope?.["webapp.video-detail"]?.itemInfo?.itemStruct;
+  if (!item?.stats) throw new Error("TikTok stats not in payload");
   return {
-    stats,
-    thumb: item.displayUrl ?? null,
-    caption: item.caption ?? null,
+    stats: { views: item.stats.playCount, likes: item.stats.diggCount, comments: item.stats.commentCount, shares: item.stats.shareCount, saves: item.stats.collectCount },
+    thumb: item?.video?.cover ?? null,
+    caption: item?.desc ?? null,
   };
 }
 
-async function scrapeInstagram(url: string) {
-  // Try Apify first if token is set (reliable for posts + reels)
-  if (APIFY_TOKEN) {
-    try { return await scrapeInstagramViaApify(url); }
-    catch (e) { console.error("Apify IG failed, falling back to og-tags:", e); }
-  }
-  // Fallback: og-tags (rarely contains stats anymore)
-  const html = await fetchHtml(url);
-  const ogDesc = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i)?.[1];
-  const ogImage = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i)?.[1];
-  const ogTitle = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i)?.[1];
-  let likes: number | null = null, comments: number | null = null, views: number | null = null;
-  if (ogDesc) {
-    likes = parseShortcount(ogDesc.match(/([\d.,]+[KMB]?)\s+likes/i)?.[1]);
-    comments = parseShortcount(ogDesc.match(/([\d.,]+[KMB]?)\s+comments/i)?.[1]);
-    views = parseShortcount(ogDesc.match(/([\d.,]+[KMB]?)\s+(?:views|plays)/i)?.[1]);
-  }
-  if (likes == null && comments == null && views == null) {
-    throw new Error("Instagram requires login for stats. Use manual entry.");
-  }
-  return {
-    stats: normalizeStats({ views, likes, comments }),
-    thumb: ogImage ?? null,
-    caption: ogTitle ?? null,
-  };
-}
-
-async function scrapeYouTube(url: string) {
+async function scrapeYouTubeHtml(url: string) {
   const html = await fetchHtml(url);
   const viewsM = html.match(/"viewCount":"(\d+)"/);
+  if (!viewsM) throw new Error("YouTube blocked");
   const likesM = html.match(/"defaultText":\{"accessibility":\{"accessibilityData":\{"label":"([\d,]+)\s+likes/i);
   const titleM = html.match(/<meta\s+name="title"\s+content="([^"]+)"/i);
   const thumbM = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i);
-  if (!viewsM) throw new Error("Could not parse YouTube page");
   return {
-    stats: normalizeStats({ views: parseInt(viewsM[1], 10) || 0, likes: likesM ? parseShortcount(likesM[1]) ?? 0 : 0, comments: 0 }),
+    stats: { views: parseInt(viewsM[1], 10), likes: likesM ? parseShortcount(likesM[1]) ?? 0 : 0, comments: 0 },
     thumb: thumbM?.[1] ?? null,
     caption: titleM?.[1] ?? null,
   };
 }
 
+// ----- dispatcher -----
 async function scrape(platform: string, url: string) {
   const p = (platform || "").toLowerCase();
-  if (p === "tiktok" || /tiktok\.com/.test(url)) return await scrapeTikTok(url);
-  if (p === "instagram" || /instagram\.com/.test(url)) return await scrapeInstagram(url);
-  if (p === "youtube" || /youtu\.?be/.test(url)) return await scrapeYouTube(url);
+  const isTikTok = p === "tiktok" || /tiktok\.com/.test(url);
+  const isInsta = p === "instagram" || /instagram\.com/.test(url);
+  const isYouTube = p === "youtube" || /youtu\.?be/.test(url);
+  const isFacebook = p === "facebook" || /facebook\.com|fb\.watch/.test(url);
+
+  // Try Ensemble first for everything
+  if (ENSEMBLE_TOKEN) {
+    try {
+      if (isTikTok) return await edTikTok(url);
+      if (isInsta) return await edInstagram(url);
+      if (isYouTube) return await edYouTube(url);
+      if (isFacebook) return await edFacebook(url);
+    } catch (e) {
+      console.error(`Ensemble failed for ${platform}:`, (e as Error).message);
+      // fall through to HTML fallback where possible
+    }
+  }
+
+  // Fallbacks
+  if (isTikTok) return await scrapeTikTokHtml(url);
+  if (isYouTube) return await scrapeYouTubeHtml(url);
+  if (isInsta) throw new Error("Instagram fetch failed — check Ensemble Data token / plan");
+  if (isFacebook) throw new Error("Facebook fetch failed — check Ensemble Data token / plan");
   throw new Error(`No scraper for platform: ${platform}`);
 }
 
@@ -238,7 +268,6 @@ Deno.serve(async (req) => {
     const { data: posts, error } = await q;
     if (error) throw error;
     const results: any[] = [];
-    // Run with small concurrency to avoid rate-limits
     const chunks = 3;
     for (let i = 0; i < (posts ?? []).length; i += chunks) {
       const batch = (posts ?? []).slice(i, i + chunks);
@@ -246,7 +275,7 @@ Deno.serve(async (req) => {
       results.push(...r);
     }
     const ok = results.filter(r => r.ok).length;
-    return new Response(JSON.stringify({ ok, total: results.length, results }), {
+    return new Response(JSON.stringify({ ok, total: results.length, results, provider: ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
