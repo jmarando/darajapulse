@@ -254,7 +254,7 @@ const PublicContestReport = () => {
               </table>
             </div>
           )}
-          <div className="mt-3 text-[10px] text-muted-foreground">Score = shares×3 + comments×2 + likes×1 + views×1, best single post per contestant.</div>
+          <div className="mt-3 text-[10px] text-muted-foreground">Score = shares×3 + comments×2 + likes×1, one counted video per contestant.</div>
         </Card>
 
         {/* Platform breakdown */}
