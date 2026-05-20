@@ -20,7 +20,7 @@ const fmtDate = (s?: string) => {
   return isNaN(+d) ? s : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 };
 
-// Score: shares ×3 + comments ×2 + likes ×1 + views ×0.01 (1 point per 100 views)
+// Score: shares ×3 + comments ×2 + likes ×1 + views ×1
 const scoreOf = (e: { shares?: any; comments?: any; likes?: any; views?: any }) =>
   Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0);
 
