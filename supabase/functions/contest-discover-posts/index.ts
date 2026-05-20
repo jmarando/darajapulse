@@ -9,7 +9,7 @@ const ENSEMBLEDATA_TOKEN = Deno.env.get("ENSEMBLEDATA_API_TOKEN");
 const META_GRAPH_VERSION = "v21.0";
 
 const score = (e: { shares?: any; comments?: any; likes?: any; views?: any }) =>
-  Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0) * 0.01;
+  Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0);
 
 function captionHas(text: string | undefined, tags: string[]): boolean {
   if (!text) return false;
