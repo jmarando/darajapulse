@@ -125,9 +125,16 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
       const { data: lr } = await (supabase as any).from("contestant_sync_runs").select("*").eq("contest_id", cid).order("started_at", { ascending: false }).limit(1).maybeSingle();
       setLastRun(lr ?? null);
     }
-    // Exclude campaign-roster creators from contestants (only if scoped to a campaign).
-    const effectiveCampaignId = campaignId ?? cs[0]?.campaign_id;
+    // Paid creators (anyone in the influencer roster) must never appear as
+    // contestants — load every roster handle, not just this campaign's, so
+    // that hashtag-discovered posts from paid talent are filtered out.
     const set = new Set<string>();
+    const { data: allInf } = await supabase.from("influencers").select("handle");
+    for (const row of allInf ?? []) {
+      const h = cleanH((row as any).handle);
+      if (h) set.add(h);
+    }
+    const effectiveCampaignId = campaignId ?? cs[0]?.campaign_id;
     if (effectiveCampaignId) {
       const { data: ci } = await supabase
         .from("campaign_influencers")
