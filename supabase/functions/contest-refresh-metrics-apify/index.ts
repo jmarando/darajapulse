@@ -69,6 +69,29 @@ function detectPlatform(platform: string, url: string): "tiktok" | "instagram" |
   return null;
 }
 
+function canonicalizeUrl(raw: string, plat: string): string | null {
+  if (!raw) return null;
+  const url = raw.trim();
+  if (plat === "tiktok") {
+    // Keep username if present; just strip query/fragment. Resolve share IDs by extraction if no /video/.
+    if (/tiktok\.com\/.+\/video\/\d+/.test(url)) {
+      try { const u = new URL(url); return `${u.origin}${u.pathname}`; } catch { return url.split("?")[0]; }
+    }
+    const m = url.match(/tiktok\.com\/.*?(?:share_item_id=)(\d{6,})/i);
+    if (m) return `https://www.tiktok.com/video/${m[1]}`;
+    return null;
+  }
+  if (plat === "instagram") {
+    const m = url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
+    if (m) return `https://www.instagram.com/p/${m[1]}/`;
+    return null; // skip profile-only / garbage URLs
+  }
+  if (plat === "facebook") {
+    try { const u = new URL(url); return `${u.origin}${u.pathname}`; } catch { return null; }
+  }
+  return null;
+}
+
 // deno-lint-ignore no-explicit-any
 declare const EdgeRuntime: any;
 
@@ -100,8 +123,11 @@ Deno.serve(async (req) => {
       const plat = detectPlatform(e.platform, e.post_url!);
       if (!plat) continue;
       if (platformFilter && plat !== platformFilter) continue;
-      buckets[plat].push({ id: e.id, url: e.post_url! });
+      const url = canonicalizeUrl(e.post_url!, plat);
+      if (!url) continue;
+      buckets[plat].push({ id: e.id, url });
     }
+    const uniqUrls = (arr: { url: string }[]) => Array.from(new Set(arr.map(b => b.url)));
 
 
     async function applyResult(id: string, s: ReturnType<typeof tiktokStats>) {
@@ -121,10 +147,11 @@ Deno.serve(async (req) => {
       if (buckets.tiktok.length) {
         try {
           const items = await runActor(ACTORS.tiktok, {
-            postURLs: buckets.tiktok.map(b => b.url),
+            postURLs: uniqUrls(buckets.tiktok),
             shouldDownloadVideos: false, shouldDownloadCovers: false,
             resultsPerPage: 1,
           });
+          console.log("TT returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 400));
           for (const b of buckets.tiktok) {
             const it = items.find((x: any) =>
               (x?.webVideoUrl && b.url.includes(String(x.webVideoUrl).split("/").pop() || "")) ||
@@ -135,29 +162,29 @@ Deno.serve(async (req) => {
             try { await applyResult(b.id, tiktokStats(it)); summary.tiktok++; }
             catch (e) { summary.errors.push({ id: b.id, msg: String(e) }); }
           }
-        } catch (e) { summary.errors.push({ platform: "tiktok", msg: e instanceof Error ? e.message : String(e) }); }
+        } catch (e) { console.error("TT actor error", e); summary.errors.push({ platform: "tiktok", msg: e instanceof Error ? e.message : String(e) }); }
       }
 
       if (buckets.instagram.length) {
         try {
           const items = await runActor(ACTORS.instagram, {
-            directUrls: buckets.instagram.map(b => b.url),
+            directUrls: uniqUrls(buckets.instagram),
             resultsType: "posts",
             resultsLimit: 1,
             addParentData: false,
           });
-          console.log("IG returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 400));
+          console.log("IG returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 600));
           for (const b of buckets.instagram) {
             const shortcode = b.url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i)?.[1];
             const it = items.find((x: any) =>
-              (shortcode && (x?.shortCode === shortcode || x?.shortcode === shortcode || String(x?.url ?? "").includes(shortcode) || String(x?.postUrl ?? "").includes(shortcode))) ||
+              (shortcode && (x?.shortCode === shortcode || x?.shortcode === shortcode || String(x?.url ?? "").includes(shortcode) || String(x?.postUrl ?? "").includes(shortcode) || String(x?.inputUrl ?? "").includes(shortcode))) ||
               (x?.url && x.url === b.url) || (x?.inputUrl === b.url) || (x?.postUrl === b.url)
             );
             if (!it) { summary.errors.push({ id: b.id, msg: "no result" }); continue; }
             try { await applyResult(b.id, igStats(it)); summary.instagram++; }
             catch (e) { summary.errors.push({ id: b.id, msg: String(e) }); }
           }
-        } catch (e) { summary.errors.push({ platform: "instagram", msg: e instanceof Error ? e.message : String(e) }); }
+        } catch (e) { console.error("IG actor error", e); summary.errors.push({ platform: "instagram", msg: e instanceof Error ? e.message : String(e) }); }
       }
 
       if (buckets.facebook.length) {
