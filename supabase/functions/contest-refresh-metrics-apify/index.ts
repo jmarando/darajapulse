@@ -143,10 +143,11 @@ Deno.serve(async (req) => {
       if (buckets.tiktok.length) {
         try {
           const items = await runActor(ACTORS.tiktok, {
-            postURLs: buckets.tiktok.map(b => b.url),
+            postURLs: uniqUrls(buckets.tiktok),
             shouldDownloadVideos: false, shouldDownloadCovers: false,
             resultsPerPage: 1,
           });
+          console.log("TT returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 400));
           for (const b of buckets.tiktok) {
             const it = items.find((x: any) =>
               (x?.webVideoUrl && b.url.includes(String(x.webVideoUrl).split("/").pop() || "")) ||
@@ -157,7 +158,7 @@ Deno.serve(async (req) => {
             try { await applyResult(b.id, tiktokStats(it)); summary.tiktok++; }
             catch (e) { summary.errors.push({ id: b.id, msg: String(e) }); }
           }
-        } catch (e) { summary.errors.push({ platform: "tiktok", msg: e instanceof Error ? e.message : String(e) }); }
+        } catch (e) { console.error("TT actor error", e); summary.errors.push({ platform: "tiktok", msg: e instanceof Error ? e.message : String(e) }); }
       }
 
       if (buckets.instagram.length) {
