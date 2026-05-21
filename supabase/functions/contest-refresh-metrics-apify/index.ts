@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
       if (buckets.instagram.length) {
         try {
           const items = await runActor(ACTORS.instagram, {
-            directUrls: buckets.instagram.map(b => b.url),
+            directUrls: uniqUrls(buckets.instagram),
             resultsType: "posts",
             resultsLimit: 1,
             addParentData: false,
