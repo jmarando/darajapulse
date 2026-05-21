@@ -115,12 +115,15 @@ Deno.serve(async (req) => {
     if (error) throw error;
 
     const buckets: Record<string, { id: string; url: string }[]> = { tiktok: [], instagram: [], facebook: [] };
+    const seen: Record<string, Set<string>> = { tiktok: new Set(), instagram: new Set(), facebook: new Set() };
     for (const e of entries ?? []) {
       const plat = detectPlatform(e.platform, e.post_url!);
       if (!plat) continue;
       if (platformFilter && plat !== platformFilter) continue;
       const url = canonicalizeUrl(e.post_url!, plat);
       if (!url) continue;
+      if (seen[plat].has(url)) continue;
+      seen[plat].add(url);
       buckets[plat].push({ id: e.id, url });
     }
 
