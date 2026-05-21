@@ -149,10 +149,13 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     // contestants — load every roster handle, not just this campaign's, so
     // that hashtag-discovered posts from paid talent are filtered out.
     const set = new Set<string>();
-    const { data: allInf } = await supabase.from("influencers").select("handle");
+    const { data: allInf } = await supabase.from("influencers").select("handle, alt_handles");
     for (const row of allInf ?? []) {
       const h = cleanH((row as any).handle);
       if (h) set.add(h);
+      for (const a of ((row as any).alt_handles ?? [])) {
+        const c = cleanH(a); if (c) set.add(c);
+      }
     }
     const effectiveCampaignId = campaignId ?? cs[0]?.campaign_id;
     if (effectiveCampaignId) {

@@ -161,8 +161,12 @@ Deno.serve(async (req) => {
     // creators and must NEVER appear as contestants in any contest.
     const cleanH = (s?: string | null) =>
       (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || "";
-    const { data: roster } = await sb.from("influencers").select("handle");
-    const rosterHandles = new Set<string>((roster ?? []).map((r: any) => cleanH(r.handle)).filter(Boolean));
+    const { data: roster } = await sb.from("influencers").select("handle, alt_handles");
+    const rosterHandles = new Set<string>();
+    for (const r of (roster ?? []) as any[]) {
+      const h = cleanH(r.handle); if (h) rosterHandles.add(h);
+      for (const a of (r.alt_handles ?? [])) { const c = cleanH(a); if (c) rosterHandles.add(c); }
+    }
     const { data: existingEntries } = await sb
       .from("contest_entries")
       .select("handle, instagram_handle, tiktok_handle, facebook_handle, post_url")
