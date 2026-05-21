@@ -1,0 +1,2 @@
+ALTER TABLE public.influencers ADD COLUMN IF NOT EXISTS alt_handles text[] NOT NULL DEFAULT '{}';
+UPDATE public.influencers SET alt_handles = ARRAY['kevmaina5'] WHERE id = '1340f8c1-21be-4b29-95db-18c6ec70a9aa';

@@ -913,6 +913,7 @@ export type Database = {
       }
       influencers: {
         Row: {
+          alt_handles: string[]
           audience_age_breakdown: Json | null
           audience_gender_breakdown: Json | null
           audience_kenya_pct: number | null
@@ -935,6 +936,7 @@ export type Database = {
           region: string | null
         }
         Insert: {
+          alt_handles?: string[]
           audience_age_breakdown?: Json | null
           audience_gender_breakdown?: Json | null
           audience_kenya_pct?: number | null
@@ -957,6 +959,7 @@ export type Database = {
           region?: string | null
         }
         Update: {
+          alt_handles?: string[]
           audience_age_breakdown?: Json | null
           audience_gender_breakdown?: Json | null
           audience_kenya_pct?: number | null
