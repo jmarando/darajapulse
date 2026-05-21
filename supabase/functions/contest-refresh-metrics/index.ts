@@ -177,6 +177,9 @@ async function scrape(platform: string, url: string) {
   return primary ?? { views: 0, likes: 0, comments: 0, shares: 0 };
 }
 
+// deno-lint-ignore no-explicit-any
+declare const EdgeRuntime: any;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -185,60 +188,74 @@ Deno.serve(async (req) => {
     const contest_id: string | undefined = body.contest_id;
     if (!contest_id) return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const onlyEmpty: boolean = body.only_empty ?? false;
+    const wait: boolean = body.wait ?? false;
 
     let q = sb.from("contest_entries")
-      .select("id, platform, post_url, views, likes, comments, shares")
+      .select("id, platform, post_url, views, likes, comments, shares, status")
       .eq("contest_id", contest_id)
-      .not("post_url", "is", null);
+      .not("post_url", "is", null)
+      .neq("status", "invalid");
     if (onlyEmpty) q = q.eq("views", 0).eq("likes", 0).eq("comments", 0).eq("shares", 0);
     const { data: entries, error } = await q;
     if (error) throw error;
 
-    let updated = 0, failed = 0, invalid = 0;
-    const errors: any[] = [];
-    const CONC = 4;
-    for (let i = 0; i < (entries ?? []).length; i += CONC) {
-      const batch = (entries ?? []).slice(i, i + CONC);
-      await Promise.all(batch.map(async (e) => {
-        try {
-          // Validate / resolve URL
-          let url = (e.post_url || "").trim();
-          if ((e.platform || "").toLowerCase() === "tiktok") url = await resolveTikTokShort(url);
-          if (!isValidPostUrl(e.platform, url)) {
-            invalid++;
-            errors.push({ id: e.id, platform: e.platform, post_url: e.post_url, msg: "invalid_post_url" });
-            // Mark as invalid so it stops being retried
-            await sb.from("contest_entries").update({ status: "invalid", last_polled_at: new Date().toISOString() }).eq("id", e.id);
-            return;
-          }
-
-          const s = await scrape(e.platform, url);
-          const hasSignal = (s.views || s.likes || s.comments || s.shares) > 0;
-          if (!hasSignal) {
+    const run = async () => {
+      let updated = 0, failed = 0, invalid = 0;
+      const errors: any[] = [];
+      const CONC = 6;
+      for (let i = 0; i < (entries ?? []).length; i += CONC) {
+        const batch = (entries ?? []).slice(i, i + CONC);
+        await Promise.all(batch.map(async (e) => {
+          try {
+            let url = (e.post_url || "").trim();
+            if ((e.platform || "").toLowerCase() === "tiktok") url = await resolveTikTokShort(url);
+            if (!isValidPostUrl(e.platform, url)) {
+              invalid++;
+              errors.push({ id: e.id, platform: e.platform, post_url: e.post_url, msg: "invalid_post_url" });
+              await sb.from("contest_entries").update({ status: "invalid", last_polled_at: new Date().toISOString() }).eq("id", e.id);
+              return;
+            }
+            const s = await scrape(e.platform, url);
+            const hasSignal = (s.views || s.likes || s.comments || s.shares) > 0;
+            if (!hasSignal) {
+              failed++;
+              errors.push({ id: e.id, platform: e.platform, post_url: url, msg: "no_metrics_returned" });
+              await sb.from("contest_entries").update({ last_polled_at: new Date().toISOString() }).eq("id", e.id);
+              return;
+            }
+            const score = scoreOf(s);
+            const upd: any = {
+              views: s.views, likes: s.likes, comments: s.comments, shares: s.shares,
+              score, last_polled_at: new Date().toISOString(), source: s._source || "ensembledata",
+            };
+            if (s.caption) upd.caption = String(s.caption).slice(0, 1000);
+            if (s.thumbnail_url) upd.thumbnail_url = s.thumbnail_url;
+            const { error: uerr } = await sb.from("contest_entries").update(upd).eq("id", e.id);
+            if (uerr) throw uerr;
+            updated++;
+          } catch (err) {
             failed++;
-            errors.push({ id: e.id, platform: e.platform, post_url: url, msg: "no_metrics_returned" });
-            return;
+            errors.push({ id: e.id, platform: e.platform, post_url: e.post_url, msg: err instanceof Error ? err.message : String(err) });
           }
-          const score = scoreOf(s);
-          const upd: any = {
-            views: s.views, likes: s.likes, comments: s.comments, shares: s.shares,
-            score, last_polled_at: new Date().toISOString(), source: s._source || "ensembledata",
-          };
-          if (s.caption) upd.caption = String(s.caption).slice(0, 1000);
-          if (s.thumbnail_url) upd.thumbnail_url = s.thumbnail_url;
-          const { error: uerr } = await sb.from("contest_entries").update(upd).eq("id", e.id);
-          if (uerr) throw uerr;
-          updated++;
-        } catch (err) {
-          failed++;
-          errors.push({ id: e.id, platform: e.platform, post_url: e.post_url, msg: err instanceof Error ? err.message : String(err) });
-        }
-      }));
-    }
+        }));
+      }
+      console.log("refresh-metrics done", JSON.stringify({ contest_id, total: entries?.length ?? 0, updated, failed, invalid, errors_count: errors.length, sample_errors: errors.slice(0, 10) }));
+      return { updated, failed, invalid, errors };
+    };
 
-    return new Response(JSON.stringify({ total: entries?.length ?? 0, updated, failed, invalid, errors: errors.slice(0, 50) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (wait) {
+      const r = await run();
+      return new Response(JSON.stringify({ total: entries?.length ?? 0, ...r, errors: r.errors.slice(0, 50) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(run().catch((e) => console.error("bg error", e)));
+    } else {
+      run().catch((e) => console.error("bg error", e));
+    }
+    return new Response(JSON.stringify({ queued: true, contest_id, total: entries?.length ?? 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
+
 
