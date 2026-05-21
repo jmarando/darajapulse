@@ -53,7 +53,7 @@ const Team = () => {
     });
     const ids = Array.from(byUser.keys());
     if (ids.length === 0) { setMembers([]); setLoading(false); return; }
-    const { data: profs } = await supabase.from("profiles").select("id, email, full_name, title").in("id", ids);
+    const { data: profs } = await (supabase as any).rpc("get_profiles_by_ids", { _ids: ids });
     const list: Member[] = ids.map((id) => {
       const p = (profs ?? []).find((x: any) => x.id === id);
       return { user_id: id, email: p?.email ?? null, full_name: p?.full_name ?? null, title: (p as any)?.title ?? null, roles: byUser.get(id) ?? [] };
