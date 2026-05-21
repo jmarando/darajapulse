@@ -74,13 +74,16 @@ const PublicContestReport = () => {
       const cid = (data as any).id;
       const [{ data: es }, { data: inf }] = await Promise.all([
         supabase.from("contest_entries").select("*").eq("contest_id", cid),
-        supabase.from("influencers").select("handle"),
+        supabase.from("influencers").select("handle, alt_handles"),
       ]);
       setEntries(es ?? []);
       const s = new Set<string>();
       for (const r of inf ?? []) {
         const h = cleanH((r as any).handle);
         if (h) s.add(h);
+        for (const a of ((r as any).alt_handles ?? [])) {
+          const c = cleanH(a); if (c) s.add(c);
+        }
       }
       setCreatorHandles(s);
       setLoading(false);
