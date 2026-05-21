@@ -6,7 +6,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 const APIFY = Deno.env.get("APIFY_API_TOKEN") ?? "";
 const ACTORS = {
   tiktok: "clockworks~tiktok-scraper",
-  instagram: "apidojo~instagram-scraper",
+  instagram: "apify~instagram-scraper",
   facebook: "apify~facebook-posts-scraper",
 };
 
