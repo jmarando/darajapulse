@@ -142,15 +142,13 @@ Deno.serve(async (req) => {
         try {
           const items = await runActor(ACTORS.instagram, {
             directUrls: buckets.instagram.map(b => b.url),
-            resultsType: "posts",
-            resultsLimit: 1,
             addParentData: false,
           });
           console.log("IG returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 400));
           for (const b of buckets.instagram) {
             const shortcode = b.url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i)?.[1];
             const it = items.find((x: any) =>
-              (shortcode && (x?.shortCode === shortcode || x?.shortcode === shortcode || String(x?.url ?? "").includes(shortcode) || String(x?.postUrl ?? "").includes(shortcode))) ||
+              (shortcode && (x?.shortCode === shortcode || x?.shortcode === shortcode || String(x?.url ?? "").includes(shortcode) || String(x?.postUrl ?? "").includes(shortcode) || String(x?.inputUrl ?? "").includes(shortcode))) ||
               (x?.url && x.url === b.url) || (x?.inputUrl === b.url) || (x?.postUrl === b.url)
             );
             if (!it) { summary.errors.push({ id: b.id, msg: "no result" }); continue; }
