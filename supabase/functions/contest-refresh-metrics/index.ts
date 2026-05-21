@@ -1,13 +1,21 @@
 // Refresh public metrics for all contest_entries that already have a post_url.
-// Uses Ensemble Data to scrape Instagram / TikTok / Facebook public posts.
+// Primary: Ensemble Data. Fallback: Apify actors (TikTok/IG/FB) when Ensemble
+// returns no signal or errors. Short-link resolution for vt.tiktok.com.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 const ED = Deno.env.get("ENSEMBLEDATA_API_TOKEN") ?? Deno.env.get("ENSEMBLE_DATA_API_TOKEN") ?? "";
 const ED_BASE = "https://ensembledata.com/apis";
+const APIFY = Deno.env.get("APIFY_API_TOKEN") ?? "";
+const APIFY_ACTORS = {
+  tiktok: "clockworks~tiktok-scraper",
+  instagram: "apify~instagram-scraper",
+  facebook: "apify~facebook-posts-scraper",
+};
 
 const scoreOf = (s: { shares?: any; comments?: any; likes?: any; views?: any }) =>
   Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0) + Number(s.views || 0);
+
 
 async function ed(path: string, params: Record<string, string>) {
   if (!ED) throw new Error("ENSEMBLEDATA_API_TOKEN not configured");
