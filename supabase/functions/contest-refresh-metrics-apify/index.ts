@@ -1,5 +1,5 @@
 // Refresh contest_entries metrics using Apify actors (TikTok / Instagram / Facebook).
-// Replaces Ensemble for the public-post scraping path.
+// Runs in background via EdgeRuntime.waitUntil so the client returns immediately.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
@@ -19,7 +19,7 @@ const scoreOf = (s: any) =>
 
 async function runActor(actor: string, input: any): Promise<any[]> {
   if (!APIFY) throw new Error("APIFY_API_TOKEN not configured");
-  const url = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY}&timeout=180`;
+  const url = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY}&timeout=300`;
   const r = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -69,6 +69,9 @@ function detectPlatform(platform: string, url: string): "tiktok" | "instagram" |
   return null;
 }
 
+// deno-lint-ignore no-explicit-any
+declare const EdgeRuntime: any;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -81,34 +84,23 @@ Deno.serve(async (req) => {
       });
     }
     const onlyEmpty: boolean = body.only_empty ?? false;
+    const wait: boolean = body.wait ?? false;
 
     let q = sb.from("contest_entries")
-      .select("id, platform, post_url, views, likes, comments, shares")
+      .select("id, platform, post_url")
       .eq("contest_id", contest_id)
       .not("post_url", "is", null);
     if (onlyEmpty) q = q.eq("views", 0).eq("likes", 0).eq("comments", 0).eq("shares", 0);
     const { data: entries, error } = await q;
     if (error) throw error;
 
-    // Bucket entries by detected platform
     const buckets: Record<string, { id: string; url: string }[]> = { tiktok: [], instagram: [], facebook: [] };
-    const skipped: any[] = [];
     for (const e of entries ?? []) {
       const plat = detectPlatform(e.platform, e.post_url!);
-      if (!plat) { skipped.push({ id: e.id, reason: "unknown platform" }); continue; }
-      buckets[plat].push({ id: e.id, url: e.post_url! });
+      if (plat) buckets[plat].push({ id: e.id, url: e.post_url! });
     }
 
-    const results = {
-      total: entries?.length ?? 0,
-      updated: 0,
-      failed: 0,
-      skipped: skipped.length,
-      per_platform: { tiktok: 0, instagram: 0, facebook: 0 },
-      errors: [] as any[],
-    };
-
-    async function applyResult(id: string, _url: string, s: ReturnType<typeof tiktokStats>) {
+    async function applyResult(id: string, s: ReturnType<typeof tiktokStats>) {
       const score = scoreOf(s);
       const upd: any = {
         views: s.views, likes: s.likes, comments: s.comments, shares: s.shares,
@@ -116,87 +108,91 @@ Deno.serve(async (req) => {
       };
       if (s.caption) upd.caption = String(s.caption).slice(0, 1000);
       if (s.thumbnail_url) upd.thumbnail_url = s.thumbnail_url;
-      const { error: uerr } = await sb.from("contest_entries").update(upd).eq("id", id);
-      if (uerr) throw uerr;
+      await sb.from("contest_entries").update(upd).eq("id", id);
     }
 
-    const runAll = async () => {
-      // (background work happens here — populated below)
+    const work = async () => {
+      const summary: any = { tiktok: 0, instagram: 0, facebook: 0, errors: [] as any[] };
+
+      if (buckets.tiktok.length) {
+        try {
+          const items = await runActor(ACTORS.tiktok, {
+            postURLs: buckets.tiktok.map(b => b.url),
+            shouldDownloadVideos: false, shouldDownloadCovers: false,
+            resultsPerPage: 1,
+          });
+          for (const b of buckets.tiktok) {
+            const it = items.find((x: any) =>
+              (x?.webVideoUrl && b.url.includes(String(x.webVideoUrl).split("/").pop() || "")) ||
+              (x?.id && b.url.includes(String(x.id))) ||
+              (x?.input && String(x.input) === b.url)
+            );
+            if (!it) { summary.errors.push({ id: b.id, msg: "no result" }); continue; }
+            try { await applyResult(b.id, tiktokStats(it)); summary.tiktok++; }
+            catch (e) { summary.errors.push({ id: b.id, msg: String(e) }); }
+          }
+        } catch (e) { summary.errors.push({ platform: "tiktok", msg: e instanceof Error ? e.message : String(e) }); }
+      }
+
+      if (buckets.instagram.length) {
+        try {
+          const items = await runActor(ACTORS.instagram, {
+            directUrls: buckets.instagram.map(b => b.url),
+            resultsType: "details", resultsLimit: 1, addParentData: false,
+          });
+          for (const b of buckets.instagram) {
+            const shortcode = b.url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i)?.[1];
+            const it = items.find((x: any) =>
+              (shortcode && (x?.shortCode === shortcode || x?.shortcode === shortcode || String(x?.url ?? "").includes(shortcode))) ||
+              (x?.url && x.url === b.url) || (x?.inputUrl === b.url)
+            );
+            if (!it) { summary.errors.push({ id: b.id, msg: "no result" }); continue; }
+            try { await applyResult(b.id, igStats(it)); summary.instagram++; }
+            catch (e) { summary.errors.push({ id: b.id, msg: String(e) }); }
+          }
+        } catch (e) { summary.errors.push({ platform: "instagram", msg: e instanceof Error ? e.message : String(e) }); }
+      }
+
+      if (buckets.facebook.length) {
+        try {
+          const items = await runActor(ACTORS.facebook, {
+            startUrls: buckets.facebook.map(b => ({ url: b.url })),
+            resultsLimit: 1,
+          });
+          for (const b of buckets.facebook) {
+            const it = items.find((x: any) => x?.url === b.url || x?.postUrl === b.url || x?.topLevelUrl === b.url);
+            if (!it) { summary.errors.push({ id: b.id, msg: "no result" }); continue; }
+            try { await applyResult(b.id, fbStats(it)); summary.facebook++; }
+            catch (e) { summary.errors.push({ id: b.id, msg: String(e) }); }
+          }
+        } catch (e) { summary.errors.push({ platform: "facebook", msg: e instanceof Error ? e.message : String(e) }); }
+      }
+
+      console.log("apify refresh done", JSON.stringify({
+        contest_id, tiktok: summary.tiktok, instagram: summary.instagram, facebook: summary.facebook,
+        errors: summary.errors.length,
+      }));
     };
 
+    const queued = {
+      queued: true,
+      contest_id,
+      buckets: { tiktok: buckets.tiktok.length, instagram: buckets.instagram.length, facebook: buckets.facebook.length },
+      total: entries?.length ?? 0,
+    };
 
-    // TikTok batch
-    if (buckets.tiktok.length) {
-      try {
-        const items = await runActor(ACTORS.tiktok, {
-          postURLs: buckets.tiktok.map(b => b.url),
-          shouldDownloadVideos: false, shouldDownloadCovers: false,
-          resultsPerPage: 1,
-        });
-        for (const b of buckets.tiktok) {
-          const it = items.find((x: any) =>
-            (x?.webVideoUrl && b.url.includes(String(x.webVideoUrl).split("/").pop() || "")) ||
-            (x?.id && b.url.includes(String(x.id))) ||
-            (x?.input && String(x.input) === b.url)
-          );
-          if (!it) { results.failed++; results.errors.push({ id: b.id, msg: "no result" }); continue; }
-          try { await applyResult(b.id, b.url, tiktokStats(it)); results.updated++; results.per_platform.tiktok++; }
-          catch (e) { results.failed++; results.errors.push({ id: b.id, msg: String(e) }); }
-        }
-      } catch (e) {
-        results.failed += buckets.tiktok.length;
-        results.errors.push({ platform: "tiktok", msg: e instanceof Error ? e.message : String(e) });
-      }
+    if (wait) {
+      await work();
+      return new Response(JSON.stringify({ ...queued, done: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Instagram batch
-    if (buckets.instagram.length) {
-      try {
-        const items = await runActor(ACTORS.instagram, {
-          directUrls: buckets.instagram.map(b => b.url),
-          resultsType: "details",
-          resultsLimit: 1,
-          addParentData: false,
-        });
-        for (const b of buckets.instagram) {
-          const shortcode = b.url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i)?.[1];
-          const it = items.find((x: any) =>
-            (shortcode && (x?.shortCode === shortcode || x?.shortcode === shortcode || String(x?.url ?? "").includes(shortcode))) ||
-            (x?.url && x.url === b.url) ||
-            (x?.inputUrl === b.url)
-          );
-          if (!it) { results.failed++; results.errors.push({ id: b.id, msg: "no result" }); continue; }
-          try { await applyResult(b.id, b.url, igStats(it)); results.updated++; results.per_platform.instagram++; }
-          catch (e) { results.failed++; results.errors.push({ id: b.id, msg: String(e) }); }
-        }
-      } catch (e) {
-        results.failed += buckets.instagram.length;
-        results.errors.push({ platform: "instagram", msg: e instanceof Error ? e.message : String(e) });
-      }
+    // Fire-and-forget in background
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(work().catch((e) => console.error("apify bg error", e)));
+    } else {
+      work().catch((e) => console.error("apify bg error", e));
     }
-
-    // Facebook batch
-    if (buckets.facebook.length) {
-      try {
-        const items = await runActor(ACTORS.facebook, {
-          startUrls: buckets.facebook.map(b => ({ url: b.url })),
-          resultsLimit: 1,
-        });
-        for (const b of buckets.facebook) {
-          const it = items.find((x: any) => x?.url === b.url || x?.postUrl === b.url || x?.topLevelUrl === b.url);
-          if (!it) { results.failed++; results.errors.push({ id: b.id, msg: "no result" }); continue; }
-          try { await applyResult(b.id, b.url, fbStats(it)); results.updated++; results.per_platform.facebook++; }
-          catch (e) { results.failed++; results.errors.push({ id: b.id, msg: String(e) }); }
-        }
-      } catch (e) {
-        results.failed += buckets.facebook.length;
-        results.errors.push({ platform: "facebook", msg: e instanceof Error ? e.message : String(e) });
-      }
-    }
-
-    return new Response(JSON.stringify({ ...results, errors: results.errors.slice(0, 30) }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify(queued), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
