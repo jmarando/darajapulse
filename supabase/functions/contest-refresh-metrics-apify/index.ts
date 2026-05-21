@@ -69,6 +69,25 @@ function detectPlatform(platform: string, url: string): "tiktok" | "instagram" |
   return null;
 }
 
+function canonicalizeUrl(raw: string, plat: string): string | null {
+  if (!raw) return null;
+  const url = raw.trim();
+  if (plat === "tiktok") {
+    const m = url.match(/tiktok\.com\/.*?(?:\/video\/|\/v\/|share_item_id=)(\d{6,})/i);
+    if (m) return `https://www.tiktok.com/video/${m[1]}`;
+    return /tiktok\.com\/.+\/video\/\d+/.test(url) ? url.split("?")[0] : null;
+  }
+  if (plat === "instagram") {
+    const m = url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
+    if (m) return `https://www.instagram.com/p/${m[1]}/`;
+    return null; // skip profile-only / garbage URLs
+  }
+  if (plat === "facebook") {
+    try { const u = new URL(url); return `${u.origin}${u.pathname}`; } catch { return null; }
+  }
+  return null;
+}
+
 // deno-lint-ignore no-explicit-any
 declare const EdgeRuntime: any;
 
