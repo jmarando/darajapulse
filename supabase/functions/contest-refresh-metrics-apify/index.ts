@@ -141,10 +141,9 @@ Deno.serve(async (req) => {
       if (buckets.instagram.length) {
         try {
           const items = await runActor(ACTORS.instagram, {
-            directUrls: buckets.instagram.map(b => b.url),
-            addParentData: false,
+            startUrls: buckets.instagram.map(b => b.url),
           });
-          console.log("IG returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 400));
+          console.log("IG returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 600));
           for (const b of buckets.instagram) {
             const shortcode = b.url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i)?.[1];
             const it = items.find((x: any) =>
@@ -155,7 +154,7 @@ Deno.serve(async (req) => {
             try { await applyResult(b.id, igStats(it)); summary.instagram++; }
             catch (e) { summary.errors.push({ id: b.id, msg: String(e) }); }
           }
-        } catch (e) { summary.errors.push({ platform: "instagram", msg: e instanceof Error ? e.message : String(e) }); }
+        } catch (e) { console.error("IG actor error", e); summary.errors.push({ platform: "instagram", msg: e instanceof Error ? e.message : String(e) }); }
       }
 
       if (buckets.facebook.length) {
