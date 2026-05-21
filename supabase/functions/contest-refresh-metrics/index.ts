@@ -78,12 +78,103 @@ async function scrapeFacebook(url: string) {
   };
 }
 
+// ---------- URL validation & normalization ----------
+async function resolveTikTokShort(url: string): Promise<string> {
+  // vt.tiktok.com / vm.tiktok.com short links → follow redirect to canonical video URL.
+  if (!/(?:vt|vm)\.tiktok\.com\//i.test(url)) return url;
+  try {
+    const r = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15" },
+    });
+    const finalUrl = r.url || url;
+    // Strip query string for cleanliness
+    try { const u = new URL(finalUrl); return `${u.origin}${u.pathname}`; } catch { return finalUrl; }
+  } catch { return url; }
+}
+
+function isValidPostUrl(platform: string, url: string): boolean {
+  const u = (url || "").trim();
+  if (!/^https?:\/\//i.test(u)) return false;
+  const p = (platform || "").toLowerCase();
+  if (p === "tiktok") return /(?:vt|vm)\.tiktok\.com\/[A-Za-z0-9]+/i.test(u) || /tiktok\.com\/.+\/video\/\d+/i.test(u) || /tiktok\.com\/video\/\d+/i.test(u);
+  if (p === "instagram") return /instagram\.com\/(?:p|reel|reels|tv)\/[A-Za-z0-9_-]+/i.test(u);
+  if (p === "facebook") return /facebook\.com\/.+\/(?:posts|videos|reel|photos)\/|fb\.watch\//i.test(u);
+  return false;
+}
+
+// ---------- Apify fallback ----------
+async function runApify(actor: string, input: any): Promise<any[]> {
+  if (!APIFY) throw new Error("APIFY_API_TOKEN not configured");
+  const url = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY}&timeout=180`;
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+  const text = await r.text();
+  if (!r.ok) throw new Error(`Apify ${actor} ${r.status}: ${text.slice(0,200)}`);
+  try { return JSON.parse(text); } catch { return []; }
+}
+
+async function apifyTikTok(url: string) {
+  const items = await runApify(APIFY_ACTORS.tiktok, { postURLs: [url], shouldDownloadVideos: false, shouldDownloadCovers: false, resultsPerPage: 1 });
+  const it = items?.[0]; if (!it) throw new Error("apify tt no result");
+  return {
+    views: num(it.playCount ?? it.viewCount), likes: num(it.diggCount ?? it.likeCount),
+    comments: num(it.commentCount), shares: num(it.shareCount),
+    caption: it.text ?? it.desc ?? null,
+    thumbnail_url: it?.videoMeta?.coverUrl ?? it?.covers?.[0] ?? null,
+  };
+}
+async function apifyInstagram(url: string) {
+  const items = await runApify(APIFY_ACTORS.instagram, { directUrls: [url], resultsType: "posts", resultsLimit: 1, addParentData: false });
+  const it = items?.[0]; if (!it) throw new Error("apify ig no result");
+  return {
+    views: num(it.videoPlayCount ?? it.videoViewCount ?? it.playCount),
+    likes: num(it.likesCount ?? it.likes), comments: num(it.commentsCount ?? it.comments),
+    shares: num(it.reshareCount ?? 0),
+    caption: it.caption ?? null, thumbnail_url: it.displayUrl ?? it.thumbnailUrl ?? null,
+  };
+}
+async function apifyFacebook(url: string) {
+  const items = await runApify(APIFY_ACTORS.facebook, { startUrls: [{ url }], resultsLimit: 1 });
+  const it = items?.[0]; if (!it) throw new Error("apify fb no result");
+  return {
+    views: num(it.viewsCount ?? it.videoViewCount ?? it.playCount),
+    likes: num(it.likesCount ?? it.reactionsCount ?? it.likes),
+    comments: num(it.commentsCount ?? it.comments),
+    shares: num(it.sharesCount ?? it.shares),
+    caption: it.text ?? it.message ?? null,
+    thumbnail_url: it.thumbnailUrl ?? it.previewImage ?? null,
+  };
+}
+
 async function scrape(platform: string, url: string) {
   const p = (platform || "").toLowerCase();
-  if (p === "tiktok" || /tiktok\.com/.test(url)) return await scrapeTikTok(url);
-  if (p === "instagram" || /instagram\.com/.test(url)) return await scrapeInstagram(url);
-  if (p === "facebook" || /facebook\.com|fb\.watch/.test(url)) return await scrapeFacebook(url);
-  throw new Error(`unsupported platform: ${platform}`);
+  const isTT = p === "tiktok" || /tiktok\.com/.test(url);
+  const isIG = p === "instagram" || /instagram\.com/.test(url);
+  const isFB = p === "facebook" || /facebook\.com|fb\.watch/.test(url);
+  const hasSignal = (s: any) => s && ((s.views|0) || (s.likes|0) || (s.comments|0) || (s.shares|0));
+
+  let primary: any = null, primaryErr: any = null;
+  try {
+    if (isTT) primary = await scrapeTikTok(url);
+    else if (isIG) primary = await scrapeInstagram(url);
+    else if (isFB) primary = await scrapeFacebook(url);
+  } catch (e) { primaryErr = e; }
+
+  if (hasSignal(primary)) return { ...primary, _source: "ensembledata" };
+
+  // Apify fallback
+  if (APIFY) {
+    try {
+      let fb: any = null;
+      if (isTT) fb = await apifyTikTok(url);
+      else if (isIG) fb = await apifyInstagram(url);
+      else if (isFB) fb = await apifyFacebook(url);
+      if (hasSignal(fb)) return { ...fb, _source: "apify" };
+    } catch (e) { if (!primaryErr) primaryErr = e; }
+  }
+  if (primaryErr) throw primaryErr;
+  return primary ?? { views: 0, likes: 0, comments: 0, shares: 0 };
 }
 
 Deno.serve(async (req) => {
@@ -103,24 +194,35 @@ Deno.serve(async (req) => {
     const { data: entries, error } = await q;
     if (error) throw error;
 
-    let updated = 0, failed = 0;
+    let updated = 0, failed = 0, invalid = 0;
     const errors: any[] = [];
     const CONC = 4;
     for (let i = 0; i < (entries ?? []).length; i += CONC) {
       const batch = (entries ?? []).slice(i, i + CONC);
       await Promise.all(batch.map(async (e) => {
         try {
-          const s = await scrape(e.platform, e.post_url!);
+          // Validate / resolve URL
+          let url = (e.post_url || "").trim();
+          if ((e.platform || "").toLowerCase() === "tiktok") url = await resolveTikTokShort(url);
+          if (!isValidPostUrl(e.platform, url)) {
+            invalid++;
+            errors.push({ id: e.id, platform: e.platform, post_url: e.post_url, msg: "invalid_post_url" });
+            // Mark as invalid so it stops being retried
+            await sb.from("contest_entries").update({ status: "invalid", last_polled_at: new Date().toISOString() }).eq("id", e.id);
+            return;
+          }
+
+          const s = await scrape(e.platform, url);
           const hasSignal = (s.views || s.likes || s.comments || s.shares) > 0;
           if (!hasSignal) {
             failed++;
-            errors.push({ id: e.id, platform: e.platform, post_url: e.post_url, msg: "no_metrics_returned" });
+            errors.push({ id: e.id, platform: e.platform, post_url: url, msg: "no_metrics_returned" });
             return;
           }
           const score = scoreOf(s);
           const upd: any = {
             views: s.views, likes: s.likes, comments: s.comments, shares: s.shares,
-            score, last_polled_at: new Date().toISOString(), source: "ensembledata",
+            score, last_polled_at: new Date().toISOString(), source: s._source || "ensembledata",
           };
           if (s.caption) upd.caption = String(s.caption).slice(0, 1000);
           if (s.thumbnail_url) upd.thumbnail_url = s.thumbnail_url;
@@ -134,8 +236,9 @@ Deno.serve(async (req) => {
       }));
     }
 
-    return new Response(JSON.stringify({ total: entries?.length ?? 0, updated, failed, errors: errors.slice(0, 30) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ total: entries?.length ?? 0, updated, failed, invalid, errors: errors.slice(0, 50) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
+
