@@ -119,7 +119,9 @@ Deno.serve(async (req) => {
       const plat = detectPlatform(e.platform, e.post_url!);
       if (!plat) continue;
       if (platformFilter && plat !== platformFilter) continue;
-      buckets[plat].push({ id: e.id, url: e.post_url! });
+      const url = canonicalizeUrl(e.post_url!, plat);
+      if (!url) continue;
+      buckets[plat].push({ id: e.id, url });
     }
 
 
