@@ -323,14 +323,11 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     if (!activeId) return;
     setPolling(true);
     try {
-      const { data, error } = await supabase.functions.invoke("contest-refresh-metrics-apify", { body: { contest_id: activeId } });
+      const { data, error } = await supabase.functions.invoke("contest-refresh-metrics", { body: { contest_id: activeId } });
       if (error) toast.error(error.message);
       else {
-        const b = (data as any)?.buckets;
-        const total = (data as any)?.total ?? 0;
-        toast.success(b
-          ? `Refreshing ${total} posts via Apify (TikTok ${b.tiktok}, IG ${b.instagram}, FB ${b.facebook}) — reload in ~1–2 min`
-          : "Refresh queued");
+        const d = data as any;
+        toast.success(`Ensemble refresh: ${d?.updated ?? 0}/${d?.total ?? 0} updated${d?.failed ? `, ${d.failed} failed` : ""}`);
       }
       load();
     } finally { setPolling(false); }
