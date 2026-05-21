@@ -85,6 +85,7 @@ Deno.serve(async (req) => {
     }
     const onlyEmpty: boolean = body.only_empty ?? false;
     const wait: boolean = body.wait ?? false;
+    const platformFilter: string | undefined = body.platform; // optional: "tiktok"|"instagram"|"facebook"
 
     let q = sb.from("contest_entries")
       .select("id, platform, post_url")
@@ -97,8 +98,11 @@ Deno.serve(async (req) => {
     const buckets: Record<string, { id: string; url: string }[]> = { tiktok: [], instagram: [], facebook: [] };
     for (const e of entries ?? []) {
       const plat = detectPlatform(e.platform, e.post_url!);
-      if (plat) buckets[plat].push({ id: e.id, url: e.post_url! });
+      if (!plat) continue;
+      if (platformFilter && plat !== platformFilter) continue;
+      buckets[plat].push({ id: e.id, url: e.post_url! });
     }
+
 
     async function applyResult(id: string, s: ReturnType<typeof tiktokStats>) {
       const score = scoreOf(s);
