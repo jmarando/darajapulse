@@ -162,7 +162,10 @@ Deno.serve(async (req) => {
       if (buckets.instagram.length) {
         try {
           const items = await runActor(ACTORS.instagram, {
-            startUrls: buckets.instagram.map(b => b.url),
+            directUrls: buckets.instagram.map(b => b.url),
+            resultsType: "posts",
+            resultsLimit: 1,
+            addParentData: false,
           });
           console.log("IG returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 600));
           for (const b of buckets.instagram) {
