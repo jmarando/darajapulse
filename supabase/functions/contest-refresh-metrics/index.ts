@@ -103,6 +103,12 @@ Deno.serve(async (req) => {
       await Promise.all(batch.map(async (e) => {
         try {
           const s = await scrape(e.platform, e.post_url!);
+          const hasSignal = (s.views || s.likes || s.comments || s.shares) > 0;
+          if (!hasSignal) {
+            failed++;
+            errors.push({ id: e.id, platform: e.platform, post_url: e.post_url, msg: "no_metrics_returned" });
+            return;
+          }
           const score = scoreOf(s);
           const upd: any = {
             views: s.views, likes: s.likes, comments: s.comments, shares: s.shares,
