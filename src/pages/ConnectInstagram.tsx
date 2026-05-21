@@ -26,6 +26,8 @@ const ConnectInstagram = () => {
 
   const errorMessage = reason === "no_pages"
     ? "Facebook didn't return any Pages for your account. Log in with the Facebook profile that has full control of the Page, then retry."
+    : reason === "invalid_state"
+      ? "This Instagram connection link has already been used or expired. Start again from this page to create a fresh secure connection."
     : reason === "ig_not_professional"
       ? "Your Page is connected to an Instagram account, but Meta isn't exposing it as a Business/Creator account yet. In Instagram, switch to Professional, choose Business or Creator, confirm the Page link, then retry."
       : reason === "pages_permission"
