@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
       errors: [] as any[],
     };
 
-    async function applyResult(id: string, url: string, s: ReturnType<typeof tiktokStats>) {
+    async function applyResult(id: string, _url: string, s: ReturnType<typeof tiktokStats>) {
       const score = scoreOf(s);
       const upd: any = {
         views: s.views, likes: s.likes, comments: s.comments, shares: s.shares,
@@ -119,6 +119,11 @@ Deno.serve(async (req) => {
       const { error: uerr } = await sb.from("contest_entries").update(upd).eq("id", id);
       if (uerr) throw uerr;
     }
+
+    const runAll = async () => {
+      // (background work happens here — populated below)
+    };
+
 
     // TikTok batch
     if (buckets.tiktok.length) {
