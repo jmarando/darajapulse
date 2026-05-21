@@ -10,13 +10,13 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 // Scopes for reading a creator's Facebook Page posts and insights.
+// Note: pages_read_user_content and read_insights require Meta Advanced Access
+// (app review). Re-add them here once approved.
 const SCOPES = [
   "public_profile",
   "email",
   "pages_show_list",
   "pages_read_engagement",
-  "pages_read_user_content",
-  "read_insights",
   "business_management",
 ].join(",");
 
