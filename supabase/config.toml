@@ -29,6 +29,8 @@ project_id = "ucxlveehobmeywkiynpy"
     verify_jwt = false
   [functions.contest-fetch-handle-posts]
     verify_jwt = false
+  [functions.contest-refresh-metrics-meta]
+    verify_jwt = false
 
 [functions.send-transactional-email]
 verify_jwt = true
