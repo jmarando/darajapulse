@@ -141,14 +141,17 @@ Deno.serve(async (req) => {
       if (buckets.instagram.length) {
         try {
           const items = await runActor(ACTORS.instagram, {
+            startUrls: buckets.instagram.map(b => ({ url: b.url })),
+            urls: buckets.instagram.map(b => b.url),
             directUrls: buckets.instagram.map(b => b.url),
-            resultsType: "details", resultsLimit: 1, addParentData: false,
+            maxItems: buckets.instagram.length,
           });
+          console.log("apidojo IG returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 400));
           for (const b of buckets.instagram) {
             const shortcode = b.url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i)?.[1];
             const it = items.find((x: any) =>
-              (shortcode && (x?.shortCode === shortcode || x?.shortcode === shortcode || String(x?.url ?? "").includes(shortcode))) ||
-              (x?.url && x.url === b.url) || (x?.inputUrl === b.url)
+              (shortcode && (x?.shortCode === shortcode || x?.shortcode === shortcode || String(x?.url ?? "").includes(shortcode) || String(x?.postUrl ?? "").includes(shortcode))) ||
+              (x?.url && x.url === b.url) || (x?.inputUrl === b.url) || (x?.postUrl === b.url)
             );
             if (!it) { summary.errors.push({ id: b.id, msg: "no result" }); continue; }
             try { await applyResult(b.id, igStats(it)); summary.instagram++; }
