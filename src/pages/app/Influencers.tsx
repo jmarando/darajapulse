@@ -107,7 +107,8 @@ const Influencers = () => {
   const copyInvite = (r: any, platform: string) => {
     const link = `${window.location.origin}/connect/${platform}/${r.id}`;
     navigator.clipboard.writeText(link);
-    toast.success(`${platform === "tiktok" ? "TikTok" : "Instagram"} invite link copied`);
+    const labels: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", facebook: "Facebook", youtube: "YouTube", twitter: "X / Twitter" };
+    toast.success(`${labels[platform] ?? platform} invite link copied`);
   };
 
   const filtered = rows.filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()));
