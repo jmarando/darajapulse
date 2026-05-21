@@ -34,7 +34,10 @@ Deno.serve(async (req) => {
     .select("*")
     .eq("state", state)
     .maybeSingle();
-  if (!st) return new Response("Invalid state", { status: 400 });
+  if (!st) {
+    console.error("ig invalid or reused oauth state", { statePrefix: state.slice(0, 8) });
+    return Response.redirect(`${APP_ORIGIN}/connect/instagram/done?status=error&reason=invalid_state`, 302);
+  }
   await supabase.from("instagram_oauth_states").delete().eq("state", state);
 
   const redirectUri = `${SUPABASE_URL}/functions/v1/instagram-oauth-callback`;
