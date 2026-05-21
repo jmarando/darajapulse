@@ -678,7 +678,19 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                               <tr key={e.id} className="border-t border-border">
                                 <td className="px-3 py-2 tabular-nums">{i + 1}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
                                 <td className="px-3 py-2">
-                                  <a href={e.post_url} target="_blank" rel="noreferrer" className="hover:text-accent">{e.handle || e.submitter_name || "—"}</a>
+                                  {(() => {
+                                    const u = (e.post_url || "").trim();
+                                    const ok = e.status !== "invalid" && /^https?:\/\//i.test(u) && (
+                                      /tiktok\.com\/.+\/video\/\d+/i.test(u) ||
+                                      /(?:vt|vm)\.tiktok\.com\/[A-Za-z0-9]+/i.test(u) ||
+                                      /instagram\.com\/(?:p|reel|reels|tv)\/[A-Za-z0-9_-]+/i.test(u) ||
+                                      /facebook\.com\/.+\/(?:posts|videos|reel|photos)\/|fb\.watch\//i.test(u)
+                                    );
+                                    const label = e.handle || e.submitter_name || "—";
+                                    return ok
+                                      ? <a href={u} target="_blank" rel="noreferrer" className="hover:text-accent">{label}</a>
+                                      : <span className="text-muted-foreground cursor-help" title="Submitted link isn't a valid post URL or has expired">{label}</span>;
+                                  })()}
                                   <span className={`ml-2 text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
                                   {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />1 counted video</div>}
                                 </td>
