@@ -141,12 +141,12 @@ Deno.serve(async (req) => {
       if (buckets.instagram.length) {
         try {
           const items = await runActor(ACTORS.instagram, {
-            startUrls: buckets.instagram.map(b => ({ url: b.url })),
-            urls: buckets.instagram.map(b => b.url),
             directUrls: buckets.instagram.map(b => b.url),
-            maxItems: buckets.instagram.length,
+            resultsType: "posts",
+            resultsLimit: 1,
+            addParentData: false,
           });
-          console.log("apidojo IG returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 400));
+          console.log("IG returned", items.length, "items; sample:", JSON.stringify(items[0] ?? {}).slice(0, 400));
           for (const b of buckets.instagram) {
             const shortcode = b.url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i)?.[1];
             const it = items.find((x: any) =>
