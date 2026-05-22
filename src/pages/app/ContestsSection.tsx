@@ -606,22 +606,10 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
               {/* Contestants grouped view */}
               {(() => {
-                const isCreator = (e: any) => {
-                  const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean);
-                  return hs.some(h => creatorHandles.has(h));
-                };
-                const groups = new Map<string, any[]>();
-                for (const e of entries) {
-                  if (isCreator(e)) continue;
-                  const key = contestantKey(e);
-                  if (!groups.has(key)) groups.set(key, []);
-                  groups.get(key)!.push(e);
-                }
-                const contestants = Array.from(groups.entries()).map(([key, rows]) => {
+                const nonCreatorRows = entries.filter(e => !isCreator(e));
+                const grouped = groupEntriesByContestant(nonCreatorRows);
+                const contestants = grouped.map(rows => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
-                  const best = pickCountedPost(rows);
-                  // Collect every distinct post the contestant has across platforms (entries + cross_posts),
-                  // deduped by canonical URL, so the team can see FB X views / IG Y views / TikTok Z views etc.
                   const byUrl = new Map<string, any>();
                   for (const row of rows) {
                     const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
@@ -629,13 +617,21 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                       const key2 = canonicalPostUrl(post?.post_url);
                       if (!key2) continue;
                       const prev = byUrl.get(key2);
-                      if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(key2, { ...post, id: post.id ?? `${row.id}:${key2}` });
+                      if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(key2, { ...post, _entryId: row.id, id: post.id ?? `${row.id}:${key2}` });
                     }
                   }
                   const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
-                  const total = best ? scoreOf(best) : 0;
-                  return { key, reg, posts, total, bestId: best?.id, bestUrl: canonicalPostUrl(best?.post_url) };
+                  // Total = SUM across every unique post (FB + IG + TikTok all add up).
+                  const total = posts.reduce((s, p) => s + scoreOf(p), 0);
+                  return { key: reg.id, reg, posts, total };
                 }).sort((a, b) => b.total - a.total);
+                if (contestants.length === 0) return null;
+                return (
+                  <div className="mb-6">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {contestants.slice(0, 12).map(({ key, reg, posts, total }, i) => {
+
                 if (contestants.length === 0) return null;
                 return (
                   <div className="mb-6">
