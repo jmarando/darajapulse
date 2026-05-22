@@ -62,45 +62,99 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     return Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a) || sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b) || new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0] || null;
   };
 
-  // Per the contest rules: a contestant's score is the BEST single post — we do not sum across platforms.
+  // A contestant's total score is the SUM of scores across every unique post they entered
+  // (Facebook + Instagram + TikTok), deduped by canonical post URL.
   const bestScore = (e: any) => {
     const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-    return Math.max(scoreOf(e), ...xs.map((x: any) => scoreOf(x)));
+    const byUrl = new Map<string, number>();
+    for (const p of [e, ...xs]) {
+      const k = canonicalPostUrl(p?.post_url);
+      if (!k) continue;
+      byUrl.set(k, Math.max(byUrl.get(k) ?? 0, scoreOf(p)));
+    }
+    return Array.from(byUrl.values()).reduce((a, b) => a + b, 0);
   };
   // Identify whether an entry was auto-fetched from a public scraper or entered/registered by a human.
-  const AUTO_SOURCES = new Set(["meta_graph", "ensembledata", "tiktok_api", "instagram_api"]);
+  const AUTO_SOURCES = new Set(["meta_graph", "ensembledata", "tiktok_api", "instagram_api", "apify"]);
   const isAuto = (e: any) => AUTO_SOURCES.has(String(e.source || "").toLowerCase());
 
   const normalizedText = (value?: string | null) => (value || "").trim().toLowerCase().replace(/\s+/g, " ");
-  const contestantKey = (e: any) => {
-    const handle = [e.instagram_handle, e.tiktok_handle, e.facebook_handle, e.handle].map(cleanH).find(Boolean);
-    if (handle) return `handle:${handle}`;
-    const email = normalizedText(e.submitter_email);
-    if (email) return `email:${email}`;
-    const phone = String(e.phone || "").replace(/\D/g, "");
-    if (phone) return `phone:${phone}`;
+  // Collect EVERY identifier we know about for a row so we can union-find contestants that
+  // appear in multiple entry rows (one per platform, plus the original registration).
+  const identifiersOf = (e: any): string[] => {
+    const ids: string[] = [];
+    for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) {
+      const c = cleanH(h); if (c) ids.push(`h:${c}`);
+    }
+    const email = normalizedText(e.submitter_email); if (email) ids.push(`e:${email}`);
+    const phone = String(e.phone || "").replace(/\D/g, ""); if (phone.length >= 7) ids.push(`p:${phone}`);
     const name = normalizedText(e.full_name || e.submitter_name);
-    if (name) return `name:${name}`;
-    return `entry:${e.external_registration_id || e.id}`;
+    if (name && name.split(" ").length >= 2) ids.push(`n:${name}`);
+    const ext = (e.external_registration_id || "").trim(); if (ext) ids.push(`r:${ext}`);
+    return ids;
+  };
+  // Union-find: merge any two entries that share at least one identifier.
+  const groupEntriesByContestant = (rows: any[]): any[][] => {
+    const parent = new Map<number, number>();
+    const find = (i: number): number => { while (parent.get(i) !== i) { parent.set(i, parent.get(parent.get(i)!)!); i = parent.get(i)!; } return i; };
+    const union = (a: number, b: number) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+    rows.forEach((_, i) => parent.set(i, i));
+    const idToIdx = new Map<string, number>();
+    rows.forEach((r, i) => {
+      for (const id of identifiersOf(r)) {
+        if (idToIdx.has(id)) union(i, idToIdx.get(id)!);
+        else idToIdx.set(id, i);
+      }
+    });
+    const groups = new Map<number, any[]>();
+    rows.forEach((r, i) => {
+      const root = find(i);
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root)!.push(r);
+    });
+    return Array.from(groups.values());
   };
 
-  const mergeContestantRows = (rows: any[]) => {
+  // Reduce a group of entry rows for one contestant into a flat list of unique posts (by URL),
+  // with a representative registration row + the SUM of all post scores.
+  const summarizeContestant = (rows: any[]) => {
     const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
-    const counted = pickCountedPost(rows);
-    if (!counted) return { ...reg, cross_posts: [] };
+    const byUrl = new Map<string, any>();
+    for (const row of rows) {
+      const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
+      for (const post of candidates) {
+        const k = canonicalPostUrl(post?.post_url);
+        if (!k) continue;
+        const prev = byUrl.get(k);
+        if (!prev || scoreOf(post) > scoreOf(prev)) {
+          byUrl.set(k, { ...post, _entryId: row.id, id: post.id ?? `${row.id}:${k}` });
+        }
+      }
+    }
+    const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+    const total = posts.reduce((s, p) => s + scoreOf(p), 0);
+    // Pick one row to act as the "leaderboard row" — registration if it exists, else the top post entry.
+    const leaderRow = reg ?? rows[0];
     return {
-      ...reg,
-      ...counted,
-      full_name: reg.full_name || counted.full_name,
-      submitter_name: reg.submitter_name || counted.submitter_name,
-      submitter_email: reg.submitter_email || counted.submitter_email,
-      instagram_handle: reg.instagram_handle || counted.instagram_handle,
-      tiktok_handle: reg.tiktok_handle || counted.tiktok_handle,
-      facebook_handle: reg.facebook_handle || counted.facebook_handle,
+      ...leaderRow,
+      full_name: rows.map(r => r.full_name).find(Boolean) || rows.map(r => r.submitter_name).find(Boolean) || leaderRow.full_name,
+      submitter_name: rows.map(r => r.submitter_name).find(Boolean) || leaderRow.submitter_name,
+      submitter_email: rows.map(r => r.submitter_email).find(Boolean) || leaderRow.submitter_email,
+      instagram_handle: rows.map(r => r.instagram_handle).find(Boolean) || leaderRow.instagram_handle,
+      tiktok_handle: rows.map(r => r.tiktok_handle).find(Boolean) || leaderRow.tiktok_handle,
+      facebook_handle: rows.map(r => r.facebook_handle).find(Boolean) || leaderRow.facebook_handle,
+      _allRows: rows,
+      _posts: posts,
+      score: total,
+      // For the table row, use total values across all posts (sum of views/likes/etc.)
+      views: posts.reduce((s, p) => s + Number(p.views || 0), 0),
+      likes: posts.reduce((s, p) => s + Number(p.likes || 0), 0),
+      comments: posts.reduce((s, p) => s + Number(p.comments || 0), 0),
+      shares: posts.reduce((s, p) => s + Number(p.shares || 0), 0),
       cross_posts: [],
-      score: scoreOf(counted),
     };
   };
+
 
   const saveEditEntry = async () => {
     if (!editEntry) return;
