@@ -608,7 +608,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             <div className="text-right shrink-0">
                               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Best score</div>
                               <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
-                              {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">1 counted video</div>}
+                              {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} entr{posts.length === 1 ? "y" : "ies"} · best counts</div>}
                             </div>
                           </div>
                           {posts.length === 0 ? (
