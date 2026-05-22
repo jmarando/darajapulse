@@ -156,16 +156,75 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   };
 
 
+  // Build the edit dialog data from a (possibly merged) contestant row.
+  // If the row carries _posts/_allRows from summarizeContestant, we pre-fill
+  // the original post + crossposts so the editor shows every platform the
+  // team has already entered (TikTok + IG + Facebook), not just one.
+  const openEditFor = (rowOrMerged: any) => {
+    const allRows: any[] = Array.isArray(rowOrMerged._allRows) ? rowOrMerged._allRows : [rowOrMerged];
+    const posts: any[] = Array.isArray(rowOrMerged._posts) && rowOrMerged._posts.length
+      ? rowOrMerged._posts
+      : allRows.flatMap(r => [
+          ...(r.post_url ? [{ platform: r.platform, post_url: r.post_url, views: r.views, likes: r.likes, comments: r.comments, shares: r.shares }] : []),
+          ...(Array.isArray(r.cross_posts) ? r.cross_posts : []),
+        ]);
+
+    // Prefer the registration row as the row we'll write back to (so manual
+    // edits don't get overwritten by the next auto-fetch on a scraper row).
+    const targetRow = allRows.find(r => ["registration","csv_import","external_feed","manual","public_form"].includes(String(r.source || "").toLowerCase())) || allRows[0];
+
+    // Pick the highest-scoring post as the "original", rest become crossposts.
+    const sorted = [...posts].sort((a, b) => scoreOf(b) - scoreOf(a));
+    const original = sorted[0] || {};
+    const crossposts = sorted.slice(1).map((p: any) => ({
+      platform: p.platform, post_url: p.post_url || "",
+      views: Number(p.views || 0), likes: Number(p.likes || 0),
+      comments: Number(p.comments || 0), shares: Number(p.shares || 0),
+    }));
+
+    setEditEntry({
+      ...targetRow,
+      platform: original.platform ?? targetRow.platform,
+      post_url: original.post_url ?? targetRow.post_url ?? "",
+      views: Number(original.views ?? 0),
+      likes: Number(original.likes ?? 0),
+      comments: Number(original.comments ?? 0),
+      shares: Number(original.shares ?? 0),
+      cross_posts: crossposts,
+      // remember which other rows we absorbed so we can delete them on save
+      _absorbRowIds: allRows.filter(r => r.id !== targetRow.id).map(r => r.id),
+    });
+  };
+
   const saveEditEntry = async () => {
     if (!editEntry) return;
     const cleanedCross = (editEntry.cross_posts || []).filter((x: any) => (x.post_url || "").trim());
     const score = bestScore({ ...editEntry, cross_posts: cleanedCross });
+
+    // Free up the unique (contest_id, post_url) index by deleting any sibling
+    // rows we're absorbing, plus any other row in the contest whose post_url
+    // collides with one we're about to save.
+    const urlsToFree = [editEntry.post_url, ...cleanedCross.map((x: any) => x.post_url)]
+      .map((u: string) => (u || "").trim()).filter(Boolean);
+    const absorb: string[] = (Array.isArray(editEntry._absorbRowIds) ? editEntry._absorbRowIds : [])
+      .filter((id: string) => id && id !== editEntry.id);
+    if (absorb.length) {
+      await supabase.from("contest_entries").delete().in("id", absorb);
+    }
+    if (urlsToFree.length && editEntry.contest_id) {
+      await supabase.from("contest_entries")
+        .delete()
+        .eq("contest_id", editEntry.contest_id)
+        .neq("id", editEntry.id)
+        .in("post_url", urlsToFree);
+    }
+
     const { error } = await supabase.from("contest_entries").update({
       handle: editEntry.handle,
       instagram_handle: editEntry.instagram_handle,
       tiktok_handle: editEntry.tiktok_handle,
       facebook_handle: editEntry.facebook_handle,
-      post_url: editEntry.post_url,
+      post_url: editEntry.post_url || null,
       platform: editEntry.platform,
       views: Number(editEntry.views) || 0,
       likes: Number(editEntry.likes) || 0,
@@ -669,7 +728,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                 return "No matching posts yet.";
                               })()}
                               {fbOnly ? (
-                                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditEntry({ ...reg, cross_posts: Array.isArray(reg.cross_posts) ? reg.cross_posts : [] })}>
+                                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => openEditFor(reg)}>
                                   <Pencil className="w-3 h-3 mr-1" /> Enter metrics
                                 </Button>
                               ) : (
@@ -781,7 +840,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                         <Button size="icon" className="h-7 w-7 bg-primary" onClick={() => setStatus(e.id, "approved")}><Check className="w-4 h-4" /></Button>
                                       </>
                                     )}
-                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditEntry({ ...e, cross_posts: Array.isArray(e.cross_posts) ? e.cross_posts : [] })} aria-label="Edit entry"><Pencil className="w-4 h-4" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditFor(e)} aria-label="Edit entry"><Pencil className="w-4 h-4" /></Button>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteEntry(e)} aria-label="Delete contest entry"><Trash2 className="w-4 h-4" /></Button>
                                   </div>
                                 </td>
