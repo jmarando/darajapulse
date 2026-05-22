@@ -45,27 +45,56 @@ const ContestsList = () => {
     setRows(data ?? []);
     const ids = (data ?? []).map((c) => c.id);
     if (ids.length) {
-      const { data: es } = await supabase
-        .from("contest_entries")
-        .select("contest_id, handle, instagram_handle, tiktok_handle, facebook_handle, post_url, cross_posts, views, status");
-      // Per-contest dedupe by canonical post URL (matches public report's "entries" definition).
-      const s: Record<string, { postUrls: Set<string>; views: number; handles: Set<string> }> = {};
+      const [{ data: es }, { data: inf }] = await Promise.all([
+        supabase.from("contest_entries").select("contest_id, handle, instagram_handle, tiktok_handle, facebook_handle, submitter_email, full_name, submitter_name, phone, external_registration_id, post_url, cross_posts, views, status"),
+        supabase.from("influencers").select("handle, alt_handles"),
+      ]);
+      // Agency roster handles — excluded from contestant counts (matches public report).
+      const creatorHandles = new Set<string>();
+      for (const r of inf ?? []) {
+        const h = cleanH((r as any).handle); if (h) creatorHandles.add(h);
+        for (const a of ((r as any).alt_handles ?? [])) {
+          const c = cleanH(a); if (c) creatorHandles.add(c);
+        }
+      }
+      // Group by contest, then union-find contestants (matches public report logic).
+      const byContest = new Map<string, any[]>();
       for (const e of es ?? []) {
         if (!ids.includes(e.contest_id)) continue;
-        const cur = s[e.contest_id] ?? { postUrls: new Set<string>(), views: 0, handles: new Set<string>() };
-        cur.views += Number(e.views || 0);
-        for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) {
-          const c = cleanH(h); if (c) cur.handles.add(c);
-        }
-        const posts: any[] = [{ post_url: e.post_url }, ...(Array.isArray(e.cross_posts) ? (e.cross_posts as any[]) : [])];
-        for (const p of posts) {
-          const k = canonicalPostUrl(p?.post_url);
-          if (k) cur.postUrls.add(k);
-        }
-        s[e.contest_id] = cur;
+        const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean) as string[];
+        if (hs.some((h) => creatorHandles.has(h))) continue; // paid creator
+        if (!byContest.has(e.contest_id)) byContest.set(e.contest_id, []);
+        byContest.get(e.contest_id)!.push(e);
       }
+      const norm = (v?: string | null) => (v || "").trim().toLowerCase().replace(/\s+/g, " ");
       const out: Record<string, { entries: number; contestants: number; views: number }> = {};
-      for (const [k, v] of Object.entries(s)) out[k] = { entries: v.postUrls.size, contestants: v.handles.size, views: v.views };
+      for (const [cid, rows] of byContest) {
+        const postUrls = new Set<string>();
+        let views = 0;
+        const parent = new Map<number, number>();
+        const find = (i: number): number => { while (parent.get(i) !== i) { parent.set(i, parent.get(parent.get(i)!)!); i = parent.get(i)!; } return i; };
+        const union = (a: number, b: number) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+        rows.forEach((_, i) => parent.set(i, i));
+        const idToIdx = new Map<string, number>();
+        rows.forEach((e: any, i: number) => {
+          views += Number(e.views || 0);
+          const posts: any[] = [{ post_url: e.post_url }, ...(Array.isArray(e.cross_posts) ? (e.cross_posts as any[]) : [])];
+          for (const p of posts) { const k = canonicalPostUrl(p?.post_url); if (k) postUrls.add(k); }
+          const ids2: string[] = [];
+          for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) { const c = cleanH(h); if (c) ids2.push(`h:${c}`); }
+          const em = norm(e.submitter_email); if (em) ids2.push(`e:${em}`);
+          const ph = String(e.phone || "").replace(/\D/g, ""); if (ph.length >= 7) ids2.push(`p:${ph}`);
+          const nm = norm(e.full_name || e.submitter_name); if (nm && nm.split(" ").length >= 2) ids2.push(`n:${nm}`);
+          const ext = (e.external_registration_id || "").trim(); if (ext) ids2.push(`r:${ext}`);
+          for (const id of ids2) {
+            if (idToIdx.has(id)) union(i, idToIdx.get(id)!);
+            else idToIdx.set(id, i);
+          }
+        });
+        const roots = new Set<number>();
+        rows.forEach((_, i) => roots.add(find(i)));
+        out[cid] = { entries: postUrls.size, contestants: roots.size, views };
+      }
       setStats(out);
     }
   };
