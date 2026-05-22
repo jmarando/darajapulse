@@ -256,18 +256,6 @@ const PublicContestReport = () => {
                     const rank = i + 1;
                     const isWinner = c.status === "winner" || rank === 1;
                     const posts: any[] = Array.isArray(c._posts) ? c._posts : [];
-                    const perPlatform: Record<string, { views: number; likes: number; comments: number; shares: number; score: number; count: number }> = {};
-                    for (const p of posts) {
-                      const k = String(p.platform || "other").toLowerCase();
-                      if (!perPlatform[k]) perPlatform[k] = { views: 0, likes: 0, comments: 0, shares: 0, score: 0, count: 0 };
-                      perPlatform[k].views += Number(p.views || 0);
-                      perPlatform[k].likes += Number(p.likes || 0);
-                      perPlatform[k].comments += Number(p.comments || 0);
-                      perPlatform[k].shares += Number(p.shares || 0);
-                      perPlatform[k].score += scoreOf(p);
-                      perPlatform[k].count += 1;
-                    }
-                    const breakdown = Object.entries(perPlatform).sort((a, b) => b[1].score - a[1].score);
                     return (
                       <Fragment key={c.id}>
                         <tr className={`border-b border-border ${isWinner ? "bg-accent/5" : ""}`}>
@@ -287,17 +275,30 @@ const PublicContestReport = () => {
                           <td className="py-2 px-3 text-right tabular-nums align-top font-semibold">{fmt(Number(c.comments || 0))}</td>
                           <td className="py-2 pl-3 text-right tabular-nums font-semibold align-top">{Math.round(c.score || 0).toLocaleString()}</td>
                         </tr>
-                        {breakdown.length > 1 && breakdown.map(([plat, m]) => (
-                          <tr key={`${c.id}-${plat}`} className="bg-secondary/20 text-xs text-muted-foreground">
-                            <td className="py-1 pr-3"></td>
-                            <td className="py-1 px-3 pl-6 italic">↳ {m.count} post{m.count === 1 ? "" : "s"}</td>
-                            <td className="py-1 px-3 inline-flex items-center gap-1.5 capitalize"><PlatformIcon p={plat} /> {plat}</td>
-                            <td className="py-1 px-3 text-right tabular-nums">{fmt(m.views)}</td>
-                            <td className="py-1 px-3 text-right tabular-nums">{fmt(m.likes)}</td>
-                            <td className="py-1 px-3 text-right tabular-nums">{fmt(m.comments)}</td>
-                            <td className="py-1 pl-3 text-right tabular-nums">{Math.round(m.score).toLocaleString()}</td>
-                          </tr>
-                        ))}
+                        {posts.length > 1 && posts.map((p: any, pi: number) => {
+                          const url = (p.post_url || "").trim();
+                          const ok = /^https?:\/\//i.test(url);
+                          const plat = String(p.platform || "other").toLowerCase();
+                          return (
+                            <tr key={`${c.id}-${p.id ?? pi}`} className="bg-secondary/20 text-xs text-muted-foreground">
+                              <td className="py-1 pr-3"></td>
+                              <td className="py-1 px-3 pl-6 italic">↳ post {pi + 1}</td>
+                              <td className="py-1 px-3">
+                                {ok ? (
+                                  <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 capitalize hover:text-accent hover:underline">
+                                    <PlatformIcon p={plat} /> {plat}
+                                  </a>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 capitalize"><PlatformIcon p={plat} /> {plat}</span>
+                                )}
+                              </td>
+                              <td className="py-1 px-3 text-right tabular-nums">{fmt(Number(p.views || 0))}</td>
+                              <td className="py-1 px-3 text-right tabular-nums">{fmt(Number(p.likes || 0))}</td>
+                              <td className="py-1 px-3 text-right tabular-nums">{fmt(Number(p.comments || 0))}</td>
+                              <td className="py-1 pl-3 text-right tabular-nums">{Math.round(scoreOf(p)).toLocaleString()}</td>
+                            </tr>
+                          );
+                        })}
                       </Fragment>
                     );
                   })}
