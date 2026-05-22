@@ -14,7 +14,7 @@ const steps = [
   {
     icon: BarChart3,
     title: "Reading your metrics",
-    body: "Views, Reach and Impressions show how many people saw the content. Engagement (likes + comments + shares + saves ÷ views) shows how strongly they reacted. EMV is the earned media value vs. paid media at a KES 12 CPM benchmark.",
+    body: "Views, Reach and Impressions show how many people saw the content. Engagement (likes + comments + shares + saves ÷ views) shows how strongly they reacted.",
   },
   {
     icon: FileSignature,

@@ -12,7 +12,7 @@ import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
-import { computeEmv, EMV_CPM_KES, EMV_DISCLAIMER } from "@/lib/emv";
+
 import { fetchAllPostMetrics, peakMetricSnapshot, buildWindowMetricsByPost, withMetricFallbacks } from "@/lib/metrics";
 import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 
@@ -149,7 +149,7 @@ const PublicReport = () => {
   }), { views:0, likes:0, comments:0, shares:0, saves:0, reach:0, impressions:0 });
 
   const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares + totals.saves) / totals.views * 100) : 0;
-  const emv = computeEmv(totals.views, totals.impressions);
+  
   const cpm = totals.impressions > 0 && campaign.budget_kes > 0 ? (campaign.budget_kes / totals.impressions * 1000) : 0;
   const cpv = totals.views > 0 && campaign.budget_kes > 0 ? (campaign.budget_kes / totals.views) : 0;
 
@@ -223,8 +223,8 @@ const PublicReport = () => {
     rows.push(["Range", rangeLabel]);
     rows.push([]);
     rows.push(["Totals"]);
-    rows.push(["Views", "Reach", "Impressions", "Likes", "Comments", "Shares", "Saves", "Engagement %", "EMV (KES)"]);
-    rows.push([totals.views, totals.reach, totals.impressions, totals.likes, totals.comments, totals.shares, totals.saves, er.toFixed(2), emv].map(String));
+    rows.push(["Views", "Reach", "Impressions", "Likes", "Comments", "Shares", "Saves", "Engagement %"]);
+    rows.push([totals.views, totals.reach, totals.impressions, totals.likes, totals.comments, totals.shares, totals.saves, er.toFixed(2)].map(String));
     rows.push([]);
     rows.push(["Posts"]);
     rows.push(["Creator", "Handle", "Platform", "Status", "Posted at", "Views", "Reach", "Impressions", "Likes", "Comments", "Shares", "Saves", "Engagement %", "URL"]);
@@ -277,7 +277,7 @@ const PublicReport = () => {
                   rangeLabel,
                   totals,
                   er,
-                  emv,
+                  
                   topPerformer: topPerformer ? { name: topPerformer.ci.influencers?.full_name, handle: topPerformer.ci.influencers?.handle, views: topPerformer.views, likes: byCreator.get(topPerformer.ci.influencer_id)?.likes ?? 0 } : null,
                   platformRows: platformRows.map(([k, v]) => ({ platform: k, posts: v.posts, creators: v.creators.size, views: v.views, reach: v.reach })),
                   posts: filteredPosts.map(p => ({ creator: p.influencers?.full_name ?? "—", platform: p.platform ?? "—", views: p.metrics.views || 0, likes: p.metrics.likes || 0, comments: p.metrics.comments || 0, shares: p.metrics.shares || 0, url: p.post_url })),
@@ -351,7 +351,7 @@ const PublicReport = () => {
           })}
         </div>
 
-        {/* Velocity + EMV */}
+        {/* Velocity */}
         <div className="grid lg:grid-cols-3 gap-6 mb-6">
           <Card className="p-6 lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
@@ -380,18 +380,12 @@ const PublicReport = () => {
             </div>
           </Card>
           <Card className="p-6 bg-gradient-ink text-primary-foreground border-0">
-            <div className="text-[10px] uppercase tracking-widest opacity-70">Earned media value</div>
-            <div className="font-display text-5xl font-semibold mt-2">{fmtKes(emv)}</div>
-            <p className="opacity-80 text-sm mt-3">{EMV_DISCLAIMER}</p>
-            <div className="mt-5 pt-5 border-t border-white/10 grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-widest opacity-60">Total interactions</div>
-                <div className="font-display text-2xl mt-1">{fmt(totals.likes + totals.comments + totals.shares + totals.saves)}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-widest opacity-60">Avg views / post</div>
-                <div className="font-display text-2xl mt-1">{fmt(filteredPosts.length ? totals.views / filteredPosts.length : 0)}</div>
-              </div>
+            <div className="text-[10px] uppercase tracking-widest opacity-70">Total interactions</div>
+            <div className="font-display text-5xl font-semibold mt-2">{fmt(totals.likes + totals.comments + totals.shares + totals.saves)}</div>
+            <p className="opacity-80 text-sm mt-3">Likes, comments, shares and saves across every tracked post.</p>
+            <div className="mt-5 pt-5 border-t border-white/10">
+              <div className="text-[10px] uppercase tracking-widest opacity-60">Avg views / post</div>
+              <div className="font-display text-2xl mt-1">{fmt(filteredPosts.length ? totals.views / filteredPosts.length : 0)}</div>
             </div>
             <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2 text-xs opacity-80">
               <MapPin className="w-3.5 h-3.5" /> Audience: ~80% Kenya · ~20% diaspora
@@ -432,7 +426,7 @@ const PublicReport = () => {
                     const cpe = eng > 0 && campaign.budget_kes > 0 ? campaign.budget_kes / eng : 0;
                     return <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per engagement</span><span className="font-display text-xl">{cpe > 0 ? `KES ${cpe.toFixed(2)}` : "—"}</span></div>;
                   })()}
-                  <div className="flex justify-between items-baseline pt-3 border-t border-border"><span className="text-sm text-muted-foreground">ROI vs paid</span><span className="font-display text-xl">{campaign.budget_kes > 0 ? `${(emv / campaign.budget_kes * 100).toFixed(0)}%` : "—"}</span></div>
+                  
                 </div>
               </Card>
             )}

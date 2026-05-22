@@ -64,7 +64,7 @@ import EmailReportsSection from "./EmailReportsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
-import { computeEmv, EMV_DISCLAIMER } from "@/lib/emv";
+
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
 
 
@@ -95,7 +95,7 @@ const CampaignDetail = () => {
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
   const [generatingLearnings, setGeneratingLearnings] = useState(false);
-  const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement"|"emv">("views");
+  const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement">("views");
   const [previewPost, setPreviewPost] = useState<any>(null);
   const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
@@ -315,8 +315,7 @@ const CampaignDetail = () => {
       }
     }
     const er = views ? ((likes + comments + shares + saves) / views) * 100 : 0;
-    const emv = computeEmv(views, impressions);
-    return { views, likes, comments, shares, saves, reach, impressions, er, emv };
+    return { views, likes, comments, shares, saves, reach, impressions, er };
   }, [latestByPost, contestEntries]);
 
   // Per-platform breakdown (mirrors public report)
@@ -413,10 +412,9 @@ const CampaignDetail = () => {
     return { fees, deliv, confirmed };
   }, [ci]);
 
-  const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement", emv: "Earned Media (KES)" };
+  const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
   const valOf = (m: any) => {
     if (metric === "engagement") return (m.likes||0)+(m.comments||0)+(m.shares||0)+(m.saves||0);
-    if (metric === "emv") return computeEmv(Number(m.views || 0), Number(m.impressions || 0));
     return Number((m as any)[metric] || 0);
   };
   const trend = useMemo(() => {
@@ -697,12 +695,11 @@ const CampaignDetail = () => {
           { key: "shares", label: "Shares", value: fmt(totals.shares), icon: Share2, raw: totals.shares, available: totals.shares > 0 },
           { key: "saves", label: "Saves", value: fmt(totals.saves), icon: Bookmark, raw: totals.saves, available: totals.saves > 0 },
           { key: "reach", label: "Reach", value: fmt(totals.reach), icon: Radio, raw: totals.reach, available: totals.reach > 0 },
-          { key: "emv", label: "Earned Media", value: fmtKes(totals.emv), icon: Wallet, raw: totals.emv, available: true },
         ] as const;
         const hasUnavailable = tiles.some(t => !t.available);
         return (
           <div className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden border border-border">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
               {tiles.map((s) => {
                 const active = metric === s.key;
                 const dim = !s.available;
@@ -729,7 +726,7 @@ const CampaignDetail = () => {
                 Reach, shares and saves aren't returned by Instagram's public metrics — they appear once added manually or pulled from creators' insights.
               </p>
             )}
-            <p className="text-[11px] text-muted-foreground mt-1 px-1">{EMV_DISCLAIMER}</p>
+            
           </div>
         );
       })()}

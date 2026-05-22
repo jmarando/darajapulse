@@ -152,7 +152,6 @@ const Overview = () => {
 
   const totalEng = series.reduce((a, x) => a + x.v, 0);
   const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares) / totals.views) * 100 : 0;
-  const emv = Math.round((totals.views / 1000) * 12); // KES 12 CPM benchmark
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -195,7 +194,7 @@ const Overview = () => {
                 [["Paid (KES)", s.payouts.toLocaleString(), "/app/payouts"], ["Comments", fmt(totals.comments)]],
                 [["Content items", s.briefs, "/app/content"], ["Shares", fmt(totals.shares)]],
                 [["Posts tracked", s.posts, "/app/content"], ["Engagement", `${er.toFixed(2)}%`]],
-                [["Contests", s.contests], ["EMV (KES)", fmt(emv)]],
+                [["Contests", s.contests], ["", ""]],
               ].map((row: any, i) => (
                 <TableRow key={i}>
                   <TableCell className="font-medium">
@@ -220,11 +219,10 @@ const Overview = () => {
       </div>
 
       {/* Secondary KPIs */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <Stat icon={FileText} label="Content items" value={s.briefs} to="/app/content" />
         <Stat icon={Activity} label="Posts tracked" value={s.posts} to="/app/content" />
         <Stat icon={Trophy} label="Contests" value={s.contests} />
-        <Stat icon={Sparkles} label="EMV (KES)" value={fmt(emv)} sub="vs KES 12 CPM" />
       </div>
 
       {/* Performance + Quick Actions */}
