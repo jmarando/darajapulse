@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -24,28 +24,68 @@ const fmtDate = (s?: string) => {
 const scoreOf = (e: { shares?: any; comments?: any; likes?: any; views?: any }) =>
   Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0);
 
-const postTime = (post: any) => {
-  const t = new Date(post?.posted_at || post?.created_at || 0).getTime();
-  return Number.isFinite(t) && t > 0 ? t : Number.MAX_SAFE_INTEGER;
+const normalizedText = (v?: string | null) => (v || "").trim().toLowerCase().replace(/\s+/g, " ");
+const identifiersOf = (e: any): string[] => {
+  const ids: string[] = [];
+  for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) {
+    const c = cleanH(h); if (c) ids.push(`h:${c}`);
+  }
+  const email = normalizedText(e.submitter_email); if (email) ids.push(`e:${email}`);
+  const phone = String(e.phone || "").replace(/\D/g, ""); if (phone.length >= 7) ids.push(`p:${phone}`);
+  const name = normalizedText(e.full_name || e.submitter_name);
+  if (name && name.split(" ").length >= 2) ids.push(`n:${name}`);
+  const ext = (e.external_registration_id || "").trim(); if (ext) ids.push(`r:${ext}`);
+  return ids;
 };
-const sourceRank = (post: any) => {
-  const source = String(post?.source || "").toLowerCase();
-  if (source === "manual" || source === "public_form") return 0;
-  if (source === "registration" || source === "csv_import" || source === "external_feed") return 1;
-  return 2;
+const groupEntriesByContestant = (rows: any[]): any[][] => {
+  const parent = new Map<number, number>();
+  const find = (i: number): number => { while (parent.get(i) !== i) { parent.set(i, parent.get(parent.get(i)!)!); i = parent.get(i)!; } return i; };
+  const union = (a: number, b: number) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+  rows.forEach((_, i) => parent.set(i, i));
+  const idToIdx = new Map<string, number>();
+  rows.forEach((r, i) => {
+    for (const id of identifiersOf(r)) {
+      if (idToIdx.has(id)) union(i, idToIdx.get(id)!);
+      else idToIdx.set(id, i);
+    }
+  });
+  const groups = new Map<number, any[]>();
+  rows.forEach((r, i) => {
+    const root = find(i);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root)!.push(r);
+  });
+  return Array.from(groups.values());
 };
-const pickCountedPost = (rows: any[]) => {
+
+const summarizeContestant = (rows: any[]) => {
+  const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
   const byUrl = new Map<string, any>();
   for (const row of rows) {
     const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
     for (const post of candidates) {
-      const key = canonicalPostUrl(post?.post_url);
-      if (!key) continue;
-      const prev = byUrl.get(key);
-      if (!prev || sourceRank(post) < sourceRank(prev) || (sourceRank(post) === sourceRank(prev) && scoreOf(post) > scoreOf(prev))) byUrl.set(key, post);
+      const k = canonicalPostUrl(post?.post_url);
+      if (!k) continue;
+      const prev = byUrl.get(k);
+      if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(k, post);
     }
   }
-  return Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a) || sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b))[0] || null;
+  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+  const total = posts.reduce((s, p) => s + scoreOf(p), 0);
+  const leader = reg ?? rows[0];
+  return {
+    ...leader,
+    full_name: rows.map(r => r.full_name).find(Boolean) || rows.map(r => r.submitter_name).find(Boolean) || leader.full_name,
+    instagram_handle: rows.map(r => r.instagram_handle).find(Boolean) || leader.instagram_handle,
+    tiktok_handle: rows.map(r => r.tiktok_handle).find(Boolean) || leader.tiktok_handle,
+    facebook_handle: rows.map(r => r.facebook_handle).find(Boolean) || leader.facebook_handle,
+    _posts: posts,
+    score: total,
+    views: posts.reduce((s, p) => s + Number(p.views || 0), 0),
+    likes: posts.reduce((s, p) => s + Number(p.likes || 0), 0),
+    comments: posts.reduce((s, p) => s + Number(p.comments || 0), 0),
+    shares: posts.reduce((s, p) => s + Number(p.shares || 0), 0),
+  };
 };
 
 const PlatformIcon = ({ p, className }: { p: string; className?: string }) => {
@@ -99,52 +139,38 @@ const PublicContestReport = () => {
     });
   }, [entries, creatorHandles]);
 
-  // Group entries by contestant key (handle, then fallbacks) and pick best post per contestant.
+  // Group entries by contestant (union-find across handles/email/name) and sum scores across ALL posts.
   const contestants = useMemo(() => {
-    const key = (e: any) => {
-      const h = [e.instagram_handle, e.tiktok_handle, e.facebook_handle, e.handle].map(cleanH).find(Boolean);
-      if (h) return `handle:${h}`;
-      return `entry:${e.id}`;
-    };
-    const groups = new Map<string, any[]>();
-    for (const e of visibleEntries) {
-      const k = key(e);
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k)!.push(e);
-    }
-    return Array.from(groups.values())
-      .map((rows) => {
-        const reg = rows.find((r) => r.source === "registration") || rows[0];
-        const best = pickCountedPost(rows);
-        const posts = best ? [best] : [];
-        return { reg, posts, best, score: best ? scoreOf(best) : 0 };
-      })
-      .sort((a, b) => b.score - a.score);
+    const groups = groupEntriesByContestant(visibleEntries);
+    return groups.map(summarizeContestant).sort((a, b) => (b.score || 0) - (a.score || 0));
   }, [visibleEntries]);
 
-  const totals = useMemo(() => {
-    let views = 0, likes = 0, comments = 0, shares = 0;
-    for (const e of visibleEntries) {
-      views += Number(e.views || 0);
-      likes += Number(e.likes || 0);
-      comments += Number(e.comments || 0);
-      shares += Number(e.shares || 0);
-    }
-    return { views, likes, comments, shares, eng: likes + comments + shares };
-  }, [visibleEntries]);
-
-  const platformRows = useMemo(() => {
+  // Totals across all unique counted posts (deduped by URL).
+  const { totals, platformRows, totalPosts } = useMemo(() => {
+    let views = 0, likes = 0, comments = 0, shares = 0, postCount = 0;
     const map = new Map<string, { posts: number; views: number; eng: number }>();
-    for (const e of visibleEntries) {
-      const k = String(e.platform || "other");
-      const cur = map.get(k) ?? { posts: 0, views: 0, eng: 0 };
-      cur.posts += 1;
-      cur.views += Number(e.views || 0);
-      cur.eng += Number(e.likes || 0) + Number(e.comments || 0) + Number(e.shares || 0);
-      map.set(k, cur);
+    for (const c of contestants) {
+      const posts: any[] = Array.isArray((c as any)._posts) ? (c as any)._posts : [];
+      for (const p of posts) {
+        postCount += 1;
+        views += Number(p.views || 0);
+        likes += Number(p.likes || 0);
+        comments += Number(p.comments || 0);
+        shares += Number(p.shares || 0);
+        const k = String(p.platform || "other").toLowerCase();
+        const cur = map.get(k) ?? { posts: 0, views: 0, eng: 0 };
+        cur.posts += 1;
+        cur.views += Number(p.views || 0);
+        cur.eng += Number(p.likes || 0) + Number(p.comments || 0) + Number(p.shares || 0);
+        map.set(k, cur);
+      }
     }
-    return Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views);
-  }, [visibleEntries]);
+    return {
+      totals: { views, likes, comments, shares, eng: likes + comments + shares },
+      platformRows: Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views),
+      totalPosts: postCount,
+    };
+  }, [contestants]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (notFound || !contest) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Contest report not found or no longer active.</div>;
@@ -186,7 +212,7 @@ const PublicContestReport = () => {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
           {[
             { label: "Contestants", value: fmt(contestants.length), icon: Users },
-            { label: "Entries", value: fmt(visibleEntries.length), icon: Trophy },
+            { label: "Entries", value: fmt(totalPosts), icon: Trophy },
             { label: "Views", value: fmt(totals.views), icon: Eye },
             { label: "Engagement", value: fmt(totals.eng), icon: Heart },
             { label: "Shares", value: fmt(totals.shares), icon: Share2 },
@@ -226,39 +252,60 @@ const PublicContestReport = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {contestants.slice(0, 50).map(({ reg, best, score }, i) => {
+                  {contestants.slice(0, 50).map((c: any, i: number) => {
                     const rank = i + 1;
-                    const isWinner = reg.status === "winner" || rank === 1;
+                    const isWinner = c.status === "winner" || rank === 1;
+                    const posts: any[] = Array.isArray(c._posts) ? c._posts : [];
+                    const perPlatform: Record<string, { views: number; likes: number; comments: number; shares: number; score: number; count: number }> = {};
+                    for (const p of posts) {
+                      const k = String(p.platform || "other").toLowerCase();
+                      if (!perPlatform[k]) perPlatform[k] = { views: 0, likes: 0, comments: 0, shares: 0, score: 0, count: 0 };
+                      perPlatform[k].views += Number(p.views || 0);
+                      perPlatform[k].likes += Number(p.likes || 0);
+                      perPlatform[k].comments += Number(p.comments || 0);
+                      perPlatform[k].shares += Number(p.shares || 0);
+                      perPlatform[k].score += scoreOf(p);
+                      perPlatform[k].count += 1;
+                    }
+                    const breakdown = Object.entries(perPlatform).sort((a, b) => b[1].score - a[1].score);
                     return (
-                      <tr key={reg.id} className={`border-b border-border last:border-0 ${isWinner ? "bg-accent/5" : ""}`}>
-                        <td className={`py-2 pr-3 font-semibold ${rank <= 3 ? "text-accent" : "text-muted-foreground"}`}>
-                          {rank === 1 ? <Crown className="w-4 h-4 inline mr-1 text-highlight" /> : null}#{rank}
-                        </td>
-                        <td className="py-2 px-3">
-                          <div className="font-medium">{reg.full_name || reg.submitter_name || reg.handle || "Contestant"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {[reg.instagram_handle && `@${reg.instagram_handle}`, reg.tiktok_handle && `@${reg.tiktok_handle}`, reg.facebook_handle && `@${reg.facebook_handle}`].filter(Boolean).join(" · ")}
-                          </div>
-                        </td>
-                        <td className="py-2 px-3">
-                          {best ? (
-                            <a href={best.post_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs hover:underline">
-                              <PlatformIcon p={best.platform} /> <span className="capitalize">{best.platform}</span>
-                            </a>
-                          ) : "—"}
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums">{fmt(Number(best?.views || 0))}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{fmt(Number(best?.likes || 0))}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{fmt(Number(best?.comments || 0))}</td>
-                        <td className="py-2 pl-3 text-right tabular-nums font-semibold">{Math.round(score).toLocaleString()}</td>
-                      </tr>
+                      <Fragment key={c.id}>
+                        <tr className={`border-b border-border ${isWinner ? "bg-accent/5" : ""}`}>
+                          <td className={`py-2 pr-3 font-semibold align-top ${rank <= 3 ? "text-accent" : "text-muted-foreground"}`}>
+                            {rank === 1 ? <Crown className="w-4 h-4 inline mr-1 text-highlight" /> : null}#{rank}
+                          </td>
+                          <td className="py-2 px-3 align-top">
+                            <div className="font-medium">{c.full_name || c.submitter_name || c.handle || "Contestant"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {[c.instagram_handle && `@${c.instagram_handle}`, c.tiktok_handle && `@${c.tiktok_handle}`, c.facebook_handle && `@${c.facebook_handle}`].filter(Boolean).join(" · ")}
+                            </div>
+                            {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} summed</div>}
+                          </td>
+                          <td className="py-2 px-3 align-top text-muted-foreground font-medium">Total</td>
+                          <td className="py-2 px-3 text-right tabular-nums align-top font-semibold">{fmt(Number(c.views || 0))}</td>
+                          <td className="py-2 px-3 text-right tabular-nums align-top font-semibold">{fmt(Number(c.likes || 0))}</td>
+                          <td className="py-2 px-3 text-right tabular-nums align-top font-semibold">{fmt(Number(c.comments || 0))}</td>
+                          <td className="py-2 pl-3 text-right tabular-nums font-semibold align-top">{Math.round(c.score || 0).toLocaleString()}</td>
+                        </tr>
+                        {breakdown.length > 1 && breakdown.map(([plat, m]) => (
+                          <tr key={`${c.id}-${plat}`} className="bg-secondary/20 text-xs text-muted-foreground">
+                            <td className="py-1 pr-3"></td>
+                            <td className="py-1 px-3 pl-6 italic">↳ {m.count} post{m.count === 1 ? "" : "s"}</td>
+                            <td className="py-1 px-3 inline-flex items-center gap-1.5 capitalize"><PlatformIcon p={plat} /> {plat}</td>
+                            <td className="py-1 px-3 text-right tabular-nums">{fmt(m.views)}</td>
+                            <td className="py-1 px-3 text-right tabular-nums">{fmt(m.likes)}</td>
+                            <td className="py-1 px-3 text-right tabular-nums">{fmt(m.comments)}</td>
+                            <td className="py-1 pl-3 text-right tabular-nums">{Math.round(m.score).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </Fragment>
                     );
                   })}
                 </tbody>
               </table>
             </div>
           )}
-          <div className="mt-3 text-[10px] text-muted-foreground">Score = shares×3 + comments×2 + likes×1, one counted video per contestant.</div>
+          <div className="mt-3 text-[10px] text-muted-foreground">Score = views×1 + likes×1 + comments×2 + shares×3, summed across every platform each contestant entered.</div>
         </Card>
 
         {/* Platform breakdown */}
