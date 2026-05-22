@@ -252,32 +252,53 @@ const PublicContestReport = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {contestants.slice(0, 50).map(({ reg, best, score }, i) => {
+                  {contestants.slice(0, 50).map((c: any, i: number) => {
                     const rank = i + 1;
-                    const isWinner = reg.status === "winner" || rank === 1;
+                    const isWinner = c.status === "winner" || rank === 1;
+                    const posts: any[] = Array.isArray(c._posts) ? c._posts : [];
+                    const perPlatform: Record<string, { views: number; likes: number; comments: number; shares: number; score: number; count: number }> = {};
+                    for (const p of posts) {
+                      const k = String(p.platform || "other").toLowerCase();
+                      if (!perPlatform[k]) perPlatform[k] = { views: 0, likes: 0, comments: 0, shares: 0, score: 0, count: 0 };
+                      perPlatform[k].views += Number(p.views || 0);
+                      perPlatform[k].likes += Number(p.likes || 0);
+                      perPlatform[k].comments += Number(p.comments || 0);
+                      perPlatform[k].shares += Number(p.shares || 0);
+                      perPlatform[k].score += scoreOf(p);
+                      perPlatform[k].count += 1;
+                    }
+                    const breakdown = Object.entries(perPlatform).sort((a, b) => b[1].score - a[1].score);
                     return (
-                      <tr key={reg.id} className={`border-b border-border last:border-0 ${isWinner ? "bg-accent/5" : ""}`}>
-                        <td className={`py-2 pr-3 font-semibold ${rank <= 3 ? "text-accent" : "text-muted-foreground"}`}>
-                          {rank === 1 ? <Crown className="w-4 h-4 inline mr-1 text-highlight" /> : null}#{rank}
-                        </td>
-                        <td className="py-2 px-3">
-                          <div className="font-medium">{reg.full_name || reg.submitter_name || reg.handle || "Contestant"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {[reg.instagram_handle && `@${reg.instagram_handle}`, reg.tiktok_handle && `@${reg.tiktok_handle}`, reg.facebook_handle && `@${reg.facebook_handle}`].filter(Boolean).join(" · ")}
-                          </div>
-                        </td>
-                        <td className="py-2 px-3">
-                          {best ? (
-                            <a href={best.post_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs hover:underline">
-                              <PlatformIcon p={best.platform} /> <span className="capitalize">{best.platform}</span>
-                            </a>
-                          ) : "—"}
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums">{fmt(Number(best?.views || 0))}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{fmt(Number(best?.likes || 0))}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{fmt(Number(best?.comments || 0))}</td>
-                        <td className="py-2 pl-3 text-right tabular-nums font-semibold">{Math.round(score).toLocaleString()}</td>
-                      </tr>
+                      <Fragment key={c.id}>
+                        <tr className={`border-b border-border ${isWinner ? "bg-accent/5" : ""}`}>
+                          <td className={`py-2 pr-3 font-semibold align-top ${rank <= 3 ? "text-accent" : "text-muted-foreground"}`}>
+                            {rank === 1 ? <Crown className="w-4 h-4 inline mr-1 text-highlight" /> : null}#{rank}
+                          </td>
+                          <td className="py-2 px-3 align-top">
+                            <div className="font-medium">{c.full_name || c.submitter_name || c.handle || "Contestant"}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {[c.instagram_handle && `@${c.instagram_handle}`, c.tiktok_handle && `@${c.tiktok_handle}`, c.facebook_handle && `@${c.facebook_handle}`].filter(Boolean).join(" · ")}
+                            </div>
+                            {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} summed</div>}
+                          </td>
+                          <td className="py-2 px-3 align-top text-muted-foreground font-medium">Total</td>
+                          <td className="py-2 px-3 text-right tabular-nums align-top font-semibold">{fmt(Number(c.views || 0))}</td>
+                          <td className="py-2 px-3 text-right tabular-nums align-top font-semibold">{fmt(Number(c.likes || 0))}</td>
+                          <td className="py-2 px-3 text-right tabular-nums align-top font-semibold">{fmt(Number(c.comments || 0))}</td>
+                          <td className="py-2 pl-3 text-right tabular-nums font-semibold align-top">{Math.round(c.score || 0).toLocaleString()}</td>
+                        </tr>
+                        {breakdown.length > 1 && breakdown.map(([plat, m]) => (
+                          <tr key={`${c.id}-${plat}`} className="bg-secondary/20 text-xs text-muted-foreground">
+                            <td className="py-1 pr-3"></td>
+                            <td className="py-1 px-3 pl-6 italic">↳ {m.count} post{m.count === 1 ? "" : "s"}</td>
+                            <td className="py-1 px-3 inline-flex items-center gap-1.5 capitalize"><PlatformIcon p={plat} /> {plat}</td>
+                            <td className="py-1 px-3 text-right tabular-nums">{fmt(m.views)}</td>
+                            <td className="py-1 px-3 text-right tabular-nums">{fmt(m.likes)}</td>
+                            <td className="py-1 px-3 text-right tabular-nums">{fmt(m.comments)}</td>
+                            <td className="py-1 pl-3 text-right tabular-nums">{Math.round(m.score).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </Fragment>
                     );
                   })}
                 </tbody>
