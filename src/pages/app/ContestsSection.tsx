@@ -797,18 +797,6 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                               const allRows = Array.isArray(e._allRows) ? e._allRows : [e];
                               const auto = allRows.some(isAuto);
                               const topPost = posts[0];
-                              const perPlatform: Record<string, { views: number; likes: number; comments: number; shares: number; score: number; count: number }> = {};
-                              for (const p of posts) {
-                                const k = (p.platform || "other").toLowerCase();
-                                if (!perPlatform[k]) perPlatform[k] = { views: 0, likes: 0, comments: 0, shares: 0, score: 0, count: 0 };
-                                perPlatform[k].views += Number(p.views || 0);
-                                perPlatform[k].likes += Number(p.likes || 0);
-                                perPlatform[k].comments += Number(p.comments || 0);
-                                perPlatform[k].shares += Number(p.shares || 0);
-                                perPlatform[k].score += Number(p.score || 0);
-                                perPlatform[k].count += 1;
-                              }
-                              const platformBreakdown = Object.entries(perPlatform).sort((a, b) => b[1].score - a[1].score);
                               return (
                               <Fragment key={e.id}>
                               <tr className="border-t border-border">
@@ -845,19 +833,33 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                   </div>
                                 </td>
                               </tr>
-                              {platformBreakdown.length > 1 && platformBreakdown.map(([plat, m]) => (
-                                <tr key={`${e.id}-${plat}`} className="bg-secondary/20 text-xs text-muted-foreground">
-                                  <td className="px-3 py-1"></td>
-                                  <td className="px-3 py-1 pl-6 italic">↳ {m.count} post{m.count === 1 ? "" : "s"}</td>
-                                  <td className="px-3 py-1 capitalize">{plat}</td>
-                                  <td className="px-3 py-1 text-right tabular-nums">{m.views.toLocaleString()}</td>
-                                  <td className="px-3 py-1 text-right tabular-nums">{m.likes.toLocaleString()}</td>
-                                  <td className="px-3 py-1 text-right tabular-nums">{m.comments.toLocaleString()}</td>
-                                  <td className="px-3 py-1 text-right tabular-nums">{m.shares.toLocaleString()}</td>
-                                  <td className="px-3 py-1 text-right tabular-nums">{Math.round(m.score).toLocaleString()}</td>
-                                  <td colSpan={2}></td>
-                                </tr>
-                              ))}
+                              {posts.length > 1 && posts.map((p: any, pi: number) => {
+                                const url = (p.post_url || "").trim();
+                                const ok = /^https?:\/\//i.test(url);
+                                const plat = String(p.platform || "other").toLowerCase();
+                                const PIcon = plat === "instagram" ? Instagram : plat === "tiktok" ? Music2 : plat === "facebook" ? Facebook : Link2;
+                                return (
+                                  <tr key={`${e.id}-${p.id ?? pi}`} className="bg-secondary/20 text-xs text-muted-foreground">
+                                    <td className="px-3 py-1"></td>
+                                    <td className="px-3 py-1 pl-6 italic">↳ post {pi + 1}</td>
+                                    <td className="px-3 py-1">
+                                      {ok ? (
+                                        <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 capitalize hover:text-accent hover:underline">
+                                          <PIcon className="w-3 h-3" /> {plat}
+                                        </a>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1.5 capitalize"><PIcon className="w-3 h-3" /> {plat}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-1 text-right tabular-nums">{(p.views || 0).toLocaleString()}</td>
+                                    <td className="px-3 py-1 text-right tabular-nums">{(p.likes || 0).toLocaleString()}</td>
+                                    <td className="px-3 py-1 text-right tabular-nums">{(p.comments || 0).toLocaleString()}</td>
+                                    <td className="px-3 py-1 text-right tabular-nums">{(p.shares || 0).toLocaleString()}</td>
+                                    <td className="px-3 py-1 text-right tabular-nums">{Math.round(scoreOf(p)).toLocaleString()}</td>
+                                    <td colSpan={2}></td>
+                                  </tr>
+                                );
+                              })}
                               </Fragment>
                             );})}
                           </tbody>
