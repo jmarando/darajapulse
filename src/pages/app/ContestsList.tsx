@@ -57,7 +57,7 @@ const ContestsList = () => {
         for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) {
           const c = cleanH(h); if (c) cur.handles.add(c);
         }
-        const posts = [{ post_url: e.post_url }, ...(Array.isArray(e.cross_posts) ? e.cross_posts : [])];
+        const posts: any[] = [{ post_url: e.post_url }, ...(Array.isArray(e.cross_posts) ? (e.cross_posts as any[]) : [])];
         for (const p of posts) {
           const k = canonicalPostUrl(p?.post_url);
           if (k) cur.postUrls.add(k);
