@@ -735,14 +735,26 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                           <tbody>
                             {rows.sort((a, b) => (b.score || 0) - (a.score || 0)).map((e, i) => {
                               const posts = Array.isArray(e._posts) ? e._posts : [];
-                              const platforms = Array.from(new Set(posts.map((p: any) => p.platform).filter(Boolean)));
                               const allRows = Array.isArray(e._allRows) ? e._allRows : [e];
                               const auto = allRows.some(isAuto);
                               const topPost = posts[0];
+                              const perPlatform: Record<string, { views: number; likes: number; comments: number; shares: number; score: number; count: number }> = {};
+                              for (const p of posts) {
+                                const k = (p.platform || "other").toLowerCase();
+                                if (!perPlatform[k]) perPlatform[k] = { views: 0, likes: 0, comments: 0, shares: 0, score: 0, count: 0 };
+                                perPlatform[k].views += Number(p.views || 0);
+                                perPlatform[k].likes += Number(p.likes || 0);
+                                perPlatform[k].comments += Number(p.comments || 0);
+                                perPlatform[k].shares += Number(p.shares || 0);
+                                perPlatform[k].score += Number(p.score || 0);
+                                perPlatform[k].count += 1;
+                              }
+                              const platformBreakdown = Object.entries(perPlatform).sort((a, b) => b[1].score - a[1].score);
                               return (
-                              <tr key={e.id} className="border-t border-border">
-                                <td className="px-3 py-2 tabular-nums">{i + 1}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
-                                <td className="px-3 py-2">
+                              <Fragment key={e.id}>
+                              <tr className="border-t border-border">
+                                <td className="px-3 py-2 tabular-nums align-top">{i + 1}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
+                                <td className="px-3 py-2 align-top">
                                   {(() => {
                                     const u = (topPost?.post_url || e.post_url || "").trim();
                                     const ok = /^https?:\/\//i.test(u);
@@ -754,16 +766,14 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                   <span className={`ml-2 text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
                                   {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{posts.length} post{posts.length === 1 ? "" : "s"} summed</div>}
                                 </td>
-                                <td className="px-3 py-2 capitalize text-muted-foreground">
-                                  {platforms.length ? platforms.join(", ") : (e.platform || "—")}
-                                </td>
-                                <td className="px-3 py-2 text-right tabular-nums">{(e.views || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{(e.likes || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{(e.comments || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{(e.shares || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(e.score || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
-                                <td className="px-3 py-2 text-right">
+                                <td className="px-3 py-2 capitalize text-muted-foreground align-top font-medium">Total</td>
+                                <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.views || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.likes || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.comments || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.shares || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold align-top">{Math.round(e.score || 0).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right align-top"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
+                                <td className="px-3 py-2 text-right align-top">
                                   <div className="inline-flex gap-1">
                                     {e.status === "pending" && (
                                       <>
@@ -776,6 +786,20 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                   </div>
                                 </td>
                               </tr>
+                              {platformBreakdown.length > 1 && platformBreakdown.map(([plat, m]) => (
+                                <tr key={`${e.id}-${plat}`} className="bg-secondary/20 text-xs text-muted-foreground">
+                                  <td className="px-3 py-1"></td>
+                                  <td className="px-3 py-1 pl-6 italic">↳ {m.count} post{m.count === 1 ? "" : "s"}</td>
+                                  <td className="px-3 py-1 capitalize">{plat}</td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{m.views.toLocaleString()}</td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{m.likes.toLocaleString()}</td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{m.comments.toLocaleString()}</td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{m.shares.toLocaleString()}</td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{Math.round(m.score).toLocaleString()}</td>
+                                  <td colSpan={2}></td>
+                                </tr>
+                              ))}
+                              </Fragment>
                             );})}
                           </tbody>
                         </table>
