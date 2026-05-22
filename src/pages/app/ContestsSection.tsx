@@ -562,16 +562,28 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 const contestants = Array.from(groups.entries()).map(([key, rows]) => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
                   const best = pickCountedPost(rows);
-                  const posts = best ? [best] : [];
+                  // Collect every distinct post the contestant has across platforms (entries + cross_posts),
+                  // deduped by canonical URL, so the team can see FB X views / IG Y views / TikTok Z views etc.
+                  const byUrl = new Map<string, any>();
+                  for (const row of rows) {
+                    const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
+                    for (const post of candidates) {
+                      const key2 = canonicalPostUrl(post?.post_url);
+                      if (!key2) continue;
+                      const prev = byUrl.get(key2);
+                      if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(key2, { ...post, id: post.id ?? `${row.id}:${key2}` });
+                    }
+                  }
+                  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
                   const total = best ? scoreOf(best) : 0;
-                  return { key, reg, posts, total, bestId: best?.id };
+                  return { key, reg, posts, total, bestId: best?.id, bestUrl: canonicalPostUrl(best?.post_url) };
                 }).sort((a, b) => b.total - a.total);
                 if (contestants.length === 0) return null;
                 return (
                   <div className="mb-6">
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.slice(0, 12).map(({ key, reg, posts, total, bestId }, i) => {
+                      {contestants.slice(0, 12).map(({ key, reg, posts, total, bestId, bestUrl }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
                         const hasAutoCapable = !!(reg.instagram_handle || reg.tiktok_handle);
@@ -596,7 +608,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             <div className="text-right shrink-0">
                               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Best score</div>
                               <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
-                              {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">1 counted video</div>}
+                              {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} entr{posts.length === 1 ? "y" : "ies"} · best counts</div>}
                             </div>
                           </div>
                           {posts.length === 0 ? (
@@ -623,7 +635,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             <div className="space-y-1.5 border-t border-border/60 pt-2">
                               {posts.map(p => {
                                 const PIcon = p.platform === "instagram" ? Instagram : p.platform === "tiktok" ? Music2 : Link2;
-                                const isBest = p.id === bestId;
+                                const isBest = p.id === bestId || (bestUrl && canonicalPostUrl(p.post_url) === bestUrl);
                                 const auto = isAuto(p);
                                 return (
                                 <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" title={`Open post on ${p.platform}`} className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-xs rounded px-1.5 py-1 min-w-0 transition-colors ${isBest ? "bg-accent/5 hover:bg-accent/10" : "hover:bg-secondary/50"}`}>
