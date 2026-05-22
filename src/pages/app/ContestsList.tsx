@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Plus, Users, Eye, Hash, ArrowUpRight, Calendar } from "lucide-react";
+import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 import { toast } from "sonner";
 
 const fmtNum = (n: number) => {
