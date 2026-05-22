@@ -635,7 +635,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             <div className="space-y-1.5 border-t border-border/60 pt-2">
                               {posts.map(p => {
                                 const PIcon = p.platform === "instagram" ? Instagram : p.platform === "tiktok" ? Music2 : Link2;
-                                const isBest = p.id === bestId;
+                                const isBest = p.id === bestId || (bestUrl && canonicalPostUrl(p.post_url) === bestUrl);
                                 const auto = isAuto(p);
                                 return (
                                 <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" title={`Open post on ${p.platform}`} className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-xs rounded px-1.5 py-1 min-w-0 transition-colors ${isBest ? "bg-accent/5 hover:bg-accent/10" : "hover:bg-secondary/50"}`}>
