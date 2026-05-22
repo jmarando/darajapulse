@@ -562,9 +562,21 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 const contestants = Array.from(groups.entries()).map(([key, rows]) => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
                   const best = pickCountedPost(rows);
-                  const posts = best ? [best] : [];
+                  // Collect every distinct post the contestant has across platforms (entries + cross_posts),
+                  // deduped by canonical URL, so the team can see FB X views / IG Y views / TikTok Z views etc.
+                  const byUrl = new Map<string, any>();
+                  for (const row of rows) {
+                    const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
+                    for (const post of candidates) {
+                      const key2 = canonicalPostUrl(post?.post_url);
+                      if (!key2) continue;
+                      const prev = byUrl.get(key2);
+                      if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(key2, { ...post, id: post.id ?? `${row.id}:${key2}` });
+                    }
+                  }
+                  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
                   const total = best ? scoreOf(best) : 0;
-                  return { key, reg, posts, total, bestId: best?.id };
+                  return { key, reg, posts, total, bestId: best?.id, bestUrl: canonicalPostUrl(best?.post_url) };
                 }).sort((a, b) => b.total - a.total);
                 if (contestants.length === 0) return null;
                 return (
