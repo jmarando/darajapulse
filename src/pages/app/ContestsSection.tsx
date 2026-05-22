@@ -728,7 +728,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                 return "No matching posts yet.";
                               })()}
                               {fbOnly ? (
-                                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditEntry({ ...reg, cross_posts: Array.isArray(reg.cross_posts) ? reg.cross_posts : [] })}>
+                                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => openEditFor(reg)}>
                                   <Pencil className="w-3 h-3 mr-1" /> Enter metrics
                                 </Button>
                               ) : (
