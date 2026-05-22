@@ -840,7 +840,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                         <Button size="icon" className="h-7 w-7 bg-primary" onClick={() => setStatus(e.id, "approved")}><Check className="w-4 h-4" /></Button>
                                       </>
                                     )}
-                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditEntry({ ...e, cross_posts: Array.isArray(e.cross_posts) ? e.cross_posts : [] })} aria-label="Edit entry"><Pencil className="w-4 h-4" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditFor(e)} aria-label="Edit entry"><Pencil className="w-4 h-4" /></Button>
                                     <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteEntry(e)} aria-label="Delete contest entry"><Trash2 className="w-4 h-4" /></Button>
                                   </div>
                                 </td>
