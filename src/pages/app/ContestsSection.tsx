@@ -733,37 +733,35 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             </tr>
                           </thead>
                           <tbody>
-                            {rows.sort((a, b) => bestScore(b) - bestScore(a)).map((e, i) => {
-                              const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-                              const auto = isAuto(e);
+                            {rows.sort((a, b) => (b.score || 0) - (a.score || 0)).map((e, i) => {
+                              const posts = Array.isArray(e._posts) ? e._posts : [];
+                              const platforms = Array.from(new Set(posts.map((p: any) => p.platform).filter(Boolean)));
+                              const allRows = Array.isArray(e._allRows) ? e._allRows : [e];
+                              const auto = allRows.some(isAuto);
+                              const topPost = posts[0];
                               return (
                               <tr key={e.id} className="border-t border-border">
                                 <td className="px-3 py-2 tabular-nums">{i + 1}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
                                 <td className="px-3 py-2">
                                   {(() => {
-                                    const u = (e.post_url || "").trim();
-                                    const ok = e.status !== "invalid" && /^https?:\/\//i.test(u) && (
-                                      /tiktok\.com\/.+\/video\/\d+/i.test(u) ||
-                                      /(?:vt|vm)\.tiktok\.com\/[A-Za-z0-9]+/i.test(u) ||
-                                      /instagram\.com\/(?:p|reel|reels|tv)\/[A-Za-z0-9_-]+/i.test(u) ||
-                                      /facebook\.com\/.+\/(?:posts|videos|reel|photos)\/|fb\.watch\//i.test(u)
-                                    );
-                                    const label = e.handle || e.submitter_name || "—";
+                                    const u = (topPost?.post_url || e.post_url || "").trim();
+                                    const ok = /^https?:\/\//i.test(u);
+                                    const label = e.full_name || e.submitter_name || e.handle || "—";
                                     return ok
                                       ? <a href={u} target="_blank" rel="noreferrer" className="hover:text-accent">{label}</a>
-                                      : <span className="text-muted-foreground cursor-help" title="Submitted link isn't a valid post URL or has expired">{label}</span>;
+                                      : <span className="text-muted-foreground">{label}</span>;
                                   })()}
                                   <span className={`ml-2 text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
-                                  {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />1 counted video</div>}
+                                  {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{posts.length} post{posts.length === 1 ? "" : "s"} summed</div>}
                                 </td>
                                 <td className="px-3 py-2 capitalize text-muted-foreground">
-                                  {e.platform}{xs.length > 0 && <div className="text-[10px]">+{Array.from(new Set(xs.map((x: any) => x.platform))).join(", ")}</div>}
+                                  {platforms.length ? platforms.join(", ") : (e.platform || "—")}
                                 </td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.views || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.likes || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.comments || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.shares || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(bestScore(e)).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(e.score || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
                                 <td className="px-3 py-2 text-right">
                                   <div className="inline-flex gap-1">
