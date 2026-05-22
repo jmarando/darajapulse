@@ -139,52 +139,38 @@ const PublicContestReport = () => {
     });
   }, [entries, creatorHandles]);
 
-  // Group entries by contestant key (handle, then fallbacks) and pick best post per contestant.
+  // Group entries by contestant (union-find across handles/email/name) and sum scores across ALL posts.
   const contestants = useMemo(() => {
-    const key = (e: any) => {
-      const h = [e.instagram_handle, e.tiktok_handle, e.facebook_handle, e.handle].map(cleanH).find(Boolean);
-      if (h) return `handle:${h}`;
-      return `entry:${e.id}`;
-    };
-    const groups = new Map<string, any[]>();
-    for (const e of visibleEntries) {
-      const k = key(e);
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k)!.push(e);
-    }
-    return Array.from(groups.values())
-      .map((rows) => {
-        const reg = rows.find((r) => r.source === "registration") || rows[0];
-        const best = pickCountedPost(rows);
-        const posts = best ? [best] : [];
-        return { reg, posts, best, score: best ? scoreOf(best) : 0 };
-      })
-      .sort((a, b) => b.score - a.score);
+    const groups = groupEntriesByContestant(visibleEntries);
+    return groups.map(summarizeContestant).sort((a, b) => (b.score || 0) - (a.score || 0));
   }, [visibleEntries]);
 
-  const totals = useMemo(() => {
-    let views = 0, likes = 0, comments = 0, shares = 0;
-    for (const e of visibleEntries) {
-      views += Number(e.views || 0);
-      likes += Number(e.likes || 0);
-      comments += Number(e.comments || 0);
-      shares += Number(e.shares || 0);
-    }
-    return { views, likes, comments, shares, eng: likes + comments + shares };
-  }, [visibleEntries]);
-
-  const platformRows = useMemo(() => {
+  // Totals across all unique counted posts (deduped by URL).
+  const { totals, platformRows, totalPosts } = useMemo(() => {
+    let views = 0, likes = 0, comments = 0, shares = 0, postCount = 0;
     const map = new Map<string, { posts: number; views: number; eng: number }>();
-    for (const e of visibleEntries) {
-      const k = String(e.platform || "other");
-      const cur = map.get(k) ?? { posts: 0, views: 0, eng: 0 };
-      cur.posts += 1;
-      cur.views += Number(e.views || 0);
-      cur.eng += Number(e.likes || 0) + Number(e.comments || 0) + Number(e.shares || 0);
-      map.set(k, cur);
+    for (const c of contestants) {
+      const posts: any[] = Array.isArray((c as any)._posts) ? (c as any)._posts : [];
+      for (const p of posts) {
+        postCount += 1;
+        views += Number(p.views || 0);
+        likes += Number(p.likes || 0);
+        comments += Number(p.comments || 0);
+        shares += Number(p.shares || 0);
+        const k = String(p.platform || "other").toLowerCase();
+        const cur = map.get(k) ?? { posts: 0, views: 0, eng: 0 };
+        cur.posts += 1;
+        cur.views += Number(p.views || 0);
+        cur.eng += Number(p.likes || 0) + Number(p.comments || 0) + Number(p.shares || 0);
+        map.set(k, cur);
+      }
     }
-    return Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views);
-  }, [visibleEntries]);
+    return {
+      totals: { views, likes, comments, shares, eng: likes + comments + shares },
+      platformRows: Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views),
+      totalPosts: postCount,
+    };
+  }, [contestants]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (notFound || !contest) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Contest report not found or no longer active.</div>;
