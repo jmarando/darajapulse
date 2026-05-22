@@ -394,20 +394,24 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const active = contests.find(c => c.id === activeId);
   const submitUrl = active ? `${window.location.origin}/c/${active.submission_token}` : "";
 
+  const isCreator = (e: any) => {
+    const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean);
+    return hs.some(h => creatorHandles.has(h));
+  };
+
   const byRound = useMemo(() => {
-    const map = new Map<number, Map<string, any[]>>();
+    const map = new Map<number, any[]>();
     for (const e of entries) {
+      if (isCreator(e)) continue;
       const k = e.round_number || 1;
-      if (!map.has(k)) map.set(k, new Map());
-      const key = contestantKey(e);
-      const round = map.get(k)!;
-      if (!round.has(key)) round.set(key, []);
-      round.get(key)!.push(e);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(e);
     }
     return Array.from(map.entries())
-      .map(([round, groups]) => [round, Array.from(groups.values()).map(mergeContestantRows)] as [number, any[]])
+      .map(([round, rows]) => [round, groupEntriesByContestant(rows).map(summarizeContestant)] as [number, any[]])
       .sort((a, b) => a[0] - b[0]);
-  }, [entries]);
+  }, [entries, creatorHandles]);
+
 
   const exportCsv = () => {
     if (!active || !entries.length) return toast.error("No entries to export");
