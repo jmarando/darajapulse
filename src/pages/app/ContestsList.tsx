@@ -47,18 +47,25 @@ const ContestsList = () => {
     if (ids.length) {
       const { data: es } = await supabase
         .from("contest_entries")
-        .select("contest_id, handle, views, status");
-      const s: Record<string, { entries: number; contestants: number; views: number; handles: Set<string> }> = {};
+        .select("contest_id, handle, instagram_handle, tiktok_handle, facebook_handle, post_url, cross_posts, views, status");
+      // Per-contest dedupe by canonical post URL (matches public report's "entries" definition).
+      const s: Record<string, { postUrls: Set<string>; views: number; handles: Set<string> }> = {};
       for (const e of es ?? []) {
         if (!ids.includes(e.contest_id)) continue;
-        const cur = s[e.contest_id] ?? { entries: 0, contestants: 0, views: 0, handles: new Set<string>() };
-        cur.entries += 1;
+        const cur = s[e.contest_id] ?? { postUrls: new Set<string>(), views: 0, handles: new Set<string>() };
         cur.views += Number(e.views || 0);
-        if (e.handle) cur.handles.add(String(e.handle).toLowerCase());
+        for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) {
+          const c = cleanH(h); if (c) cur.handles.add(c);
+        }
+        const posts = [{ post_url: e.post_url }, ...(Array.isArray(e.cross_posts) ? e.cross_posts : [])];
+        for (const p of posts) {
+          const k = canonicalPostUrl(p?.post_url);
+          if (k) cur.postUrls.add(k);
+        }
         s[e.contest_id] = cur;
       }
       const out: Record<string, { entries: number; contestants: number; views: number }> = {};
-      for (const [k, v] of Object.entries(s)) out[k] = { entries: v.entries, contestants: v.handles.size, views: v.views };
+      for (const [k, v] of Object.entries(s)) out[k] = { entries: v.postUrls.size, contestants: v.handles.size, views: v.views };
       setStats(out);
     }
   };
