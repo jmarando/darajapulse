@@ -24,28 +24,68 @@ const fmtDate = (s?: string) => {
 const scoreOf = (e: { shares?: any; comments?: any; likes?: any; views?: any }) =>
   Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0);
 
-const postTime = (post: any) => {
-  const t = new Date(post?.posted_at || post?.created_at || 0).getTime();
-  return Number.isFinite(t) && t > 0 ? t : Number.MAX_SAFE_INTEGER;
+const normalizedText = (v?: string | null) => (v || "").trim().toLowerCase().replace(/\s+/g, " ");
+const identifiersOf = (e: any): string[] => {
+  const ids: string[] = [];
+  for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) {
+    const c = cleanH(h); if (c) ids.push(`h:${c}`);
+  }
+  const email = normalizedText(e.submitter_email); if (email) ids.push(`e:${email}`);
+  const phone = String(e.phone || "").replace(/\D/g, ""); if (phone.length >= 7) ids.push(`p:${phone}`);
+  const name = normalizedText(e.full_name || e.submitter_name);
+  if (name && name.split(" ").length >= 2) ids.push(`n:${name}`);
+  const ext = (e.external_registration_id || "").trim(); if (ext) ids.push(`r:${ext}`);
+  return ids;
 };
-const sourceRank = (post: any) => {
-  const source = String(post?.source || "").toLowerCase();
-  if (source === "manual" || source === "public_form") return 0;
-  if (source === "registration" || source === "csv_import" || source === "external_feed") return 1;
-  return 2;
+const groupEntriesByContestant = (rows: any[]): any[][] => {
+  const parent = new Map<number, number>();
+  const find = (i: number): number => { while (parent.get(i) !== i) { parent.set(i, parent.get(parent.get(i)!)!); i = parent.get(i)!; } return i; };
+  const union = (a: number, b: number) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+  rows.forEach((_, i) => parent.set(i, i));
+  const idToIdx = new Map<string, number>();
+  rows.forEach((r, i) => {
+    for (const id of identifiersOf(r)) {
+      if (idToIdx.has(id)) union(i, idToIdx.get(id)!);
+      else idToIdx.set(id, i);
+    }
+  });
+  const groups = new Map<number, any[]>();
+  rows.forEach((r, i) => {
+    const root = find(i);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root)!.push(r);
+  });
+  return Array.from(groups.values());
 };
-const pickCountedPost = (rows: any[]) => {
+
+const summarizeContestant = (rows: any[]) => {
+  const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
   const byUrl = new Map<string, any>();
   for (const row of rows) {
     const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
     for (const post of candidates) {
-      const key = canonicalPostUrl(post?.post_url);
-      if (!key) continue;
-      const prev = byUrl.get(key);
-      if (!prev || sourceRank(post) < sourceRank(prev) || (sourceRank(post) === sourceRank(prev) && scoreOf(post) > scoreOf(prev))) byUrl.set(key, post);
+      const k = canonicalPostUrl(post?.post_url);
+      if (!k) continue;
+      const prev = byUrl.get(k);
+      if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(k, post);
     }
   }
-  return Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a) || sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b))[0] || null;
+  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+  const total = posts.reduce((s, p) => s + scoreOf(p), 0);
+  const leader = reg ?? rows[0];
+  return {
+    ...leader,
+    full_name: rows.map(r => r.full_name).find(Boolean) || rows.map(r => r.submitter_name).find(Boolean) || leader.full_name,
+    instagram_handle: rows.map(r => r.instagram_handle).find(Boolean) || leader.instagram_handle,
+    tiktok_handle: rows.map(r => r.tiktok_handle).find(Boolean) || leader.tiktok_handle,
+    facebook_handle: rows.map(r => r.facebook_handle).find(Boolean) || leader.facebook_handle,
+    _posts: posts,
+    score: total,
+    views: posts.reduce((s, p) => s + Number(p.views || 0), 0),
+    likes: posts.reduce((s, p) => s + Number(p.likes || 0), 0),
+    comments: posts.reduce((s, p) => s + Number(p.comments || 0), 0),
+    shares: posts.reduce((s, p) => s + Number(p.shares || 0), 0),
+  };
 };
 
 const PlatformIcon = ({ p, className }: { p: string; className?: string }) => {
