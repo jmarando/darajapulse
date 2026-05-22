@@ -10,7 +10,7 @@ export type ReportExportData = {
   rangeLabel?: string;
   totals: { views: number; reach: number; impressions: number; likes: number; comments: number; shares: number; saves: number };
   er: number;
-  emv: number;
+  emv?: number;
   topPerformer?: { name: string; handle?: string; views: number; likes: number } | null;
   platformRows: { platform: string; posts: number; creators: number; views: number; reach: number }[];
   posts: { creator: string; platform: string; views: number; likes: number; comments: number; shares: number; url?: string }[];
@@ -56,19 +56,14 @@ export async function exportReportToPptx(d: ReportExportData) {
     s2.addText(val, { x: x + 0.2, y: y + 0.6, w: 2.6, h: 1.3, fontSize: 36, bold: true, color: "0F172A" });
   });
 
-  // EMV + Top performer
-  const s3 = pptx.addSlide();
-  s3.addText("Earned Media Value", { x: 0.5, y: 0.4, w: 12, h: 0.6, fontSize: 28, bold: true });
-  s3.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.3, w: 6.1, h: 5.5, fill: { color: "0F172A" } });
-  s3.addText("ESTIMATED VALUE", { x: 0.8, y: 1.6, w: 5.5, h: 0.4, fontSize: 11, color: "94A3B8", bold: true, charSpacing: 3 });
-  s3.addText(`KES ${fmt(d.emv)}`, { x: 0.8, y: 2.1, w: 5.5, h: 1.6, fontSize: 56, color: "FFFFFF", bold: true });
-  s3.addText("Estimated at KES 250 CPM (Kenya influencer benchmark)", { x: 0.8, y: 4.0, w: 5.5, h: 0.6, fontSize: 14, color: "CBD5E1" });
+  // Top performer
   if (d.topPerformer) {
-    s3.addText("TOP PERFORMER", { x: 7.0, y: 1.6, w: 5.5, h: 0.4, fontSize: 11, color: "64748B", bold: true, charSpacing: 3 });
-    s3.addText(d.topPerformer.name, { x: 7.0, y: 2.1, w: 5.8, h: 0.9, fontSize: 32, bold: true });
-    if (d.topPerformer.handle) s3.addText(d.topPerformer.handle, { x: 7.0, y: 3.0, w: 5.8, h: 0.4, fontSize: 14, color: "64748B" });
-    s3.addText(`${fmt(d.topPerformer.views)} views`, { x: 7.0, y: 3.8, w: 5.8, h: 0.6, fontSize: 22, bold: true });
-    s3.addText(`${fmt(d.topPerformer.likes)} likes`, { x: 7.0, y: 4.4, w: 5.8, h: 0.6, fontSize: 22, bold: true });
+    const s3 = pptx.addSlide();
+    s3.addText("Top Performer", { x: 0.5, y: 0.4, w: 12, h: 0.6, fontSize: 28, bold: true });
+    s3.addText(d.topPerformer.name, { x: 0.5, y: 1.6, w: 12, h: 1.0, fontSize: 40, bold: true });
+    if (d.topPerformer.handle) s3.addText(d.topPerformer.handle, { x: 0.5, y: 2.6, w: 12, h: 0.5, fontSize: 16, color: "64748B" });
+    s3.addText(`${fmt(d.topPerformer.views)} views`, { x: 0.5, y: 3.6, w: 12, h: 0.7, fontSize: 26, bold: true });
+    s3.addText(`${fmt(d.topPerformer.likes)} likes`, { x: 0.5, y: 4.3, w: 12, h: 0.7, fontSize: 26, bold: true });
   }
 
   // Platform mix

@@ -129,10 +129,10 @@ const LandingDashboard = () => {
                     </div>
                   </div>
                   <div className="rounded-2xl bg-primary text-primary-foreground p-4">
-                    <div className="text-[10px] uppercase tracking-widest opacity-60">EMV (KES)</div>
-                    <div className="font-display text-3xl mt-1 tabular-nums">29,372</div>
+                    <div className="text-[10px] uppercase tracking-widest opacity-60">Engagements</div>
+                    <div className="font-display text-3xl mt-1 tabular-nums">214k</div>
                     <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-highlight/20 text-highlight text-[10px] font-medium">
-                      <Sparkles className="w-3 h-3" /> vs KES 12 CPM
+                      <Sparkles className="w-3 h-3" /> likes · comments · shares
                     </div>
                   </div>
                 </div>
@@ -194,7 +194,7 @@ const LandingDashboard = () => {
             { i: ShieldCheck, t: "Brand portal access", b: "Invite client-side stakeholders to a read-only portal. They see only their campaigns — never your fees or other accounts." },
             { i: Sparkles, t: "AI campaign learnings", b: "Auto-generated insights on what worked, who outperformed and what to repeat next quarter. Powered by Lovable AI." },
             { i: Globe, t: "Five-platform tracking", b: "Native OAuth + polling for TikTok. Embeds and metrics for Instagram, Facebook, YouTube and X. One dashboard, every channel." },
-            { i: TrendingUp, t: "Earned media valuation", b: "Every view, like and share priced against a CPM benchmark — so you can show the brand the ROI in shillings, not vibes." },
+            { i: TrendingUp, t: "Cost efficiency dashboards", b: "Cost-per-view, cost-per-engagement and CPM calculated from real spend and real impressions — so you can prove ROI to the brand." },
           ].map(({ i: I, t, b }) => (
             <div key={t} className="group relative p-6 rounded-xl bg-card border border-border hover:border-accent/40 hover:shadow-elegant hover:-translate-y-1 transition-all duration-300">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
