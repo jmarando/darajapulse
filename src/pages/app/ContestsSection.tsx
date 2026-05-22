@@ -687,15 +687,15 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             </div>
                           ) : (
                             <div className="space-y-1.5 border-t border-border/60 pt-2">
-                              {posts.map(p => {
-                                const PIcon = p.platform === "instagram" ? Instagram : p.platform === "tiktok" ? Music2 : Link2;
-                                const isBest = p.id === bestId || (bestUrl && canonicalPostUrl(p.post_url) === bestUrl);
+                              {posts.map((p, pi) => {
+                                const PIcon = p.platform === "instagram" ? Instagram : p.platform === "tiktok" ? Music2 : p.platform === "facebook" ? Facebook : Link2;
+                                const isTop = pi === 0 && posts.length > 1;
                                 const auto = isAuto(p);
                                 return (
-                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" title={`Open post on ${p.platform}`} className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-xs rounded px-1.5 py-1 min-w-0 transition-colors ${isBest ? "bg-accent/5 hover:bg-accent/10" : "hover:bg-secondary/50"}`}>
+                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" title={`Open post on ${p.platform}`} className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-xs rounded px-1.5 py-1 min-w-0 transition-colors ${isTop ? "bg-accent/5 hover:bg-accent/10" : "hover:bg-secondary/50"}`}>
                                   <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground min-w-0">
                                     <PIcon className="w-3 h-3 shrink-0" /><span className="truncate">{p.platform}</span>
-                                    {isBest && <Crown className="w-3 h-3 text-highlight shrink-0" aria-label="Counted score" />}
+                                    {isTop && <Crown className="w-3 h-3 text-highlight shrink-0" aria-label="Top post" />}
                                     <span className={`text-[9px] uppercase tracking-wider px-1 rounded shrink-0 ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
                                   </span>
                                   <span className="tabular-nums text-muted-foreground flex items-center justify-end gap-2 min-w-0 flex-wrap">
@@ -703,7 +703,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                     <span className="inline-flex items-center gap-1" title="Likes"><Heart className="w-3 h-3 shrink-0" />{(p.likes || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Comments"><MessageCircle className="w-3 h-3 shrink-0" />{(p.comments || 0).toLocaleString()}</span>
                                   </span>
-                                  <span className={`font-semibold tabular-nums text-right shrink-0 pl-1 ${isBest ? "text-accent" : "text-muted-foreground"}`}>{Math.round(scoreOf(p)).toLocaleString()}</span>
+                                  <span className={`font-semibold tabular-nums text-right shrink-0 pl-1 ${isTop ? "text-accent" : "text-muted-foreground"}`}>{Math.round(scoreOf(p)).toLocaleString()}</span>
 
                                 </a>
                               );})}
