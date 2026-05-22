@@ -212,7 +212,7 @@ const PublicContestReport = () => {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
           {[
             { label: "Contestants", value: fmt(contestants.length), icon: Users },
-            { label: "Entries", value: fmt(visibleEntries.length), icon: Trophy },
+            { label: "Entries", value: fmt(totalPosts), icon: Trophy },
             { label: "Views", value: fmt(totals.views), icon: Eye },
             { label: "Engagement", value: fmt(totals.eng), icon: Heart },
             { label: "Shares", value: fmt(totals.shares), icon: Share2 },
