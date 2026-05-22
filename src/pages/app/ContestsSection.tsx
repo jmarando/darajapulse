@@ -62,45 +62,99 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     return Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a) || sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b) || new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0] || null;
   };
 
-  // Per the contest rules: a contestant's score is the BEST single post — we do not sum across platforms.
+  // A contestant's total score is the SUM of scores across every unique post they entered
+  // (Facebook + Instagram + TikTok), deduped by canonical post URL.
   const bestScore = (e: any) => {
     const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-    return Math.max(scoreOf(e), ...xs.map((x: any) => scoreOf(x)));
+    const byUrl = new Map<string, number>();
+    for (const p of [e, ...xs]) {
+      const k = canonicalPostUrl(p?.post_url);
+      if (!k) continue;
+      byUrl.set(k, Math.max(byUrl.get(k) ?? 0, scoreOf(p)));
+    }
+    return Array.from(byUrl.values()).reduce((a, b) => a + b, 0);
   };
   // Identify whether an entry was auto-fetched from a public scraper or entered/registered by a human.
-  const AUTO_SOURCES = new Set(["meta_graph", "ensembledata", "tiktok_api", "instagram_api"]);
+  const AUTO_SOURCES = new Set(["meta_graph", "ensembledata", "tiktok_api", "instagram_api", "apify"]);
   const isAuto = (e: any) => AUTO_SOURCES.has(String(e.source || "").toLowerCase());
 
   const normalizedText = (value?: string | null) => (value || "").trim().toLowerCase().replace(/\s+/g, " ");
-  const contestantKey = (e: any) => {
-    const handle = [e.instagram_handle, e.tiktok_handle, e.facebook_handle, e.handle].map(cleanH).find(Boolean);
-    if (handle) return `handle:${handle}`;
-    const email = normalizedText(e.submitter_email);
-    if (email) return `email:${email}`;
-    const phone = String(e.phone || "").replace(/\D/g, "");
-    if (phone) return `phone:${phone}`;
+  // Collect EVERY identifier we know about for a row so we can union-find contestants that
+  // appear in multiple entry rows (one per platform, plus the original registration).
+  const identifiersOf = (e: any): string[] => {
+    const ids: string[] = [];
+    for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) {
+      const c = cleanH(h); if (c) ids.push(`h:${c}`);
+    }
+    const email = normalizedText(e.submitter_email); if (email) ids.push(`e:${email}`);
+    const phone = String(e.phone || "").replace(/\D/g, ""); if (phone.length >= 7) ids.push(`p:${phone}`);
     const name = normalizedText(e.full_name || e.submitter_name);
-    if (name) return `name:${name}`;
-    return `entry:${e.external_registration_id || e.id}`;
+    if (name && name.split(" ").length >= 2) ids.push(`n:${name}`);
+    const ext = (e.external_registration_id || "").trim(); if (ext) ids.push(`r:${ext}`);
+    return ids;
+  };
+  // Union-find: merge any two entries that share at least one identifier.
+  const groupEntriesByContestant = (rows: any[]): any[][] => {
+    const parent = new Map<number, number>();
+    const find = (i: number): number => { while (parent.get(i) !== i) { parent.set(i, parent.get(parent.get(i)!)!); i = parent.get(i)!; } return i; };
+    const union = (a: number, b: number) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+    rows.forEach((_, i) => parent.set(i, i));
+    const idToIdx = new Map<string, number>();
+    rows.forEach((r, i) => {
+      for (const id of identifiersOf(r)) {
+        if (idToIdx.has(id)) union(i, idToIdx.get(id)!);
+        else idToIdx.set(id, i);
+      }
+    });
+    const groups = new Map<number, any[]>();
+    rows.forEach((r, i) => {
+      const root = find(i);
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root)!.push(r);
+    });
+    return Array.from(groups.values());
   };
 
-  const mergeContestantRows = (rows: any[]) => {
+  // Reduce a group of entry rows for one contestant into a flat list of unique posts (by URL),
+  // with a representative registration row + the SUM of all post scores.
+  const summarizeContestant = (rows: any[]) => {
     const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
-    const counted = pickCountedPost(rows);
-    if (!counted) return { ...reg, cross_posts: [] };
+    const byUrl = new Map<string, any>();
+    for (const row of rows) {
+      const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
+      for (const post of candidates) {
+        const k = canonicalPostUrl(post?.post_url);
+        if (!k) continue;
+        const prev = byUrl.get(k);
+        if (!prev || scoreOf(post) > scoreOf(prev)) {
+          byUrl.set(k, { ...post, _entryId: row.id, id: post.id ?? `${row.id}:${k}` });
+        }
+      }
+    }
+    const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+    const total = posts.reduce((s, p) => s + scoreOf(p), 0);
+    // Pick one row to act as the "leaderboard row" — registration if it exists, else the top post entry.
+    const leaderRow = reg ?? rows[0];
     return {
-      ...reg,
-      ...counted,
-      full_name: reg.full_name || counted.full_name,
-      submitter_name: reg.submitter_name || counted.submitter_name,
-      submitter_email: reg.submitter_email || counted.submitter_email,
-      instagram_handle: reg.instagram_handle || counted.instagram_handle,
-      tiktok_handle: reg.tiktok_handle || counted.tiktok_handle,
-      facebook_handle: reg.facebook_handle || counted.facebook_handle,
+      ...leaderRow,
+      full_name: rows.map(r => r.full_name).find(Boolean) || rows.map(r => r.submitter_name).find(Boolean) || leaderRow.full_name,
+      submitter_name: rows.map(r => r.submitter_name).find(Boolean) || leaderRow.submitter_name,
+      submitter_email: rows.map(r => r.submitter_email).find(Boolean) || leaderRow.submitter_email,
+      instagram_handle: rows.map(r => r.instagram_handle).find(Boolean) || leaderRow.instagram_handle,
+      tiktok_handle: rows.map(r => r.tiktok_handle).find(Boolean) || leaderRow.tiktok_handle,
+      facebook_handle: rows.map(r => r.facebook_handle).find(Boolean) || leaderRow.facebook_handle,
+      _allRows: rows,
+      _posts: posts,
+      score: total,
+      // For the table row, use total values across all posts (sum of views/likes/etc.)
+      views: posts.reduce((s, p) => s + Number(p.views || 0), 0),
+      likes: posts.reduce((s, p) => s + Number(p.likes || 0), 0),
+      comments: posts.reduce((s, p) => s + Number(p.comments || 0), 0),
+      shares: posts.reduce((s, p) => s + Number(p.shares || 0), 0),
       cross_posts: [],
-      score: scoreOf(counted),
     };
   };
+
 
   const saveEditEntry = async () => {
     if (!editEntry) return;
@@ -340,20 +394,24 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const active = contests.find(c => c.id === activeId);
   const submitUrl = active ? `${window.location.origin}/c/${active.submission_token}` : "";
 
+  const isCreator = (e: any) => {
+    const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean);
+    return hs.some(h => creatorHandles.has(h));
+  };
+
   const byRound = useMemo(() => {
-    const map = new Map<number, Map<string, any[]>>();
+    const map = new Map<number, any[]>();
     for (const e of entries) {
+      if (isCreator(e)) continue;
       const k = e.round_number || 1;
-      if (!map.has(k)) map.set(k, new Map());
-      const key = contestantKey(e);
-      const round = map.get(k)!;
-      if (!round.has(key)) round.set(key, []);
-      round.get(key)!.push(e);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(e);
     }
     return Array.from(map.entries())
-      .map(([round, groups]) => [round, Array.from(groups.values()).map(mergeContestantRows)] as [number, any[]])
+      .map(([round, rows]) => [round, groupEntriesByContestant(rows).map(summarizeContestant)] as [number, any[]])
       .sort((a, b) => a[0] - b[0]);
-  }, [entries]);
+  }, [entries, creatorHandles]);
+
 
   const exportCsv = () => {
     if (!active || !entries.length) return toast.error("No entries to export");
@@ -548,22 +606,10 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
               {/* Contestants grouped view */}
               {(() => {
-                const isCreator = (e: any) => {
-                  const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean);
-                  return hs.some(h => creatorHandles.has(h));
-                };
-                const groups = new Map<string, any[]>();
-                for (const e of entries) {
-                  if (isCreator(e)) continue;
-                  const key = contestantKey(e);
-                  if (!groups.has(key)) groups.set(key, []);
-                  groups.get(key)!.push(e);
-                }
-                const contestants = Array.from(groups.entries()).map(([key, rows]) => {
+                const nonCreatorRows = entries.filter(e => !isCreator(e));
+                const grouped = groupEntriesByContestant(nonCreatorRows);
+                const contestants = grouped.map(rows => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
-                  const best = pickCountedPost(rows);
-                  // Collect every distinct post the contestant has across platforms (entries + cross_posts),
-                  // deduped by canonical URL, so the team can see FB X views / IG Y views / TikTok Z views etc.
                   const byUrl = new Map<string, any>();
                   for (const row of rows) {
                     const candidates = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
@@ -571,19 +617,20 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                       const key2 = canonicalPostUrl(post?.post_url);
                       if (!key2) continue;
                       const prev = byUrl.get(key2);
-                      if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(key2, { ...post, id: post.id ?? `${row.id}:${key2}` });
+                      if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(key2, { ...post, _entryId: row.id, id: post.id ?? `${row.id}:${key2}` });
                     }
                   }
                   const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
-                  const total = best ? scoreOf(best) : 0;
-                  return { key, reg, posts, total, bestId: best?.id, bestUrl: canonicalPostUrl(best?.post_url) };
+                  // Total = SUM across every unique post (FB + IG + TikTok all add up).
+                  const total = posts.reduce((s, p) => s + scoreOf(p), 0);
+                  return { key: reg.id, reg, posts, total };
                 }).sort((a, b) => b.total - a.total);
                 if (contestants.length === 0) return null;
                 return (
                   <div className="mb-6">
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.slice(0, 12).map(({ key, reg, posts, total, bestId, bestUrl }, i) => {
+                      {contestants.slice(0, 12).map(({ key, reg, posts, total }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
                         const hasAutoCapable = !!(reg.instagram_handle || reg.tiktok_handle);
@@ -606,9 +653,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                               )}
                             </div>
                             <div className="text-right shrink-0">
-                              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Best score</div>
+                              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total score</div>
                               <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
-                              {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} entr{posts.length === 1 ? "y" : "ies"} · best counts</div>}
+                              {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} · summed</div>}
                             </div>
                           </div>
                           {posts.length === 0 ? (
@@ -633,15 +680,15 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             </div>
                           ) : (
                             <div className="space-y-1.5 border-t border-border/60 pt-2">
-                              {posts.map(p => {
-                                const PIcon = p.platform === "instagram" ? Instagram : p.platform === "tiktok" ? Music2 : Link2;
-                                const isBest = p.id === bestId || (bestUrl && canonicalPostUrl(p.post_url) === bestUrl);
+                              {posts.map((p, pi) => {
+                                const PIcon = p.platform === "instagram" ? Instagram : p.platform === "tiktok" ? Music2 : p.platform === "facebook" ? Facebook : Link2;
+                                const isTop = pi === 0 && posts.length > 1;
                                 const auto = isAuto(p);
                                 return (
-                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" title={`Open post on ${p.platform}`} className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-xs rounded px-1.5 py-1 min-w-0 transition-colors ${isBest ? "bg-accent/5 hover:bg-accent/10" : "hover:bg-secondary/50"}`}>
+                                <a key={p.id} href={p.post_url} target="_blank" rel="noreferrer" title={`Open post on ${p.platform}`} className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-xs rounded px-1.5 py-1 min-w-0 transition-colors ${isTop ? "bg-accent/5 hover:bg-accent/10" : "hover:bg-secondary/50"}`}>
                                   <span className="inline-flex items-center gap-1.5 capitalize text-muted-foreground min-w-0">
                                     <PIcon className="w-3 h-3 shrink-0" /><span className="truncate">{p.platform}</span>
-                                    {isBest && <Crown className="w-3 h-3 text-highlight shrink-0" aria-label="Counted score" />}
+                                    {isTop && <Crown className="w-3 h-3 text-highlight shrink-0" aria-label="Top post" />}
                                     <span className={`text-[9px] uppercase tracking-wider px-1 rounded shrink-0 ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
                                   </span>
                                   <span className="tabular-nums text-muted-foreground flex items-center justify-end gap-2 min-w-0 flex-wrap">
@@ -649,7 +696,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                     <span className="inline-flex items-center gap-1" title="Likes"><Heart className="w-3 h-3 shrink-0" />{(p.likes || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Comments"><MessageCircle className="w-3 h-3 shrink-0" />{(p.comments || 0).toLocaleString()}</span>
                                   </span>
-                                  <span className={`font-semibold tabular-nums text-right shrink-0 pl-1 ${isBest ? "text-accent" : "text-muted-foreground"}`}>{Math.round(scoreOf(p)).toLocaleString()}</span>
+                                  <span className={`font-semibold tabular-nums text-right shrink-0 pl-1 ${isTop ? "text-accent" : "text-muted-foreground"}`}>{Math.round(scoreOf(p)).toLocaleString()}</span>
 
                                 </a>
                               );})}
@@ -686,37 +733,35 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             </tr>
                           </thead>
                           <tbody>
-                            {rows.sort((a, b) => bestScore(b) - bestScore(a)).map((e, i) => {
-                              const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-                              const auto = isAuto(e);
+                            {rows.sort((a, b) => (b.score || 0) - (a.score || 0)).map((e, i) => {
+                              const posts = Array.isArray(e._posts) ? e._posts : [];
+                              const platforms = Array.from(new Set(posts.map((p: any) => p.platform).filter(Boolean)));
+                              const allRows = Array.isArray(e._allRows) ? e._allRows : [e];
+                              const auto = allRows.some(isAuto);
+                              const topPost = posts[0];
                               return (
                               <tr key={e.id} className="border-t border-border">
                                 <td className="px-3 py-2 tabular-nums">{i + 1}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
                                 <td className="px-3 py-2">
                                   {(() => {
-                                    const u = (e.post_url || "").trim();
-                                    const ok = e.status !== "invalid" && /^https?:\/\//i.test(u) && (
-                                      /tiktok\.com\/.+\/video\/\d+/i.test(u) ||
-                                      /(?:vt|vm)\.tiktok\.com\/[A-Za-z0-9]+/i.test(u) ||
-                                      /instagram\.com\/(?:p|reel|reels|tv)\/[A-Za-z0-9_-]+/i.test(u) ||
-                                      /facebook\.com\/.+\/(?:posts|videos|reel|photos)\/|fb\.watch\//i.test(u)
-                                    );
-                                    const label = e.handle || e.submitter_name || "—";
+                                    const u = (topPost?.post_url || e.post_url || "").trim();
+                                    const ok = /^https?:\/\//i.test(u);
+                                    const label = e.full_name || e.submitter_name || e.handle || "—";
                                     return ok
                                       ? <a href={u} target="_blank" rel="noreferrer" className="hover:text-accent">{label}</a>
-                                      : <span className="text-muted-foreground cursor-help" title="Submitted link isn't a valid post URL or has expired">{label}</span>;
+                                      : <span className="text-muted-foreground">{label}</span>;
                                   })()}
                                   <span className={`ml-2 text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
-                                  {xs.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />1 counted video</div>}
+                                  {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{posts.length} post{posts.length === 1 ? "" : "s"} summed</div>}
                                 </td>
                                 <td className="px-3 py-2 capitalize text-muted-foreground">
-                                  {e.platform}{xs.length > 0 && <div className="text-[10px]">+{Array.from(new Set(xs.map((x: any) => x.platform))).join(", ")}</div>}
+                                  {platforms.length ? platforms.join(", ") : (e.platform || "—")}
                                 </td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.views || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.likes || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.comments || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right tabular-nums">{(e.shares || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(bestScore(e)).toLocaleString()}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-semibold">{Math.round(e.score || 0).toLocaleString()}</td>
                                 <td className="px-3 py-2 text-right"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
                                 <td className="px-3 py-2 text-right">
                                   <div className="inline-flex gap-1">
