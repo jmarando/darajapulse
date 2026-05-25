@@ -631,32 +631,52 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
             const today = new Date();
             const isLive = today >= new Date(active.start_date) && today <= new Date(active.end_date);
             return (
-              <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">
-                {/* Hero strip */}
-                <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-4 flex-wrap">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-display text-xl truncate">{active.name}</h3>
-                      <Badge variant={isLive ? "default" : "outline"} className={`text-[10px] ${isLive ? "bg-success text-success-foreground hover:bg-success" : ""}`}>{isLive ? "Live" : "Scheduled"}</Badge>
+              <div className={`rounded-lg ${isDetailView ? "" : "border border-border bg-card"} overflow-hidden mb-4`}>
+                {/* Hero strip — hidden in detail view (page header already shows name/hashtag/badge) */}
+                {!isDetailView && (
+                  <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-4 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-display text-xl truncate">{active.name}</h3>
+                        <Badge variant={isLive ? "default" : "outline"} className={`text-[10px] ${isLive ? "bg-success text-success-foreground hover:bg-success" : ""}`}>{isLive ? "Live" : "Scheduled"}</Badge>
+                      </div>
+                      <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-secondary/60 border border-border font-mono break-all">
+                        <Trophy className="w-3 h-3 shrink-0 text-highlight" />
+                        <span className="truncate">{active.hashtag}</span>
+                      </div>
                     </div>
-                    <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-secondary/60 border border-border font-mono break-all">
-                      <Trophy className="w-3 h-3 shrink-0 text-highlight" />
-                      <span className="truncate">{active.hashtag}</span>
+                    <div className="flex gap-6 text-sm shrink-0">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Window</div>
+                        <div className="mt-0.5 font-medium">{fmtDate(active.start_date)} → {fmtDate(active.end_date)}</div>
+                        <div className="text-[11px] text-muted-foreground">{days} days · rounds of {active.round_days}</div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-6 text-sm shrink-0">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Window</div>
-                      <div className="mt-0.5 font-medium">{fmtDate(active.start_date)} → {fmtDate(active.end_date)}</div>
-                      <div className="text-[11px] text-muted-foreground">{days} days · rounds of {active.round_days}</div>
-                    </div>
-                  </div>
-                </div>
+                )}
 
-                {/* Prize breakdown */}
-                {prizeParts.length > 0 && (
-                  <div className="px-5 py-4">
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Prizes per round</div>
+                {/* Compact meta strip for detail view */}
+                {isDetailView && (
+                  <div className="flex items-center gap-x-4 gap-y-1 text-xs text-muted-foreground flex-wrap mb-3">
+                    <span><span className="uppercase tracking-widest text-[10px] mr-1.5">Window</span><span className="text-foreground font-medium">{fmtDate(active.start_date)} → {fmtDate(active.end_date)}</span></span>
+                    <span className="opacity-50">·</span>
+                    <span>{days} days · rounds of {active.round_days}</span>
+                    {prizeParts.length > 0 && (
+                      <>
+                        <span className="opacity-50">·</span>
+                        <button onClick={() => setPrizesOpen(o => !o)} className="inline-flex items-center gap-1 hover:text-foreground">
+                          {prizesOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          {prizesOpen ? "Hide prizes" : `Show prizes (${prizeParts.length})`}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Prize breakdown — always shown on standalone, collapsible on detail view */}
+                {prizeParts.length > 0 && (!isDetailView || prizesOpen) && (
+                  <div className={isDetailView ? "pb-3" : "px-5 py-4"}>
+                    {!isDetailView && <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Prizes per round</div>}
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
                       {prizeParts.map((part: string, idx: number) => {
                         const [labelRaw, ...rest] = part.split(":");
