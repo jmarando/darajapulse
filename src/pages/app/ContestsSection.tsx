@@ -30,6 +30,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
   const [editEntry, setEditEntry] = useState<any>(null);
+  const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const latestErrors = Array.isArray(lastRun?.errors) ? lastRun.errors : [];
 
   // Score formula: shares ×3 + comments ×2 + likes ×1 + views ×1
