@@ -680,9 +680,29 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 </div>
               )}
 
+              {/* Round tabs — switch between archived and current rounds */}
+              {availableRounds.length > 1 && (
+                <div className="flex items-center gap-2 mb-4 flex-wrap border-b border-border">
+                  {availableRounds.map(r => {
+                    const isLatest = r === availableRounds[availableRounds.length - 1];
+                    const count = entries.filter(e => (e.round_number || 1) === r && !isCreator(e)).length;
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => setSelectedRound(r)}
+                        className={`px-3 py-2 text-sm border-b-2 -mb-px transition-colors ${activeRound === r ? "border-primary text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                      >
+                        Round {r} {isLatest ? <span className="ml-1 text-[10px] uppercase tracking-wider text-accent">Current</span> : <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">Archived</span>}
+                        <span className="ml-2 text-[11px] text-muted-foreground tabular-nums">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Contestants grouped view */}
               {(() => {
-                const nonCreatorRows = entries.filter(e => !isCreator(e));
+                const nonCreatorRows = entriesForRound.filter(e => !isCreator(e));
                 const grouped = groupEntriesByContestant(nonCreatorRows);
                 const contestants = grouped.map(rows => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
