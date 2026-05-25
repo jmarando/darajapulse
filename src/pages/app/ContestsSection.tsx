@@ -519,28 +519,57 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     URL.revokeObjectURL(url);
   };
 
+  const isDetailView = !!contestId;
+
   return (
-    <Card className="p-5 mb-6">
-      <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement</div>
-          <h2 className="font-display text-2xl flex items-center gap-2 mt-0.5"><Trophy className="w-5 h-5 text-highlight" /> Hashtag contests</h2>
-          <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1 + views×1).</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
+    <Card className={isDetailView ? "p-5 mb-6 border-0 shadow-none bg-transparent" : "p-5 mb-6"}>
+      <div className="flex items-start justify-between mb-4 gap-3 flex-wrap">
+        {isDetailView ? <div /> : (
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement</div>
+            <h2 className="font-display text-2xl flex items-center gap-2 mt-0.5"><Trophy className="w-5 h-5 text-highlight" /> Hashtag contests</h2>
+            <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1 + views×1).</p>
+          </div>
+        )}
+        <div className="flex gap-2 flex-wrap items-center">
+          {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
+          {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && (
             <>
               <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCsv(f); }} />
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                <Upload className={`w-3 h-3 mr-1 ${uploading ? "animate-pulse" : ""}`} /> {uploading ? "Uploading…" : "Upload CSV"}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline"><MoreHorizontal className="w-3 h-3 mr-1" /> More</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Sync entries</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => fetchByHandle()} disabled={discovering}>
+                    <RefreshCw className={`w-3.5 h-3.5 mr-2 ${discovering ? "animate-spin" : ""}`} />
+                    <div className="flex flex-col">
+                      <span>Fetch latest posts by handle</span>
+                      <span className="text-[11px] text-muted-foreground">Scan each contestant's recent IG/TikTok posts and pick the best match for the hashtag.</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => discoverPosts()} disabled={discovering}>
+                    <Sparkles className={`w-3.5 h-3.5 mr-2 ${discovering ? "animate-pulse" : ""}`} />
+                    <div className="flex flex-col">
+                      <span>Discover new posts by hashtag</span>
+                      <span className="text-[11px] text-muted-foreground">Search platforms for any public post tagged #{(active?.hashtag || "").replace(/^#/, "")}.</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => fileRef.current?.click()} disabled={uploading}>
+                    <Upload className={`w-3.5 h-3.5 mr-2 ${uploading ? "animate-pulse" : ""}`} />
+                    <div className="flex flex-col">
+                      <span>{uploading ? "Uploading CSV…" : "Upload contestants CSV"}</span>
+                      <span className="text-[11px] text-muted-foreground">Bulk-import handles, emails and post URLs.</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
-          {active && <Button size="sm" variant="outline" onClick={() => discoverPosts()} disabled={discovering}><Sparkles className={`w-3 h-3 mr-1 ${discovering ? "animate-pulse" : ""}`} /> Discover posts</Button>}
-          {active && <Button size="sm" variant="outline" onClick={() => fetchByHandle()} disabled={discovering} title="Fetch each contestant's latest TikTok/Instagram posts and pick the best matching one"><RefreshCw className={`w-3 h-3 mr-1 ${discovering ? "animate-spin" : ""}`} /> Fetch by handle</Button>}
-          {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
-          {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
           {campaignId && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button size="sm" className="bg-primary"><Plus className="w-3 h-3 mr-1" /> New contest</Button></DialogTrigger>
@@ -567,6 +596,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
           )}
         </div>
       </div>
+
 
       {contests.length === 0 ? (
         <div className="text-center py-10 border border-dashed border-border rounded-md">
