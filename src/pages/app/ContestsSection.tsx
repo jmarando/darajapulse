@@ -477,9 +477,12 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const availableRounds = useMemo(() => {
     const s = new Set<number>();
     for (const e of entries) s.add(e.round_number || 1);
+    // Also surface rounds implied by manual cutoffs (so empty current round still shows a tab).
+    const cutoffs = Array.isArray(active?.manual_round_cutoffs) ? active.manual_round_cutoffs : [];
+    for (let i = 1; i <= cutoffs.length + 1; i++) s.add(i);
     const arr = Array.from(s).sort((a, b) => a - b);
     return arr.length ? arr : [1];
-  }, [entries]);
+  }, [entries, active]);
 
   useEffect(() => {
     if (selectedRound == null || !availableRounds.includes(selectedRound)) {
