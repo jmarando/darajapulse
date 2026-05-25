@@ -672,6 +672,7 @@ export type Database = {
           hashtag: string
           id: string
           is_active: boolean
+          manual_round_cutoffs: string[]
           name: string
           platforms: string[]
           prize: string | null
@@ -688,6 +689,7 @@ export type Database = {
           hashtag: string
           id?: string
           is_active?: boolean
+          manual_round_cutoffs?: string[]
           name: string
           platforms?: string[]
           prize?: string | null
@@ -704,6 +706,7 @@ export type Database = {
           hashtag?: string
           id?: string
           is_active?: boolean
+          manual_round_cutoffs?: string[]
           name?: string
           platforms?: string[]
           prize?: string | null

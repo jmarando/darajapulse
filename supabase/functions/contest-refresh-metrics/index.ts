@@ -240,6 +240,8 @@ Deno.serve(async (req) => {
         }));
       }
       console.log("refresh-metrics done", JSON.stringify({ contest_id, total: entries?.length ?? 0, updated, failed, invalid, errors_count: errors.length, sample_errors: errors.slice(0, 10) }));
+      // Re-tag round_number + recompute scores using contest cutoffs
+      try { await sb.functions.invoke("contest-poll", { body: { contest_id } }); } catch (e) { console.warn("contest-poll invoke failed", e); }
       return { updated, failed, invalid, errors };
     };
 

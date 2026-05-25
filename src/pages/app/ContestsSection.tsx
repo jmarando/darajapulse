@@ -30,6 +30,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const [form, setForm] = useState<any>({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
   const [editEntry, setEditEntry] = useState<any>(null);
+  const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const latestErrors = Array.isArray(lastRun?.errors) ? lastRun.errors : [];
 
   // Score formula: shares ×3 + comments ×2 + likes ×1 + views ×1
@@ -471,6 +472,22 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
       .sort((a, b) => a[0] - b[0]);
   }, [entries, creatorHandles]);
 
+  const availableRounds = useMemo(() => {
+    const s = new Set<number>();
+    for (const e of entries) s.add(e.round_number || 1);
+    const arr = Array.from(s).sort((a, b) => a - b);
+    return arr.length ? arr : [1];
+  }, [entries]);
+
+  useEffect(() => {
+    if (selectedRound == null || !availableRounds.includes(selectedRound)) {
+      setSelectedRound(availableRounds[availableRounds.length - 1]);
+    }
+  }, [availableRounds, selectedRound]);
+
+  const activeRound = selectedRound ?? availableRounds[availableRounds.length - 1];
+  const entriesForRound = useMemo(() => entries.filter(e => (e.round_number || 1) === activeRound), [entries, activeRound]);
+
 
   const exportCsv = () => {
     if (!active || !entries.length) return toast.error("No entries to export");
@@ -663,9 +680,29 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 </div>
               )}
 
+              {/* Round tabs — switch between archived and current rounds */}
+              {availableRounds.length > 1 && (
+                <div className="flex items-center gap-2 mb-4 flex-wrap border-b border-border">
+                  {availableRounds.map(r => {
+                    const isLatest = r === availableRounds[availableRounds.length - 1];
+                    const count = entries.filter(e => (e.round_number || 1) === r && !isCreator(e)).length;
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => setSelectedRound(r)}
+                        className={`px-3 py-2 text-sm border-b-2 -mb-px transition-colors ${activeRound === r ? "border-primary text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                      >
+                        Round {r} {isLatest ? <span className="ml-1 text-[10px] uppercase tracking-wider text-accent">Current</span> : <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">Archived</span>}
+                        <span className="ml-2 text-[11px] text-muted-foreground tabular-nums">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Contestants grouped view */}
               {(() => {
-                const nonCreatorRows = entries.filter(e => !isCreator(e));
+                const nonCreatorRows = entriesForRound.filter(e => !isCreator(e));
                 const grouped = groupEntriesByContestant(nonCreatorRows);
                 const contestants = grouped.map(rows => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
@@ -772,9 +809,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 <div className="text-center py-8 border border-dashed border-border rounded-md text-sm text-muted-foreground">No entries yet. Click "Sync contestants" to pull registrations, then "Discover posts" to find their #{active.hashtag.replace(/^#/, "")} entries on IG/TikTok.</div>
               ) : (
                 <div className="space-y-5">
-                  {byRound.map(([round, rows]) => (
+                  {byRound.filter(([round]) => round === activeRound).map(([round, rows]) => (
                     <div key={round}>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Round {round}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Round {round} leaderboard</div>
                       <div className="overflow-x-auto border border-border rounded-md">
                         <table className="w-full text-sm">
                           <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
