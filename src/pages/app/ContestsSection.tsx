@@ -737,21 +737,36 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
               {/* Round tabs — switch between archived and current rounds */}
               {availableRounds.length > 1 && (
-                <div className="flex items-center gap-2 mb-4 flex-wrap border-b border-border">
-                  {availableRounds.map(r => {
-                    const isLatest = r === availableRounds[availableRounds.length - 1];
-                    const count = entries.filter(e => (e.round_number || 1) === r && !isCreator(e)).length;
-                    return (
-                      <button
-                        key={r}
-                        onClick={() => setSelectedRound(r)}
-                        className={`px-3 py-2 text-sm border-b-2 -mb-px transition-colors ${activeRound === r ? "border-primary text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-                      >
-                        Round {r} {isLatest ? <span className="ml-1 text-[10px] uppercase tracking-wider text-accent">Current</span> : <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">Archived</span>}
-                        <span className="ml-2 text-[11px] text-muted-foreground tabular-nums">({count})</span>
-                      </button>
-                    );
-                  })}
+                <div className="mb-5">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Draw rounds</div>
+                  <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted border border-border flex-wrap">
+                    {availableRounds.map(r => {
+                      const isLatest = r === availableRounds[availableRounds.length - 1];
+                      const isActive = activeRound === r;
+                      const count = entries.filter(e => (e.round_number || 1) === r && !isCreator(e)).length;
+                      return (
+                        <button
+                          key={r}
+                          onClick={() => setSelectedRound(r)}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-all ${
+                            isActive
+                              ? "bg-background text-foreground shadow-sm font-semibold"
+                              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                          }`}
+                        >
+                          <span>Round {r}</span>
+                          <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                            isLatest
+                              ? "bg-accent/15 text-accent"
+                              : "bg-muted-foreground/15 text-muted-foreground"
+                          }`}>
+                            {isLatest ? "Current" : "Archived"}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground tabular-nums">{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
