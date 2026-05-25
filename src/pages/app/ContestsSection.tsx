@@ -472,6 +472,22 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
       .sort((a, b) => a[0] - b[0]);
   }, [entries, creatorHandles]);
 
+  const availableRounds = useMemo(() => {
+    const s = new Set<number>();
+    for (const e of entries) s.add(e.round_number || 1);
+    const arr = Array.from(s).sort((a, b) => a - b);
+    return arr.length ? arr : [1];
+  }, [entries]);
+
+  useEffect(() => {
+    if (selectedRound == null || !availableRounds.includes(selectedRound)) {
+      setSelectedRound(availableRounds[availableRounds.length - 1]);
+    }
+  }, [availableRounds, selectedRound]);
+
+  const activeRound = selectedRound ?? availableRounds[availableRounds.length - 1];
+  const entriesForRound = useMemo(() => entries.filter(e => (e.round_number || 1) === activeRound), [entries, activeRound]);
+
 
   const exportCsv = () => {
     if (!active || !entries.length) return toast.error("No entries to export");
