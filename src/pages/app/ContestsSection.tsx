@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2, Upload, Eye, Heart, MessageCircle, Facebook, AlertCircle } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2, Upload, Eye, Heart, MessageCircle, Facebook, AlertCircle, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 
@@ -31,6 +32,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const [entry, setEntry] = useState<any>({ platform: "tiktok", post_url: "", handle: "", likes: 0, comments: 0, shares: 0, views: 0 });
   const [editEntry, setEditEntry] = useState<any>(null);
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
+  const [prizesOpen, setPrizesOpen] = useState(false);
   const latestErrors = Array.isArray(lastRun?.errors) ? lastRun.errors : [];
 
   // Score formula: shares ×3 + comments ×2 + likes ×1 + views ×1
@@ -475,9 +477,12 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const availableRounds = useMemo(() => {
     const s = new Set<number>();
     for (const e of entries) s.add(e.round_number || 1);
+    // Also surface rounds implied by manual cutoffs (so empty current round still shows a tab).
+    const cutoffs = Array.isArray(active?.manual_round_cutoffs) ? active.manual_round_cutoffs : [];
+    for (let i = 1; i <= cutoffs.length + 1; i++) s.add(i);
     const arr = Array.from(s).sort((a, b) => a - b);
     return arr.length ? arr : [1];
-  }, [entries]);
+  }, [entries, active]);
 
   useEffect(() => {
     if (selectedRound == null || !availableRounds.includes(selectedRound)) {
@@ -514,28 +519,57 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     URL.revokeObjectURL(url);
   };
 
+  const isDetailView = !!contestId;
+
   return (
-    <Card className="p-5 mb-6">
-      <div className="flex items-start justify-between mb-6 gap-3 flex-wrap">
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement</div>
-          <h2 className="font-display text-2xl flex items-center gap-2 mt-0.5"><Trophy className="w-5 h-5 text-highlight" /> Hashtag contests</h2>
-          <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1 + views×1).</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
+    <Card className={isDetailView ? "p-5 mb-6 border-0 shadow-none bg-transparent" : "p-5 mb-6"}>
+      <div className="flex items-start justify-between mb-4 gap-3 flex-wrap">
+        {isDetailView ? <div /> : (
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement</div>
+            <h2 className="font-display text-2xl flex items-center gap-2 mt-0.5"><Trophy className="w-5 h-5 text-highlight" /> Hashtag contests</h2>
+            <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1 + views×1).</p>
+          </div>
+        )}
+        <div className="flex gap-2 flex-wrap items-center">
+          {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
+          {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
           {active && (
             <>
               <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCsv(f); }} />
-              <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                <Upload className={`w-3 h-3 mr-1 ${uploading ? "animate-pulse" : ""}`} /> {uploading ? "Uploading…" : "Upload CSV"}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline"><MoreHorizontal className="w-3 h-3 mr-1" /> More</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Sync entries</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => fetchByHandle()} disabled={discovering}>
+                    <RefreshCw className={`w-3.5 h-3.5 mr-2 ${discovering ? "animate-spin" : ""}`} />
+                    <div className="flex flex-col">
+                      <span>Fetch latest posts by handle</span>
+                      <span className="text-[11px] text-muted-foreground">Scan each contestant's recent IG/TikTok posts and pick the best match for the hashtag.</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => discoverPosts()} disabled={discovering}>
+                    <Sparkles className={`w-3.5 h-3.5 mr-2 ${discovering ? "animate-pulse" : ""}`} />
+                    <div className="flex flex-col">
+                      <span>Discover new posts by hashtag</span>
+                      <span className="text-[11px] text-muted-foreground">Search platforms for any public post tagged #{(active?.hashtag || "").replace(/^#/, "")}.</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => fileRef.current?.click()} disabled={uploading}>
+                    <Upload className={`w-3.5 h-3.5 mr-2 ${uploading ? "animate-pulse" : ""}`} />
+                    <div className="flex flex-col">
+                      <span>{uploading ? "Uploading CSV…" : "Upload contestants CSV"}</span>
+                      <span className="text-[11px] text-muted-foreground">Bulk-import handles, emails and post URLs.</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
-          {active && <Button size="sm" variant="outline" onClick={() => discoverPosts()} disabled={discovering}><Sparkles className={`w-3 h-3 mr-1 ${discovering ? "animate-pulse" : ""}`} /> Discover posts</Button>}
-          {active && <Button size="sm" variant="outline" onClick={() => fetchByHandle()} disabled={discovering} title="Fetch each contestant's latest TikTok/Instagram posts and pick the best matching one"><RefreshCw className={`w-3 h-3 mr-1 ${discovering ? "animate-spin" : ""}`} /> Fetch by handle</Button>}
-          {active && entries.length > 0 && <Button size="sm" variant="outline" onClick={exportCsv}><Download className="w-3 h-3 mr-1" /> Export CSV</Button>}
-          {active && <Button size="sm" variant="outline" onClick={refreshScores} disabled={polling}><RefreshCw className={`w-3 h-3 mr-1 ${polling ? "animate-spin" : ""}`} /> Refresh scores</Button>}
           {campaignId && (
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild><Button size="sm" className="bg-primary"><Plus className="w-3 h-3 mr-1" /> New contest</Button></DialogTrigger>
@@ -562,6 +596,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
           )}
         </div>
       </div>
+
 
       {contests.length === 0 ? (
         <div className="text-center py-10 border border-dashed border-border rounded-md">
@@ -596,32 +631,52 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
             const today = new Date();
             const isLive = today >= new Date(active.start_date) && today <= new Date(active.end_date);
             return (
-              <div className="rounded-lg border border-border bg-card overflow-hidden mb-4">
-                {/* Hero strip */}
-                <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-4 flex-wrap">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-display text-xl truncate">{active.name}</h3>
-                      <Badge variant={isLive ? "default" : "outline"} className={`text-[10px] ${isLive ? "bg-success text-success-foreground hover:bg-success" : ""}`}>{isLive ? "Live" : "Scheduled"}</Badge>
+              <div className={`rounded-lg ${isDetailView ? "" : "border border-border bg-card"} overflow-hidden mb-4`}>
+                {/* Hero strip — hidden in detail view (page header already shows name/hashtag/badge) */}
+                {!isDetailView && (
+                  <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-4 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-display text-xl truncate">{active.name}</h3>
+                        <Badge variant={isLive ? "default" : "outline"} className={`text-[10px] ${isLive ? "bg-success text-success-foreground hover:bg-success" : ""}`}>{isLive ? "Live" : "Scheduled"}</Badge>
+                      </div>
+                      <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-secondary/60 border border-border font-mono break-all">
+                        <Trophy className="w-3 h-3 shrink-0 text-highlight" />
+                        <span className="truncate">{active.hashtag}</span>
+                      </div>
                     </div>
-                    <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-secondary/60 border border-border font-mono break-all">
-                      <Trophy className="w-3 h-3 shrink-0 text-highlight" />
-                      <span className="truncate">{active.hashtag}</span>
+                    <div className="flex gap-6 text-sm shrink-0">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Window</div>
+                        <div className="mt-0.5 font-medium">{fmtDate(active.start_date)} → {fmtDate(active.end_date)}</div>
+                        <div className="text-[11px] text-muted-foreground">{days} days · rounds of {active.round_days}</div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-6 text-sm shrink-0">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Window</div>
-                      <div className="mt-0.5 font-medium">{fmtDate(active.start_date)} → {fmtDate(active.end_date)}</div>
-                      <div className="text-[11px] text-muted-foreground">{days} days · rounds of {active.round_days}</div>
-                    </div>
-                  </div>
-                </div>
+                )}
 
-                {/* Prize breakdown */}
-                {prizeParts.length > 0 && (
-                  <div className="px-5 py-4">
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Prizes per round</div>
+                {/* Compact meta strip for detail view */}
+                {isDetailView && (
+                  <div className="flex items-center gap-x-4 gap-y-1 text-xs text-muted-foreground flex-wrap mb-3">
+                    <span><span className="uppercase tracking-widest text-[10px] mr-1.5">Window</span><span className="text-foreground font-medium">{fmtDate(active.start_date)} → {fmtDate(active.end_date)}</span></span>
+                    <span className="opacity-50">·</span>
+                    <span>{days} days · rounds of {active.round_days}</span>
+                    {prizeParts.length > 0 && (
+                      <>
+                        <span className="opacity-50">·</span>
+                        <button onClick={() => setPrizesOpen(o => !o)} className="inline-flex items-center gap-1 hover:text-foreground">
+                          {prizesOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          {prizesOpen ? "Hide prizes" : `Show prizes (${prizeParts.length})`}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Prize breakdown — always shown on standalone, collapsible on detail view */}
+                {prizeParts.length > 0 && (!isDetailView || prizesOpen) && (
+                  <div className={isDetailView ? "pb-3" : "px-5 py-4"}>
+                    {!isDetailView && <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Prizes per round</div>}
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
                       {prizeParts.map((part: string, idx: number) => {
                         const [labelRaw, ...rest] = part.split(":");
