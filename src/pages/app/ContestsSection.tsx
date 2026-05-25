@@ -503,7 +503,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement</div>
           <h2 className="font-display text-2xl flex items-center gap-2 mt-0.5"><Trophy className="w-5 h-5 text-highlight" /> Hashtag contests</h2>
-          <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1).</p>
+          <p className="text-xs text-muted-foreground mt-1">Biweekly winners by weighted engagement (shares×3 + comments×2 + likes×1 + views×1).</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {active && (
