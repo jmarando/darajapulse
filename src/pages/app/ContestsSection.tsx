@@ -465,6 +465,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     const map = new Map<number, any[]>();
     for (const e of entries) {
       if (isCreator(e)) continue;
+      if (e.status === "winner") continue; // winners shown separately
       const k = e.round_number || 1;
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(e);
