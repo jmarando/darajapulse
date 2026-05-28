@@ -733,7 +733,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
               {lastRun && (
                 <div className="text-[11px] text-muted-foreground mb-3">
-                  Last sync: {new Date(lastRun.started_at).toLocaleString()} · {lastRun.source} · {lastRun.upserted ?? 0} upserted{Array.isArray(lastRun.errors) && lastRun.errors.length ? ` · ${lastRun.errors.length} error(s)` : ""}
+                  Last sync: {new Date(lastRun.started_at).toLocaleString()} · {lastRun.source} · {lastRun.upserted ?? 0} upserted
                 </div>
               )}
 
