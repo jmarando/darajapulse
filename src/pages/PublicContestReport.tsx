@@ -304,7 +304,7 @@ const PublicContestReport = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {contestants.slice(0, 50).map((c: any, i: number) => {
+                  {contestants.map((c: any, i: number) => {
                     const rank = i + 1;
                     const isWinner = c.status === "winner" || rank === 1;
                     const posts: any[] = Array.isArray(c._posts) ? c._posts : [];
