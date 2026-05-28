@@ -39,21 +39,27 @@ Deno.serve(async (req) => {
       updated++;
     }
 
-    // Auto-mark winner per completed round
-    const now = Date.now();
-    const roundEnds: number[] = cutoffs.length
-      ? [...cutoffs, new Date(contest.end_date).getTime()]
-      : Array.from({ length: Math.ceil((new Date(contest.end_date).getTime() - start) / roundMs) }, (_, i) => start + (i + 1) * roundMs);
-    for (let i = 0; i < roundEnds.length; i++) {
-      const roundEnd = roundEnds[i];
-      const r = i + 1;
-      if (roundEnd > now) continue;
-      const { data: top } = await sb.from("contest_entries")
-        .select("id").eq("contest_id", contest_id).eq("round_number", r)
-        .in("status", ["approved", "winner"]).order("score", { ascending: false }).limit(1).maybeSingle();
-      if (top) {
-        await sb.from("contest_entries").update({ status: "approved" }).eq("contest_id", contest_id).eq("round_number", r).eq("status", "winner");
-        await sb.from("contest_entries").update({ status: "winner" }).eq("id", top.id);
+    // Auto-mark winner per completed round — but NEVER override manually-curated winners
+    // (any entry whose metadata carries a placement_rank is treated as locked-in by an operator).
+    const { data: manualWinners } = await sb.from("contest_entries")
+      .select("id, metadata").eq("contest_id", contest_id).eq("status", "winner");
+    const hasManualWinners = (manualWinners ?? []).some((w: any) => w?.metadata?.placement_rank != null);
+    if (!hasManualWinners) {
+      const now = Date.now();
+      const roundEnds: number[] = cutoffs.length
+        ? [...cutoffs, new Date(contest.end_date).getTime()]
+        : Array.from({ length: Math.ceil((new Date(contest.end_date).getTime() - start) / roundMs) }, (_, i) => start + (i + 1) * roundMs);
+      for (let i = 0; i < roundEnds.length; i++) {
+        const roundEnd = roundEnds[i];
+        const r = i + 1;
+        if (roundEnd > now) continue;
+        const { data: top } = await sb.from("contest_entries")
+          .select("id").eq("contest_id", contest_id).eq("round_number", r)
+          .in("status", ["approved", "winner"]).order("score", { ascending: false }).limit(1).maybeSingle();
+        if (top) {
+          await sb.from("contest_entries").update({ status: "approved" }).eq("contest_id", contest_id).eq("round_number", r).eq("status", "winner");
+          await sb.from("contest_entries").update({ status: "winner" }).eq("id", top.id);
+        }
       }
     }
 
