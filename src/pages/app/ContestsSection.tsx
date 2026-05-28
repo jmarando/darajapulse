@@ -465,6 +465,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     const map = new Map<number, any[]>();
     for (const e of entries) {
       if (isCreator(e)) continue;
+      if (e.status === "winner") continue; // winners shown separately
       const k = e.round_number || 1;
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(e);
@@ -490,8 +491,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     }
   }, [availableRounds, selectedRound]);
 
-  const activeRound = selectedRound ?? availableRounds[availableRounds.length - 1];
-  const entriesForRound = useMemo(() => entries.filter(e => (e.round_number || 1) === activeRound), [entries, activeRound]);
+  const activeRound = 1;
+  // Single running list: include everyone EXCEPT the announced winners (top 5 already removed from the running).
+  const entriesForRound = useMemo(() => entries.filter(e => e.status !== "winner"), [entries]);
 
 
   const exportCsv = () => {
@@ -735,40 +737,34 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 </div>
               )}
 
-              {/* Round tabs — switch between archived and current rounds */}
-              {availableRounds.length > 1 && (
-                <div className="mb-5">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Draw rounds</div>
-                  <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted border border-border flex-wrap">
-                    {availableRounds.map(r => {
-                      const isLatest = r === availableRounds[availableRounds.length - 1];
-                      const isActive = activeRound === r;
-                      const count = entries.filter(e => (e.round_number || 1) === r && !isCreator(e)).length;
-                      return (
-                        <button
-                          key={r}
-                          onClick={() => setSelectedRound(r)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-all ${
-                            isActive
-                              ? "bg-background text-foreground shadow-sm font-semibold"
-                              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                          }`}
-                        >
-                          <span>Round {r}</span>
-                          <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                            isLatest
-                              ? "bg-accent/15 text-accent"
-                              : "bg-muted-foreground/15 text-muted-foreground"
-                          }`}>
-                            {isLatest ? "Current" : "Archived"}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground tabular-nums">{count}</span>
-                        </button>
-                      );
-                    })}
+              {/* Previous winners — top 5 are removed from the running but kept visible. */}
+              {(() => {
+                const winnerRows = entries.filter(e => e.status === "winner" && !isCreator(e));
+                if (winnerRows.length === 0) return null;
+                const winners = groupEntriesByContestant(winnerRows).map(rows => {
+                  const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
+                  const total = rows.reduce((s, r) => s + scoreOf(r), 0);
+                  return { id: reg.id, name: reg.full_name || reg.submitter_name || reg.handle || "Winner", total };
+                }).sort((a, b) => b.total - a.total);
+                return (
+                  <div className="mb-5 p-4 rounded-lg border border-accent/30 bg-accent/5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Crown className="w-4 h-4 text-accent" />
+                      <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">Previous draw winners</div>
+                      <span className="text-[11px] text-muted-foreground">removed from the running</span>
+                    </div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                      {winners.map((w, i) => (
+                        <div key={w.id} className="p-2 rounded-md bg-background/60 border border-border">
+                          <div className="text-[10px] uppercase tracking-wider text-accent">#{i + 1}</div>
+                          <div className="text-sm font-medium truncate">{w.name}</div>
+                          <div className="text-[11px] text-muted-foreground tabular-nums">{Math.round(w.total).toLocaleString()} pts</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Contestants grouped view */}
               {(() => {
@@ -881,7 +877,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 <div className="space-y-5">
                   {byRound.filter(([round]) => round === activeRound).map(([round, rows]) => (
                     <div key={round}>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Round {round} leaderboard</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Leaderboard · everyone still in the running</div>
                       <div className="overflow-x-auto border border-border rounded-md">
                         <table className="w-full text-sm">
                           <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
