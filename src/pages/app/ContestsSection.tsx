@@ -493,7 +493,8 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
   const activeRound = 1;
   // Single running list: include everyone EXCEPT the announced winners (top 5 already removed from the running).
-  const entriesForRound = useMemo(() => entries.filter(e => e.status !== "winner"), [entries]);
+  const isAnnouncedWinner = (e: any) => e.status === "winner" || e.metadata?.placement_rank != null;
+  const entriesForRound = useMemo(() => entries.filter(e => !isAnnouncedWinner(e)), [entries]);
 
 
   const exportCsv = () => {
@@ -739,7 +740,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
               {/* Previous winners — top 5 are removed from the running but kept visible. */}
               {(() => {
-                const winnerRows = entries.filter(e => e.status === "winner" && !isCreator(e));
+                const winnerRows = entries.filter(isAnnouncedWinner);
                 if (winnerRows.length === 0) return null;
                 const winners = groupEntriesByContestant(winnerRows).map(rows => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
