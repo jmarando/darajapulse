@@ -255,6 +255,32 @@ const PublicContestReport = () => {
           })}
         </div>
 
+        {/* Announced winners */}
+        {winners.length > 0 && (
+          <Card className="p-5 mb-6 overflow-hidden border-highlight/40 bg-highlight/5">
+            <div className="mb-4 flex items-center gap-2">
+              <Crown className="w-4 h-4 text-highlight" />
+              <div className="text-[10px] uppercase tracking-widest text-highlight font-semibold">Announced winners</div>
+              <span className="text-xs text-muted-foreground">· removed from the running</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {winners.map((w: any) => {
+                const placement = w?.metadata?.placement || "Winner";
+                const prize = w?.metadata?.prize;
+                return (
+                  <div key={w.id} className="rounded-md border border-border bg-card p-3">
+                    <div className="text-[10px] uppercase tracking-widest text-highlight font-semibold">{placement}</div>
+                    <div className="font-medium mt-1">{w.full_name || w.handle || "Winner"}</div>
+                    <div className="text-xs text-muted-foreground">@{w.handle || w.instagram_handle || w.tiktok_handle || w.facebook_handle}</div>
+                    <div className="text-sm tabular-nums mt-1">{Math.round(w.score || 0).toLocaleString()} pts</div>
+                    {prize && <div className="text-xs text-muted-foreground mt-1">🎁 {prize}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
+
         {/* Leaderboard */}
         <Card className="p-5 mb-6 overflow-hidden">
           <div className="mb-4">
