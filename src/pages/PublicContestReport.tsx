@@ -140,10 +140,36 @@ const PublicContestReport = () => {
   }, [entries, creatorHandles]);
 
   // Group entries by contestant (union-find across handles/email/name) and sum scores across ALL posts.
-  const contestants = useMemo(() => {
+  const allContestants = useMemo(() => {
     const groups = groupEntriesByContestant(visibleEntries);
     return groups.map(summarizeContestant).sort((a, b) => (b.score || 0) - (a.score || 0));
   }, [visibleEntries]);
+
+  // Announced winners (any grouped contestant whose rows include a status='winner').
+  const winnerIds = useMemo(() => {
+    const handles = new Set<string>();
+    for (const e of visibleEntries) {
+      if (e.status === "winner") {
+        for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) {
+          const c = cleanH(h); if (c) handles.add(c);
+        }
+      }
+    }
+    const ids = new Set<string>();
+    for (const c of allContestants) {
+      const hs = [c.handle, c.instagram_handle, c.tiktok_handle, c.facebook_handle].map(cleanH).filter(Boolean) as string[];
+      if (hs.some(h => handles.has(h))) ids.add(c.id);
+    }
+    return ids;
+  }, [allContestants, visibleEntries]);
+
+  const winners = useMemo(
+    () => allContestants
+      .filter((c: any) => winnerIds.has(c.id))
+      .sort((a: any, b: any) => Number(a?.metadata?.placement_rank ?? 99) - Number(b?.metadata?.placement_rank ?? 99)),
+    [allContestants, winnerIds]
+  );
+  const contestants = useMemo(() => allContestants.filter((c: any) => !winnerIds.has(c.id)), [allContestants, winnerIds]);
 
   // Totals across all unique counted posts (deduped by URL).
   const { totals, platformRows, totalPosts } = useMemo(() => {
