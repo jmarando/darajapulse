@@ -735,40 +735,34 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 </div>
               )}
 
-              {/* Round tabs — switch between archived and current rounds */}
-              {availableRounds.length > 1 && (
-                <div className="mb-5">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Draw rounds</div>
-                  <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted border border-border flex-wrap">
-                    {availableRounds.map(r => {
-                      const isLatest = r === availableRounds[availableRounds.length - 1];
-                      const isActive = activeRound === r;
-                      const count = entries.filter(e => (e.round_number || 1) === r && !isCreator(e)).length;
-                      return (
-                        <button
-                          key={r}
-                          onClick={() => setSelectedRound(r)}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-all ${
-                            isActive
-                              ? "bg-background text-foreground shadow-sm font-semibold"
-                              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                          }`}
-                        >
-                          <span>Round {r}</span>
-                          <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                            isLatest
-                              ? "bg-accent/15 text-accent"
-                              : "bg-muted-foreground/15 text-muted-foreground"
-                          }`}>
-                            {isLatest ? "Current" : "Archived"}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground tabular-nums">{count}</span>
-                        </button>
-                      );
-                    })}
+              {/* Previous winners — top 5 are removed from the running but kept visible. */}
+              {(() => {
+                const winnerRows = entries.filter(e => e.status === "winner" && !isCreator(e));
+                if (winnerRows.length === 0) return null;
+                const winners = groupEntriesByContestant(winnerRows).map(rows => {
+                  const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
+                  const total = rows.reduce((s, r) => s + scoreOf(r), 0);
+                  return { id: reg.id, name: reg.full_name || reg.submitter_name || reg.handle || "Winner", total };
+                }).sort((a, b) => b.total - a.total);
+                return (
+                  <div className="mb-5 p-4 rounded-lg border border-accent/30 bg-accent/5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Crown className="w-4 h-4 text-accent" />
+                      <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">Previous draw winners</div>
+                      <span className="text-[11px] text-muted-foreground">removed from the running</span>
+                    </div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                      {winners.map((w, i) => (
+                        <div key={w.id} className="p-2 rounded-md bg-background/60 border border-border">
+                          <div className="text-[10px] uppercase tracking-wider text-accent">#{i + 1}</div>
+                          <div className="text-sm font-medium truncate">{w.name}</div>
+                          <div className="text-[11px] text-muted-foreground tabular-nums">{Math.round(w.total).toLocaleString()} pts</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Contestants grouped view */}
               {(() => {
