@@ -7,7 +7,25 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
-const ED = Deno.env.get("ENSEMBLEDATA_API_TOKEN");
+const ED_TOKENS = [
+  Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
+  Deno.env.get("ENSEMBLE_DATA_API_TOKEN"),
+  Deno.env.get("ENSEMBLEDATA_API_TOKEN_2"),
+].filter((t): t is string => !!t && t.length > 0);
+const ED = ED_TOKENS[0];
+
+async function edFetch(buildUrl: (token: string) => string): Promise<{ res: Response; json: any }> {
+  if (ED_TOKENS.length === 0) throw new Error("ENSEMBLEDATA_API_TOKEN not configured");
+  let last: { res: Response; json: any } | null = null;
+  for (const tok of ED_TOKENS) {
+    const res = await fetch(buildUrl(tok));
+    const json = await res.json().catch(() => ({}));
+    if (res.ok) return { res, json };
+    last = { res, json };
+    if (res.status !== 402 && res.status !== 429 && res.status !== 403 && res.status !== 495) break;
+  }
+  return last!;
+}
 
 const scoreOf = (s: { shares?: any; comments?: any; likes?: any; views?: any }) =>
   Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0) + Number(s.views || 0);
@@ -49,9 +67,7 @@ const asArray = (value: any): any[] => {
 
 async function fetchTikTokUserPosts(handle: string) {
   if (!isLikelyHandle(handle)) throw new Error("invalid_handle: expected a TikTok username, not a display name");
-  const url = `https://ensembledata.com/apis/tt/user/posts?username=${encodeURIComponent(handle)}&depth=1&token=${ED}`;
-  const r = await fetch(url);
-  const j = await r.json();
+  const { res: r, json: j } = await edFetch((tok) => `https://ensembledata.com/apis/tt/user/posts?username=${encodeURIComponent(handle)}&depth=1&token=${tok}`);
   if (!r.ok) throw new Error(`TT ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
   const items = asArray(j?.data?.data ?? j?.data ?? j);
   return items.map((it: any) => {
@@ -86,16 +102,12 @@ function extractIgUserId(payload: any): string | null {
 
 async function fetchInstagramUserPosts(handle: string) {
   if (!isLikelyHandle(handle)) throw new Error("invalid_handle: expected an Instagram username, not a display name");
-  const infoUrl = `https://ensembledata.com/apis/instagram/user/info?username=${encodeURIComponent(handle)}&token=${ED}`;
-  const infoRes = await fetch(infoUrl);
-  const infoJson = await infoRes.json();
+  const { res: infoRes, json: infoJson } = await edFetch((tok) => `https://ensembledata.com/apis/instagram/user/info?username=${encodeURIComponent(handle)}&token=${tok}`);
   if (!infoRes.ok) throw new Error(`IG user lookup ${infoRes.status}: ${JSON.stringify(infoJson).slice(0, 200)}`);
   const userId = extractIgUserId(infoJson);
   if (!userId) throw new Error("instagram_user_id_not_found");
 
-  const url = `https://ensembledata.com/apis/instagram/user/posts?user_id=${encodeURIComponent(userId)}&depth=1&chunk_size=20&token=${ED}`;
-  const r = await fetch(url);
-  const j = await r.json();
+  const { res: r, json: j } = await edFetch((tok) => `https://ensembledata.com/apis/instagram/user/posts?user_id=${encodeURIComponent(userId)}&depth=1&chunk_size=20&token=${tok}`);
   if (!r.ok) throw new Error(`IG ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
   const items = asArray(j?.data?.data ?? j?.data ?? j);
   return items.map((it: any) => {

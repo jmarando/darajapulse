@@ -4,7 +4,12 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
-const ED = Deno.env.get("ENSEMBLEDATA_API_TOKEN") ?? Deno.env.get("ENSEMBLE_DATA_API_TOKEN") ?? "";
+const ED_TOKENS = [
+  Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
+  Deno.env.get("ENSEMBLE_DATA_API_TOKEN"),
+  Deno.env.get("ENSEMBLEDATA_API_TOKEN_2"),
+].filter((t): t is string => !!t && t.length > 0);
+const ED = ED_TOKENS[0] ?? "";
 const ED_BASE = "https://ensembledata.com/apis";
 const APIFY = Deno.env.get("APIFY_API_TOKEN") ?? "";
 const APIFY_ACTORS = {
@@ -18,14 +23,23 @@ const scoreOf = (s: { shares?: any; comments?: any; likes?: any; views?: any }) 
 
 
 async function ed(path: string, params: Record<string, string>) {
-  if (!ED) throw new Error("ENSEMBLEDATA_API_TOKEN not configured");
-  const qs = new URLSearchParams({ ...params, token: ED }).toString();
-  const r = await fetch(`${ED_BASE}${path}?${qs}`);
-  const text = await r.text();
-  let json: any;
-  try { json = JSON.parse(text); } catch { throw new Error(`Ensemble non-JSON [${r.status}]: ${text.slice(0,200)}`); }
-  if (!r.ok) throw new Error(`Ensemble ${path} ${r.status}: ${JSON.stringify(json).slice(0,200)}`);
-  return json;
+  if (ED_TOKENS.length === 0) throw new Error("ENSEMBLEDATA_API_TOKEN not configured");
+  let lastErr: any = null;
+  for (const tok of ED_TOKENS) {
+    const qs = new URLSearchParams({ ...params, token: tok }).toString();
+    const r = await fetch(`${ED_BASE}${path}?${qs}`);
+    const text = await r.text();
+    let json: any;
+    try { json = JSON.parse(text); } catch { lastErr = new Error(`Ensemble non-JSON [${r.status}]: ${text.slice(0,200)}`); continue; }
+    if (r.ok) return json;
+    // 402/429 = units exhausted / rate-limited → try next token
+    if (r.status === 402 || r.status === 429 || r.status === 403 || r.status === 495) {
+      lastErr = new Error(`Ensemble ${path} ${r.status}: ${JSON.stringify(json).slice(0,200)}`);
+      continue;
+    }
+    throw new Error(`Ensemble ${path} ${r.status}: ${JSON.stringify(json).slice(0,200)}`);
+  }
+  throw lastErr ?? new Error("Ensemble all tokens failed");
 }
 
 const num = (v: any) => { const n = typeof v === "number" ? v : parseInt(String(v ?? "0").replace(/[,_]/g,""),10); return Number.isFinite(n) ? n : 0; };
