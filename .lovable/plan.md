@@ -1,89 +1,117 @@
-# Contests as a top-level section + Taste Paradise creator hide
+## What I found
 
-## 1. Taste Paradise — hide all creator-related UI on the public report
+- The database is not empty: this contest currently has **271 rows** and about **263 distinct contestants**.
+- Only **143 rows have post URLs**, and only **99 approved/winner rows have post URLs**.
+- The app is showing a small number because the current “Contestants” cards only show the **top 12 grouped contestants in the active round**, and the active round is hardcoded to **round 1**.
+- The report totals currently count only contestants with posts/metrics, so registered contestants without validated posts can disappear from summary counts.
+- “Nje Rey” exists in the database as `nje.rey` with TikTok metrics. Gordon Muiruri and Helvin Omondi are present, but their winner rows have zero metrics because they were imported/marked as winners without a metric-bearing post attached to those exact winner rows.
 
-In `src/pages/PublicReport.tsx`, gate every creator-facing element behind a check for `campaign.id === "67f4ba28-2a11-484c-8f6e-687ac422f5e3"` (campaign already has `HIDE_ROSTER_CAMPAIGN_IDS` pattern — extend it to a single `hideCreators` flag and apply consistently):
+## Root cause
 
-- Header chip "N creators" (already done in this turn).
-- "Best value creators" section (around L772).
-- "Creators" column / values in the per-platform breakdown table (around L464 — drop column entirely when hideCreators).
-- Roster panel (already gated via `HIDE_ROSTER_CAMPAIGN_IDS`, keep).
-- Any "creator" wording in the velocity/share cards (audit pass).
+The system is mixing three things in one table:
 
-No data changes; purely presentational.
+1. **Contestant roster**: who entered the contest.
+2. **Submitted/found posts**: which posts belong to each contestant.
+3. **Metrics snapshots**: the latest views/likes/comments/shares for each post.
 
-## 2. Make Contests a top-level section
+Because all three are being stored directly in `contest_entries`, syncing can create duplicate rows, winner rows can become separated from their metric rows, and the UI/report can count one version while the table counts another.
 
-### Nav
+## Proposed “works once and for all” solution
 
-In `src/components/AppShell.tsx`, add a new nav item **Contests** with `Trophy` icon, placed between **Campaigns** and **Briefs**. Route: `/app/contests`.
+### 1. Make the contestant roster the source of truth
+Create a dedicated table for contest contestants, separate from posts.
 
-### Routes (in `src/App.tsx`)
+Each contestant record will store:
+- contest
+- full name
+- phone/email if available
+- Instagram/TikTok/Facebook handles
+- registration/source ID
+- status: active, invalid, winner, disqualified
+- placement/prize details if they win
 
-- `GET /app/contests` → new `ContestsList.tsx`
-- `GET /app/contests/:id` → new `ContestDetail.tsx`
-- `GET /r/contest/:token` → new `PublicContestReport.tsx`
+This means the contest can always show **250+ contestants**, even if some do not yet have posts or metrics.
 
-### New pages
+### 2. Store posts separately and link them to contestants
+Create a separate `contest_posts` table.
 
-**`src/pages/app/ContestsList.tsx`**
-- Lists all contests across all campaigns.
-- Columns/cards: name, hashtag, platforms, optional campaign+client badge, start/end, entries count, top score, status (active/ended).
-- "New contest" dialog — campaign is now **optional** (Select with "Standalone (no campaign)" as the first option).
+Each post will store:
+- contestant ID
+- platform
+- canonical post URL
+- caption
+- posted date
+- source: manual, CSV, hashtag discovery, handle scan, API
+- validation status
 
-**`src/pages/app/ContestDetail.tsx`**
-- Lift the existing per-contest UI out of `ContestsSection.tsx`: header, leaderboard, entries CRUD, edit dialog, sync/discover actions.
-- Tabs: Overview, Leaderboard, Entries, Settings, Reports (schedules + public link toggle).
-- Public report link: copy/open `/r/contest/:submission_token` (re-use existing `submission_token`).
+This prevents duplicate contestant rows just because one person has multiple TikTok/IG/Facebook posts.
 
-**`src/pages/PublicContestReport.tsx`**
-- Public route, no auth. Fetches contest via existing `get_contest_by_token` RPC (extend below) + approved/winner entries via existing public RLS.
-- Sections: hero (contest name, brand, hashtag, prize, dates), KPI band (entries, contestants, views, total engagement), leaderboard table, winners highlight, platform breakdown. **No influencer/creator roster.**
+### 3. Store metric snapshots separately
+Create a separate `contest_post_metrics` table.
 
-### Remove Contests tab from campaign detail
+Each refresh will store a snapshot:
+- post ID
+- views, likes, comments, shares, saves if available
+- provider used
+- captured time
+- error if the refresh failed
 
-In `src/pages/app/CampaignDetail.tsx`, drop the Contests tab/section. Replace with a small "Linked contests" card that lists contest names and links to `/app/contests/:id`. Keep `ContestsSection.tsx` only if still referenced; otherwise delete after migration.
+The leaderboard will use the latest successful metric snapshot per post. This gives us an audit trail instead of overwriting numbers blindly.
 
-## 3. Data model
+### 4. Add a normalized leaderboard view
+Create a read-only database view or function that returns one row per contestant with:
+- contestant info
+- all linked posts
+- latest metrics per post
+- summed score
+- post count
+- missing-data flags
+- winner placement/prize if applicable
 
-Single migration:
+The admin dashboard, public report, CSV export, and future reports will all use this same source so numbers match everywhere.
 
-- `ALTER TABLE public.contests ALTER COLUMN campaign_id DROP NOT NULL;` — campaign becomes optional.
-- Add `client_id uuid` nullable to `contests` so standalone contests can still attach to a client for branding on the public report.
-- Update `get_contest_by_token` RPC to LEFT JOIN campaign and resolve client from either `contests.client_id` or `campaigns.client_id`.
-- Add a public RLS policy on `contests`/`contest_entries` keyed on `submission_token` so the public report works without `report_links` (mirror existing token-based read for `contests`; extend `contest_entries` similarly).
+### 5. Migrate existing data safely
+Backfill from current `contest_entries` into the new structure:
+- group rows by registration ID, email, phone, handle, and full name
+- preserve the 263-ish contestant roster
+- attach known posts to the right contestant
+- preserve current winner statuses and placement metadata
+- mark rows with invalid handles/manual-only Facebook as needing review
 
-Existing contests keep their `campaign_id` — no data migration needed.
+No current data should be deleted during migration.
 
-## 4. Per-contest email reports
+### 6. Fix the current UI/report behavior
+Update the admin contest page and public report to:
+- show **all contestants**, not just the top 12 cards
+- show clear counts: registered contestants, contestants with posts, contestants with verified metrics, missing metrics
+- use the same leaderboard data source for big boxes and tables
+- show “Needs review” instead of silently hiding rows with no metrics
+- ensure winners use their contestant’s linked metrics instead of zero-value winner rows
 
-Reuse existing infra:
+### 7. Make syncing reliable
+Change sync flow to be roster-first:
 
-- `report_schedules` already has `contest_id` — add UI in ContestDetail → Reports tab to manage daily-summary and draw-closed schedules per contest (mirror EmailReportsSection but scoped to a contest).
-- `report_recipients` keyed by `campaign_id` today. Add nullable `contest_id` and allow recipients scoped to a contest only. Update `run-report-schedules` and `send-contest-*` templates' recipient lookup to union campaign + contest scoped recipients.
-- Templates `contest-daily-summary` and `contest-draw-closed` already exist — wire them to work when no campaign is attached (fallback header to contest name/client only).
+```text
+CSV/feed/manual registration
+  -> upsert contestant
+  -> normalize handles
+  -> discover or attach posts
+  -> refresh post metrics
+  -> leaderboard view calculates totals
+```
 
-## 5. Files touched
+Providers like Ensemble/Apify/Meta become enrichment sources, not the source of truth. If a provider hits quota, contestants still remain visible and flagged as “metrics pending”.
 
-New:
-- `src/pages/app/ContestsList.tsx`
-- `src/pages/app/ContestDetail.tsx`
-- `src/pages/PublicContestReport.tsx`
+## Implementation steps
 
-Modified:
-- `src/App.tsx` (routes)
-- `src/components/AppShell.tsx` (nav)
-- `src/pages/app/CampaignDetail.tsx` (drop Contests tab, add Linked contests card)
-- `src/pages/app/ContestsSection.tsx` (extract reusable pieces or deprecate)
-- `src/pages/PublicReport.tsx` (full creator hide for Taste Paradise)
-- `supabase/functions/run-report-schedules/index.ts` (contest-scoped recipients)
-- Email template recipient lookup as needed.
+1. Add new database tables and access rules for contestants, posts, and metric snapshots.
+2. Add a database view/function for the canonical contest leaderboard.
+3. Backfill the current contest data into the new tables.
+4. Update sync edge functions to write to the new tables.
+5. Update admin contest UI to read from the canonical leaderboard and show integrity counts.
+6. Update public report and export/report generation to use the same canonical leaderboard.
+7. Add a “data quality” panel showing missing posts, invalid handles, provider quota failures, and rows needing manual review.
 
-Migration:
-- `contests.campaign_id` nullable, add `contests.client_id`, extend `get_contest_by_token`, add public-token RLS for entries, add `report_recipients.contest_id`.
+## Expected result
 
-## 6. Out of scope (call out for later if wanted)
-
-- Moving contest sync cron away from per-campaign assumptions (already keyed by `contest.id`, should just work).
-- Renaming `submission_token` → `public_token` (cosmetic).
-- Backfilling `contests.client_id` from `campaigns.client_id` for existing contests — easy follow-up insert.
+After this, the contest should consistently show the full contestant roster, with no unexplained drop to 13 rows, and the admin page, public report, and exports should all match because they will read from the same normalized leaderboard source.
