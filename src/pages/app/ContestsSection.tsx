@@ -910,7 +910,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 <div className="space-y-5">
                   {byRound.map(([round, rows]) => (
                     <div key={round}>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Leaderboard · everyone still in the running</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Full ranking · {rows.length} contestants</div>
                       <div className="overflow-x-auto border border-border rounded-md">
                         <table className="w-full text-sm">
                           <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
