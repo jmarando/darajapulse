@@ -67,9 +67,7 @@ const asArray = (value: any): any[] => {
 
 async function fetchTikTokUserPosts(handle: string) {
   if (!isLikelyHandle(handle)) throw new Error("invalid_handle: expected a TikTok username, not a display name");
-  const url = `https://ensembledata.com/apis/tt/user/posts?username=${encodeURIComponent(handle)}&depth=1&token=${ED}`;
-  const r = await fetch(url);
-  const j = await r.json();
+  const { res: r, json: j } = await edFetch((tok) => `https://ensembledata.com/apis/tt/user/posts?username=${encodeURIComponent(handle)}&depth=1&token=${tok}`);
   if (!r.ok) throw new Error(`TT ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
   const items = asArray(j?.data?.data ?? j?.data ?? j);
   return items.map((it: any) => {
