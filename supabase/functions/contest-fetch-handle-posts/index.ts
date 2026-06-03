@@ -102,16 +102,12 @@ function extractIgUserId(payload: any): string | null {
 
 async function fetchInstagramUserPosts(handle: string) {
   if (!isLikelyHandle(handle)) throw new Error("invalid_handle: expected an Instagram username, not a display name");
-  const infoUrl = `https://ensembledata.com/apis/instagram/user/info?username=${encodeURIComponent(handle)}&token=${ED}`;
-  const infoRes = await fetch(infoUrl);
-  const infoJson = await infoRes.json();
+  const { res: infoRes, json: infoJson } = await edFetch((tok) => `https://ensembledata.com/apis/instagram/user/info?username=${encodeURIComponent(handle)}&token=${tok}`);
   if (!infoRes.ok) throw new Error(`IG user lookup ${infoRes.status}: ${JSON.stringify(infoJson).slice(0, 200)}`);
   const userId = extractIgUserId(infoJson);
   if (!userId) throw new Error("instagram_user_id_not_found");
 
-  const url = `https://ensembledata.com/apis/instagram/user/posts?user_id=${encodeURIComponent(userId)}&depth=1&chunk_size=20&token=${ED}`;
-  const r = await fetch(url);
-  const j = await r.json();
+  const { res: r, json: j } = await edFetch((tok) => `https://ensembledata.com/apis/instagram/user/posts?user_id=${encodeURIComponent(userId)}&depth=1&chunk_size=20&token=${tok}`);
   if (!r.ok) throw new Error(`IG ${r.status}: ${JSON.stringify(j).slice(0, 200)}`);
   const items = asArray(j?.data?.data ?? j?.data ?? j);
   return items.map((it: any) => {
