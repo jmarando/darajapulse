@@ -112,7 +112,7 @@ async function discoverTikTokED(tags: string[]) {
         r = await fetch(`https://ensembledata.com/apis/tt/hashtag/posts?name=${encodeURIComponent(tag)}&cursor=0&token=${tok}`);
         j = await r.json().catch(() => ({}));
         if (r.ok) break;
-        if (r.status !== 402 && r.status !== 429 && r.status !== 403) break;
+        if (r.status !== 402 && r.status !== 429 && r.status !== 403 && r.status !== 495) break;
       }
       if (!r || !r.ok) {
         errors.push({ tag, msg: `ED ${r?.status}: ${JSON.stringify(j).slice(0, 200)}` });
