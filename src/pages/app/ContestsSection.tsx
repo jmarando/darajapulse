@@ -891,7 +891,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 <div className="text-center py-8 border border-dashed border-border rounded-md text-sm text-muted-foreground">No entries yet. Click "Sync contestants" to pull registrations, then "Discover posts" to find their #{active.hashtag.replace(/^#/, "")} entries on IG/TikTok.</div>
               ) : (
                 <div className="space-y-5">
-                  {byRound.filter(([round]) => round === activeRound).map(([round, rows]) => (
+                  {byRound.map(([round, rows]) => (
                     <div key={round}>
                       <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Leaderboard · everyone still in the running</div>
                       <div className="overflow-x-auto border border-border rounded-md">
