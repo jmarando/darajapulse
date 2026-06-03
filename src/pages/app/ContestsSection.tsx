@@ -491,12 +491,11 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     }
   }, [availableRounds, selectedRound]);
 
-  const activeRound = 1;
-  // Single running list: include everyone EXCEPT the announced winners (top 5 already removed from the running).
+  // Single running list across ALL rounds: include everyone EXCEPT the announced winners.
   const isAnnouncedWinner = (e: any) => e.status === "winner" || e.metadata?.placement_rank != null;
   const entriesForRound = useMemo(
-    () => entries.filter(e => !isAnnouncedWinner(e) && (e.round_number || 1) === activeRound),
-    [entries, activeRound]
+    () => entries.filter(e => !isAnnouncedWinner(e)),
+    [entries]
   );
 
 
@@ -745,15 +744,29 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
               {(() => {
                 const winnerRows = entries.filter(isAnnouncedWinner);
                 if (winnerRows.length === 0) return null;
-                const winners = groupEntriesByContestant(winnerRows).map(rows => {
+                // Group ALL entries (not just winner-flagged rows) so a winner's
+                // metrics include their non-winner duplicate rows (CSV, scraper, etc.).
+                const allGroups = groupEntriesByContestant(entries);
+                const winnerKeys = new Set(winnerRows.map(r => r.id));
+                const winnerGroups = allGroups.filter(rows => rows.some(r => winnerKeys.has(r.id)));
+                const winners = winnerGroups.map(rows => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
-                  const total = rows.reduce((s, r) => s + scoreOf(r), 0);
+                  // Sum across unique posts by canonical URL (dedupe across platform rows).
+                  const byUrl = new Map<string, number>();
+                  for (const row of rows) {
+                    for (const post of [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])]) {
+                      const k = canonicalPostUrl(post?.post_url);
+                      if (!k) continue;
+                      byUrl.set(k, Math.max(byUrl.get(k) ?? 0, scoreOf(post)));
+                    }
+                  }
+                  const total = Array.from(byUrl.values()).reduce((s, v) => s + v, 0);
                   const withMeta = rows.find(r => r.metadata?.placement_rank) || reg;
                   const m = withMeta?.metadata || {};
                   return {
                     id: reg.id,
                     name: reg.full_name || reg.submitter_name || reg.handle || "Winner",
-                    handle: reg.handle,
+                    handle: reg.handle || reg.tiktok_handle || reg.instagram_handle || reg.facebook_handle,
                     total,
                     placement: m.placement as string | undefined,
                     prize: m.prize as string | undefined,
@@ -809,7 +822,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                   <div className="mb-6">
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.slice(0, 12).map(({ key, reg, posts, total }, i) => {
+                      {contestants.map(({ key, reg, posts, total }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
                         const hasAutoCapable = !!(reg.instagram_handle || reg.tiktok_handle);
@@ -892,7 +905,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 <div className="text-center py-8 border border-dashed border-border rounded-md text-sm text-muted-foreground">No entries yet. Click "Sync contestants" to pull registrations, then "Discover posts" to find their #{active.hashtag.replace(/^#/, "")} entries on IG/TikTok.</div>
               ) : (
                 <div className="space-y-5">
-                  {byRound.filter(([round]) => round === activeRound).map(([round, rows]) => (
+                  {byRound.map(([round, rows]) => (
                     <div key={round}>
                       <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Leaderboard · everyone still in the running</div>
                       <div className="overflow-x-auto border border-border rounded-md">
