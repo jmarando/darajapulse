@@ -222,7 +222,14 @@ Deno.serve(async (req) => {
         await Promise.all(batch.map(async (e) => {
           try {
             let url = (e.post_url || "").trim();
-            if ((e.platform || "").toLowerCase() === "tiktok") url = await resolveTikTokShort(url);
+            if ((e.platform || "").toLowerCase() === "tiktok") {
+              const resolved = await resolveTikTokShort(url);
+              if (resolved !== url) {
+                url = resolved;
+                // Persist the canonical URL so future runs (and the UI) don't repeat the resolve.
+                await sb.from("contest_entries").update({ post_url: url }).eq("id", e.id);
+              }
+            }
             if (!isValidPostUrl(e.platform, url)) {
               invalid++;
               errors.push({ id: e.id, platform: e.platform, post_url: e.post_url, msg: "invalid_post_url" });
@@ -237,9 +244,18 @@ Deno.serve(async (req) => {
               await sb.from("contest_entries").update({ last_polled_at: new Date().toISOString() }).eq("id", e.id);
               return;
             }
-            const score = scoreOf(s);
+            // MAX-for-counters merge guard: public counters only ever grow.
+            // If a fetched source returns a LOWER number than what we already have
+            // (stale Ensemble call, undercount, transient API hiccup), keep the higher.
+            const merged = {
+              views: Math.max(s.views, Number(e.views || 0)),
+              likes: Math.max(s.likes, Number(e.likes || 0)),
+              comments: Math.max(s.comments, Number(e.comments || 0)),
+              shares: Math.max(s.shares, Number(e.shares || 0)),
+            };
+            const score = scoreOf(merged);
             const upd: any = {
-              views: s.views, likes: s.likes, comments: s.comments, shares: s.shares,
+              ...merged,
               score, last_polled_at: new Date().toISOString(), source: s._source || "ensembledata",
             };
             if (s.caption) upd.caption = String(s.caption).slice(0, 1000);
@@ -253,11 +269,34 @@ Deno.serve(async (req) => {
           }
         }));
       }
+
+      // ---- Winner rescue + handle-only rescue ----
+      // 1) Pull any winner row that's still at 0 metrics and try per-handle discovery.
+      // 2) Pull any non-winner row that has no post_url but does have a handle and
+      //    feed it to contest-fetch-handle-posts so we stop showing 0s for people
+      //    who only registered with a handle.
+      try {
+        const { data: zeroRows } = await sb.from("contest_entries")
+          .select("id, status, tiktok_handle, instagram_handle, facebook_handle, handle, post_url, views, likes")
+          .eq("contest_id", contest_id);
+        const need = (zeroRows ?? []).filter((r: any) => {
+          const noMetrics = Number(r.views || 0) <= 0 && Number(r.likes || 0) <= 0;
+          const hasHandle = r.tiktok_handle || r.instagram_handle || r.handle;
+          return hasHandle && (noMetrics || !r.post_url) && r.status !== "invalid";
+        });
+        if (need.length > 0) {
+          await sb.functions.invoke("contest-fetch-handle-posts", {
+            body: { contest_id, triggered_by: "auto_rescue" },
+          }).catch((e) => console.warn("auto_rescue fetch-handle-posts failed", e));
+        }
+      } catch (e) { console.warn("auto_rescue scan failed", e); }
+
       console.log("refresh-metrics done", JSON.stringify({ contest_id, total: entries?.length ?? 0, updated, failed, invalid, errors_count: errors.length, sample_errors: errors.slice(0, 10) }));
       // Re-tag round_number + recompute scores using contest cutoffs
       try { await sb.functions.invoke("contest-poll", { body: { contest_id } }); } catch (e) { console.warn("contest-poll invoke failed", e); }
       return { updated, failed, invalid, errors };
     };
+
 
     if (wait) {
       const r = await run();
