@@ -165,13 +165,27 @@ Deno.serve(async (req) => {
       if (!candidates.length && fallback && (e.platform === "tiktok" || e.platform === "instagram")) {
         candidates.push({ platform: e.platform as any, handle: fallback });
       }
+      // Reject handles that look like names or contain unsafe chars (e.g. "Life&style",
+      // "Eddie Murphy") — Ensemble will reject them anyway and they pollute the error list.
+      const validCandidates = candidates.filter(c => /^[a-z0-9_.]{2,40}$/i.test(c.handle));
+      if (validCandidates.length !== candidates.length) {
+        for (const c of candidates) {
+          if (!validCandidates.includes(c)) errors.push({ entry: e.id, handle: c.handle, msg: "invalid_handle" });
+        }
+      }
       const onlyHandle = cleanHandle(only);
-      if (onlyHandle && !candidates.some(c => c.handle.toLowerCase() === onlyHandle)) continue;
-      if (!candidates.length) continue;
+      if (onlyHandle && !validCandidates.some(c => c.handle.toLowerCase() === onlyHandle)) continue;
+      if (!validCandidates.length) continue;
 
-      if (e.post_url) continue;
-      let first: any = null;
-      for (const c of candidates) {
+      // Process if the row has no post_url OR has zero metrics (rescue path for winners
+      // and handle-only registrants).
+      const noMetrics = Number(e.views || 0) <= 0 && Number(e.likes || 0) <= 0;
+      if (e.post_url && !noMetrics) continue;
+
+      // Pick the HIGHEST-SCORING matching post across all the candidate handles.
+      let best: any = null;
+      let bestScore = -1;
+      for (const c of validCandidates) {
         try {
           const posts = c.platform === "tiktok"
             ? await fetchTikTokUserPosts(c.handle)
@@ -179,30 +193,41 @@ Deno.serve(async (req) => {
           fetched += posts.length;
           const matching = posts.filter((p: any) => captionHas(p.caption, tags));
           for (const p of matching) {
-            const candidate = { ...p, platform: c.platform, handle: c.handle };
-            if (!first || postTime(candidate) < postTime(first)) first = candidate;
+            const cand = { ...p, platform: c.platform, handle: c.handle };
+            const sc = scoreOf(cand);
+            if (sc > bestScore) { best = cand; bestScore = sc; }
           }
         } catch (err) {
           errors.push({ entry: e.id, handle: c.handle, platform: c.platform, msg: err instanceof Error ? err.message : String(err) });
         }
       }
 
-      if (!first) continue;
-      const { error } = await sb.from("contest_entries").update({
-        platform: first.platform,
-        post_url: first.post_url,
-        thumbnail_url: first.thumbnail_url,
-        caption: (first.caption || "").slice(0, 1000),
-        posted_at: first.posted_at,
-        views: first.views, likes: first.likes, comments: first.comments, shares: first.shares,
-        score: scoreOf(first),
-        status: e.source === "registration" || e.source === "manual" ? "approved" : undefined,
+      if (!best) continue;
+      // MAX merge for counters so we never overwrite higher existing values.
+      const merged = {
+        views: Math.max(Number(best.views || 0), Number(e.views || 0)),
+        likes: Math.max(Number(best.likes || 0), Number(e.likes || 0)),
+        comments: Math.max(Number(best.comments || 0), Number(e.comments || 0)),
+        shares: Math.max(Number(best.shares || 0), Number(e.shares || 0)),
+      };
+      const upd: any = {
+        platform: best.platform,
+        post_url: e.post_url || best.post_url,
+        thumbnail_url: best.thumbnail_url,
+        caption: (best.caption || "").slice(0, 1000),
+        posted_at: best.posted_at,
+        ...merged,
+        score: scoreOf(merged),
+        // Do NOT change status for announced winners — that's editorial.
+        ...(e.source === "registration" || e.source === "manual" ? { status: "approved" } : {}),
         source: "ensembledata",
         last_polled_at: new Date().toISOString(),
-      }).eq("id", e.id);
+      };
+      const { error } = await sb.from("contest_entries").update(upd).eq("id", e.id);
       if (error) errors.push({ entry: e.id, msg: error.message });
       else upserted++;
     }
+
 
     if (runId) await sb.from("contestant_sync_runs").update({
       finished_at: new Date().toISOString(), fetched, upserted, errors, status: errors.length ? "partial" : "ok",
