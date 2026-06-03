@@ -820,9 +820,12 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 if (contestants.length === 0) return null;
                 return (
                   <div className="mb-6">
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1">
+                      <Users className="w-3 h-3" /> Top 10 contestants
+                      <span className="opacity-60 normal-case tracking-normal ml-1">· showing {Math.min(10, contestants.length)} of {contestants.length} still in the running</span>
+                    </div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.map(({ key, reg, posts, total }, i) => {
+                      {contestants.slice(0, 10).map(({ key, reg, posts, total }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
                         const hasAutoCapable = !!(reg.instagram_handle || reg.tiktok_handle);
