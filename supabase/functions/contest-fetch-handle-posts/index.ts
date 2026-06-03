@@ -148,12 +148,22 @@ Deno.serve(async (req) => {
 
     // Candidates: registered entries with a TT or IG handle. FB skipped.
     const { data: entries } = await sb.from("contest_entries")
-      .select("id, handle, tiktok_handle, instagram_handle, platform, post_url, views, likes, comments, shares, source")
+      .select("id, handle, tiktok_handle, instagram_handle, platform, post_url, views, likes, comments, shares, source, metadata")
       .eq("contest_id", contest_id);
 
-    let fetched = 0, upserted = 0;
+    let fetched = 0, upserted = 0, skipped_cooldown = 0, skipped_budget = 0;
     const errors: any[] = [];
     const only: string | undefined = body.only_handle;
+    // Unit-budget guard. Ensemble gives us 1500 units/day. Per-handle discovery
+    // is ~2u/platform/contestant. Cap discoveries per run and rotate through
+    // the backlog over multiple days.
+    const discoveryCap: number = Number(body.discovery_cap ?? 80);
+    // Cooldown: skip handles we tried in the last N hours that returned nothing.
+    const cooldownHours: number = Number(body.cooldown_hours ?? 22);
+    const cooldownMs = cooldownHours * 3600 * 1000;
+    let discoveryUsed = 0;
+
+
 
     for (const e of entries ?? []) {
       const candidates: { platform: "tiktok" | "instagram"; handle: string }[] = [];
