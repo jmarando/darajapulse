@@ -75,14 +75,22 @@ async function fetchHtml(url: string): Promise<string> {
 const ED_BASE = "https://ensembledata.com/apis";
 
 async function ed(path: string, params: Record<string, string>) {
-  if (!ENSEMBLE_TOKEN) throw new Error("ENSEMBLEDATA_API_TOKEN not configured");
-  const qs = new URLSearchParams({ ...params, token: ENSEMBLE_TOKEN }).toString();
-  const r = await fetch(`${ED_BASE}${path}?${qs}`, { headers: { "Accept": "application/json" } });
-  const text = await r.text();
-  let json: any;
-  try { json = JSON.parse(text); } catch { throw new Error(`Ensemble non-JSON [${r.status}]: ${text.slice(0, 200)}`); }
-  if (!r.ok) throw new Error(`Ensemble ${path} ${r.status}: ${JSON.stringify(json).slice(0, 300)}`);
-  return json;
+  if (ED_TOKENS.length === 0) throw new Error("ENSEMBLEDATA_API_TOKEN not configured");
+  let lastErr: any = null;
+  for (const tok of ED_TOKENS) {
+    const qs = new URLSearchParams({ ...params, token: tok }).toString();
+    const r = await fetch(`${ED_BASE}${path}?${qs}`, { headers: { "Accept": "application/json" } });
+    const text = await r.text();
+    let json: any;
+    try { json = JSON.parse(text); } catch { lastErr = new Error(`Ensemble non-JSON [${r.status}]: ${text.slice(0, 200)}`); continue; }
+    if (r.ok) return json;
+    if (r.status === 402 || r.status === 429 || r.status === 403) {
+      lastErr = new Error(`Ensemble ${path} ${r.status}: ${JSON.stringify(json).slice(0, 300)}`);
+      continue;
+    }
+    throw new Error(`Ensemble ${path} ${r.status}: ${JSON.stringify(json).slice(0, 300)}`);
+  }
+  throw lastErr ?? new Error("Ensemble all tokens failed");
 }
 
 function igShortcode(url: string): string | null {
