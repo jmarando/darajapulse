@@ -1,117 +1,121 @@
-## What I found
+# Contest data integrity — full plan
 
-- The database is not empty: this contest currently has **271 rows** and about **263 distinct contestants**.
-- Only **143 rows have post URLs**, and only **99 approved/winner rows have post URLs**.
-- The app is showing a small number because the current “Contestants” cards only show the **top 12 grouped contestants in the active round**, and the active round is hardcoded to **round 1**.
-- The report totals currently count only contestants with posts/metrics, so registered contestants without validated posts can disappear from summary counts.
-- “Nje Rey” exists in the database as `nje.rey` with TikTok metrics. Gordon Muiruri and Helvin Omondi are present, but their winner rows have zero metrics because they were imported/marked as winners without a metric-bearing post attached to those exact winner rows.
+## A. What's actually broken (audited)
 
-## Root cause
+Live counts on contest `531899fc…` (271 rows):
 
-The system is mixing three things in one table:
+| Symptom | Count | Cause |
+|---|---|---|
+| Winners with 0 pts (Njagi, Helvin) | 2 | Winner row has no `post_url` |
+| Winner with 0 pts (Gordon) | 1 | `vt.tiktok.com` short URL never resolved |
+| `vt.tiktok.com` short URLs | 28 | No HEAD-resolve step on ingest |
+| TikTok handles with no working post | 119 | Hashtag-discovery missed them, no per-handle fallback in refresh |
+| Instagram handles with no working post | 123 | Same + only 1 IG business account linked |
+| Facebook handles with no working post | 109 / 122 | Only 1 FB page linked, no Apify fallback |
 
-1. **Contestant roster**: who entered the contest.
-2. **Submitted/found posts**: which posts belong to each contestant.
-3. **Metrics snapshots**: the latest views/likes/comments/shares for each post.
+## B. Per-platform fetch audit
 
-Because all three are being stored directly in `contest_entries`, syncing can create duplicate rows, winner rows can become separated from their metric rows, and the UI/report can count one version while the table counts another.
+**TikTok** — Ensemble hashtag works but capped; per-handle Ensemble works but only runs on manual click; metrics call dies on short URLs. Fix: HEAD-resolve, run per-handle nightly, add free TikTok oEmbed sanity check.
 
-## Proposed “works once and for all” solution
+**Instagram** — Meta Graph needs a linked IG business account (we have 1); Ensemble per-handle works; reels without shortcodes silently fail. Fix: per-handle nightly fallback, add Apify IG as second fallback, broaden `/reel|/reels|/tv` → `/p/<code>/` canonicalizer.
 
-### 1. Make the contestant roster the source of truth
-Create a dedicated table for contest contestants, separate from posts.
+**Facebook** — No public hashtag API. Graph metrics only work for owned pages (1/122). Fix: wire Apify FB Post Scraper as fallback in `contest-refresh-metrics-meta`, keep amber "manual entry" badge for handles where Apify also yields nothing.
 
-Each contestant record will store:
-- contest
-- full name
-- phone/email if available
-- Instagram/TikTok/Facebook handles
-- registration/source ID
-- status: active, invalid, winner, disqualified
-- placement/prize details if they win
+## C. Handle-only contestants → discovered posts
 
-This means the contest can always show **250+ contestants**, even if some do not yet have posts or metrics.
+For every row missing a URL or with 0 metrics, the refresh job runs in order:
+1. Canonicalize / HEAD-resolve any URL already on the row.
+2. Per-handle Ensemble (TikTok / IG) or Apify (FB) → filter by contest hashtag → pick top by views/likes → attach.
+3. Write discovered URL to `post_url`, append previously-known posts to `cross_posts` so nothing is lost.
+4. Log each attempt + outcome to `contestant_sync_runs.errors` so the UI can show "tried tt/user/posts → 0 hashtag matches" instead of just zeros.
 
-### 2. Store posts separately and link them to contestants
-Create a separate `contest_posts` table.
+## D. Winners
 
-Each post will store:
-- contestant ID
-- platform
-- canonical post URL
-- caption
-- posted date
-- source: manual, CSV, hashtag discovery, handle scan, API
-- validation status
+Group by handle (case-insensitive, strip `@` and URL prefix) across all four handle columns + `handle`. A winner row inherits metrics from any sibling row sharing a handle — fixes Helvin immediately (sibling `helvin_lifestyle` already has 7,373 pts). After every refresh, any winner still at 0 metrics auto-triggers `contest-fetch-handle-posts` for its handles.
 
-This prevents duplicate contestant rows just because one person has multiple TikTok/IG/Facebook posts.
+## E. Data-integrity & merge model (new)
 
-### 3. Store metric snapshots separately
-Create a separate `contest_post_metrics` table.
+The risk: 4 sources (Ensemble, Apify, Meta Graph, Manual) can write to the same `contest_entries` row; today, whichever runs last wins. We need deterministic merging.
 
-Each refresh will store a snapshot:
-- post ID
-- views, likes, comments, shares, saves if available
-- provider used
-- captured time
-- error if the refresh failed
+### E.1 Source-of-truth rules per field
 
-The leaderboard will use the latest successful metric snapshot per post. This gives us an audit trail instead of overwriting numbers blindly.
+| Field | Trust order (highest → lowest) | Reason |
+|---|---|---|
+| `post_url` (canonical) | Manual > oEmbed-resolved > Ensemble > Apify | Manual is human-verified; resolvers are deterministic |
+| `views` / `likes` / `comments` / `shares` | **Take the MAX across sources for the same `post_url`**, never the latest | Counters only ever grow; any source that returns a lower number is stale or an undercount |
+| `caption` / `thumbnail_url` / `posted_at` | First non-empty wins, never overwritten unless newer source is also non-empty AND row is "manual-locked: false" | Avoids flapping |
+| `status` (`approved` / `rejected` / `winner`) | **Manual-only** — never written by any fetcher | Editorial decision |
+| `placement_rank` / `prize` | **Manual-only** | Editorial |
+| `score` | **Computed**, never written by fetchers | Derived from the merged metrics + formula |
 
-### 4. Add a normalized leaderboard view
-Create a read-only database view or function that returns one row per contestant with:
-- contestant info
-- all linked posts
-- latest metrics per post
-- summed score
-- post count
-- missing-data flags
-- winner placement/prize if applicable
+### E.2 Storage shape (no schema migration)
 
-The admin dashboard, public report, CSV export, and future reports will all use this same source so numbers match everywhere.
+Use the existing `metadata jsonb` column as a per-source ledger so no source overwrites another:
 
-### 5. Migrate existing data safely
-Backfill from current `contest_entries` into the new structure:
-- group rows by registration ID, email, phone, handle, and full name
-- preserve the 263-ish contestant roster
-- attach known posts to the right contestant
-- preserve current winner statuses and placement metadata
-- mark rows with invalid handles/manual-only Facebook as needing review
-
-No current data should be deleted during migration.
-
-### 6. Fix the current UI/report behavior
-Update the admin contest page and public report to:
-- show **all contestants**, not just the top 12 cards
-- show clear counts: registered contestants, contestants with posts, contestants with verified metrics, missing metrics
-- use the same leaderboard data source for big boxes and tables
-- show “Needs review” instead of silently hiding rows with no metrics
-- ensure winners use their contestant’s linked metrics instead of zero-value winner rows
-
-### 7. Make syncing reliable
-Change sync flow to be roster-first:
-
-```text
-CSV/feed/manual registration
-  -> upsert contestant
-  -> normalize handles
-  -> discover or attach posts
-  -> refresh post metrics
-  -> leaderboard view calculates totals
+```json
+{
+  "sources": {
+    "ensemble":  { "fetched_at": "...", "views": 1200, "likes": 80, "comments": 4, "shares": 1, "post_url": "..." },
+    "apify":     { "fetched_at": "...", "views": 1184, "likes": 80, "comments": 4, "shares": 1 },
+    "meta":      { "fetched_at": "...", "views": null, "likes": 79 },
+    "manual":    { "edited_at": "...",  "views": 1500, "edited_by": "user_id" }
+  },
+  "merge": { "computed_at": "...", "winning_source_per_field": {...} },
+  "fetch_attempts": [
+    { "at": "...", "source": "ensemble", "endpoint": "tt/post/info", "ok": false, "error": "invalid_short_url" }
+  ],
+  "locks": { "post_url": false, "metrics": false }
+}
 ```
 
-Providers like Ensemble/Apify/Meta become enrichment sources, not the source of truth. If a provider hits quota, contestants still remain visible and flagged as “metrics pending”.
+The top-level columns (`views`, `likes`, `comments`, `shares`, `post_url`, `caption`, `thumbnail_url`, `posted_at`) stay as the **computed merged values**, so all existing UI/report code keeps working unchanged.
 
-## Implementation steps
+### E.3 Merge function
 
-1. Add new database tables and access rules for contestants, posts, and metric snapshots.
-2. Add a database view/function for the canonical contest leaderboard.
-3. Backfill the current contest data into the new tables.
-4. Update sync edge functions to write to the new tables.
-5. Update admin contest UI to read from the canonical leaderboard and show integrity counts.
-6. Update public report and export/report generation to use the same canonical leaderboard.
-7. Add a “data quality” panel showing missing posts, invalid handles, provider quota failures, and rows needing manual review.
+A single `mergeEntry(row, incoming, source)` helper, used by every edge function before writing:
 
-## Expected result
+1. Write `metadata.sources[source] = incoming` (untouched raw payload from that source).
+2. Append `{ at, source, endpoint, ok, error? }` to `metadata.fetch_attempts` (cap at last 20).
+3. Recompute top-level merged columns from `metadata.sources` using the rules in E.1 (MAX for counters, trust order for URL).
+4. If `metadata.locks.<field> === true`, skip recomputing that field — manual lock wins forever.
+5. Never touch `status`, `placement_rank`, `prize`, `full_name`, contact fields from a fetcher payload.
 
-After this, the contest should consistently show the full contestant roster, with no unexplained drop to 13 rows, and the admin page, public report, and exports should all match because they will read from the same normalized leaderboard source.
+### E.4 Manual edits
+
+When a user edits a row in the UI, mark `metadata.locks.metrics = true` (and/or `locks.post_url = true`) and stamp `sources.manual`. The next fetcher run still records its findings in `metadata.sources` (good for audit) but does not overwrite the displayed value.
+
+### E.5 Deduping at the contestant level
+
+Today duplicate rows for the same person are independent. Group key (already used in UI):
+
+```text
+contest_id + lower(strip(first_non_empty(tiktok_handle, instagram_handle, facebook_handle, handle, full_name_slug)))
+```
+
+For the leaderboard total we **SUM across unique `canonical(post_url)`** belonging to that group (a contestant's IG + TikTok + FB add up), but within one `post_url` we take the **single merged metric** (no double counting if 2 sources fetched the same URL).
+
+### E.6 Audit visibility
+
+- A small "Data sources" popover on each card showing which source supplied which field, last fetch time per source, and the last 3 attempts (success/error). Gives you eyes on integrity without opening the DB.
+
+## F. UI restructure (kept from previous turn)
+
+- Drop the "Leaderboard · everyone still in the running" header; single unified table.
+- Cards: top 10 only, header `Top 10 (showing 10 of {{total}})`.
+- Below: one sortable table of every contestant 1..N including winners (crown badge).
+- Per-row "Refresh this contestant" button runs the chain in C for that handle only.
+
+## G. Files touched
+
+- `src/pages/app/ContestsSection.tsx` — top-10 cards, single table, drop subheader, handle-based winner rollup, per-row refresh button, Data-sources popover.
+- `supabase/functions/_shared/fetch-metrics.ts` (new) — `resolveShortUrl`, `canonicalize`, `oembedCheck`, `fetchTikTokMetrics`, `fetchInstagramMetrics`, `fetchFacebookMetrics` (with Apify fallback), `discoverPostsByHandle`, **`mergeEntry`**.
+- `supabase/functions/contest-refresh-metrics/index.ts` — use shared helper + `mergeEntry`, run per-handle discovery on URL-less/zero rows, auto-rescue winners.
+- `supabase/functions/contest-fetch-handle-posts/index.ts` — use shared helper, accept `single_entry_id` for the per-row button.
+- `supabase/functions/contest-refresh-metrics-meta/index.ts` — Apify FB fallback, use `mergeEntry`.
+- `supabase/functions/contest-refresh-metrics-apify/index.ts` — use `mergeEntry`.
+- `supabase/functions/contest-discover-posts/index.ts` — broaden IG canonicalization, use `mergeEntry`, persist `fetch_attempts`.
+
+## H. Out of scope this round
+
+- Schema split into `contest_contestants` / `contest_posts` / `contest_post_metrics` — still the long-term right answer, but this plan delivers the integrity guarantees without that migration risk.
+- Building our own FB hashtag crawler — not feasible without owned page tokens.
