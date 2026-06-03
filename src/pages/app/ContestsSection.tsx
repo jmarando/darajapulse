@@ -744,15 +744,29 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
               {(() => {
                 const winnerRows = entries.filter(isAnnouncedWinner);
                 if (winnerRows.length === 0) return null;
-                const winners = groupEntriesByContestant(winnerRows).map(rows => {
+                // Group ALL entries (not just winner-flagged rows) so a winner's
+                // metrics include their non-winner duplicate rows (CSV, scraper, etc.).
+                const allGroups = groupEntriesByContestant(entries);
+                const winnerKeys = new Set(winnerRows.map(r => r.id));
+                const winnerGroups = allGroups.filter(rows => rows.some(r => winnerKeys.has(r.id)));
+                const winners = winnerGroups.map(rows => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
-                  const total = rows.reduce((s, r) => s + scoreOf(r), 0);
+                  // Sum across unique posts by canonical URL (dedupe across platform rows).
+                  const byUrl = new Map<string, number>();
+                  for (const row of rows) {
+                    for (const post of [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])]) {
+                      const k = canonicalPostUrl(post?.post_url);
+                      if (!k) continue;
+                      byUrl.set(k, Math.max(byUrl.get(k) ?? 0, scoreOf(post)));
+                    }
+                  }
+                  const total = Array.from(byUrl.values()).reduce((s, v) => s + v, 0);
                   const withMeta = rows.find(r => r.metadata?.placement_rank) || reg;
                   const m = withMeta?.metadata || {};
                   return {
                     id: reg.id,
                     name: reg.full_name || reg.submitter_name || reg.handle || "Winner",
-                    handle: reg.handle,
+                    handle: reg.handle || reg.tiktok_handle || reg.instagram_handle || reg.facebook_handle,
                     total,
                     placement: m.placement as string | undefined,
                     prize: m.prize as string | undefined,
