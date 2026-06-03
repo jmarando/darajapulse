@@ -808,7 +808,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                   <div className="mb-6">
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Contestants ({contestants.length})</div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.slice(0, 12).map(({ key, reg, posts, total }, i) => {
+                      {contestants.map(({ key, reg, posts, total }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
                         const hasAutoCapable = !!(reg.instagram_handle || reg.tiktok_handle);
