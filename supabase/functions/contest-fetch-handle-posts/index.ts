@@ -278,7 +278,7 @@ Deno.serve(async (req) => {
 
     try { await sb.functions.invoke("contest-poll", { body: { contest_id } }); } catch (_) {}
 
-    return new Response(JSON.stringify({ fetched, upserted, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ fetched, upserted, discoveryUsed, discoveryCap, skipped_cooldown, skipped_budget, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (runId) await sb.from("contestant_sync_runs").update({ finished_at: new Date().toISOString(), status: "error", errors: [{ msg }] }).eq("id", runId);
