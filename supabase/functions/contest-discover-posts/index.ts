@@ -105,12 +105,17 @@ async function discoverTikTokED(tags: string[]) {
   for (const rawTag of tags) {
     const tag = stripHash(rawTag);
     try {
-      // EnsembleData TikTok hashtag posts. 1 page = up to ~30 posts.
-      const url = `https://ensembledata.com/apis/tt/hashtag/posts?name=${encodeURIComponent(tag)}&cursor=0&token=${ENSEMBLEDATA_TOKEN}`;
-      const r = await fetch(url);
-      const j = await r.json();
-      if (!r.ok) {
-        errors.push({ tag, msg: `ED ${r.status}: ${JSON.stringify(j).slice(0, 200)}` });
+      // EnsembleData TikTok hashtag posts. Try each token on quota errors.
+      let r: Response | null = null;
+      let j: any = null;
+      for (const tok of ED_TOKENS) {
+        r = await fetch(`https://ensembledata.com/apis/tt/hashtag/posts?name=${encodeURIComponent(tag)}&cursor=0&token=${tok}`);
+        j = await r.json().catch(() => ({}));
+        if (r.ok) break;
+        if (r.status !== 402 && r.status !== 429 && r.status !== 403) break;
+      }
+      if (!r || !r.ok) {
+        errors.push({ tag, msg: `ED ${r?.status}: ${JSON.stringify(j).slice(0, 200)}` });
         continue;
       }
       const items = j?.data?.data ?? j?.data ?? [];
