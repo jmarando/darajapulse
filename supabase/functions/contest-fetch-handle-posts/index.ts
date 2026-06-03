@@ -22,7 +22,7 @@ async function edFetch(buildUrl: (token: string) => string): Promise<{ res: Resp
     const json = await res.json().catch(() => ({}));
     if (res.ok) return { res, json };
     last = { res, json };
-    if (res.status !== 402 && res.status !== 429 && res.status !== 403) break;
+    if (res.status !== 402 && res.status !== 429 && res.status !== 403 && res.status !== 495) break;
   }
   return last!;
 }

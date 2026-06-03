@@ -84,7 +84,7 @@ async function ed(path: string, params: Record<string, string>) {
     let json: any;
     try { json = JSON.parse(text); } catch { lastErr = new Error(`Ensemble non-JSON [${r.status}]: ${text.slice(0, 200)}`); continue; }
     if (r.ok) return json;
-    if (r.status === 402 || r.status === 429 || r.status === 403) {
+    if (r.status === 402 || r.status === 429 || r.status === 403 || r.status === 495) {
       lastErr = new Error(`Ensemble ${path} ${r.status}: ${JSON.stringify(json).slice(0, 300)}`);
       continue;
     }
