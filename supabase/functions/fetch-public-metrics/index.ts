@@ -13,7 +13,12 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ENSEMBLE_TOKEN = Deno.env.get("ENSEMBLEDATA_API_TOKEN") ?? Deno.env.get("ENSEMBLE_DATA_API_TOKEN") ?? "";
+const ED_TOKENS = [
+  Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
+  Deno.env.get("ENSEMBLE_DATA_API_TOKEN"),
+  Deno.env.get("ENSEMBLEDATA_API_TOKEN_2"),
+].filter((t): t is string => !!t && t.length > 0);
+const ENSEMBLE_TOKEN = ED_TOKENS[0] ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
