@@ -1,5 +1,17 @@
 # Contest data integrity — full plan
 
+## Ensemble unit budget (1500 units / day, resets 00:00 UTC)
+
+| Job | Cost | Frequency |
+|---|---|---|
+| Per-URL metrics refresh (`tt/post/info?url=` etc.) | 1 unit per known post | Daily, all ~250 known posts → ~250u |
+| Hashtag sweep (`tt/hashtag/posts`) | ~10u | Daily, finds brand-new public posts |
+| Per-handle discovery (`tt/user/posts`, `instagram/user/info` + `user/posts`) | ~2–4u per contestant | Capped at 80 contestants/run with a 22h cooldown — rotates through the backlog over ~3 days |
+
+Once a contestant's `post_url` is stored, future runs **skip discovery entirely** for that row and just call the cheap 1-unit per-URL refresh. `metadata.discovery.found_nothing = true` puts a row on cooldown so we don't pound dead handles every day.
+
+
+
 ## A. What's actually broken (audited)
 
 Live counts on contest `531899fc…` (271 rows):

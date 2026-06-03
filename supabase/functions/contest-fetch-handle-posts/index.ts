@@ -148,12 +148,22 @@ Deno.serve(async (req) => {
 
     // Candidates: registered entries with a TT or IG handle. FB skipped.
     const { data: entries } = await sb.from("contest_entries")
-      .select("id, handle, tiktok_handle, instagram_handle, platform, post_url, views, likes, comments, shares, source")
+      .select("id, handle, tiktok_handle, instagram_handle, platform, post_url, views, likes, comments, shares, source, metadata")
       .eq("contest_id", contest_id);
 
-    let fetched = 0, upserted = 0;
+    let fetched = 0, upserted = 0, skipped_cooldown = 0, skipped_budget = 0;
     const errors: any[] = [];
     const only: string | undefined = body.only_handle;
+    // Unit-budget guard. Ensemble gives us 1500 units/day. Per-handle discovery
+    // is ~2u/platform/contestant. Cap discoveries per run and rotate through
+    // the backlog over multiple days.
+    const discoveryCap: number = Number(body.discovery_cap ?? 80);
+    // Cooldown: skip handles we tried in the last N hours that returned nothing.
+    const cooldownHours: number = Number(body.cooldown_hours ?? 22);
+    const cooldownMs = cooldownHours * 3600 * 1000;
+    let discoveryUsed = 0;
+
+
 
     for (const e of entries ?? []) {
       const candidates: { platform: "tiktok" | "instagram"; handle: string }[] = [];
@@ -178,9 +188,30 @@ Deno.serve(async (req) => {
       if (!validCandidates.length) continue;
 
       // Process if the row has no post_url OR has zero metrics (rescue path for winners
-      // and handle-only registrants).
+      // and handle-only registrants). Once a post_url exists with metrics, we skip
+      // discovery entirely — the cheap per-URL refresh job handles those.
       const noMetrics = Number(e.views || 0) <= 0 && Number(e.likes || 0) <= 0;
       if (e.post_url && !noMetrics) continue;
+
+      // Cooldown: skip handles we already tried recently and found nothing.
+      const meta: any = e.metadata || {};
+      const disc = meta.discovery || {};
+      const lastAttemptMs = disc.last_attempt_at ? new Date(disc.last_attempt_at).getTime() : 0;
+      const recentlyTried = lastAttemptMs && (Date.now() - lastAttemptMs) < cooldownMs;
+      if (recentlyTried && disc.found_nothing && !onlyHandle) {
+        skipped_cooldown++;
+        continue;
+      }
+
+      // Budget cap — once we've spent the per-run discovery budget, defer the
+      // rest to tomorrow's cron so we don't blow the daily Ensemble allowance.
+      if (!onlyHandle && discoveryUsed >= discoveryCap) {
+        skipped_budget++;
+        continue;
+      }
+      discoveryUsed++;
+
+
 
       // Pick the HIGHEST-SCORING matching post across all the candidate handles.
       let best: any = null;
@@ -202,7 +233,16 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (!best) continue;
+      const nowIso = new Date().toISOString();
+      const attempts = Array.isArray(disc.attempts) ? disc.attempts.slice(-9) : [];
+      attempts.push({ at: nowIso, handles: validCandidates.map(c => `${c.platform}:${c.handle}`), found: !!best });
+
+      if (!best) {
+        // Persist the failed attempt so the cooldown kicks in.
+        const newMeta = { ...meta, discovery: { last_attempt_at: nowIso, found_nothing: true, attempts } };
+        await sb.from("contest_entries").update({ metadata: newMeta, last_polled_at: nowIso }).eq("id", e.id);
+        continue;
+      }
       // MAX merge for counters so we never overwrite higher existing values.
       const merged = {
         views: Math.max(Number(best.views || 0), Number(e.views || 0)),
@@ -210,6 +250,7 @@ Deno.serve(async (req) => {
         comments: Math.max(Number(best.comments || 0), Number(e.comments || 0)),
         shares: Math.max(Number(best.shares || 0), Number(e.shares || 0)),
       };
+      const newMeta = { ...meta, discovery: { last_attempt_at: nowIso, found_nothing: false, attempts, post_url: best.post_url } };
       const upd: any = {
         platform: best.platform,
         post_url: e.post_url || best.post_url,
@@ -218,15 +259,17 @@ Deno.serve(async (req) => {
         posted_at: best.posted_at,
         ...merged,
         score: scoreOf(merged),
+        metadata: newMeta,
         // Do NOT change status for announced winners — that's editorial.
         ...(e.source === "registration" || e.source === "manual" ? { status: "approved" } : {}),
         source: "ensembledata",
-        last_polled_at: new Date().toISOString(),
+        last_polled_at: nowIso,
       };
       const { error } = await sb.from("contest_entries").update(upd).eq("id", e.id);
       if (error) errors.push({ entry: e.id, msg: error.message });
       else upserted++;
     }
+
 
 
     if (runId) await sb.from("contestant_sync_runs").update({
@@ -235,7 +278,7 @@ Deno.serve(async (req) => {
 
     try { await sb.functions.invoke("contest-poll", { body: { contest_id } }); } catch (_) {}
 
-    return new Response(JSON.stringify({ fetched, upserted, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ fetched, upserted, discoveryUsed, discoveryCap, skipped_cooldown, skipped_budget, errors }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (runId) await sb.from("contestant_sync_runs").update({ finished_at: new Date().toISOString(), status: "error", errors: [{ msg }] }).eq("id", runId);
