@@ -7,7 +7,25 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
-const ED = Deno.env.get("ENSEMBLEDATA_API_TOKEN");
+const ED_TOKENS = [
+  Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
+  Deno.env.get("ENSEMBLE_DATA_API_TOKEN"),
+  Deno.env.get("ENSEMBLEDATA_API_TOKEN_2"),
+].filter((t): t is string => !!t && t.length > 0);
+const ED = ED_TOKENS[0];
+
+async function edFetch(buildUrl: (token: string) => string): Promise<{ res: Response; json: any }> {
+  if (ED_TOKENS.length === 0) throw new Error("ENSEMBLEDATA_API_TOKEN not configured");
+  let last: { res: Response; json: any } | null = null;
+  for (const tok of ED_TOKENS) {
+    const res = await fetch(buildUrl(tok));
+    const json = await res.json().catch(() => ({}));
+    if (res.ok) return { res, json };
+    last = { res, json };
+    if (res.status !== 402 && res.status !== 429 && res.status !== 403) break;
+  }
+  return last!;
+}
 
 const scoreOf = (s: { shares?: any; comments?: any; likes?: any; views?: any }) =>
   Number(s.shares || 0) * 3 + Number(s.comments || 0) * 2 + Number(s.likes || 0) + Number(s.views || 0);
