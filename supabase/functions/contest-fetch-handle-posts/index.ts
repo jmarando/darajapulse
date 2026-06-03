@@ -233,7 +233,16 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (!best) continue;
+      const nowIso = new Date().toISOString();
+      const attempts = Array.isArray(disc.attempts) ? disc.attempts.slice(-9) : [];
+      attempts.push({ at: nowIso, handles: validCandidates.map(c => `${c.platform}:${c.handle}`), found: !!best });
+
+      if (!best) {
+        // Persist the failed attempt so the cooldown kicks in.
+        const newMeta = { ...meta, discovery: { last_attempt_at: nowIso, found_nothing: true, attempts } };
+        await sb.from("contest_entries").update({ metadata: newMeta, last_polled_at: nowIso }).eq("id", e.id);
+        continue;
+      }
       // MAX merge for counters so we never overwrite higher existing values.
       const merged = {
         views: Math.max(Number(best.views || 0), Number(e.views || 0)),
@@ -241,6 +250,7 @@ Deno.serve(async (req) => {
         comments: Math.max(Number(best.comments || 0), Number(e.comments || 0)),
         shares: Math.max(Number(best.shares || 0), Number(e.shares || 0)),
       };
+      const newMeta = { ...meta, discovery: { last_attempt_at: nowIso, found_nothing: false, attempts, post_url: best.post_url } };
       const upd: any = {
         platform: best.platform,
         post_url: e.post_url || best.post_url,
@@ -249,15 +259,17 @@ Deno.serve(async (req) => {
         posted_at: best.posted_at,
         ...merged,
         score: scoreOf(merged),
+        metadata: newMeta,
         // Do NOT change status for announced winners — that's editorial.
         ...(e.source === "registration" || e.source === "manual" ? { status: "approved" } : {}),
         source: "ensembledata",
-        last_polled_at: new Date().toISOString(),
+        last_polled_at: nowIso,
       };
       const { error } = await sb.from("contest_entries").update(upd).eq("id", e.id);
       if (error) errors.push({ entry: e.id, msg: error.message });
       else upserted++;
     }
+
 
 
     if (runId) await sb.from("contestant_sync_runs").update({
