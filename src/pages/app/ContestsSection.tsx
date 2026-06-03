@@ -744,13 +744,39 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
               {(() => {
                 const winnerRows = entries.filter(isAnnouncedWinner);
                 if (winnerRows.length === 0) return null;
-                // Group ALL entries (not just winner-flagged rows) so a winner's
-                // metrics include their non-winner duplicate rows (CSV, scraper, etc.).
+                // Group ALL entries so a winner's metrics include their non-winner
+                // duplicate rows (CSV / scraper / manually-attached posts).
                 const allGroups = groupEntriesByContestant(entries);
                 const winnerKeys = new Set(winnerRows.map(r => r.id));
                 const winnerGroups = allGroups.filter(rows => rows.some(r => winnerKeys.has(r.id)));
+                // Fuzzy fallback: for winners whose handles don't match any sibling row
+                // (e.g. Helvin's winner row says "Life&style" but her real sibling row
+                // uses "helvin_lifestyle"), pull in rows whose handle/full_name contains
+                // a token from the winner's full_name. Skip single-word tokens shorter
+                // than 5 chars to avoid bad matches like "njagi" → unrelated Njagi rows.
+                const usedRowIds = new Set(winnerGroups.flat().map(r => r.id));
+                for (const wRow of winnerRows) {
+                  const grp = winnerGroups.find(g => g.some(r => r.id === wRow.id));
+                  if (!grp) continue;
+                  const nameTokens = String(wRow.full_name || wRow.submitter_name || "")
+                    .toLowerCase().split(/\s+/).filter(t => t.length >= 5);
+                  if (!nameTokens.length) continue;
+                  for (const e of entries) {
+                    if (usedRowIds.has(e.id)) continue;
+                    if (Number(e.views || 0) <= 0 && Number(e.likes || 0) <= 0) continue;
+                    const hay = [e.handle, e.tiktok_handle, e.instagram_handle, e.facebook_handle, e.full_name, e.submitter_name]
+                      .map(s => String(s || "").toLowerCase()).join(" ");
+                    if (nameTokens.some(t => hay.includes(t))) {
+                      grp.push(e);
+                      usedRowIds.add(e.id);
+                    }
+                  }
+                }
                 const winners = winnerGroups.map(rows => {
-                  const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
+                  const reg = rows.find(r => r.id === winnerRows.find(w => rows.some(rr => rr.id === w.id))?.id)
+                    || rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed")
+                    || rows[0];
+
                   // Sum across unique posts by canonical URL (dedupe across platform rows).
                   const byUrl = new Map<string, number>();
                   for (const row of rows) {
