@@ -188,9 +188,30 @@ Deno.serve(async (req) => {
       if (!validCandidates.length) continue;
 
       // Process if the row has no post_url OR has zero metrics (rescue path for winners
-      // and handle-only registrants).
+      // and handle-only registrants). Once a post_url exists with metrics, we skip
+      // discovery entirely — the cheap per-URL refresh job handles those.
       const noMetrics = Number(e.views || 0) <= 0 && Number(e.likes || 0) <= 0;
       if (e.post_url && !noMetrics) continue;
+
+      // Cooldown: skip handles we already tried recently and found nothing.
+      const meta: any = e.metadata || {};
+      const disc = meta.discovery || {};
+      const lastAttemptMs = disc.last_attempt_at ? new Date(disc.last_attempt_at).getTime() : 0;
+      const recentlyTried = lastAttemptMs && (Date.now() - lastAttemptMs) < cooldownMs;
+      if (recentlyTried && disc.found_nothing && !onlyHandle) {
+        skipped_cooldown++;
+        continue;
+      }
+
+      // Budget cap — once we've spent the per-run discovery budget, defer the
+      // rest to tomorrow's cron so we don't blow the daily Ensemble allowance.
+      if (!onlyHandle && discoveryUsed >= discoveryCap) {
+        skipped_budget++;
+        continue;
+      }
+      discoveryUsed++;
+
+
 
       // Pick the HIGHEST-SCORING matching post across all the candidate handles.
       let best: any = null;
