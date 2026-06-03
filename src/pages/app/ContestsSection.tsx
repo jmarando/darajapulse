@@ -491,12 +491,11 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     }
   }, [availableRounds, selectedRound]);
 
-  const activeRound = 1;
-  // Single running list: include everyone EXCEPT the announced winners (top 5 already removed from the running).
+  // Single running list across ALL rounds: include everyone EXCEPT the announced winners.
   const isAnnouncedWinner = (e: any) => e.status === "winner" || e.metadata?.placement_rank != null;
   const entriesForRound = useMemo(
-    () => entries.filter(e => !isAnnouncedWinner(e) && (e.round_number || 1) === activeRound),
-    [entries, activeRound]
+    () => entries.filter(e => !isAnnouncedWinner(e)),
+    [entries]
   );
 
 
