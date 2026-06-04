@@ -284,6 +284,18 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
         if (h) set.add(h);
       }
     }
+    // Per-contest exclusion list (royco.ke, etc.) — treat as paid-creator handles
+    // so all existing filters skip them in scoring, leaderboard, and table.
+    if (cid) {
+      const { data: excl } = await (supabase as any)
+        .from("contest_excluded_handles")
+        .select("handle")
+        .eq("contest_id", cid);
+      for (const row of excl ?? []) {
+        const h = cleanH((row as any).handle);
+        if (h) set.add(h);
+      }
+    }
     setCreatorHandles(set);
   };
 

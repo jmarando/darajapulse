@@ -96,9 +96,15 @@ Deno.serve(async (req) => {
     const regs = normalize(payload);
 
     let upserted = 0;
+    let skipped_excluded = 0;
     const errors: any[] = [];
+    const cleanH = (s?: string | null) => (s || "").trim().replace(/^@+/, "").toLowerCase();
+    const { data: excluded } = await sb.from("contest_excluded_handles").select("handle").eq("contest_id", contest_id);
+    const excludedSet = new Set<string>(((excluded ?? []) as any[]).map((r: any) => cleanH(r.handle)).filter(Boolean));
     for (const r of regs) {
       try {
+        const handles = [r.instagram, r.tiktok, r.facebook].map(cleanH).filter(Boolean);
+        if (handles.some((h) => excludedSet.has(h))) { skipped_excluded++; continue; }
         const row = {
           contest_id,
           external_registration_id: r.external_id,
