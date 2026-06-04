@@ -964,6 +964,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                     <span className="inline-flex items-center gap-1" title="Views"><Eye className="w-3 h-3 shrink-0" />{(p.views || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Likes"><Heart className="w-3 h-3 shrink-0" />{(p.likes || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Comments"><MessageCircle className="w-3 h-3 shrink-0" />{(p.comments || 0).toLocaleString()}</span>
+                                    <span className="inline-flex items-center gap-1" title="Shares"><Share2 className="w-3 h-3 shrink-0" />{(p.shares || 0).toLocaleString()}</span>
                                   </span>
                                   <span className={`font-semibold tabular-nums text-right shrink-0 pl-1 ${isTop ? "text-accent" : "text-muted-foreground"}`}>{Math.round(scoreOf(p)).toLocaleString()}</span>
 
