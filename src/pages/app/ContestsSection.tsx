@@ -884,6 +884,24 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                     rank: (m.placement_rank as number | undefined) ?? 99,
                   };
                 }).sort((a, b) => a.rank - b.rank);
+                // Steady-state announced scores (locked so live metric drift doesn't change them).
+                const FROZEN_WINNER_PTS: Record<string, number> = {
+                  irenenduku0: 205918,
+                  carol_imwangi: 358390,
+                  lukanjagi: 21047,
+                  gordoncooks1: 91876,
+                  helvin_lifestyle: 81707,
+                };
+                for (const w of winners) {
+                  const key = String(w.handle || "").toLowerCase().replace(/^@/, "");
+                  if (FROZEN_WINNER_PTS[key] != null) w.total = FROZEN_WINNER_PTS[key];
+                  else {
+                    // Fuzzy match by name token for winners whose handle differs (e.g. Helvin "Life&style").
+                    const nameKey = String(w.name || "").toLowerCase();
+                    if (nameKey.includes("helvin")) w.total = FROZEN_WINNER_PTS.helvin_lifestyle;
+                    else if (nameKey.includes("gordon")) w.total = FROZEN_WINNER_PTS.gordoncooks1;
+                  }
+                }
                 return (
                   <div className="mb-5 p-4 rounded-lg border border-accent/30 bg-accent/5">
                     <div className="flex items-center gap-2 mb-3">
