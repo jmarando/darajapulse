@@ -623,6 +623,30 @@ export type Database = {
           },
         ]
       }
+      contest_excluded_handles: {
+        Row: {
+          contest_id: string
+          created_at: string
+          handle: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          contest_id: string
+          created_at?: string
+          handle: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          contest_id?: string
+          created_at?: string
+          handle?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       contestant_sync_runs: {
         Row: {
           contest_id: string | null
