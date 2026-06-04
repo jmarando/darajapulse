@@ -498,6 +498,51 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     [entries]
   );
 
+  // Compute which rows belong to (a) announced winners (incl. fuzzy-matched siblings)
+  // and (b) the top-10 contestants. We use these to make sure each contestant
+  // appears in exactly one place: winners card, top-10 cards, OR the table below.
+  const { winnerRelatedRowIds, top10RowIds } = useMemo(() => {
+    const winnerRows = entries.filter(isAnnouncedWinner);
+    const allGroups = groupEntriesByContestant(entries);
+    const winnerKeys = new Set(winnerRows.map((r: any) => r.id));
+    const winnerGroups = allGroups.filter((rows: any[]) => rows.some(r => winnerKeys.has(r.id)));
+    const used = new Set<string>(winnerGroups.flat().map((r: any) => r.id));
+    for (const wRow of winnerRows) {
+      const grp = winnerGroups.find((g: any[]) => g.some(r => r.id === wRow.id));
+      if (!grp) continue;
+      const nameTokens = String(wRow.full_name || wRow.submitter_name || "")
+        .toLowerCase().split(/\s+/).filter(t => t.length >= 5);
+      if (!nameTokens.length) continue;
+      for (const e of entries) {
+        if (used.has(e.id)) continue;
+        if (Number(e.views || 0) <= 0 && Number(e.likes || 0) <= 0) continue;
+        const hay = [e.handle, e.tiktok_handle, e.instagram_handle, e.facebook_handle, e.full_name, e.submitter_name]
+          .map(s => String(s || "").toLowerCase()).join(" ");
+        if (nameTokens.some(t => hay.includes(t))) { grp.push(e); used.add(e.id); }
+      }
+    }
+    const winnerRelatedRowIds = new Set<string>(winnerGroups.flat().map((r: any) => r.id));
+
+    const nonCreator = entries.filter(e => !isCreator(e) && !winnerRelatedRowIds.has(e.id));
+    const grouped = groupEntriesByContestant(nonCreator);
+    const contestants = grouped.map((rows: any[]) => {
+      const byUrl = new Map<string, any>();
+      for (const row of rows) {
+        const cands = [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])];
+        for (const post of cands) {
+          const k = canonicalPostUrl(post?.post_url);
+          if (!k) continue;
+          const prev = byUrl.get(k);
+          if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(k, post);
+        }
+      }
+      const total = Array.from(byUrl.values()).reduce((s, p) => s + scoreOf(p), 0);
+      return { rows, total };
+    }).sort((a, b) => b.total - a.total);
+    const top10RowIds = new Set<string>(contestants.slice(0, 10).flatMap(c => c.rows.map((r: any) => r.id)));
+    return { winnerRelatedRowIds, top10RowIds };
+  }, [entries, creatorHandles]);
+
 
   const exportCsv = () => {
     if (!active || !entries.length) return toast.error("No entries to export");
