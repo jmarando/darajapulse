@@ -915,7 +915,6 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                           <div className="text-[10px] uppercase tracking-wider text-accent font-semibold">{w.placement || "Winner"}</div>
                           <div className="text-sm font-medium truncate">{w.name}</div>
                           {w.handle && <div className="text-[11px] text-muted-foreground truncate">@{w.handle}</div>}
-                          <div className="text-[11px] text-muted-foreground tabular-nums">{Math.round(w.total).toLocaleString()} pts</div>
                           {w.prize && <div className="text-[11px] text-foreground mt-1 leading-snug">🎁 {w.prize}</div>}
                         </div>
                       ))}
