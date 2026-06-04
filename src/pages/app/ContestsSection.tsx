@@ -979,9 +979,11 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                 <div className="text-center py-8 border border-dashed border-border rounded-md text-sm text-muted-foreground">No entries yet. Click "Sync contestants" to pull registrations, then "Discover posts" to find their #{active.hashtag.replace(/^#/, "")} entries on IG/TikTok.</div>
               ) : (
                 <div className="space-y-5">
-                  {byRound.map(([round, rows]) => (
+                  {byRound.map(([round, rows]) => {
+                    const tableRows = rows.filter((e: any) => !winnerRelatedRowIds.has(e.id) && !top10RowIds.has(e.id));
+                    if (tableRows.length === 0) return null;
+                    return (
                     <div key={round}>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1"><Users className="w-3 h-3" /> Full ranking · {rows.length} contestants</div>
                       <div className="overflow-x-auto border border-border rounded-md">
                         <table className="w-full text-sm">
                           <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
@@ -999,7 +1001,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                             </tr>
                           </thead>
                           <tbody>
-                            {rows.sort((a, b) => (b.score || 0) - (a.score || 0)).map((e, i) => {
+                            {tableRows.sort((a, b) => (b.score || 0) - (a.score || 0)).map((e, i) => {
                               const posts = Array.isArray(e._posts) ? e._posts : [];
                               const allRows = Array.isArray(e._allRows) ? e._allRows : [e];
                               const auto = allRows.some(isAuto);
