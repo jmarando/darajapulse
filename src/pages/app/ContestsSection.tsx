@@ -65,17 +65,24 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     return Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a) || sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b) || new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0] || null;
   };
 
-  // A contestant's total score is the SUM of scores across every unique post they entered
-  // (Facebook + Instagram + TikTok), deduped by canonical post URL.
+  // Score = sum of the BEST post per platform (TikTok + IG + FB stack, two
+  // TikToks do not). Dedupes by canonical URL first.
   const bestScore = (e: any) => {
     const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-    const byUrl = new Map<string, number>();
+    const byUrl = new Map<string, { platform: string; score: number }>();
     for (const p of [e, ...xs]) {
       const k = canonicalPostUrl(p?.post_url);
       if (!k) continue;
-      byUrl.set(k, Math.max(byUrl.get(k) ?? 0, scoreOf(p)));
+      const plat = String(p?.platform || "other").toLowerCase();
+      const s = scoreOf(p);
+      const prev = byUrl.get(k);
+      if (!prev || s > prev.score) byUrl.set(k, { platform: plat, score: s });
     }
-    return Array.from(byUrl.values()).reduce((a, b) => a + b, 0);
+    const bestPerPlatform = new Map<string, number>();
+    for (const { platform, score } of byUrl.values()) {
+      bestPerPlatform.set(platform, Math.max(bestPerPlatform.get(platform) ?? 0, score));
+    }
+    return Array.from(bestPerPlatform.values()).reduce((a, b) => a + b, 0);
   };
   // Identify whether an entry was auto-fetched from a public scraper or entered/registered by a human.
   const AUTO_SOURCES = new Set(["meta_graph", "ensembledata", "tiktok_api", "instagram_api", "apify"]);
