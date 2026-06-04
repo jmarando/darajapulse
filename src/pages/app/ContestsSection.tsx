@@ -845,16 +845,19 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                     || rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed")
                     || rows[0];
 
-                  // Sum across unique posts by canonical URL (dedupe across platform rows).
-                  const byUrl = new Map<string, number>();
+                  // Pick the best post per platform, then sum across platforms.
+                  const bestByPlat = new Map<string, { url: string; score: number; platform: string }>();
                   for (const row of rows) {
                     for (const post of [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])]) {
                       const k = canonicalPostUrl(post?.post_url);
                       if (!k) continue;
-                      byUrl.set(k, Math.max(byUrl.get(k) ?? 0, scoreOf(post)));
+                      const plat = String(post?.platform || row.platform || "other").toLowerCase();
+                      const s = scoreOf(post);
+                      const prev = bestByPlat.get(plat);
+                      if (!prev || s > prev.score) bestByPlat.set(plat, { url: k, score: s, platform: plat });
                     }
                   }
-                  const total = Array.from(byUrl.values()).reduce((s, v) => s + v, 0);
+                  const total = Array.from(bestByPlat.values()).reduce((s, v) => s + v.score, 0);
                   const withMeta = rows.find(r => r.metadata?.placement_rank) || reg;
                   const m = withMeta?.metadata || {};
                   return {
