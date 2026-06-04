@@ -1075,7 +1075,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                       </table>
                     </div>
                   );
-                })()}
+                })()
               )}
 
               {/* Public submission link — moved to the bottom so the leaderboard leads */}
