@@ -906,10 +906,17 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                       if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(key2, { ...post, _entryId: row.id, id: post.id ?? `${row.id}:${key2}` });
                     }
                   }
-                  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
-                  // Total = SUM across every unique post (FB + IG + TikTok all add up).
+                  const allPosts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+                  // Only the best post per platform counts toward the score.
+                  const bestPerPlatform = new Map<string, any>();
+                  for (const p of allPosts) {
+                    const plat = String(p.platform || "other").toLowerCase();
+                    const prev = bestPerPlatform.get(plat);
+                    if (!prev || scoreOf(p) > scoreOf(prev)) bestPerPlatform.set(plat, p);
+                  }
+                  const posts = Array.from(bestPerPlatform.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
                   const total = posts.reduce((s, p) => s + scoreOf(p), 0);
-                  return { key: reg.id, reg, posts, total };
+                  return { key: reg.id, reg, posts, allPosts, total };
                 }).sort((a, b) => b.total - a.total);
                 if (contestants.length === 0) return null;
                 return (
