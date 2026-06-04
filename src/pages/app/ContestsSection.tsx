@@ -134,7 +134,17 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
         }
       }
     }
-    const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+    const allPosts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+    // Only the best-performing post per platform counts toward the score.
+    // Cross-platform crossposts still count (TikTok + Instagram + Facebook),
+    // but two TikTok videos from the same contestant do not stack.
+    const bestPerPlatform = new Map<string, any>();
+    for (const p of allPosts) {
+      const plat = String(p.platform || "other").toLowerCase();
+      const prev = bestPerPlatform.get(plat);
+      if (!prev || scoreOf(p) > scoreOf(prev)) bestPerPlatform.set(plat, p);
+    }
+    const posts = Array.from(bestPerPlatform.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
     const total = posts.reduce((s, p) => s + scoreOf(p), 0);
     // Pick one row to act as the "leaderboard row" — registration if it exists, else the top post entry.
     const leaderRow = reg ?? rows[0];
@@ -148,8 +158,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
       facebook_handle: rows.map(r => r.facebook_handle).find(Boolean) || leaderRow.facebook_handle,
       _allRows: rows,
       _posts: posts,
+      _allPosts: allPosts,
       score: total,
-      // For the table row, use total values across all posts (sum of views/likes/etc.)
+      // Totals = sum across the counted (best-per-platform) posts only.
       views: posts.reduce((s, p) => s + Number(p.views || 0), 0),
       likes: posts.reduce((s, p) => s + Number(p.likes || 0), 0),
       comments: posts.reduce((s, p) => s + Number(p.comments || 0), 0),

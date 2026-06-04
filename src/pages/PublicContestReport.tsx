@@ -70,7 +70,16 @@ const summarizeContestant = (rows: any[]) => {
       if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(k, post);
     }
   }
-  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+  const allPosts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+  // Only the best-performing post per platform counts. Cross-platform
+  // crossposts (TikTok + Instagram + Facebook) still sum together.
+  const bestPerPlatform = new Map<string, any>();
+  for (const p of allPosts) {
+    const plat = String(p.platform || "other").toLowerCase();
+    const prev = bestPerPlatform.get(plat);
+    if (!prev || scoreOf(p) > scoreOf(prev)) bestPerPlatform.set(plat, p);
+  }
+  const posts = Array.from(bestPerPlatform.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
   const total = posts.reduce((s, p) => s + scoreOf(p), 0);
   const leader = reg ?? rows[0];
   return {
@@ -80,6 +89,7 @@ const summarizeContestant = (rows: any[]) => {
     tiktok_handle: rows.map(r => r.tiktok_handle).find(Boolean) || leader.tiktok_handle,
     facebook_handle: rows.map(r => r.facebook_handle).find(Boolean) || leader.facebook_handle,
     _posts: posts,
+    _allPosts: allPosts,
     score: total,
     views: posts.reduce((s, p) => s + Number(p.views || 0), 0),
     likes: posts.reduce((s, p) => s + Number(p.likes || 0), 0),
