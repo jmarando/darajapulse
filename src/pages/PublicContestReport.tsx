@@ -286,7 +286,6 @@ const PublicContestReport = () => {
                     <div className="text-[10px] uppercase tracking-widest text-highlight font-semibold">{placement}</div>
                     <div className="font-medium mt-1">{w.full_name || w.handle || "Winner"}</div>
                     <div className="text-xs text-muted-foreground">@{w.handle || w.instagram_handle || w.tiktok_handle || w.facebook_handle}</div>
-                    <div className="text-sm tabular-nums mt-1">{Math.round(w.score || 0).toLocaleString()} pts</div>
                     {prize && <div className="text-xs text-muted-foreground mt-1">🎁 {prize}</div>}
                   </div>
                 );
