@@ -65,17 +65,24 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     return Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a) || sourceRank(a) - sourceRank(b) || postTime(a) - postTime(b) || new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())[0] || null;
   };
 
-  // A contestant's total score is the SUM of scores across every unique post they entered
-  // (Facebook + Instagram + TikTok), deduped by canonical post URL.
+  // Score = sum of the BEST post per platform (TikTok + IG + FB stack, two
+  // TikToks do not). Dedupes by canonical URL first.
   const bestScore = (e: any) => {
     const xs = Array.isArray(e.cross_posts) ? e.cross_posts : [];
-    const byUrl = new Map<string, number>();
+    const byUrl = new Map<string, { platform: string; score: number }>();
     for (const p of [e, ...xs]) {
       const k = canonicalPostUrl(p?.post_url);
       if (!k) continue;
-      byUrl.set(k, Math.max(byUrl.get(k) ?? 0, scoreOf(p)));
+      const plat = String(p?.platform || "other").toLowerCase();
+      const s = scoreOf(p);
+      const prev = byUrl.get(k);
+      if (!prev || s > prev.score) byUrl.set(k, { platform: plat, score: s });
     }
-    return Array.from(byUrl.values()).reduce((a, b) => a + b, 0);
+    const bestPerPlatform = new Map<string, number>();
+    for (const { platform, score } of byUrl.values()) {
+      bestPerPlatform.set(platform, Math.max(bestPerPlatform.get(platform) ?? 0, score));
+    }
+    return Array.from(bestPerPlatform.values()).reduce((a, b) => a + b, 0);
   };
   // Identify whether an entry was auto-fetched from a public scraper or entered/registered by a human.
   const AUTO_SOURCES = new Set(["meta_graph", "ensembledata", "tiktok_api", "instagram_api", "apify"]);
@@ -559,7 +566,14 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
           if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(k, post);
         }
       }
-      const total = Array.from(byUrl.values()).reduce((s, p) => s + scoreOf(p), 0);
+      const allPosts = Array.from(byUrl.values());
+      const bestPerPlatform = new Map<string, any>();
+      for (const p of allPosts) {
+        const plat = String(p.platform || "other").toLowerCase();
+        const prev = bestPerPlatform.get(plat);
+        if (!prev || scoreOf(p) > scoreOf(prev)) bestPerPlatform.set(plat, p);
+      }
+      const total = Array.from(bestPerPlatform.values()).reduce((s, p) => s + scoreOf(p), 0);
       return { rows, total };
     }).sort((a, b) => b.total - a.total);
     const top10RowIds = new Set<string>(contestants.slice(0, 10).flatMap(c => c.rows.map((r: any) => r.id)));
@@ -845,16 +859,19 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                     || rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed")
                     || rows[0];
 
-                  // Sum across unique posts by canonical URL (dedupe across platform rows).
-                  const byUrl = new Map<string, number>();
+                  // Pick the best post per platform, then sum across platforms.
+                  const bestByPlat = new Map<string, { url: string; score: number; platform: string }>();
                   for (const row of rows) {
                     for (const post of [row, ...(Array.isArray(row.cross_posts) ? row.cross_posts : [])]) {
                       const k = canonicalPostUrl(post?.post_url);
                       if (!k) continue;
-                      byUrl.set(k, Math.max(byUrl.get(k) ?? 0, scoreOf(post)));
+                      const plat = String(post?.platform || row.platform || "other").toLowerCase();
+                      const s = scoreOf(post);
+                      const prev = bestByPlat.get(plat);
+                      if (!prev || s > prev.score) bestByPlat.set(plat, { url: k, score: s, platform: plat });
                     }
                   }
-                  const total = Array.from(byUrl.values()).reduce((s, v) => s + v, 0);
+                  const total = Array.from(bestByPlat.values()).reduce((s, v) => s + v.score, 0);
                   const withMeta = rows.find(r => r.metadata?.placement_rank) || reg;
                   const m = withMeta?.metadata || {};
                   return {
@@ -906,10 +923,17 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                       if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(key2, { ...post, _entryId: row.id, id: post.id ?? `${row.id}:${key2}` });
                     }
                   }
-                  const posts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
-                  // Total = SUM across every unique post (FB + IG + TikTok all add up).
+                  const allPosts = Array.from(byUrl.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
+                  // Only the best post per platform counts toward the score.
+                  const bestPerPlatform = new Map<string, any>();
+                  for (const p of allPosts) {
+                    const plat = String(p.platform || "other").toLowerCase();
+                    const prev = bestPerPlatform.get(plat);
+                    if (!prev || scoreOf(p) > scoreOf(prev)) bestPerPlatform.set(plat, p);
+                  }
+                  const posts = Array.from(bestPerPlatform.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
                   const total = posts.reduce((s, p) => s + scoreOf(p), 0);
-                  return { key: reg.id, reg, posts, total };
+                  return { key: reg.id, reg, posts, allPosts, total };
                 }).sort((a, b) => b.total - a.total);
                 if (contestants.length === 0) return null;
                 return (
