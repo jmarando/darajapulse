@@ -1075,7 +1075,8 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                         </table>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
