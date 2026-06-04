@@ -112,9 +112,10 @@ const PublicContestReport = () => {
       setClient((data as any).client);
       setCampaign((data as any).campaign);
       const cid = (data as any).id;
-      const [{ data: es }, { data: inf }] = await Promise.all([
+      const [{ data: es }, { data: inf }, { data: excl }] = await Promise.all([
         supabase.from("contest_entries").select("*").eq("contest_id", cid),
         supabase.from("influencers").select("handle, alt_handles"),
+        (supabase as any).from("contest_excluded_handles").select("handle").eq("contest_id", cid),
       ]);
       setEntries(es ?? []);
       const s = new Set<string>();
@@ -124,6 +125,9 @@ const PublicContestReport = () => {
         for (const a of ((r as any).alt_handles ?? [])) {
           const c = cleanH(a); if (c) s.add(c);
         }
+      }
+      for (const r of excl ?? []) {
+        const h = cleanH((r as any).handle); if (h) s.add(h);
       }
       setCreatorHandles(s);
       setLoading(false);
