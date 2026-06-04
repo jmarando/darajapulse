@@ -918,10 +918,13 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                 </div>
                               )}
                             </div>
-                            <div className="text-right shrink-0">
-                              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total score</div>
-                              <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
-                              {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} · summed</div>}
+                            <div className="text-right shrink-0 flex items-start gap-2">
+                              <div>
+                                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total score</div>
+                                <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
+                                {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} · summed</div>}
+                              </div>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditFor(reg)} aria-label="Edit contestant"><Pencil className="w-4 h-4" /></Button>
                             </div>
                           </div>
                           {posts.length === 0 ? (
