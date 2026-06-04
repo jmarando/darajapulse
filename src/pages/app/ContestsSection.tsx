@@ -869,7 +869,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
               {/* Contestants grouped view */}
               {(() => {
-                const nonCreatorRows = entriesForRound.filter(e => !isCreator(e));
+                const nonCreatorRows = entriesForRound.filter(e => !isCreator(e) && !winnerRelatedRowIds.has(e.id));
                 const grouped = groupEntriesByContestant(nonCreatorRows);
                 const contestants = grouped.map(rows => {
                   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
