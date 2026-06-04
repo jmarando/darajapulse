@@ -105,6 +105,7 @@ Deno.serve(async (req) => {
       try {
         const handles = [r.instagram, r.tiktok, r.facebook].map(cleanH).filter(Boolean);
         if (handles.some((h) => excludedSet.has(h))) { skipped_excluded++; continue; }
+        const row = {
           contest_id,
           external_registration_id: r.external_id,
           platform: (r.tiktok ? "tiktok" : r.instagram ? "instagram" : "facebook") as any,
