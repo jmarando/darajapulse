@@ -177,6 +177,8 @@ Deno.serve(async (req) => {
       const h = cleanH(r.handle); if (h) rosterHandles.add(h);
       for (const a of (r.alt_handles ?? [])) { const c = cleanH(a); if (c) rosterHandles.add(c); }
     }
+    const { data: excluded } = await sb.from("contest_excluded_handles").select("handle").eq("contest_id", contest_id);
+    for (const r of (excluded ?? []) as any[]) { const h = cleanH(r.handle); if (h) rosterHandles.add(h); }
     const { data: existingEntries } = await sb
       .from("contest_entries")
       .select("handle, instagram_handle, tiktok_handle, facebook_handle, post_url")
