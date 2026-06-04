@@ -978,106 +978,104 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
               {entries.length === 0 ? (
                 <div className="text-center py-8 border border-dashed border-border rounded-md text-sm text-muted-foreground">No entries yet. Click "Sync contestants" to pull registrations, then "Discover posts" to find their #{active.hashtag.replace(/^#/, "")} entries on IG/TikTok.</div>
               ) : (
-                <div className="space-y-5">
-                  {byRound.map(([round, rows]) => {
-                    const tableRows = rows.filter((e: any) => !winnerRelatedRowIds.has(e.id) && !top10RowIds.has(e.id));
-                    if (tableRows.length === 0) return null;
-                    return (
-                    <div key={round}>
-                      <div className="overflow-x-auto border border-border rounded-md">
-                        <table className="w-full text-sm">
-                          <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
-                            <tr>
-                              <th className="text-left px-3 py-2">#</th>
-                              <th className="text-left px-3 py-2">Contestant</th>
-                              <th className="text-left px-3 py-2">Platform</th>
-                              <th className="text-right px-3 py-2">Views</th>
-                              <th className="text-right px-3 py-2">Likes</th>
-                              <th className="text-right px-3 py-2">Comments</th>
-                              <th className="text-right px-3 py-2">Shares</th>
-                              <th className="text-right px-3 py-2">Score</th>
-                              <th className="text-right px-3 py-2">Status</th>
-                              <th className="px-3 py-2"></th>
+                {(() => {
+                  const tableRows = byRound
+                    .flatMap(([, rows]) => rows)
+                    .filter((e: any) => !winnerRelatedRowIds.has(e.id) && !top10RowIds.has(e.id));
+                  if (tableRows.length === 0) return null;
+                  return (
+                    <div className="overflow-x-auto border border-border rounded-md">
+                      <table className="w-full text-sm">
+                        <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
+                          <tr>
+                            <th className="text-left px-3 py-2">#</th>
+                            <th className="text-left px-3 py-2">Contestant</th>
+                            <th className="text-left px-3 py-2">Platform</th>
+                            <th className="text-right px-3 py-2">Views</th>
+                            <th className="text-right px-3 py-2">Likes</th>
+                            <th className="text-right px-3 py-2">Comments</th>
+                            <th className="text-right px-3 py-2">Shares</th>
+                            <th className="text-right px-3 py-2">Score</th>
+                            <th className="text-right px-3 py-2">Status</th>
+                            <th className="px-3 py-2"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tableRows.sort((a, b) => (b.score || 0) - (a.score || 0)).map((e, i) => {
+                            const posts = Array.isArray(e._posts) ? e._posts : [];
+                            const allRows = Array.isArray(e._allRows) ? e._allRows : [e];
+                            const auto = allRows.some(isAuto);
+                            const topPost = posts[0];
+                            return (
+                            <Fragment key={e.id}>
+                            <tr className="border-t border-border">
+                              <td className="px-3 py-2 tabular-nums align-top">{i + 11}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
+                              <td className="px-3 py-2 align-top">
+                                {(() => {
+                                  const u = (topPost?.post_url || e.post_url || "").trim();
+                                  const ok = /^https?:\/\//i.test(u);
+                                  const label = e.full_name || e.submitter_name || e.handle || "—";
+                                  return ok
+                                    ? <a href={u} target="_blank" rel="noreferrer" className="hover:text-accent">{label}</a>
+                                    : <span className="text-muted-foreground">{label}</span>;
+                                })()}
+                                <span className={`ml-2 text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
+                                {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{posts.length} post{posts.length === 1 ? "" : "s"} summed</div>}
+                              </td>
+                              <td className="px-3 py-2 capitalize text-muted-foreground align-top font-medium">Total</td>
+                              <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.views || 0).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.likes || 0).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.comments || 0).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.shares || 0).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-right tabular-nums font-semibold align-top">{Math.round(e.score || 0).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-right align-top"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
+                              <td className="px-3 py-2 text-right align-top">
+                                <div className="inline-flex gap-1">
+                                  {e.status === "pending" && (
+                                    <>
+                                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setStatus(e.id, "rejected")}><X className="w-4 h-4" /></Button>
+                                      <Button size="icon" className="h-7 w-7 bg-primary" onClick={() => setStatus(e.id, "approved")}><Check className="w-4 h-4" /></Button>
+                                    </>
+                                  )}
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditFor(e)} aria-label="Edit entry"><Pencil className="w-4 h-4" /></Button>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteEntry(e)} aria-label="Delete contest entry"><Trash2 className="w-4 h-4" /></Button>
+                                </div>
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody>
-                            {tableRows.sort((a, b) => (b.score || 0) - (a.score || 0)).map((e, i) => {
-                              const posts = Array.isArray(e._posts) ? e._posts : [];
-                              const allRows = Array.isArray(e._allRows) ? e._allRows : [e];
-                              const auto = allRows.some(isAuto);
-                              const topPost = posts[0];
+                            {posts.length > 1 && posts.map((p: any, pi: number) => {
+                              const url = (p.post_url || "").trim();
+                              const ok = /^https?:\/\//i.test(url);
+                              const plat = String(p.platform || "other").toLowerCase();
+                              const PIcon = plat === "instagram" ? Instagram : plat === "tiktok" ? Music2 : plat === "facebook" ? Facebook : Link2;
                               return (
-                              <Fragment key={e.id}>
-                              <tr className="border-t border-border">
-                                <td className="px-3 py-2 tabular-nums align-top">{i + 1}{e.status === "winner" && <Crown className="inline w-4 h-4 text-highlight ml-1" />}</td>
-                                <td className="px-3 py-2 align-top">
-                                  {(() => {
-                                    const u = (topPost?.post_url || e.post_url || "").trim();
-                                    const ok = /^https?:\/\//i.test(u);
-                                    const label = e.full_name || e.submitter_name || e.handle || "—";
-                                    return ok
-                                      ? <a href={u} target="_blank" rel="noreferrer" className="hover:text-accent">{label}</a>
-                                      : <span className="text-muted-foreground">{label}</span>;
-                                  })()}
-                                  <span className={`ml-2 text-[9px] uppercase tracking-wider px-1 rounded ${auto ? "bg-accent/15 text-accent" : "bg-secondary text-muted-foreground"}`}>{auto ? "Auto" : "Manual"}</span>
-                                  {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5 inline-flex items-center gap-1"><Link2 className="w-3 h-3" />{posts.length} post{posts.length === 1 ? "" : "s"} summed</div>}
-                                </td>
-                                <td className="px-3 py-2 capitalize text-muted-foreground align-top font-medium">Total</td>
-                                <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.views || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.likes || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.comments || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums align-top font-semibold">{(e.shares || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right tabular-nums font-semibold align-top">{Math.round(e.score || 0).toLocaleString()}</td>
-                                <td className="px-3 py-2 text-right align-top"><Badge variant="outline" className="capitalize">{e.status}</Badge></td>
-                                <td className="px-3 py-2 text-right align-top">
-                                  <div className="inline-flex gap-1">
-                                    {e.status === "pending" && (
-                                      <>
-                                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setStatus(e.id, "rejected")}><X className="w-4 h-4" /></Button>
-                                        <Button size="icon" className="h-7 w-7 bg-primary" onClick={() => setStatus(e.id, "approved")}><Check className="w-4 h-4" /></Button>
-                                      </>
+                                <tr key={`${e.id}-${p.id ?? pi}`} className="bg-secondary/20 text-xs text-muted-foreground">
+                                  <td className="px-3 py-1"></td>
+                                  <td className="px-3 py-1 pl-6 italic">↳ post {pi + 1}</td>
+                                  <td className="px-3 py-1">
+                                    {ok ? (
+                                      <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 capitalize hover:text-accent hover:underline">
+                                        <PIcon className="w-3 h-3" /> {plat}
+                                      </a>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 capitalize"><PIcon className="w-3 h-3" /> {plat}</span>
                                     )}
-                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditFor(e)} aria-label="Edit entry"><Pencil className="w-4 h-4" /></Button>
-                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteEntry(e)} aria-label="Delete contest entry"><Trash2 className="w-4 h-4" /></Button>
-                                  </div>
-                                </td>
-                              </tr>
-                              {posts.length > 1 && posts.map((p: any, pi: number) => {
-                                const url = (p.post_url || "").trim();
-                                const ok = /^https?:\/\//i.test(url);
-                                const plat = String(p.platform || "other").toLowerCase();
-                                const PIcon = plat === "instagram" ? Instagram : plat === "tiktok" ? Music2 : plat === "facebook" ? Facebook : Link2;
-                                return (
-                                  <tr key={`${e.id}-${p.id ?? pi}`} className="bg-secondary/20 text-xs text-muted-foreground">
-                                    <td className="px-3 py-1"></td>
-                                    <td className="px-3 py-1 pl-6 italic">↳ post {pi + 1}</td>
-                                    <td className="px-3 py-1">
-                                      {ok ? (
-                                        <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 capitalize hover:text-accent hover:underline">
-                                          <PIcon className="w-3 h-3" /> {plat}
-                                        </a>
-                                      ) : (
-                                        <span className="inline-flex items-center gap-1.5 capitalize"><PIcon className="w-3 h-3" /> {plat}</span>
-                                      )}
-                                    </td>
-                                    <td className="px-3 py-1 text-right tabular-nums">{(p.views || 0).toLocaleString()}</td>
-                                    <td className="px-3 py-1 text-right tabular-nums">{(p.likes || 0).toLocaleString()}</td>
-                                    <td className="px-3 py-1 text-right tabular-nums">{(p.comments || 0).toLocaleString()}</td>
-                                    <td className="px-3 py-1 text-right tabular-nums">{(p.shares || 0).toLocaleString()}</td>
-                                    <td className="px-3 py-1 text-right tabular-nums">{Math.round(scoreOf(p)).toLocaleString()}</td>
-                                    <td colSpan={2}></td>
-                                  </tr>
-                                );
-                              })}
-                              </Fragment>
-                            );})}
-                          </tbody>
-                        </table>
-                      </div>
+                                  </td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{(p.views || 0).toLocaleString()}</td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{(p.likes || 0).toLocaleString()}</td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{(p.comments || 0).toLocaleString()}</td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{(p.shares || 0).toLocaleString()}</td>
+                                  <td className="px-3 py-1 text-right tabular-nums">{Math.round(scoreOf(p)).toLocaleString()}</td>
+                                  <td colSpan={2}></td>
+                                </tr>
+                              );
+                            })}
+                            </Fragment>
+                          );})}
+                        </tbody>
+                      </table>
                     </div>
-                    );
-                  })}
-                </div>
+                  );
+                })()}
               )}
 
               {/* Public submission link — moved to the bottom so the leaderboard leads */}
