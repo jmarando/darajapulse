@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2, Upload, Eye, Heart, MessageCircle, Facebook, AlertCircle, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2, Upload, Eye, Heart, MessageCircle, Share2, Facebook, AlertCircle, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
@@ -918,10 +918,13 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                 </div>
                               )}
                             </div>
-                            <div className="text-right shrink-0">
-                              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total score</div>
-                              <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
-                              {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} · summed</div>}
+                            <div className="text-right shrink-0 flex items-start gap-2">
+                              <div>
+                                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total score</div>
+                                <div className={`font-display text-2xl font-semibold tabular-nums ${isTop3 ? "text-accent" : ""}`}>{Math.round(total).toLocaleString()}</div>
+                                {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} · summed</div>}
+                              </div>
+                              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditFor(reg)} aria-label="Edit contestant"><Pencil className="w-4 h-4" /></Button>
                             </div>
                           </div>
                           {posts.length === 0 ? (
@@ -961,6 +964,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                     <span className="inline-flex items-center gap-1" title="Views"><Eye className="w-3 h-3 shrink-0" />{(p.views || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Likes"><Heart className="w-3 h-3 shrink-0" />{(p.likes || 0).toLocaleString()}</span>
                                     <span className="inline-flex items-center gap-1" title="Comments"><MessageCircle className="w-3 h-3 shrink-0" />{(p.comments || 0).toLocaleString()}</span>
+                                    <span className="inline-flex items-center gap-1" title="Shares"><Share2 className="w-3 h-3 shrink-0" />{(p.shares || 0).toLocaleString()}</span>
                                   </span>
                                   <span className={`font-semibold tabular-nums text-right shrink-0 pl-1 ${isTop ? "text-accent" : "text-muted-foreground"}`}>{Math.round(scoreOf(p)).toLocaleString()}</span>
 
