@@ -978,7 +978,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
               {entries.length === 0 ? (
                 <div className="text-center py-8 border border-dashed border-border rounded-md text-sm text-muted-foreground">No entries yet. Click "Sync contestants" to pull registrations, then "Discover posts" to find their #{active.hashtag.replace(/^#/, "")} entries on IG/TikTok.</div>
               ) : (
-                {(() => {
+                (() => {
                   const tableRows = byRound
                     .flatMap(([, rows]) => rows)
                     .filter((e: any) => !winnerRelatedRowIds.has(e.id) && !top10RowIds.has(e.id));
