@@ -559,7 +559,14 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
           if (!prev || scoreOf(post) > scoreOf(prev)) byUrl.set(k, post);
         }
       }
-      const total = Array.from(byUrl.values()).reduce((s, p) => s + scoreOf(p), 0);
+      const allPosts = Array.from(byUrl.values());
+      const bestPerPlatform = new Map<string, any>();
+      for (const p of allPosts) {
+        const plat = String(p.platform || "other").toLowerCase();
+        const prev = bestPerPlatform.get(plat);
+        if (!prev || scoreOf(p) > scoreOf(prev)) bestPerPlatform.set(plat, p);
+      }
+      const total = Array.from(bestPerPlatform.values()).reduce((s, p) => s + scoreOf(p), 0);
       return { rows, total };
     }).sort((a, b) => b.total - a.total);
     const top10RowIds = new Set<string>(contestants.slice(0, 10).flatMap(c => c.rows.map((r: any) => r.id)));
