@@ -971,7 +971,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                   }
                   const posts = Array.from(bestPerPlatform.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
                   const total = posts.reduce((s, p) => s + scoreOf(p), 0);
-                  return { key: reg.id, reg, posts, allPosts, total };
+                  return { key: reg.id, reg, posts, allPosts, total, rows };
                 }).sort((a, b) => b.total - a.total);
                 if (contestants.length === 0) return null;
                 return (
