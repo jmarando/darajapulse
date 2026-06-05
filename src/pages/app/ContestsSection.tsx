@@ -1010,6 +1010,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                 {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} · summed</div>}
                               </div>
                               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditFor(reg)} aria-label="Edit contestant"><Pencil className="w-4 h-4" /></Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteContestant(contestants[i].rows, reg.full_name || reg.handle || "contestant")} aria-label="Remove contestant"><Trash2 className="w-4 h-4" /></Button>
                             </div>
                           </div>
                           {posts.length === 0 ? (
