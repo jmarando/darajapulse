@@ -469,25 +469,34 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     load();
   };
 
-  const deleteContestant = async (rows: any[], displayName: string) => {
+  const [removeTarget, setRemoveTarget] = useState<{ rows: any[]; name: string } | null>(null);
+  const requestRemoveContestant = (rows: any[], displayName: string) => {
     if (!activeId || !rows?.length) return;
-    if (!confirm(`Remove ${displayName} from this contest? All their entries will be deleted and their handles excluded so they don't come back.`)) return;
+    setRemoveTarget({ rows, name: displayName });
+  };
+  const confirmRemoveContestant = async () => {
+    if (!activeId || !removeTarget) return;
+    const { rows, name: displayName } = removeTarget;
     const ids = rows.map(r => r.id).filter(Boolean);
     const handles = Array.from(new Set(
       rows.flatMap(r => [r.handle, r.instagram_handle, r.tiktok_handle, r.facebook_handle])
         .map(cleanH).filter(Boolean)
     ));
-    if (ids.length) {
-      const { error } = await supabase.from("contest_entries").delete().in("id", ids);
-      if (error) return toast.error(error.message);
+    try {
+      if (ids.length) {
+        const { error } = await supabase.from("contest_entries").delete().in("id", ids);
+        if (error) { toast.error(error.message); return; }
+      }
+      if (handles.length) {
+        await supabase.from("contest_excluded_handles").insert(
+          handles.map(h => ({ contest_id: activeId, handle: h, reason: "removed from top 10" }))
+        );
+      }
+      toast.success(`${displayName} removed`);
+    } finally {
+      setRemoveTarget(null);
+      load();
     }
-    if (handles.length) {
-      await supabase.from("contest_excluded_handles").insert(
-        handles.map(h => ({ contest_id: activeId, handle: h, reason: "removed from top 10" }))
-      );
-    }
-    toast.success(`${displayName} removed`);
-    load();
   };
 
   const refreshScores = async () => {
