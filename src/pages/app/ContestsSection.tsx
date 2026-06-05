@@ -981,7 +981,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                       <span className="opacity-60 normal-case tracking-normal ml-1">· showing {Math.min(10, contestants.length)} of {contestants.length} still in the running</span>
                     </div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.slice(0, 10).map(({ key, reg, posts, total }, i) => {
+                      {contestants.slice(0, 10).map(({ key, reg, posts, total, rows: cRows }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
                         const hasAutoCapable = !!(reg.instagram_handle || reg.tiktok_handle);
