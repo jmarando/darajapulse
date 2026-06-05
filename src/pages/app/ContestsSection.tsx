@@ -468,6 +468,27 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     load();
   };
 
+  const deleteContestant = async (rows: any[], displayName: string) => {
+    if (!activeId || !rows?.length) return;
+    if (!confirm(`Remove ${displayName} from this contest? All their entries will be deleted and their handles excluded so they don't come back.`)) return;
+    const ids = rows.map(r => r.id).filter(Boolean);
+    const handles = Array.from(new Set(
+      rows.flatMap(r => [r.handle, r.instagram_handle, r.tiktok_handle, r.facebook_handle])
+        .map(cleanH).filter(Boolean)
+    ));
+    if (ids.length) {
+      const { error } = await supabase.from("contest_entries").delete().in("id", ids);
+      if (error) return toast.error(error.message);
+    }
+    if (handles.length) {
+      await supabase.from("contest_excluded_handles").insert(
+        handles.map(h => ({ contest_id: activeId, handle: h, reason: "removed from top 10" }))
+      );
+    }
+    toast.success(`${displayName} removed`);
+    load();
+  };
+
   const refreshScores = async () => {
     if (!activeId) return;
     setPolling(true);
@@ -950,7 +971,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                   }
                   const posts = Array.from(bestPerPlatform.values()).sort((a, b) => scoreOf(b) - scoreOf(a));
                   const total = posts.reduce((s, p) => s + scoreOf(p), 0);
-                  return { key: reg.id, reg, posts, allPosts, total };
+                  return { key: reg.id, reg, posts, allPosts, total, rows };
                 }).sort((a, b) => b.total - a.total);
                 if (contestants.length === 0) return null;
                 return (
@@ -960,7 +981,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                       <span className="opacity-60 normal-case tracking-normal ml-1">· showing {Math.min(10, contestants.length)} of {contestants.length} still in the running</span>
                     </div>
                     <div className="grid md:grid-cols-2 gap-3">
-                      {contestants.slice(0, 10).map(({ key, reg, posts, total }, i) => {
+                      {contestants.slice(0, 10).map(({ key, reg, posts, total, rows: cRows }, i) => {
                         const rank = i + 1;
                         const isTop3 = rank <= 3;
                         const hasAutoCapable = !!(reg.instagram_handle || reg.tiktok_handle);
@@ -989,6 +1010,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                 {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} · summed</div>}
                               </div>
                               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditFor(reg)} aria-label="Edit contestant"><Pencil className="w-4 h-4" /></Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteContestant(cRows, reg.full_name || reg.handle || "contestant")} aria-label="Remove contestant"><Trash2 className="w-4 h-4" /></Button>
                             </div>
                           </div>
                           {posts.length === 0 ? (
