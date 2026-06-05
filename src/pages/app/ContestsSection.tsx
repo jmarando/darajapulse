@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Trophy, Plus, Copy, ExternalLink, RefreshCw, Check, X, Crown, Download, Trash2, Pencil, Link2, Users, Sparkles, Instagram, Music2, Upload, Eye, Heart, MessageCircle, Share2, Facebook, AlertCircle, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
@@ -468,25 +469,34 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     load();
   };
 
-  const deleteContestant = async (rows: any[], displayName: string) => {
+  const [removeTarget, setRemoveTarget] = useState<{ rows: any[]; name: string } | null>(null);
+  const requestRemoveContestant = (rows: any[], displayName: string) => {
     if (!activeId || !rows?.length) return;
-    if (!confirm(`Remove ${displayName} from this contest? All their entries will be deleted and their handles excluded so they don't come back.`)) return;
+    setRemoveTarget({ rows, name: displayName });
+  };
+  const confirmRemoveContestant = async () => {
+    if (!activeId || !removeTarget) return;
+    const { rows, name: displayName } = removeTarget;
     const ids = rows.map(r => r.id).filter(Boolean);
     const handles = Array.from(new Set(
       rows.flatMap(r => [r.handle, r.instagram_handle, r.tiktok_handle, r.facebook_handle])
         .map(cleanH).filter(Boolean)
     ));
-    if (ids.length) {
-      const { error } = await supabase.from("contest_entries").delete().in("id", ids);
-      if (error) return toast.error(error.message);
+    try {
+      if (ids.length) {
+        const { error } = await supabase.from("contest_entries").delete().in("id", ids);
+        if (error) { toast.error(error.message); return; }
+      }
+      if (handles.length) {
+        await supabase.from("contest_excluded_handles").insert(
+          handles.map(h => ({ contest_id: activeId, handle: h, reason: "removed from top 10" }))
+        );
+      }
+      toast.success(`${displayName} removed`);
+    } finally {
+      setRemoveTarget(null);
+      load();
     }
-    if (handles.length) {
-      await supabase.from("contest_excluded_handles").insert(
-        handles.map(h => ({ contest_id: activeId, handle: h, reason: "removed from top 10" }))
-      );
-    }
-    toast.success(`${displayName} removed`);
-    load();
   };
 
   const refreshScores = async () => {
@@ -1010,7 +1020,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                                 {posts.length > 0 && <div className="text-[10px] text-muted-foreground mt-0.5">{posts.length} post{posts.length === 1 ? "" : "s"} · summed</div>}
                               </div>
                               <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditFor(reg)} aria-label="Edit contestant"><Pencil className="w-4 h-4" /></Button>
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => deleteContestant(cRows, reg.full_name || reg.handle || "contestant")} aria-label="Remove contestant"><Trash2 className="w-4 h-4" /></Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => requestRemoveContestant(cRows, reg.full_name || reg.handle || "contestant")} aria-label="Remove contestant"><Trash2 className="w-4 h-4" /></Button>
                             </div>
                           </div>
                           {posts.length === 0 ? (
@@ -1275,6 +1285,20 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
           )}
         </DialogContent>
       </Dialog>
+      <AlertDialog open={!!removeTarget} onOpenChange={(o) => { if (!o) setRemoveTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {removeTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              All their entries will be deleted and their handles excluded so they don't come back on the next sync. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmRemoveContestant}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
