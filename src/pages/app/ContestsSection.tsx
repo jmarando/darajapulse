@@ -468,6 +468,27 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     load();
   };
 
+  const deleteContestant = async (rows: any[], displayName: string) => {
+    if (!activeId || !rows?.length) return;
+    if (!confirm(`Remove ${displayName} from this contest? All their entries will be deleted and their handles excluded so they don't come back.`)) return;
+    const ids = rows.map(r => r.id).filter(Boolean);
+    const handles = Array.from(new Set(
+      rows.flatMap(r => [r.handle, r.instagram_handle, r.tiktok_handle, r.facebook_handle])
+        .map(cleanH).filter(Boolean)
+    ));
+    if (ids.length) {
+      const { error } = await supabase.from("contest_entries").delete().in("id", ids);
+      if (error) return toast.error(error.message);
+    }
+    if (handles.length) {
+      await supabase.from("contest_excluded_handles").insert(
+        handles.map(h => ({ contest_id: activeId, handle: h, reason: "removed from top 10" }))
+      );
+    }
+    toast.success(`${displayName} removed`);
+    load();
+  };
+
   const refreshScores = async () => {
     if (!activeId) return;
     setPolling(true);
