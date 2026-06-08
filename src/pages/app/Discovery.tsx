@@ -82,13 +82,70 @@ const Discovery = () => {
     });
   }, [rows, q, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
 
+  // Group rows that are clearly the same person across platforms / handle variants.
+  const normalizeName = (s: string) =>
+    (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean).slice(0, 3).join(" ");
+
+  type Person = {
+    key: string;
+    full_name: string;
+    city?: string;
+    bio?: string;
+    niches: string[];
+    verified_at?: string | null;
+    ai_confidence: number;
+    follower_total: number;
+    engagement_avg: number;
+    profiles: Creator[];          // one per platform/handle
+    primary: Creator;              // best profile (most followers)
+    all_ids: string[];
+  };
+
+  const people = useMemo<Person[]>(() => {
+    const map = new Map<string, Creator[]>();
+    for (const r of filtered) {
+      const k = normalizeName(r.full_name) || `id:${r.id}`;
+      (map.get(k) || map.set(k, []).get(k)!).push(r);
+    }
+    return Array.from(map.entries()).map(([key, list]) => {
+      // Dedupe profiles within a person by (platform, handle).
+      const seen = new Set<string>();
+      const profiles = list.filter(p => {
+        const k = `${p.platform}::${(p.handle || "").toLowerCase()}`;
+        if (seen.has(k)) return false; seen.add(k); return true;
+      }).sort((a, b) => (b.follower_count || 0) - (a.follower_count || 0));
+      const primary = profiles[0];
+      const niches = Array.from(new Set(profiles.flatMap(p => p.niche || []))).sort();
+      const follower_total = profiles.reduce((s, p) => s + (p.follower_count || 0), 0);
+      const eng = profiles.filter(p => p.engagement_rate);
+      const engagement_avg = eng.length ? eng.reduce((s, p) => s + Number(p.engagement_rate || 0), 0) / eng.length : 0;
+      return {
+        key, full_name: primary.full_name, city: profiles.find(p => p.city)?.city,
+        bio: profiles.find(p => p.bio)?.bio, niches,
+        verified_at: profiles.find(p => p.verified_at)?.verified_at ?? null,
+        ai_confidence: Math.max(...profiles.map(p => p.ai_confidence || 0)),
+        follower_total, engagement_avg, profiles, primary,
+        all_ids: profiles.map(p => p.id),
+      };
+    });
+  }, [filtered]);
+
   const ordered = useMemo(() => {
-    if (!matches.length) return filtered;
-    const scoreMap = new Map(matches.map(m => [m.creator_id, m]));
-    const matched = filtered.filter(r => scoreMap.has(r.id)).sort((a, b) => (scoreMap.get(b.id)!.score) - (scoreMap.get(a.id)!.score));
-    const rest = filtered.filter(r => !scoreMap.has(r.id));
-    return [...matched, ...rest];
-  }, [filtered, matches]);
+    if (!matches.length) return people;
+    const scoreById = new Map(matches.map(m => [m.creator_id, m.score]));
+    const score = (p: Person) => Math.max(0, ...p.all_ids.map(id => scoreById.get(id) ?? 0));
+    return [...people].sort((a, b) => score(b) - score(a));
+  }, [people, matches]);
+
+  const personMatch = (p: Person) => {
+    let best: { creator_id: string; score: number; reason: string; angle: string } | undefined;
+    for (const id of p.all_ids) {
+      const m = matches.find(x => x.creator_id === id);
+      if (m && (!best || m.score > best.score)) best = m;
+    }
+    return best;
+  };
+  const personContacts = (p: Person) => p.all_ids.flatMap(id => contactsByCreator[id] || []);
 
   const runSeed = async () => {
     if (!confirm("Generate AI-suggested Kenya creators across all platforms? This runs in the background for several minutes.")) return;
@@ -251,7 +308,7 @@ const Discovery = () => {
         </Select>
         <label className="flex items-center gap-2 text-sm"><Switch checked={verifiedOnly} onCheckedChange={setVerifiedOnly} /> Verified</label>
         <label className="flex items-center gap-2 text-sm"><Switch checked={hasContact} onCheckedChange={setHasContact} /> Has contact</label>
-        <div className="text-sm text-muted-foreground ml-auto">{ordered.length} of {rows.length}</div>
+        <div className="text-sm text-muted-foreground ml-auto">{ordered.length} people · {rows.length} profiles</div>
       </div>
 
       {loading ? (
@@ -264,12 +321,11 @@ const Discovery = () => {
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ordered.map(c => {
-            const Icon = PLATFORM_ICON[c.platform] || Instagram;
-            const match = matches.find(m => m.creator_id === c.id);
-            const contacts = contactsByCreator[c.id] || [];
+          {ordered.map(p => {
+            const match = personMatch(p);
+            const contacts = personContacts(p);
             return (
-              <Card key={c.id} className={`p-5 flex flex-col group hover:shadow-md transition-all ${match ? "border-accent" : ""}`}>
+              <Card key={p.key} className={`p-5 flex flex-col group hover:shadow-md transition-all ${match ? "border-accent" : ""}`}>
                 {match && (
                   <div className="mb-3 -mt-1 text-xs bg-accent/10 text-accent rounded-md px-2 py-1.5">
                     <div className="font-medium">Match {match.score} — {match.reason}</div>
@@ -278,34 +334,50 @@ const Discovery = () => {
                 )}
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-secondary to-secondary/40 border border-border flex items-center justify-center font-display text-lg uppercase">
-                    {c.full_name?.[0] ?? "?"}
+                    {p.full_name?.[0] ?? "?"}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-display text-base leading-tight truncate flex items-center gap-1">
-                      {c.full_name}
-                      {c.verified_at && <BadgeCheck className="w-3.5 h-3.5 text-success shrink-0" />}
+                      {p.full_name}
+                      {p.verified_at && <BadgeCheck className="w-3.5 h-3.5 text-success shrink-0" />}
                     </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1 min-w-0">
-                      <Icon className="w-3 h-3 shrink-0" />
-                      <span className="truncate">@{c.handle}</span>
-                      {c.profile_url && <a href={c.profile_url} target="_blank" rel="noreferrer" className="text-accent"><ExternalLink className="w-3 h-3" /></a>}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {p.profiles.map(pr => {
+                        const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+                        return (
+                          <a
+                            key={pr.id}
+                            href={pr.profile_url || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={e => { if (!pr.profile_url) e.preventDefault(); }}
+                            className="inline-flex items-center gap-1 text-[11px] border border-border rounded-md px-1.5 py-0.5 hover:bg-secondary/40 max-w-full"
+                            title={`@${pr.handle} · ${fmtCompact(pr.follower_count)} on ${pr.platform}`}
+                          >
+                            <Icon className="w-3 h-3 shrink-0" />
+                            <span className="truncate max-w-[90px]">@{pr.handle}</span>
+                            <span className="text-muted-foreground">{fmtCompact(pr.follower_count)}</span>
+                          </a>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 mt-4 rounded-md border border-border bg-secondary/30 divide-x divide-border overflow-hidden">
-                  <div className="p-2.5 text-center"><div className="font-display text-base">{fmtCompact(c.follower_count)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Followers</div></div>
-                  <div className="p-2.5 text-center"><div className="font-display text-base">{Number(c.engagement_rate || 0).toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Engagement</div></div>
-                  <div className="p-2.5 text-center"><div className="font-display text-base inline-flex items-center gap-1 justify-center max-w-full"><MapPin className="w-3 h-3 text-muted-foreground shrink-0" /><span className="truncate">{c.city || "—"}</span></div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">City</div></div>
+                  <div className="p-2.5 text-center"><div className="font-display text-base">{fmtCompact(p.follower_total)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Total reach</div></div>
+                  <div className="p-2.5 text-center"><div className="font-display text-base">{p.engagement_avg.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Avg eng.</div></div>
+                  <div className="p-2.5 text-center"><div className="font-display text-base inline-flex items-center gap-1 justify-center max-w-full"><MapPin className="w-3 h-3 text-muted-foreground shrink-0" /><span className="truncate">{p.city || "—"}</span></div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">City</div></div>
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2 flex-wrap min-h-[22px]">
                   <div className="flex flex-wrap gap-1">
-                    {(c.niche || []).slice(0, 3).map(n => <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5 capitalize">{n}</Badge>)}
+                    {p.niches.slice(0, 4).map(n => <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5 capitalize">{n}</Badge>)}
+                    {p.niches.length > 4 && <span className="text-[10px] text-muted-foreground">+{p.niches.length - 4}</span>}
                   </div>
-                  {!c.verified_at && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" />AI {Math.round((c.ai_confidence || 0) * 100)}%</span>}
+                  {!p.verified_at && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" />AI {Math.round(p.ai_confidence * 100)}%</span>}
                 </div>
                 <div className="mt-3 flex gap-1">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(c)}>Details {contacts.length > 0 && <span className="ml-1 text-[10px]">({contacts.length})</span>}</Button>
-                  <Button variant="outline" size="sm" onClick={() => addToRoster(c)} title="Add to influencer roster"><Plus className="w-3 h-3" /></Button>
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(p.primary)}>Details {contacts.length > 0 && <span className="ml-1 text-[10px]">({contacts.length})</span>}</Button>
+                  <Button variant="outline" size="sm" onClick={() => addToRoster(p.primary)} title="Add to influencer roster"><Plus className="w-3 h-3" /></Button>
                 </div>
               </Card>
             );
