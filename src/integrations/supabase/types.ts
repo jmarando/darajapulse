@@ -785,6 +785,134 @@ export type Database = {
         }
         Relationships: []
       }
+      discovery_contacts: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          creator_id: string
+          id: string
+          is_public: boolean
+          kind: string
+          label: string | null
+          value: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          creator_id: string
+          id?: string
+          is_public?: boolean
+          kind: string
+          label?: string | null
+          value: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          creator_id?: string
+          id?: string
+          is_public?: boolean
+          kind?: string
+          label?: string | null
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discovery_contacts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "discovery_creators"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discovery_creators: {
+        Row: {
+          ai_confidence: number | null
+          avatar_url: string | null
+          bio: string | null
+          city: string | null
+          created_at: string
+          engagement_rate: number | null
+          follower_count: number | null
+          full_name: string
+          handle: string
+          id: string
+          niche: string[] | null
+          notes: string | null
+          platform: string
+          profile_url: string | null
+          region: string | null
+          source: string
+          updated_at: string
+          verified_at: string | null
+        }
+        Insert: {
+          ai_confidence?: number | null
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          engagement_rate?: number | null
+          follower_count?: number | null
+          full_name: string
+          handle: string
+          id?: string
+          niche?: string[] | null
+          notes?: string | null
+          platform: string
+          profile_url?: string | null
+          region?: string | null
+          source?: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Update: {
+          ai_confidence?: number | null
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
+          created_at?: string
+          engagement_rate?: number | null
+          follower_count?: number | null
+          full_name?: string
+          handle?: string
+          id?: string
+          niche?: string[] | null
+          notes?: string | null
+          platform?: string
+          profile_url?: string | null
+          region?: string | null
+          source?: string
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
+      discovery_searches: {
+        Row: {
+          brief: Json
+          created_at: string
+          id: string
+          results: Json
+          user_id: string | null
+        }
+        Insert: {
+          brief: Json
+          created_at?: string
+          id?: string
+          results?: Json
+          user_id?: string | null
+        }
+        Update: {
+          brief?: Json
+          created_at?: string
+          id?: string
+          results?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
