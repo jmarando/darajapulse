@@ -125,11 +125,11 @@ const Discovery = () => {
 
   const addToRoster = async (c: Creator) => {
     const payload = {
-      full_name: c.full_name, handle: c.handle, primary_platform: c.platform,
+      full_name: c.full_name, handle: c.handle, primary_platform: c.platform as any,
       niche: (c.niche || []).join(", "), follower_count: c.follower_count,
       engagement_rate: c.engagement_rate, region: c.region || "Kenya",
     };
-    const { error } = await supabase.from("influencers").insert(payload);
+    const { error } = await (supabase.from("influencers") as any).insert(payload);
     if (error) return toast.error(error.message);
     toast.success(`${c.full_name} added to roster`);
   };
