@@ -91,14 +91,17 @@ const Discovery = () => {
   }, [filtered, matches]);
 
   const runSeed = async () => {
-    if (!confirm("Generate AI-suggested Kenya creators across all platforms? This takes ~2 minutes.")) return;
+    if (!confirm("Generate AI-suggested Kenya creators across all platforms? This runs in the background for several minutes.")) return;
     setSeeding(true);
-    const t = toast.loading("Seeding roster with AI…");
+    const t = toast.loading("Starting background seed…");
     try {
       const { data, error } = await supabase.functions.invoke("discovery-seed", { body: {} });
       if (error) throw error;
-      toast.success(`Seeded: +${data.inserted} new, ${data.updated} updated`, { id: t });
-      load();
+      toast.success(data?.message || "Seeding started. Refresh in a few minutes to see new creators.", { id: t, duration: 8000 });
+      // Poll the roster a few times so new rows appear without a manual refresh.
+      setTimeout(load, 30_000);
+      setTimeout(load, 90_000);
+      setTimeout(load, 180_000);
     } catch (e: any) {
       toast.error(e.message || "Seed failed", { id: t });
     } finally { setSeeding(false); }

@@ -76,6 +76,85 @@ Only include real, well-known creators. If you are unsure, omit. Return ONLY the
   }
 }
 
+async function runSeed(platforms: string[], niches: string[], concurrency: number) {
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+  const jobs: { platform: string; niche: string }[] = [];
+  for (const p of platforms) for (const n of niches) jobs.push({ platform: p, niche: n });
+
+  let inserted = 0, updated = 0, errors = 0;
+  console.log(`[discovery-seed] starting ${jobs.length} jobs (concurrency=${concurrency})`);
+
+  for (let i = 0; i < jobs.length; i += concurrency) {
+    const slice = jobs.slice(i, i + concurrency);
+    const results = await Promise.all(slice.map(async (j) => {
+      try {
+        const creators = await askGemini(j.niche, j.platform);
+        if (!creators.length) return { ins: 0, upd: 0 };
+        const rows = creators
+          .filter(c => c.full_name && c.handle)
+          .map(c => ({
+            full_name: c.full_name,
+            handle: String(c.handle).replace(/^@/, "").toLowerCase(),
+            platform: j.platform,
+            profile_url: c.profile_url ?? null,
+            niche: [j.niche],
+            region: "Kenya",
+            city: c.city || null,
+            follower_count: Number(c.follower_estimate) || 0,
+            engagement_rate: Number(c.engagement_estimate) || 0,
+            bio: c.bio || null,
+            source: "ai_seed",
+            ai_confidence: Math.max(0, Math.min(1, Number(c.confidence) || 0.5)),
+          }));
+
+        let ins = 0, upd = 0;
+        for (const row of rows) {
+          const { data: existing } = await supabase
+            .from("discovery_creators")
+            .select("id, niche, verified_at, ai_confidence")
+            .eq("platform", row.platform).eq("handle", row.handle).maybeSingle();
+          if (existing) {
+            const mergedNiche = Array.from(new Set([...(existing.niche || []), j.niche]));
+            const patch: any = { niche: mergedNiche };
+            if (!existing.verified_at) {
+              patch.ai_confidence = Math.max(Number(existing.ai_confidence) || 0, row.ai_confidence);
+            }
+            await supabase.from("discovery_creators").update(patch).eq("id", existing.id);
+            upd++;
+          } else {
+            const { error } = await supabase.from("discovery_creators").insert(row);
+            if (!error) ins++;
+            else console.error("insert err", error.message, row.handle);
+          }
+
+          const creatorId = existing?.id ?? (await supabase
+            .from("discovery_creators").select("id").eq("platform", row.platform).eq("handle", row.handle).maybeSingle()).data?.id;
+          if (creatorId) {
+            const cs = creators.find(c => String(c.handle).replace(/^@/, "").toLowerCase() === row.handle);
+            if (cs?.public_email) {
+              await supabase.from("discovery_contacts").upsert({
+                creator_id: creatorId, kind: "email", value: cs.public_email, is_public: true, label: "from bio",
+              }, { onConflict: "creator_id,kind,value" as any, ignoreDuplicates: true } as any).catch(() => {});
+            }
+            if (cs?.public_phone) {
+              await supabase.from("discovery_contacts").upsert({
+                creator_id: creatorId, kind: "phone", value: cs.public_phone, is_public: true, label: "from bio",
+              }, { onConflict: "creator_id,kind,value" as any, ignoreDuplicates: true } as any).catch(() => {});
+            }
+          }
+        }
+        return { ins, upd };
+      } catch (e) {
+        console.error("job error", j, e);
+        return { ins: 0, upd: 0, err: 1 };
+      }
+    }));
+    for (const r of results) { inserted += r.ins; updated += r.upd; if ((r as any).err) errors++; }
+    console.log(`[discovery-seed] progress ${Math.min(i + concurrency, jobs.length)}/${jobs.length} — ins=${inserted} upd=${updated} err=${errors}`);
+  }
+  console.log(`[discovery-seed] DONE inserted=${inserted} updated=${updated} errors=${errors}`);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -83,87 +162,18 @@ Deno.serve(async (req) => {
     const platforms: string[] = body.platforms ?? PLATFORMS;
     const niches: string[] = body.niches ?? NICHES;
     const concurrency = Number(body.concurrency ?? 6);
+    const jobCount = platforms.length * niches.length;
 
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    // Run in background to avoid 150s idle timeout — seeding can take many minutes.
+    // @ts-ignore - EdgeRuntime is available in Supabase edge runtime
+    EdgeRuntime.waitUntil(runSeed(platforms, niches, concurrency));
 
-    const jobs: { platform: string; niche: string }[] = [];
-    for (const p of platforms) for (const n of niches) jobs.push({ platform: p, niche: n });
-
-    let inserted = 0, updated = 0, errors = 0;
-
-    for (let i = 0; i < jobs.length; i += concurrency) {
-      const slice = jobs.slice(i, i + concurrency);
-      const results = await Promise.all(slice.map(async (j) => {
-        try {
-          const creators = await askGemini(j.niche, j.platform);
-          if (!creators.length) return { ins: 0, upd: 0 };
-          const rows = creators
-            .filter(c => c.full_name && c.handle)
-            .map(c => ({
-              full_name: c.full_name,
-              handle: String(c.handle).replace(/^@/, "").toLowerCase(),
-              platform: j.platform,
-              profile_url: c.profile_url ?? null,
-              niche: [j.niche],
-              region: "Kenya",
-              city: c.city || null,
-              follower_count: Number(c.follower_estimate) || 0,
-              engagement_rate: Number(c.engagement_estimate) || 0,
-              bio: c.bio || null,
-              source: "ai_seed",
-              ai_confidence: Math.max(0, Math.min(1, Number(c.confidence) || 0.5)),
-            }));
-
-          let ins = 0, upd = 0;
-          for (const row of rows) {
-            // fetch existing to merge niches & preserve verified fields
-            const { data: existing } = await supabase
-              .from("discovery_creators")
-              .select("id, niche, verified_at, ai_confidence")
-              .eq("platform", row.platform).eq("handle", row.handle).maybeSingle();
-            if (existing) {
-              const mergedNiche = Array.from(new Set([...(existing.niche || []), j.niche]));
-              const patch: any = { niche: mergedNiche };
-              if (!existing.verified_at) {
-                patch.ai_confidence = Math.max(Number(existing.ai_confidence) || 0, row.ai_confidence);
-              }
-              await supabase.from("discovery_creators").update(patch).eq("id", existing.id);
-              upd++;
-            } else {
-              const { error } = await supabase.from("discovery_creators").insert(row);
-              if (!error) ins++;
-              else console.error("insert err", error.message, row.handle);
-            }
-
-            // Contacts (public only)
-            const creatorId = existing?.id ?? (await supabase
-              .from("discovery_creators").select("id").eq("platform", row.platform).eq("handle", row.handle).maybeSingle()).data?.id;
-            if (creatorId) {
-              const cs = creators.find(c => String(c.handle).replace(/^@/, "").toLowerCase() === row.handle);
-              if (cs?.public_email) {
-                await supabase.from("discovery_contacts").upsert({
-                  creator_id: creatorId, kind: "email", value: cs.public_email, is_public: true, label: "from bio",
-                }, { onConflict: "creator_id,kind,value" as any, ignoreDuplicates: true } as any).catch(() => {});
-              }
-              if (cs?.public_phone) {
-                await supabase.from("discovery_contacts").upsert({
-                  creator_id: creatorId, kind: "phone", value: cs.public_phone, is_public: true, label: "from bio",
-                }, { onConflict: "creator_id,kind,value" as any, ignoreDuplicates: true } as any).catch(() => {});
-              }
-            }
-          }
-          return { ins, upd };
-        } catch (e) {
-          console.error("job error", j, e);
-          return { ins: 0, upd: 0, err: 1 };
-        }
-      }));
-      for (const r of results) { inserted += r.ins; updated += r.upd; if ((r as any).err) errors++; }
-    }
-
-    return new Response(JSON.stringify({ ok: true, inserted, updated, errors, total_jobs: jobs.length }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({
+      ok: true,
+      status: "started",
+      total_jobs: jobCount,
+      message: "Seeding started in background. Check the Discovery roster in a few minutes; refresh the page to see new creators appear.",
+    }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("seed fatal", e);
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
