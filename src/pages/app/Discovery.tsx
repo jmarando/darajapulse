@@ -308,7 +308,7 @@ const Discovery = () => {
         </Select>
         <label className="flex items-center gap-2 text-sm"><Switch checked={verifiedOnly} onCheckedChange={setVerifiedOnly} /> Verified</label>
         <label className="flex items-center gap-2 text-sm"><Switch checked={hasContact} onCheckedChange={setHasContact} /> Has contact</label>
-        <div className="text-sm text-muted-foreground ml-auto">{ordered.length} of {rows.length}</div>
+        <div className="text-sm text-muted-foreground ml-auto">{ordered.length} people · {rows.length} profiles</div>
       </div>
 
       {loading ? (
