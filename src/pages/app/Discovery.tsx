@@ -321,12 +321,11 @@ const Discovery = () => {
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ordered.map(c => {
-            const Icon = PLATFORM_ICON[c.platform] || Instagram;
-            const match = matches.find(m => m.creator_id === c.id);
-            const contacts = contactsByCreator[c.id] || [];
+          {ordered.map(p => {
+            const match = personMatch(p);
+            const contacts = personContacts(p);
             return (
-              <Card key={c.id} className={`p-5 flex flex-col group hover:shadow-md transition-all ${match ? "border-accent" : ""}`}>
+              <Card key={p.key} className={`p-5 flex flex-col group hover:shadow-md transition-all ${match ? "border-accent" : ""}`}>
                 {match && (
                   <div className="mb-3 -mt-1 text-xs bg-accent/10 text-accent rounded-md px-2 py-1.5">
                     <div className="font-medium">Match {match.score} — {match.reason}</div>
@@ -335,34 +334,50 @@ const Discovery = () => {
                 )}
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-secondary to-secondary/40 border border-border flex items-center justify-center font-display text-lg uppercase">
-                    {c.full_name?.[0] ?? "?"}
+                    {p.full_name?.[0] ?? "?"}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-display text-base leading-tight truncate flex items-center gap-1">
-                      {c.full_name}
-                      {c.verified_at && <BadgeCheck className="w-3.5 h-3.5 text-success shrink-0" />}
+                      {p.full_name}
+                      {p.verified_at && <BadgeCheck className="w-3.5 h-3.5 text-success shrink-0" />}
                     </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1 min-w-0">
-                      <Icon className="w-3 h-3 shrink-0" />
-                      <span className="truncate">@{c.handle}</span>
-                      {c.profile_url && <a href={c.profile_url} target="_blank" rel="noreferrer" className="text-accent"><ExternalLink className="w-3 h-3" /></a>}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {p.profiles.map(pr => {
+                        const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+                        return (
+                          <a
+                            key={pr.id}
+                            href={pr.profile_url || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={e => { if (!pr.profile_url) e.preventDefault(); }}
+                            className="inline-flex items-center gap-1 text-[11px] border border-border rounded-md px-1.5 py-0.5 hover:bg-secondary/40 max-w-full"
+                            title={`@${pr.handle} · ${fmtCompact(pr.follower_count)} on ${pr.platform}`}
+                          >
+                            <Icon className="w-3 h-3 shrink-0" />
+                            <span className="truncate max-w-[90px]">@{pr.handle}</span>
+                            <span className="text-muted-foreground">{fmtCompact(pr.follower_count)}</span>
+                          </a>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 mt-4 rounded-md border border-border bg-secondary/30 divide-x divide-border overflow-hidden">
-                  <div className="p-2.5 text-center"><div className="font-display text-base">{fmtCompact(c.follower_count)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Followers</div></div>
-                  <div className="p-2.5 text-center"><div className="font-display text-base">{Number(c.engagement_rate || 0).toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Engagement</div></div>
-                  <div className="p-2.5 text-center"><div className="font-display text-base inline-flex items-center gap-1 justify-center max-w-full"><MapPin className="w-3 h-3 text-muted-foreground shrink-0" /><span className="truncate">{c.city || "—"}</span></div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">City</div></div>
+                  <div className="p-2.5 text-center"><div className="font-display text-base">{fmtCompact(p.follower_total)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Total reach</div></div>
+                  <div className="p-2.5 text-center"><div className="font-display text-base">{p.engagement_avg.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Avg eng.</div></div>
+                  <div className="p-2.5 text-center"><div className="font-display text-base inline-flex items-center gap-1 justify-center max-w-full"><MapPin className="w-3 h-3 text-muted-foreground shrink-0" /><span className="truncate">{p.city || "—"}</span></div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">City</div></div>
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2 flex-wrap min-h-[22px]">
                   <div className="flex flex-wrap gap-1">
-                    {(c.niche || []).slice(0, 3).map(n => <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5 capitalize">{n}</Badge>)}
+                    {p.niches.slice(0, 4).map(n => <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5 capitalize">{n}</Badge>)}
+                    {p.niches.length > 4 && <span className="text-[10px] text-muted-foreground">+{p.niches.length - 4}</span>}
                   </div>
-                  {!c.verified_at && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" />AI {Math.round((c.ai_confidence || 0) * 100)}%</span>}
+                  {!p.verified_at && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" />AI {Math.round(p.ai_confidence * 100)}%</span>}
                 </div>
                 <div className="mt-3 flex gap-1">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(c)}>Details {contacts.length > 0 && <span className="ml-1 text-[10px]">({contacts.length})</span>}</Button>
-                  <Button variant="outline" size="sm" onClick={() => addToRoster(c)} title="Add to influencer roster"><Plus className="w-3 h-3" /></Button>
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(p.primary)}>Details {contacts.length > 0 && <span className="ml-1 text-[10px]">({contacts.length})</span>}</Button>
+                  <Button variant="outline" size="sm" onClick={() => addToRoster(p.primary)} title="Add to influencer roster"><Plus className="w-3 h-3" /></Button>
                 </div>
               </Card>
             );
