@@ -82,13 +82,70 @@ const Discovery = () => {
     });
   }, [rows, q, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
 
+  // Group rows that are clearly the same person across platforms / handle variants.
+  const normalizeName = (s: string) =>
+    (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean).slice(0, 3).join(" ");
+
+  type Person = {
+    key: string;
+    full_name: string;
+    city?: string;
+    bio?: string;
+    niches: string[];
+    verified_at?: string | null;
+    ai_confidence: number;
+    follower_total: number;
+    engagement_avg: number;
+    profiles: Creator[];          // one per platform/handle
+    primary: Creator;              // best profile (most followers)
+    all_ids: string[];
+  };
+
+  const people = useMemo<Person[]>(() => {
+    const map = new Map<string, Creator[]>();
+    for (const r of filtered) {
+      const k = normalizeName(r.full_name) || `id:${r.id}`;
+      (map.get(k) || map.set(k, []).get(k)!).push(r);
+    }
+    return Array.from(map.entries()).map(([key, list]) => {
+      // Dedupe profiles within a person by (platform, handle).
+      const seen = new Set<string>();
+      const profiles = list.filter(p => {
+        const k = `${p.platform}::${(p.handle || "").toLowerCase()}`;
+        if (seen.has(k)) return false; seen.add(k); return true;
+      }).sort((a, b) => (b.follower_count || 0) - (a.follower_count || 0));
+      const primary = profiles[0];
+      const niches = Array.from(new Set(profiles.flatMap(p => p.niche || []))).sort();
+      const follower_total = profiles.reduce((s, p) => s + (p.follower_count || 0), 0);
+      const eng = profiles.filter(p => p.engagement_rate);
+      const engagement_avg = eng.length ? eng.reduce((s, p) => s + Number(p.engagement_rate || 0), 0) / eng.length : 0;
+      return {
+        key, full_name: primary.full_name, city: profiles.find(p => p.city)?.city,
+        bio: profiles.find(p => p.bio)?.bio, niches,
+        verified_at: profiles.find(p => p.verified_at)?.verified_at ?? null,
+        ai_confidence: Math.max(...profiles.map(p => p.ai_confidence || 0)),
+        follower_total, engagement_avg, profiles, primary,
+        all_ids: profiles.map(p => p.id),
+      };
+    });
+  }, [filtered]);
+
   const ordered = useMemo(() => {
-    if (!matches.length) return filtered;
-    const scoreMap = new Map(matches.map(m => [m.creator_id, m]));
-    const matched = filtered.filter(r => scoreMap.has(r.id)).sort((a, b) => (scoreMap.get(b.id)!.score) - (scoreMap.get(a.id)!.score));
-    const rest = filtered.filter(r => !scoreMap.has(r.id));
-    return [...matched, ...rest];
-  }, [filtered, matches]);
+    if (!matches.length) return people;
+    const scoreById = new Map(matches.map(m => [m.creator_id, m.score]));
+    const score = (p: Person) => Math.max(0, ...p.all_ids.map(id => scoreById.get(id) ?? 0));
+    return [...people].sort((a, b) => score(b) - score(a));
+  }, [people, matches]);
+
+  const personMatch = (p: Person) => {
+    let best: { creator_id: string; score: number; reason: string; angle: string } | undefined;
+    for (const id of p.all_ids) {
+      const m = matches.find(x => x.creator_id === id);
+      if (m && (!best || m.score > best.score)) best = m;
+    }
+    return best;
+  };
+  const personContacts = (p: Person) => p.all_ids.flatMap(id => contactsByCreator[id] || []);
 
   const runSeed = async () => {
     if (!confirm("Generate AI-suggested Kenya creators across all platforms? This runs in the background for several minutes.")) return;
