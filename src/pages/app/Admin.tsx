@@ -254,8 +254,8 @@ function BrandOrgForm({ value, onChange }: any) {
           <SelectContent><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="annual">Annual</SelectItem></SelectContent>
         </Select>
       </Field>
-      <Field label="Logo URL"><Input value={value.logo_url ?? ""} onChange={(e) => set("logo_url", e.target.value)} /></Field>
-      <Field label="Support email"><Input value={value.support_email ?? ""} onChange={(e) => set("support_email", e.target.value)} /></Field>
+      <Field label="Logo" className="col-span-2"><LogoUploader value={value.logo_url ?? ""} onChange={(v) => set("logo_url", v)} /></Field>
+      <Field label="Support email" className="col-span-2"><Input type="email" value={value.support_email ?? ""} onChange={(e) => set("support_email", e.target.value)} placeholder="ops@brand.com" /></Field>
       <Field label="Active" className="col-span-2 flex items-center gap-2">
         <input type="checkbox" checked={!!value.is_active} onChange={(e) => set("is_active", e.target.checked)} />
         <span className="text-sm text-muted-foreground">Active</span>
