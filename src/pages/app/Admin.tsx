@@ -111,11 +111,23 @@ function AgenciesTab() {
 
   const save = async (a: Agency) => {
     const payload = { ...a };
-    let err;
+    const isNew = !a.id;
+    let err, newId: string | undefined;
     if (a.id) ({ error: err } = await (supabase.from("agencies") as any).update(payload).eq("id", a.id));
-    else ({ error: err } = await (supabase.from("agencies") as any).insert(payload));
+    else {
+      const res = await (supabase.from("agencies") as any).insert(payload).select("id").single();
+      err = res.error; newId = (res.data as any)?.id;
+    }
     if (err) return toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    toast({ title: "Saved" });
+    if (isNew && newId && payload.support_email) {
+      const { error: invErr } = await supabase.functions.invoke("invite-org-admin", {
+        body: { kind: "agency", org_id: newId, email: payload.support_email, redirect_to: `${window.location.origin}/app` },
+      });
+      if (invErr) toast({ title: "Saved, but invite failed", description: invErr.message, variant: "destructive" });
+      else toast({ title: "Saved", description: `Invite email sent to ${payload.support_email}` });
+    } else {
+      toast({ title: "Saved" });
+    }
     setOpen(false); load();
   };
 
