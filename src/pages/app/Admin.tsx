@@ -183,6 +183,7 @@ function AgencyForm({ value, onChange }: any) {
 
 /* ---------------- Brand Orgs ---------------- */
 function BrandOrgsTab() {
+  const { user } = useAuth();
   const [rows, setRows] = useState<BrandOrg[]>([]);
   const [editing, setEditing] = useState<BrandOrg | null>(null);
   const [open, setOpen] = useState(false);
@@ -194,7 +195,7 @@ function BrandOrgsTab() {
   };
   useEffect(() => { load(); }, []);
 
-  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", subscription_fee_kes: 180000, billing_cycle: "quarterly", billing_notes: "", is_active: true, logo_url: "", support_email: "" };
+  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", subscription_fee_kes: 180000, billing_cycle: "quarterly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
 
   const save = async (b: BrandOrg) => {
     let err;
