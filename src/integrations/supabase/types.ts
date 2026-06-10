@@ -1428,6 +1428,116 @@ export type Database = {
         }
         Relationships: []
       }
+      invoices: {
+        Row: {
+          amount_kes: number
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          org_id: string
+          org_kind: string
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          pesapal_merchant_reference: string | null
+          pesapal_order_tracking_id: string | null
+          pesapal_redirect_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_kes: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          org_id: string
+          org_kind: string
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          pesapal_merchant_reference?: string | null
+          pesapal_order_tracking_id?: string | null
+          pesapal_redirect_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_kes?: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string
+          org_kind?: string
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          pesapal_merchant_reference?: string | null
+          pesapal_order_tracking_id?: string | null
+          pesapal_redirect_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_kes: number
+          created_at: string
+          id: string
+          invoice_id: string | null
+          method: string
+          notes: string | null
+          org_id: string
+          org_kind: string
+          paid_at: string
+          pesapal_confirmation_code: string | null
+          recorded_by: string | null
+          reference: string | null
+        }
+        Insert: {
+          amount_kes: number
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          method: string
+          notes?: string | null
+          org_id: string
+          org_kind: string
+          paid_at?: string
+          pesapal_confirmation_code?: string | null
+          recorded_by?: string | null
+          reference?: string | null
+        }
+        Update: {
+          amount_kes?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          method?: string
+          notes?: string | null
+          org_id?: string
+          org_kind?: string
+          paid_at?: string
+          pesapal_confirmation_code?: string | null
+          recorded_by?: string | null
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payouts: {
         Row: {
           campaign_id: string
@@ -1481,6 +1591,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pesapal_ipn_log: {
+        Row: {
+          id: string
+          merchant_reference: string | null
+          notification_type: string | null
+          order_tracking_id: string | null
+          raw: Json | null
+          received_at: string
+          status_response: Json | null
+        }
+        Insert: {
+          id?: string
+          merchant_reference?: string | null
+          notification_type?: string | null
+          order_tracking_id?: string | null
+          raw?: Json | null
+          received_at?: string
+          status_response?: Json | null
+        }
+        Update: {
+          id?: string
+          merchant_reference?: string | null
+          notification_type?: string | null
+          order_tracking_id?: string | null
+          raw?: Json | null
+          received_at?: string
+          status_response?: Json | null
+        }
+        Relationships: []
       }
       plan_links: {
         Row: {
