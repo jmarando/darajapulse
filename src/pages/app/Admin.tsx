@@ -210,11 +210,24 @@ function BrandOrgsTab() {
   const blank = { name: "", slug: "", subdomain: "", kra_pin: "", subscription_fee_kes: 180000, billing_cycle: "quarterly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
 
   const save = async (b: BrandOrg) => {
-    let err;
+    const isNew = !b.id;
+    let err, newId: string | undefined;
     if (b.id) ({ error: err } = await (supabase.from("brand_orgs") as any).update(b).eq("id", b.id));
-    else ({ error: err } = await (supabase.from("brand_orgs") as any).insert(b));
+    else {
+      const res = await (supabase.from("brand_orgs") as any).insert(b).select("id").single();
+      err = res.error; newId = (res.data as any)?.id;
+    }
     if (err) return toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    toast({ title: "Saved" }); setOpen(false); load();
+    if (isNew && newId && b.support_email) {
+      const { error: invErr } = await supabase.functions.invoke("invite-org-admin", {
+        body: { kind: "brand_org", org_id: newId, email: b.support_email, redirect_to: `${window.location.origin}/app` },
+      });
+      if (invErr) toast({ title: "Saved, but invite failed", description: invErr.message, variant: "destructive" });
+      else toast({ title: "Saved", description: `Invite email sent to ${b.support_email}` });
+    } else {
+      toast({ title: "Saved" });
+    }
+    setOpen(false); load();
   };
 
   return (
