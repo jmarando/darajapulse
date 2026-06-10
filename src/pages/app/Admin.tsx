@@ -506,3 +506,38 @@ function BillingTab() {
 function Field({ label, children, className = "" }: any) {
   return <div className={className}><Label className="text-xs">{label}</Label>{children}</div>;
 }
+
+function LogoUploader({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const handle = async (file: File) => {
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) return toast({ title: "Logo must be under 2MB", variant: "destructive" });
+    setUploading(true);
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("client-logos").upload(path, file, { upsert: false, contentType: file.type });
+    if (error) { setUploading(false); return toast({ title: "Upload failed", description: error.message, variant: "destructive" }); }
+    const { data } = supabase.storage.from("client-logos").getPublicUrl(path);
+    onChange(data.publicUrl);
+    setUploading(false);
+    toast({ title: "Logo uploaded" });
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        {value && (
+          <div className="w-12 h-12 rounded-md border border-border bg-secondary overflow-hidden flex items-center justify-center">
+            <img src={value} alt="logo preview" className="w-full h-full object-contain p-1" />
+          </div>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); e.target.value = ""; }} />
+        <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+          <Upload className="w-3 h-3 mr-1" /> {uploading ? "Uploading…" : value ? "Replace" : "Upload"}
+        </Button>
+        {value && <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>Remove</Button>}
+      </div>
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="…or paste a logo URL" />
+    </div>
+  );
+}
