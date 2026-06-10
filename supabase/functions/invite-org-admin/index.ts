@@ -30,8 +30,8 @@ Deno.serve(async (req) => {
     if (!cleanEmail || !org_id || (kind !== "agency" && kind !== "brand_org")) {
       return json({ error: "kind, org_id, and email required" }, 400);
     }
+    const appUrl = redirect_to || "https://darajapulse.com/app";
 
-    // Look up org name for the invite email
     const table = kind === "agency" ? "agencies" : "brand_orgs";
     const { data: org } = await admin.from(table).select("name").eq("id", org_id).maybeSingle();
     const orgName = (org as any)?.name ?? (kind === "agency" ? "your agency" : "your brand");
@@ -46,17 +46,15 @@ Deno.serve(async (req) => {
       existed = true;
     } else {
       const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: redirect_to ?? undefined,
+        redirectTo: appUrl,
         data: { org_name: orgName, org_kind: kind },
       });
       if (invErr || !invited?.user) return json({ error: invErr?.message ?? "invite failed" }, 500);
       userId = invited.user.id;
     }
 
-    // Ensure profile
     await admin.from("profiles").upsert({ id: userId!, email: cleanEmail }, { onConflict: "id" });
 
-    // Assign role scoped to the org
     const role = kind === "agency" ? "agency_admin" : "brand_owner";
     const scopeCol = kind === "agency" ? "agency_id" : "brand_org_id";
     const { error: roleErr } = await admin
@@ -64,7 +62,34 @@ Deno.serve(async (req) => {
       .upsert({ user_id: userId, role, [scopeCol]: org_id }, { onConflict: "user_id,role" });
     if (roleErr) return json({ error: roleErr.message }, 500);
 
-    return json({ ok: true, user_id: userId, existed, invited: !existed });
+    // For existing users: inviteUserByEmail wasn't called, so send a welcome
+    // email with a magic-link sign-in URL so they know they have access.
+    let welcomeSent = false;
+    let welcomeError: string | null = null;
+    if (existed) {
+      let signInUrl = appUrl;
+      try {
+        const { data: linkData } = await admin.auth.admin.generateLink({
+          type: "magiclink",
+          email: cleanEmail,
+          options: { redirectTo: appUrl },
+        });
+        if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
+      } catch (_) { /* fall back to app url */ }
+
+      const { error: mailErr } = await admin.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "org-admin-welcome",
+          recipientEmail: cleanEmail,
+          idempotencyKey: `org-admin-welcome-${org_id}-${userId}`,
+          templateData: { org_name: orgName, org_kind: kind, sign_in_url: signInUrl, app_url: appUrl },
+        },
+      });
+      if (mailErr) welcomeError = mailErr.message;
+      else welcomeSent = true;
+    }
+
+    return json({ ok: true, user_id: userId, existed, invited: !existed, welcome_sent: welcomeSent, welcome_error: welcomeError });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
