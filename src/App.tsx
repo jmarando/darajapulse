@@ -22,6 +22,7 @@ import Briefs from "./pages/app/Briefs";
 import Content from "./pages/app/Content";
 import Moderation from "./pages/app/Moderation";
 import Team from "./pages/app/Team";
+import AdminBilling from "./pages/app/AdminBilling";
 import PublicModeration from "./pages/PublicModeration";
 import PublicReport from "./pages/PublicReport";
 import PublicPlan from "./pages/PublicPlan";
