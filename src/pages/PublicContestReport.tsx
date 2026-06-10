@@ -153,37 +153,62 @@ const PublicContestReport = () => {
     });
   }, [entries, creatorHandles]);
 
-  // Group entries by contestant (union-find across handles/email/name) and sum scores across ALL posts.
-  const allContestants = useMemo(() => {
-    const groups = groupEntriesByContestant(visibleEntries);
-    return groups.map(summarizeContestant).sort((a, b) => (b.score || 0) - (a.score || 0));
-  }, [visibleEntries]);
+  // Match in-app: a row is an announced winner if status='winner' OR metadata.placement_rank set.
+  const isAnnouncedWinner = (e: any) => e.status === "winner" || e?.metadata?.placement_rank != null;
 
-  // Announced winners (any grouped contestant whose rows include a status='winner').
-  const winnerIds = useMemo(() => {
-    const handles = new Set<string>();
-    for (const e of visibleEntries) {
-      if (e.status === "winner") {
-        for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) {
-          const c = cleanH(h); if (c) handles.add(c);
-        }
+  // Fuzzy-match sibling rows into each winner's group (handles unify normally,
+  // name-token fallback catches scraper rows whose handle differs from the
+  // winner row, e.g. Helvin's winner row "@Life&style" vs scraper "helvin_lifestyle").
+  const winnerRelatedRowIds = useMemo(() => {
+    const winnerRows = visibleEntries.filter(isAnnouncedWinner);
+    if (winnerRows.length === 0) return new Set<string>();
+    const allGroups = groupEntriesByContestant(visibleEntries);
+    const winnerKeySet = new Set(winnerRows.map((r: any) => r.id));
+    const winnerGroups = allGroups.filter((rows: any[]) => rows.some(r => winnerKeySet.has(r.id)));
+    const used = new Set<string>(winnerGroups.flat().map((r: any) => r.id));
+    for (const wRow of winnerRows) {
+      const grp = winnerGroups.find((g: any[]) => g.some(r => r.id === wRow.id));
+      if (!grp) continue;
+      const nameTokens = String(wRow.full_name || wRow.submitter_name || "")
+        .toLowerCase().split(/\s+/).filter(t => t.length >= 5);
+      if (!nameTokens.length) continue;
+      for (const e of visibleEntries) {
+        if (used.has(e.id)) continue;
+        if (Number(e.views || 0) <= 0 && Number(e.likes || 0) <= 0) continue;
+        const hay = [e.handle, e.tiktok_handle, e.instagram_handle, e.facebook_handle, e.full_name, e.submitter_name]
+          .map(s => String(s || "").toLowerCase()).join(" ");
+        if (nameTokens.some(t => hay.includes(t))) { grp.push(e); used.add(e.id); }
       }
     }
-    const ids = new Set<string>();
-    for (const c of allContestants) {
-      const hs = [c.handle, c.instagram_handle, c.tiktok_handle, c.facebook_handle].map(cleanH).filter(Boolean) as string[];
-      if (hs.some(h => handles.has(h))) ids.add(c.id);
-    }
-    return ids;
-  }, [allContestants, visibleEntries]);
+    return new Set<string>(winnerGroups.flat().map((r: any) => r.id));
+  }, [visibleEntries]);
 
-  const winners = useMemo(
-    () => allContestants
-      .filter((c: any) => winnerIds.has(c.id))
-      .sort((a: any, b: any) => Number(a?.metadata?.placement_rank ?? 99) - Number(b?.metadata?.placement_rank ?? 99)),
-    [allContestants, winnerIds]
+  // Leaderboard contestants = everyone except announced winners (and their sibling rows).
+  const leaderboardEntries = useMemo(
+    () => visibleEntries.filter(e => !winnerRelatedRowIds.has(e.id)),
+    [visibleEntries, winnerRelatedRowIds]
   );
-  const contestants = useMemo(() => allContestants.filter((c: any) => !winnerIds.has(c.id)), [allContestants, winnerIds]);
+
+  const contestants = useMemo(() => {
+    const groups = groupEntriesByContestant(leaderboardEntries);
+    return groups.map(summarizeContestant).sort((a, b) => (b.score || 0) - (a.score || 0));
+  }, [leaderboardEntries]);
+
+  // Announced winners — one card per winner row, ordered by placement.
+  const winners = useMemo(() => {
+    return visibleEntries
+      .filter(isAnnouncedWinner)
+      .map((r: any) => ({
+        id: r.id,
+        full_name: r.full_name || r.submitter_name || r.handle || "Winner",
+        handle: r.handle || r.instagram_handle || r.tiktok_handle || r.facebook_handle,
+        instagram_handle: r.instagram_handle,
+        tiktok_handle: r.tiktok_handle,
+        facebook_handle: r.facebook_handle,
+        metadata: r.metadata || {},
+      }))
+      .sort((a: any, b: any) => Number(a.metadata?.placement_rank ?? 99) - Number(b.metadata?.placement_rank ?? 99));
+  }, [visibleEntries]);
 
   // Totals across all unique counted posts (deduped by URL).
   const { totals, platformRows, totalPosts } = useMemo(() => {
