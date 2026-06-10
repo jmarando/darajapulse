@@ -1,105 +1,69 @@
+## Super Admin Console
 
-# Whitelabel, Tenancy, Billing & Access Control
+A new section at `/app/admin/*` (super_admin only), replacing the single billing page with a full console.
 
-Goal: turn Daraja Pulse into a multi-tenant SaaS with two paid surfaces (Agency whitelabel KES 45k/mo + Brand-direct portal KES 180k/quarter), Pesapal-collected subscriptions, M-Pesa payout invoicing, and per-role access control. Subdomain whitelabel ships now, custom domains in phase 2.
+### Pages
+- `/app/admin` — dashboard: counts (agencies, brand orgs, clients, MRR), outstanding payments, recent activity
+- `/app/admin/agencies` — table + create/edit drawer: name, slug, subdomain, logo, KRA PIN, fee, cycle, notes, active toggle
+- `/app/admin/brand-orgs` — table + create/edit drawer: name, slug, subdomain, logo, KRA PIN, fee, cycle, notes, active toggle, owner invite
+- `/app/admin/clients` — cross-agency list (agency, contacts, # campaigns, last activity) with filter
+- `/app/admin/billing` — invoices + payments ledger, per agency/brand_org. "Generate invoice", "Record payment", "Send Pesapal link"
+- `/app/admin/users` — every user, role chips, scope (agency / brand_org / client), invite + role assignment + remove
 
----
+Existing left-nav "Admin · Billing" item becomes a collapsible "Admin" group with these children.
 
-## 1. Tenancy model
+### Database
+New columns: `agencies.kra_pin`, `brand_orgs.kra_pin`.
 
-Introduce a top-level `agencies` table (alongside existing `clients`). Every existing record (clients, campaigns, contests, influencers, profiles) gets an `agency_id`. The current single-tenant data backfills into one "default" agency owned by you.
+New tables:
+- `invoices` (org_kind: agency|brand_org, org_id, period_start, period_end, amount_kes, status: draft|sent|paid|overdue|void, due_date, pesapal_order_tracking_id, pesapal_merchant_reference, paid_at, pdf_url, notes)
+- `payments` (invoice_id nullable, org_kind, org_id, amount_kes, method: pesapal|mpesa|bank|cash|other, reference, paid_at, recorded_by, notes, pesapal_confirmation_code)
+- `pesapal_ipn` (raw IPN payloads for audit)
 
-New top-level types:
-- **Agency** — a whitelabel tenant. Has subdomain, logo, brand color, billing profile, seats (max 5 AM by default).
-- **Brand** (= existing `clients`, extended) — can now exist either inside an agency OR as a standalone brand-direct tenant (`is_direct = true`, no agency_id).
-- **BrandOrg** — new optional grouping for brand-direct customers that aggregates many client rows fed by different agencies (the "5 agencies → 1 view" rollup).
+All with super_admin-only RLS + standard grants.
 
-Resolution at request time: middleware reads `host` header → looks up `agencies.subdomain` (e.g. `acme.darajapulse.com`) or `brand_orgs.subdomain` → sets `tenant` in context. Root domain `darajapulse.com` keeps the marketing site + super-admin.
+### Pesapal wiring
+Credentials stored as secrets: `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET`, `PESAPAL_ENV` (sandbox|live), `PESAPAL_IPN_ID` (registered once via setup function).
 
-Phase 2: `agency_domains` / `brand_org_domains` tables for custom CNAMEs; Lovable custom-domain DNS handles SSL.
+Edge functions:
+- `pesapal-register-ipn` — one-off: registers our IPN URL with Pesapal, stores returned `ipn_id` as secret
+- `pesapal-create-order` — auth'd, super_admin only: creates an order for an invoice, returns `redirect_url`, persists `order_tracking_id` + `merchant_reference`
+- `pesapal-ipn` — public webhook (`verify_jwt=false`): receives IPN, fetches transaction status, marks invoice paid + inserts payment row
+- `pesapal-get-status` — auth'd: manual refresh button on an invoice
 
-## 2. Signup & onboarding flows (different per persona)
+### Invoice generation
+- Manual "Generate next invoice" button on each org's billing card → uses `fee` + `cycle` to compute period and due_date
+- Optional cron `generate-invoices-monthly` later — not in this pass
 
-Three distinct entry points on the marketing site:
+### UI behavior
+- Pay link button on each unpaid invoice → calls `pesapal-create-order` → opens `redirect_url` in new tab
+- Invoice row shows status badge, refresh button, payment history below
 
-```text
-/signup/agency   →  creates agency, owner becomes agency_admin
-/signup/brand    →  creates brand_org, owner becomes brand_owner
-/signup/creator  →  unchanged (existing influencer flow)
-```
+### Out of scope this pass
+- Self-serve brand_org signup
+- Automated recurring invoice cron
+- WHT computation
+- e-TIMS
 
-- **Agency signup**: company name → auto-generate subdomain → choose plan → Pesapal checkout for KES 45k → on success, agency is provisioned, owner lands in `/app` whitelabeled.
-- **Agency invites clients**: existing `clients` flow stays, but the agency owner controls visibility — by default the brand contact does NOT get a login. The agency can toggle "Give client portal access" per client, which sends a Pesapal-skipping invite to `/portal` scoped to that client only (re-uses existing `invite-client-user` edge function).
-- **Brand-direct signup**: brand name → subdomain → Pesapal checkout for KES 180k quarterly → brand_org created → brand_owner can then "invite agency" by email; the invited agency either links its existing account or creates one, and chooses which of its clients/campaigns to feed into this brand_org. Agency keeps editing rights; brand sees read-only rollup.
+### Technical notes
+- Reuse `has_role(auth.uid(), 'super_admin')` everywhere
+- Pesapal v3 REST (auth → SubmitOrderRequest → GetTransactionStatus); base URL switches on `PESAPAL_ENV`
+- IPN URL: `https://<project-ref>.functions.supabase.co/pesapal-ipn` (returned from `project_urls` after function deploy)
+- All money in KES integer
+- `Invoices.types` added through migration → regenerated `supabase/types.ts`
 
-## 3. Whitelabel branding
+### Sequence
+1. Migration (columns + 3 tables + RLS + grants)
+2. Add Pesapal secrets (user prompt)
+3. Edge functions (register-ipn, create-order, ipn, get-status)
+4. Register IPN once (run `pesapal-register-ipn`)
+5. Admin shell + 6 pages
+6. Wire pay buttons + refresh + IPN end-to-end test
 
-New `branding` columns on `agencies` (and `brand_orgs`): `logo_url`, `display_name`, `primary_color`, `support_email`, `legal_name`, `kra_pin`, `invoice_address`. Loaded once per session into a `TenantContext`. `PortalShell` and `AppShell` read logo + colors from context instead of hard-coded `logo-pulse-mark.png`. Public report/brief/contest pages use the agency branding of the owning campaign. "Powered by Daraja Pulse" footer toggle (off on paid agency plans).
-
-## 4. Roles & access control
-
-Extend `app_role` enum:
-- `super_admin` (you only, root domain)
-- `agency_admin`, `account_manager` (already exist) — scoped to one agency
-- `brand_owner`, `brand_viewer` — scoped to one brand_org
-- `client_user`, `client_viewer` — scoped to one client, already exist
-- `influencer` — unchanged
-
-Add `agency_id` to `user_roles` so the same email can hold roles in multiple agencies (rare but needed for freelancers). RLS rewritten so every query is bounded by `current_tenant_agency()` / `current_tenant_brand_org()` security-definer functions reading from a session GUC set by the edge / API layer.
-
-Access matrix highlights:
-- Agency admin: full agency, manages seats, sees billing, can grant per-client portal access.
-- Account manager: only campaigns/clients they're a team member of (existing logic, scoped to agency).
-- Brand owner: read-only rollup across all linked agencies + their own invoices.
-- Client user: only their own client's campaigns (existing).
-
-## 5. Billing & invoicing (Pesapal)
-
-New tables: `billing_plans`, `subscriptions`, `invoices`, `invoice_lines`, `payments`, `pesapal_events`.
-
-- **Plans seeded**: `agency_monthly` (KES 45000, recurring monthly), `brand_quarterly` (KES 180000, recurring quarterly), `payout_fee` (1.4% + KES 25, usage-based — invoiced monthly per agency).
-- **Pesapal integration**: new edge functions
-  - `pesapal-create-order` — auth → returns redirect URL (API 3.0 `SubmitOrderRequest`).
-  - `pesapal-ipn` — registered IPN endpoint, marks invoice paid, activates/extends subscription.
-  - `pesapal-status` — manual reconcile.
-  Secrets: `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET`, `PESAPAL_ENV` (`sandbox`|`live`), `PESAPAL_IPN_ID`.
-- **Recurring**: Pesapal does not do native recurring for our use case → we schedule next invoice via existing cron (`run-report-schedules` pattern) 5 days before period end and email a hosted-checkout link.
-- **Payout fee**: when a payout is recorded in `payouts`, append a line to the agency's current `usage_invoice`. Closed monthly into a sendable invoice.
-- **e-TIMS-ready invoice PDF**: generated server-side (existing `exportReport.ts` patterns) with KRA PIN, line items, VAT 16%, WHT line where applicable. Stored in new `invoices` bucket. Downloadable + emailable. Actual e-TIMS submission is out of scope v1 — we just produce a compliant PDF the agency uploads.
-
-UI: new `/app/billing` for agency admins (invoices list, current plan, payment method, download PDF) and `/portal/billing` for brand owners.
-
-## 6. Pesapal flow specifics
-
-1. User clicks Pay → frontend calls `pesapal-create-order` with `invoice_id`.
-2. Edge function POSTs to `https://pay.pesapal.com/v3/api/Transactions/SubmitOrderRequest` with bearer token from `/api/Auth/RequestToken`. Includes `notification_id` (registered IPN), `callback_url` back to `/app/billing/return?invoice={id}`.
-3. Returns `redirect_url` → frontend `window.location`.
-4. Pesapal POSTs IPN to `pesapal-ipn` → we call `/api/Transactions/GetTransactionStatus` → mark invoice paid + extend subscription `current_period_end`.
-
-## 7. Migration order
-
-1. `agencies`, `brand_orgs`, branding columns, `agency_id` everywhere, backfill default agency, rewrite RLS.
-2. Tenant host resolver + `TenantContext` + dynamic logo/colors in shells + public pages.
-3. Three signup pages + role assignments.
-4. Billing tables + Pesapal edge functions + checkout UI + invoice PDF.
-5. Brand-direct rollup view (read-only aggregation across linked agencies).
-6. Phase 2: custom domains, e-TIMS API integration if/when KRA SDK access granted.
-
-## 8. Open items I need from you before building
-
-- **Pesapal account**: do you have a live merchant account already, or should we start in sandbox? I'll need `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET` added as secrets when you're ready.
-- **Your default agency**: confirm the name/subdomain for the existing data (proposed: `Daraja Pulse` on root domain, all current clients move under it).
-- **KRA PIN & legal name** for invoice headers on your side.
-- **Pricing flexibility**: should the agency monthly fee be editable per-agency (negotiated deals), or hard-locked to KES 45k?
-
----
-
-## Technical appendix
-
-- **New tables**: `agencies`, `brand_orgs`, `brand_org_agencies` (link table), `billing_plans`, `subscriptions`, `invoices`, `invoice_lines`, `payments`, `pesapal_events`, `agency_domains`, `brand_org_domains` (phase 2).
-- **Schema additions**: `agency_id uuid` on `clients`, `campaigns`, `contests`, `influencers`, `brief_templates`, `discovery_*`, `report_*`, `email_*`, `profiles`. NOT NULL after backfill.
-- **New RPCs**: `current_agency_id()`, `current_brand_org_id()`, `user_has_agency_access(_user, _agency)`, `user_has_brand_org_access(_user, _brand_org)`.
-- **New edge functions**: `pesapal-create-order`, `pesapal-ipn` (verify_jwt=false), `pesapal-status`, `generate-invoice-pdf`, `tenant-resolve` (optional — usually a Vite server middleware on the dev side and Lovable proxy on prod).
-- **Frontend**: `TenantProvider` reading `window.location.host`, `useTenant()` hook, branded `AppShell`/`PortalShell`, new routes `/signup/agency`, `/signup/brand`, `/app/billing`, `/portal/billing`, `/app/agency/settings` (branding + seats).
-- **Storage**: new `invoices` bucket (private), reuse `client-logos` for agency logos (rename concept to `tenant-logos`).
-- **Cron**: new schedule `billing-renew` runs daily, generates next-period invoice 5 days before period end.
+Files touched (approx):
+- `supabase/migrations/<new>.sql`
+- `supabase/functions/pesapal-{register-ipn,create-order,ipn,get-status}/index.ts`
+- `src/pages/app/admin/{AdminLayout,Dashboard,Agencies,BrandOrgs,Clients,Billing,Users}.tsx`
+- `src/components/AppShell.tsx` (admin nav group)
+- `src/App.tsx` (routes)
+- Remove/redirect old `src/pages/app/AdminBilling.tsx`
