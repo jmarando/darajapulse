@@ -2035,6 +2035,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agency_staff_on_campaign: {
+        Args: { _campaign_id: string; _user_id: string }
+        Returns: boolean
+      }
+      agency_staff_on_contest: {
+        Args: { _contest_id: string; _user_id: string }
+        Returns: boolean
+      }
+      agency_staff_on_post: {
+        Args: { _post_id: string; _user_id: string }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -2072,6 +2084,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
