@@ -1,0 +1,78 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+    const { data: u } = await userClient.auth.getUser();
+    if (!u?.user) return json({ error: "unauthorized" }, 401);
+
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", u.user.id);
+    const roleSet = new Set((roles ?? []).map((r: any) => r.role));
+    if (!roleSet.has("agency_admin") && !roleSet.has("super_admin")) {
+      return json({ error: "forbidden" }, 403);
+    }
+
+    const { kind, org_id, email, redirect_to } = await req.json();
+    const cleanEmail = String(email ?? "").trim().toLowerCase();
+    if (!cleanEmail || !org_id || (kind !== "agency" && kind !== "brand_org")) {
+      return json({ error: "kind, org_id, and email required" }, 400);
+    }
+
+    // Look up org name for the invite email
+    const table = kind === "agency" ? "agencies" : "brand_orgs";
+    const { data: org } = await admin.from(table).select("name").eq("id", org_id).maybeSingle();
+    const orgName = (org as any)?.name ?? (kind === "agency" ? "your agency" : "your brand");
+
+    // Find or invite the auth user
+    let userId: string | null = null;
+    let existed = false;
+    const { data: existing } = await admin.auth.admin.listUsers();
+    const found = existing?.users?.find((x: any) => (x.email ?? "").toLowerCase() === cleanEmail);
+    if (found) {
+      userId = found.id;
+      existed = true;
+    } else {
+      const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
+        redirectTo: redirect_to ?? undefined,
+        data: { org_name: orgName, org_kind: kind },
+      });
+      if (invErr || !invited?.user) return json({ error: invErr?.message ?? "invite failed" }, 500);
+      userId = invited.user.id;
+    }
+
+    // Ensure profile
+    await admin.from("profiles").upsert({ id: userId!, email: cleanEmail }, { onConflict: "id" });
+
+    // Assign role scoped to the org
+    const role = kind === "agency" ? "agency_admin" : "brand_owner";
+    const scopeCol = kind === "agency" ? "agency_id" : "brand_org_id";
+    const { error: roleErr } = await admin
+      .from("user_roles")
+      .upsert({ user_id: userId, role, [scopeCol]: org_id }, { onConflict: "user_id,role" });
+    if (roleErr) return json({ error: roleErr.message }, 500);
+
+    return json({ ok: true, user_id: userId, existed, invited: !existed });
+  } catch (e) {
+    return json({ error: String(e) }, 500);
+  }
+});
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
