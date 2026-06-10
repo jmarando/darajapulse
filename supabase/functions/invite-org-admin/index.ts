@@ -55,12 +55,30 @@ Deno.serve(async (req) => {
 
     await admin.from("profiles").upsert({ id: userId!, email: cleanEmail }, { onConflict: "id" });
 
-    const role = kind === "agency" ? "agency_admin" : "brand_owner";
-    const scopeCol = kind === "agency" ? "agency_id" : "brand_org_id";
-    const { error: roleErr } = await admin
-      .from("user_roles")
-      .upsert({ user_id: userId, role, [scopeCol]: org_id }, { onConflict: "user_id,role" });
-    if (roleErr) return json({ error: roleErr.message }, 500);
+    if (kind === "agency") {
+      // Grant agency_admin + account_manager, both scoped to this agency.
+      // Also remove any stray rows on OTHER agencies so the user is strictly
+      // scoped to a single agency for these roles.
+      await admin.from("user_roles").delete()
+        .eq("user_id", userId)
+        .in("role", ["agency_admin", "account_manager"])
+        .neq("agency_id", org_id);
+      const { error: roleErr } = await admin
+        .from("user_roles")
+        .upsert(
+          [
+            { user_id: userId, role: "agency_admin", agency_id: org_id },
+            { user_id: userId, role: "account_manager", agency_id: org_id },
+          ],
+          { onConflict: "user_id,role" }
+        );
+      if (roleErr) return json({ error: roleErr.message }, 500);
+    } else {
+      const { error: roleErr } = await admin
+        .from("user_roles")
+        .upsert({ user_id: userId, role: "brand_owner", brand_org_id: org_id }, { onConflict: "user_id,role" });
+      if (roleErr) return json({ error: roleErr.message }, 500);
+    }
 
     // For existing users: inviteUserByEmail wasn't called, so send a welcome
     // email with a magic-link sign-in URL so they know they have access.
