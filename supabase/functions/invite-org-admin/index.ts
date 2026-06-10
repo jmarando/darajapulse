@@ -77,15 +77,21 @@ Deno.serve(async (req) => {
         if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
       } catch (_) { /* fall back to app url */ }
 
-      const { error: mailErr } = await admin.functions.invoke("send-transactional-email", {
-        body: {
+      const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader || `Bearer ${SERVICE_KEY}`,
+          "apikey": SERVICE_KEY,
+        },
+        body: JSON.stringify({
           templateName: "org-admin-welcome",
           recipientEmail: cleanEmail,
-          idempotencyKey: `org-admin-welcome-${org_id}-${userId}`,
+          idempotencyKey: `org-admin-welcome-${org_id}-${userId}-${Date.now()}`,
           templateData: { org_name: orgName, org_kind: kind, sign_in_url: signInUrl, app_url: appUrl },
-        },
+        }),
       });
-      if (mailErr) welcomeError = mailErr.message;
+      if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;
       else welcomeSent = true;
     }
 
