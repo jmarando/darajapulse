@@ -95,6 +95,7 @@ function Dashboard() {
 
 /* ---------------- Agencies ---------------- */
 function AgenciesTab() {
+  const { user } = useAuth();
   const [rows, setRows] = useState<Agency[]>([]);
   const [editing, setEditing] = useState<Agency | null>(null);
   const [open, setOpen] = useState(false);
@@ -106,7 +107,7 @@ function AgenciesTab() {
   };
   useEffect(() => { load(); }, []);
 
-  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", monthly_fee_kes: 0, billing_cycle: "monthly", billing_notes: "", is_active: true, logo_url: "", support_email: "" };
+  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", monthly_fee_kes: 0, billing_cycle: "monthly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
 
   const save = async (a: Agency) => {
     const payload = { ...a };
