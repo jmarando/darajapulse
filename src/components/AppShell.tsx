@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare, UserCog, Menu, Search, Bell, Sparkles, Trophy, Compass } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare, UserCog, Menu, Search, Bell, Sparkles, Trophy, Compass, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -40,7 +40,7 @@ const navGroups: { label?: string; items: { to: string; icon: any; label: string
   },
 ];
 
-const SidebarBody = ({ user, isAdmin, onSignOut, onNavigate }: any) => (
+const SidebarBody = ({ user, isAdmin, isSuper, onSignOut, onNavigate }: any) => (
   <>
     <div className="px-5 py-5 border-b border-sidebar-border bg-white flex items-center gap-3">
       <img src={logo} alt="Daraja Pulse" className="h-10 w-auto" />
@@ -71,6 +71,13 @@ const SidebarBody = ({ user, isAdmin, onSignOut, onNavigate }: any) => (
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-accent/15 text-accent font-medium' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}>
           <UserCog className="w-4 h-4" /> Team
+        </NavLink>
+      )}
+      {isSuper && (
+        <NavLink to="/app/admin" onClick={onNavigate}
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-accent/15 text-accent font-medium' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}>
+          <Shield className="w-4 h-4" /> Super Admin
         </NavLink>
       )}
     </nav>
@@ -104,6 +111,7 @@ const TopBar = ({ user }: any) => {
 const AppShell = () => {
   const { user, loading, signOut, isAgency, isClient, roles } = useAuth();
   const isAdmin = roles.includes("agency_admin");
+  const isSuper = roles.includes("super_admin" as any);
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -117,13 +125,13 @@ const AppShell = () => {
     <div className="min-h-screen flex bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border">
-        <SidebarBody user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
+        <SidebarBody user={user} isAdmin={isAdmin} isSuper={isSuper} onSignOut={handleSignOut} />
       </aside>
 
       {/* Mobile sheet sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="p-0 w-72 bg-sidebar text-sidebar-foreground flex flex-col [&>button]:text-sidebar-foreground">
-          <SidebarBody user={user} isAdmin={isAdmin} onSignOut={handleSignOut} onNavigate={() => setMobileOpen(false)} />
+          <SidebarBody user={user} isAdmin={isAdmin} isSuper={isSuper} onSignOut={handleSignOut} onNavigate={() => setMobileOpen(false)} />
         </SheetContent>
       </Sheet>
 
