@@ -1,102 +1,105 @@
-# Influencer Discovery — Kenya
 
-A new left-nav section ("Discovery") with a prefilled roster of Kenyan influencers across Instagram, TikTok, YouTube, X and Facebook, plus a form-driven AI matchmaker that ranks the best fits for a given product brief.
+# Whitelabel, Tenancy, Billing & Access Control
 
-## 1. New left-nav entry
+Goal: turn Daraja Pulse into a multi-tenant SaaS with two paid surfaces (Agency whitelabel KES 45k/mo + Brand-direct portal KES 180k/quarter), Pesapal-collected subscriptions, M-Pesa payout invoicing, and per-role access control. Subdomain whitelabel ships now, custom domains in phase 2.
 
-- Add `Discovery` (Compass icon) in `AppShell` sidebar, route `/app/discovery`.
-- Keep the existing `Influencers` (roster) section — Discovery is a separate, larger surface focused on finding and vetting creators, not managing the agency's signed roster.
-- "Add to roster" action on each Discovery card copies the creator into `influencers` so existing campaign flows just work.
+---
 
-## 2. Data model (new tables)
+## 1. Tenancy model
+
+Introduce a top-level `agencies` table (alongside existing `clients`). Every existing record (clients, campaigns, contests, influencers, profiles) gets an `agency_id`. The current single-tenant data backfills into one "default" agency owned by you.
+
+New top-level types:
+- **Agency** — a whitelabel tenant. Has subdomain, logo, brand color, billing profile, seats (max 5 AM by default).
+- **Brand** (= existing `clients`, extended) — can now exist either inside an agency OR as a standalone brand-direct tenant (`is_direct = true`, no agency_id).
+- **BrandOrg** — new optional grouping for brand-direct customers that aggregates many client rows fed by different agencies (the "5 agencies → 1 view" rollup).
+
+Resolution at request time: middleware reads `host` header → looks up `agencies.subdomain` (e.g. `acme.darajapulse.com`) or `brand_orgs.subdomain` → sets `tenant` in context. Root domain `darajapulse.com` keeps the marketing site + super-admin.
+
+Phase 2: `agency_domains` / `brand_org_domains` tables for custom CNAMEs; Lovable custom-domain DNS handles SSL.
+
+## 2. Signup & onboarding flows (different per persona)
+
+Three distinct entry points on the marketing site:
 
 ```text
-discovery_creators
-  id, full_name, handle, platform, profile_url,
-  niche (text[]), region, city,
-  follower_count, engagement_rate,
-  bio, avatar_url,
-  source ('ai_seed' | 'manual' | 'enriched'),
-  ai_confidence (0-1),         -- how sure the AI was
-  verified_at,                  -- nullable, set when a human confirms
-  created_at, updated_at
-
-discovery_contacts            -- 1-to-many, public + private
-  id, creator_id,
-  kind ('email'|'phone'|'whatsapp'|'manager_email'|'agency'|'link'),
-  value, label, is_public, added_by, created_at
-
-discovery_searches            -- audit + re-rank cache
-  id, user_id, brief jsonb, results jsonb, created_at
+/signup/agency   →  creates agency, owner becomes agency_admin
+/signup/brand    →  creates brand_org, owner becomes brand_owner
+/signup/creator  →  unchanged (existing influencer flow)
 ```
 
-RLS: agency_admin + account_manager can read/write everything; contacts marked `is_public=false` only visible to authenticated team. All tables: standard GRANTs.
+- **Agency signup**: company name → auto-generate subdomain → choose plan → Pesapal checkout for KES 45k → on success, agency is provisioned, owner lands in `/app` whitelabeled.
+- **Agency invites clients**: existing `clients` flow stays, but the agency owner controls visibility — by default the brand contact does NOT get a login. The agency can toggle "Give client portal access" per client, which sends a Pesapal-skipping invite to `/portal` scoped to that client only (re-uses existing `invite-client-user` edge function).
+- **Brand-direct signup**: brand name → subdomain → Pesapal checkout for KES 180k quarterly → brand_org created → brand_owner can then "invite agency" by email; the invited agency either links its existing account or creates one, and chooses which of its clients/campaigns to feed into this brand_org. Agency keeps editing rights; brand sees read-only rollup.
 
-## 3. Prefilling the Kenya roster (AI-generated seed)
+## 3. Whitelabel branding
 
-A one-shot admin action ("Seed Kenya roster") calls a new edge function `discovery-seed` which:
+New `branding` columns on `agencies` (and `brand_orgs`): `logo_url`, `display_name`, `primary_color`, `support_email`, `legal_name`, `kra_pin`, `invoice_address`. Loaded once per session into a `TenantContext`. `PortalShell` and `AppShell` read logo + colors from context instead of hard-coded `logo-pulse-mark.png`. Public report/brief/contest pages use the agency branding of the owning campaign. "Powered by Daraja Pulse" footer toggle (off on paid agency plans).
 
-1. Iterates a fixed list of ~25 niches × 5 platforms (food, beauty, comedy, fitness, fashion, parenting, finance, gospel, tech, travel, sports, gaming, lifestyle, music, news/politics, automotive, hair, skincare, wedding, hustle/SME, agribusiness, education, real estate, motherhood, nightlife).
-2. For each (niche, platform) prompts `google/gemini-3-flash-preview` with structured output (zod schema) asking for ~15 well-known Kenyan creators with: name, handle, profile URL, est. followers, est. engagement %, city, short bio, public contact (email/WhatsApp) **if known**, confidence.
-3. De-dupes by `(platform, handle)` and inserts into `discovery_creators` with `source='ai_seed'`.
+## 4. Roles & access control
 
-Expected scale: ~25 × 5 × 15 ≈ ~1,800 raw rows → ~1,000-1,500 after dedupe. Run in batched parallel calls (e.g. 8 at a time) with progress toast.
+Extend `app_role` enum:
+- `super_admin` (you only, root domain)
+- `agency_admin`, `account_manager` (already exist) — scoped to one agency
+- `brand_owner`, `brand_viewer` — scoped to one brand_org
+- `client_user`, `client_viewer` — scoped to one client, already exist
+- `influencer` — unchanged
 
-Re-seeding is idempotent: `onConflict (platform, handle) do update set ai_confidence = greatest(...)`, never overwrites human-verified fields.
+Add `agency_id` to `user_roles` so the same email can hold roles in multiple agencies (rare but needed for freelancers). RLS rewritten so every query is bounded by `current_tenant_agency()` / `current_tenant_brand_org()` security-definer functions reading from a session GUC set by the edge / API layer.
 
-Honest caveat shown in UI: "AI-suggested — verify before outreach." A `Verify` button on each card flips `verified_at` and locks key fields.
+Access matrix highlights:
+- Agency admin: full agency, manages seats, sees billing, can grant per-client portal access.
+- Account manager: only campaigns/clients they're a team member of (existing logic, scoped to agency).
+- Brand owner: read-only rollup across all linked agencies + their own invoices.
+- Client user: only their own client's campaigns (existing).
 
-## 4. Roster UI (`/app/discovery`)
+## 5. Billing & invoicing (Pesapal)
 
-Left: filter sidebar
-- Platform multi-select (IG, TikTok, YouTube, X, Facebook)
-- Niche multi-select (chips from distinct niches)
-- Follower range slider (1K–5M)
-- Engagement min (%)
-- City (Nairobi, Mombasa, Kisumu, …)
-- Verified only toggle
-- Has contact toggle
+New tables: `billing_plans`, `subscriptions`, `invoices`, `invoice_lines`, `payments`, `pesapal_events`.
 
-Right: card grid (reuse styling from `Influencers.tsx`)
-- Avatar, name, @handle linking to profile_url
-- Platform icon, followers (compact), engagement %, city
-- Niche chips, confidence badge ("AI-suggested" vs "Verified")
-- Quick actions: View details · Copy handle · Add to roster
+- **Plans seeded**: `agency_monthly` (KES 45000, recurring monthly), `brand_quarterly` (KES 180000, recurring quarterly), `payout_fee` (1.4% + KES 25, usage-based — invoiced monthly per agency).
+- **Pesapal integration**: new edge functions
+  - `pesapal-create-order` — auth → returns redirect URL (API 3.0 `SubmitOrderRequest`).
+  - `pesapal-ipn` — registered IPN endpoint, marks invoice paid, activates/extends subscription.
+  - `pesapal-status` — manual reconcile.
+  Secrets: `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET`, `PESAPAL_ENV` (`sandbox`|`live`), `PESAPAL_IPN_ID`.
+- **Recurring**: Pesapal does not do native recurring for our use case → we schedule next invoice via existing cron (`run-report-schedules` pattern) 5 days before period end and email a hosted-checkout link.
+- **Payout fee**: when a payout is recorded in `payouts`, append a line to the agency's current `usage_invoice`. Closed monthly into a sendable invoice.
+- **e-TIMS-ready invoice PDF**: generated server-side (existing `exportReport.ts` patterns) with KRA PIN, line items, VAT 16%, WHT line where applicable. Stored in new `invoices` bucket. Downloadable + emailable. Actual e-TIMS submission is out of scope v1 — we just produce a compliant PDF the agency uploads.
 
-Detail drawer (click card):
-- Profile summary
-- **Contacts** list with inline add/edit ("Add email", "Add WhatsApp", public/private toggle). Stored in `discovery_contacts`. This is the user-requested "upload/update contacts where available" path.
-- Notes (textarea, agency-only)
-- "Add to influencer roster" → inserts into `influencers`
+UI: new `/app/billing` for agency admins (invoices list, current plan, payment method, download PDF) and `/portal/billing` for brand owners.
 
-## 5. AI matchmaker (form + ranking)
+## 6. Pesapal flow specifics
 
-Top of page: "Find creators for a brief" card.
-- Form fields: product/brand, category, target audience, region (default Kenya), platforms (multi), budget tier (micro/mid/macro), goal (awareness/conversions/UGC), notes.
-- On submit → edge function `discovery-match`:
-  1. Pulls candidate creators from `discovery_creators` filtered by chosen platforms + rough follower band for the budget tier (SQL prefilter, ~200 rows max).
-  2. Sends the brief + the candidate shortlist (compact JSON: id, handle, niche, followers, city, bio) to `google/gemini-3-flash-preview` with a structured `Output.object` schema asking for top 15 ranked matches with `creator_id`, `score (0-100)`, `reason (1 sentence)`, `suggested_angle`.
-  3. Returns ranked results; UI shows them as a re-ordered card list above the full roster with a "Match: 87 — great fit for Nairobi Gen-Z beauty" badge.
-- Result is saved in `discovery_searches` so the user can revisit recent briefs.
+1. User clicks Pay → frontend calls `pesapal-create-order` with `invoice_id`.
+2. Edge function POSTs to `https://pay.pesapal.com/v3/api/Transactions/SubmitOrderRequest` with bearer token from `/api/Auth/RequestToken`. Includes `notification_id` (registered IPN), `callback_url` back to `/app/billing/return?invoice={id}`.
+3. Returns `redirect_url` → frontend `window.location`.
+4. Pesapal POSTs IPN to `pesapal-ipn` → we call `/api/Transactions/GetTransactionStatus` → mark invoice paid + extend subscription `current_period_end`.
 
-## 6. Edge functions
+## 7. Migration order
 
-- `supabase/functions/discovery-seed/index.ts` — batched AI generation + upsert. Admin-only (JWT check + `has_role('agency_admin')`).
-- `supabase/functions/discovery-match/index.ts` — runs the ranking call. Authenticated team members.
+1. `agencies`, `brand_orgs`, branding columns, `agency_id` everywhere, backfill default agency, rewrite RLS.
+2. Tenant host resolver + `TenantContext` + dynamic logo/colors in shells + public pages.
+3. Three signup pages + role assignments.
+4. Billing tables + Pesapal edge functions + checkout UI + invoice PDF.
+5. Brand-direct rollup view (read-only aggregation across linked agencies).
+6. Phase 2: custom domains, e-TIMS API integration if/when KRA SDK access granted.
 
-Both use the existing Lovable AI gateway pattern (`LOVABLE_API_KEY`, `google/gemini-3-flash-preview`, structured output via `Output.object` + zod). No new secrets needed.
+## 8. Open items I need from you before building
 
-## 7. Out of scope (explicit non-goals for v1)
+- **Pesapal account**: do you have a live merchant account already, or should we start in sandbox? I'll need `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET` added as secrets when you're ready.
+- **Your default agency**: confirm the name/subdomain for the existing data (proposed: `Daraja Pulse` on root domain, all current clients move under it).
+- **KRA PIN & legal name** for invoice headers on your side.
+- **Pricing flexibility**: should the agency monthly fee be editable per-agency (negotiated deals), or hard-locked to KES 45k?
 
-- Live scraping / Apify / Firecrawl enrichment (can be a v2 "Refresh stats" button per card).
-- Audience demographics, fake-follower scoring (requires paid API).
-- DM/outreach automation — Discovery just surfaces contacts; outreach stays manual or moves through existing campaign briefs.
+---
 
-## Technical notes
+## Technical appendix
 
-- Frontend: new `src/pages/app/Discovery.tsx`, `DiscoveryDetailDrawer.tsx`, route wired in `App.tsx`, nav item in `AppShell.tsx`.
-- Reuse `PlatformPicker`, card styling, and `fmtCompact` from `Influencers.tsx`.
-- Seed run is async; show progress via a row in a new `discovery_seed_runs` table or just toast count.
-- Costs: seeding ~125 LLM calls (one per niche×platform), each ~2-4K tokens → modest one-time AI spend. Matchmaker is ~1 call per search.
-
-Ship order: tables + RLS → Discovery page shell + nav → seed function + admin button → matchmaker form → detail drawer with contacts editor.
+- **New tables**: `agencies`, `brand_orgs`, `brand_org_agencies` (link table), `billing_plans`, `subscriptions`, `invoices`, `invoice_lines`, `payments`, `pesapal_events`, `agency_domains`, `brand_org_domains` (phase 2).
+- **Schema additions**: `agency_id uuid` on `clients`, `campaigns`, `contests`, `influencers`, `brief_templates`, `discovery_*`, `report_*`, `email_*`, `profiles`. NOT NULL after backfill.
+- **New RPCs**: `current_agency_id()`, `current_brand_org_id()`, `user_has_agency_access(_user, _agency)`, `user_has_brand_org_access(_user, _brand_org)`.
+- **New edge functions**: `pesapal-create-order`, `pesapal-ipn` (verify_jwt=false), `pesapal-status`, `generate-invoice-pdf`, `tenant-resolve` (optional — usually a Vite server middleware on the dev side and Lovable proxy on prod).
+- **Frontend**: `TenantProvider` reading `window.location.host`, `useTenant()` hook, branded `AppShell`/`PortalShell`, new routes `/signup/agency`, `/signup/brand`, `/app/billing`, `/portal/billing`, `/app/agency/settings` (branding + seats).
+- **Storage**: new `invoices` bucket (private), reuse `client-logos` for agency logos (rename concept to `tenant-logos`).
+- **Cron**: new schedule `billing-renew` runs daily, generates next-period invoice 5 days before period end.
