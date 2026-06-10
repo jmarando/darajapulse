@@ -38,26 +38,87 @@ async function buildContestDaily(supa: any, campaign_id: string, contest_id?: st
   const { data: entries } = await supa
     .from('contest_entries').select('*')
     .eq('contest_id', contest.id)
-    .in('status', ['approved', 'winner'])
-  const all = entries || []
-  const new24 = all.filter((e: any) => e.created_at >= since).length
-  const totalViews = all.reduce((s: number, e: any) => s + (e.views || 0), 0)
-  const totalEng = all.reduce(
+  const allRows = entries || []
+  const new24 = allRows.filter((e: any) => e.created_at >= since).length
+
+  // Match the in-app/public-report logic: announced winners (status='winner'
+  // OR metadata.placement_rank set) are removed from the leaderboard along
+  // with their sibling rows. Other rows are grouped per contestant by handle
+  // so the same person isn't listed twice.
+  const cleanH = (s?: string | null) =>
+    (s || '').trim().replace(/^@+/, '').toLowerCase() || null
+  const handlesOf = (e: any) =>
+    [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]
+      .map(cleanH).filter(Boolean) as string[]
+  const isWinner = (e: any) =>
+    e.status === 'winner' || (e?.metadata && e.metadata.placement_rank != null)
+  const winnerHandles = new Set<string>()
+  for (const w of allRows.filter(isWinner)) {
+    for (const h of handlesOf(w)) winnerHandles.add(h)
+    const tokens = String(w.full_name || w.submitter_name || '')
+      .toLowerCase().split(/\s+/).filter((t: string) => t.length >= 5)
+    for (const t of tokens) winnerHandles.add(`name:${t}`)
+  }
+  const isWinnerRelated = (e: any) => {
+    if (isWinner(e)) return true
+    for (const h of handlesOf(e)) if (winnerHandles.has(h)) return true
+    const hay = [e.handle, e.tiktok_handle, e.instagram_handle, e.facebook_handle, e.full_name, e.submitter_name]
+      .map((s: any) => String(s || '').toLowerCase()).join(' ')
+    for (const k of winnerHandles) {
+      if (k.startsWith('name:') && hay.includes(k.slice(5))) return true
+    }
+    return false
+  }
+
+  const eligible = allRows.filter((e: any) =>
+    ['approved', 'winner', 'registered'].includes(e.status) && !isWinnerRelated(e)
+  )
+
+  // Group by primary handle (or email) so one contestant = one row.
+  const groups = new Map<string, any[]>()
+  for (const e of eligible) {
+    const key = handlesOf(e)[0] || cleanH(e.submitter_email) || e.id
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(e)
+  }
+  const contestants = Array.from(groups.values()).map((rows) => {
+    const reg = rows.find((r: any) =>
+      ['registration','csv_import','external_feed'].includes(String(r.source || ''))) || rows[0]
+    // Best post per platform — sum across platforms.
+    const bestByPlat = new Map<string, any>()
+    for (const r of rows) {
+      const plat = String(r.platform || 'other').toLowerCase()
+      const s = Number(r.shares||0)*3 + Number(r.comments||0)*2 + Number(r.likes||0) + Number(r.views||0)
+      const prev = bestByPlat.get(plat)
+      if (!prev || s > prev._s) bestByPlat.set(plat, { ...r, _s: s })
+    }
+    const posts = Array.from(bestByPlat.values())
+    return {
+      reg,
+      handle: reg.handle || reg.tiktok_handle || reg.instagram_handle || reg.facebook_handle || '—',
+      name: reg.full_name || reg.submitter_name || reg.handle || '—',
+      platform: reg.platform,
+      views: posts.reduce((s, p) => s + Number(p.views || 0), 0),
+      likes: posts.reduce((s, p) => s + Number(p.likes || 0), 0),
+      score: posts.reduce((s, p) => s + p._s, 0),
+      post_url: posts[0]?.post_url || reg.post_url,
+    }
+  }).sort((a, b) => b.score - a.score)
+
+  const totalViews = contestants.reduce((s, c) => s + c.views, 0)
+  const totalEng = eligible.reduce(
     (s: number, e: any) => s + (e.likes || 0) + (e.comments || 0) + (e.shares || 0),
     0,
   )
-  const top = [...all]
-    .sort((a, b) => (b.score || 0) - (a.score || 0))
-    .slice(0, 10)
-    .map((e, i) => ({
-      rank: i + 1,
-      handle: e.handle || e.tiktok_handle || e.instagram_handle || e.facebook_handle || '—',
-      platform: e.platform,
-      score: Number(e.score || 0),
-      views: e.views || 0,
-      likes: e.likes || 0,
-      post_url: e.post_url,
-    }))
+  const top = contestants.slice(0, 10).map((c, i) => ({
+    rank: i + 1,
+    handle: c.handle,
+    platform: c.platform,
+    score: Math.round(c.score),
+    views: c.views,
+    likes: c.likes,
+    post_url: c.post_url,
+  }))
   const end = new Date(contest.end_date)
   const daysLeft = Math.max(0, Math.ceil((end.getTime() - Date.now()) / 86400000))
 
@@ -67,7 +128,7 @@ async function buildContestDaily(supa: any, campaign_id: string, contest_id?: st
     prize: contest.prize,
     date_label: fmtDate(new Date()),
     days_remaining: daysLeft,
-    total_entries: all.length,
+    total_entries: contestants.length,
     new_entries_24h: new24,
     total_views: totalViews,
     total_engagement: totalEng,
