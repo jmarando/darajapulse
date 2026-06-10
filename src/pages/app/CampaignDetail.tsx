@@ -183,7 +183,7 @@ const CampaignDetail = () => {
     if (!newInfl.full_name || submitting) return;
     setSubmitting(true);
     try {
-      const { data, error } = await supabase.from("influencers").insert({
+      const { data, error } = await (supabase.from("influencers") as any).insert({
         ...newInfl,
         follower_count: Number(newInfl.follower_count) || 0,
       }).select().single();

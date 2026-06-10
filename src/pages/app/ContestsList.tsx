@@ -122,7 +122,7 @@ const ContestsList = () => {
       campaign_id: form.campaign_id === "none" ? null : form.campaign_id,
       client_id: form.client_id === "none" ? null : form.client_id,
     };
-    const { data, error } = await supabase.from("contests").insert(payload).select("id").single();
+    const { data, error } = await (supabase.from("contests") as any).insert(payload).select("id").single();
     if (error) return toast.error(error.message);
     toast.success("Contest created");
     setOpen(false);

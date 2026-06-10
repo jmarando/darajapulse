@@ -437,7 +437,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!campaignId) return toast.error("Use the Contests section to create a new contest");
-    const { error } = await supabase.from("contests").insert({ ...form, campaign_id: campaignId });
+    const { error } = await (supabase.from("contests") as any).insert({ ...form, campaign_id: campaignId });
     if (error) return toast.error(error.message);
     toast.success("Contest created"); setOpen(false);
     setForm({ name: "", hashtag: "#", platforms: ["tiktok"], start_date: "", end_date: "", round_days: 14, prize: "" });
