@@ -70,7 +70,7 @@ const Clients = () => {
       toast.success("Client updated");
       setOpen(false); reset(); load();
     } else {
-      const { data: inserted, error } = await (supabase.from("clients") as any).insert(form).select().single();
+      const { data: inserted, error } = await supabase.from("clients").insert(form as any).select().single();
       if (error) { setSubmitting(false); return toast.error(error.message); }
       // Auto-invite the contact email if requested
       if (autoInvite && form.primary_contact_email) {
