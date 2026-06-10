@@ -1,7 +1,6 @@
 // Shared Pesapal v3 helpers
-export const PESAPAL_BASE = (Deno.env.get("PESAPAL_ENV") ?? "sandbox").toLowerCase() === "live"
-  ? "https://pay.pesapal.com/v3"
-  : "https://cybqa.pesapal.com/pesapalv3";
+// Pesapal v3 uses a single live endpoint; PESAPAL_ENV is informational only.
+export const PESAPAL_BASE = "https://pay.pesapal.com/v3";
 
 export async function pesapalAuth(): Promise<string> {
   const r = await fetch(`${PESAPAL_BASE}/api/Auth/RequestToken`, {
