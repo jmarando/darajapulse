@@ -296,7 +296,7 @@ const PublicContestReport = () => {
                 {rounds.map(([round, list]) => (
                   <div key={round}>
                     <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">
-                      {round === "—" ? "Earlier rounds" : `Week ${round}`}
+                      {round === "—" ? "Earlier rounds" : `Round ${round}`}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {list
