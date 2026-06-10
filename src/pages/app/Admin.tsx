@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Plus, RefreshCw, ExternalLink, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, ExternalLink, Trash2, Upload } from "lucide-react";
 
 type OrgKind = "agency" | "brand_org";
 type Agency = any;
@@ -95,6 +95,7 @@ function Dashboard() {
 
 /* ---------------- Agencies ---------------- */
 function AgenciesTab() {
+  const { user } = useAuth();
   const [rows, setRows] = useState<Agency[]>([]);
   const [editing, setEditing] = useState<Agency | null>(null);
   const [open, setOpen] = useState(false);
@@ -106,7 +107,7 @@ function AgenciesTab() {
   };
   useEffect(() => { load(); }, []);
 
-  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", monthly_fee_kes: 0, billing_cycle: "monthly", billing_notes: "", is_active: true, logo_url: "", support_email: "" };
+  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", monthly_fee_kes: 0, billing_cycle: "monthly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
 
   const save = async (a: Agency) => {
     const payload = { ...a };
@@ -167,8 +168,8 @@ function AgencyForm({ value, onChange }: any) {
           <SelectContent><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="annual">Annual</SelectItem></SelectContent>
         </Select>
       </Field>
-      <Field label="Logo URL"><Input value={value.logo_url ?? ""} onChange={(e) => set("logo_url", e.target.value)} /></Field>
-      <Field label="Support email"><Input value={value.support_email ?? ""} onChange={(e) => set("support_email", e.target.value)} /></Field>
+      <Field label="Logo" className="col-span-2"><LogoUploader value={value.logo_url ?? ""} onChange={(v) => set("logo_url", v)} /></Field>
+      <Field label="Support email" className="col-span-2"><Input type="email" value={value.support_email ?? ""} onChange={(e) => set("support_email", e.target.value)} placeholder="ops@youragency.com" /></Field>
       <Field label="Active" className="col-span-2 flex items-center gap-2">
         <input type="checkbox" checked={!!value.is_active} onChange={(e) => set("is_active", e.target.checked)} />
         <span className="text-sm text-muted-foreground">Active</span>
@@ -182,6 +183,7 @@ function AgencyForm({ value, onChange }: any) {
 
 /* ---------------- Brand Orgs ---------------- */
 function BrandOrgsTab() {
+  const { user } = useAuth();
   const [rows, setRows] = useState<BrandOrg[]>([]);
   const [editing, setEditing] = useState<BrandOrg | null>(null);
   const [open, setOpen] = useState(false);
@@ -193,7 +195,7 @@ function BrandOrgsTab() {
   };
   useEffect(() => { load(); }, []);
 
-  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", subscription_fee_kes: 180000, billing_cycle: "quarterly", billing_notes: "", is_active: true, logo_url: "", support_email: "" };
+  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", subscription_fee_kes: 180000, billing_cycle: "quarterly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
 
   const save = async (b: BrandOrg) => {
     let err;
@@ -252,8 +254,8 @@ function BrandOrgForm({ value, onChange }: any) {
           <SelectContent><SelectItem value="monthly">Monthly</SelectItem><SelectItem value="quarterly">Quarterly</SelectItem><SelectItem value="annual">Annual</SelectItem></SelectContent>
         </Select>
       </Field>
-      <Field label="Logo URL"><Input value={value.logo_url ?? ""} onChange={(e) => set("logo_url", e.target.value)} /></Field>
-      <Field label="Support email"><Input value={value.support_email ?? ""} onChange={(e) => set("support_email", e.target.value)} /></Field>
+      <Field label="Logo" className="col-span-2"><LogoUploader value={value.logo_url ?? ""} onChange={(v) => set("logo_url", v)} /></Field>
+      <Field label="Support email" className="col-span-2"><Input type="email" value={value.support_email ?? ""} onChange={(e) => set("support_email", e.target.value)} placeholder="ops@brand.com" /></Field>
       <Field label="Active" className="col-span-2 flex items-center gap-2">
         <input type="checkbox" checked={!!value.is_active} onChange={(e) => set("is_active", e.target.checked)} />
         <span className="text-sm text-muted-foreground">Active</span>
@@ -503,4 +505,39 @@ function BillingTab() {
 /* ---------------- helpers ---------------- */
 function Field({ label, children, className = "" }: any) {
   return <div className={className}><Label className="text-xs">{label}</Label>{children}</div>;
+}
+
+function LogoUploader({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const handle = async (file: File) => {
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) return toast({ title: "Logo must be under 2MB", variant: "destructive" });
+    setUploading(true);
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from("client-logos").upload(path, file, { upsert: false, contentType: file.type });
+    if (error) { setUploading(false); return toast({ title: "Upload failed", description: error.message, variant: "destructive" }); }
+    const { data } = supabase.storage.from("client-logos").getPublicUrl(path);
+    onChange(data.publicUrl);
+    setUploading(false);
+    toast({ title: "Logo uploaded" });
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        {value && (
+          <div className="w-12 h-12 rounded-md border border-border bg-secondary overflow-hidden flex items-center justify-center">
+            <img src={value} alt="logo preview" className="w-full h-full object-contain p-1" />
+          </div>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); e.target.value = ""; }} />
+        <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+          <Upload className="w-3 h-3 mr-1" /> {uploading ? "Uploading…" : value ? "Replace" : "Upload"}
+        </Button>
+        {value && <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>Remove</Button>}
+      </div>
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="…or paste a logo URL" />
+    </div>
+  );
 }
