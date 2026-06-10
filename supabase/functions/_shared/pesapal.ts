@@ -11,8 +11,12 @@ export async function pesapalAuth(): Promise<string> {
       consumer_secret: Deno.env.get("PESAPAL_CONSUMER_SECRET"),
     }),
   });
-  const j = await r.json();
-  if (!j.token) throw new Error(`Pesapal auth failed: ${JSON.stringify(j)}`);
+  const text = await r.text();
+  let j: any;
+  try { j = JSON.parse(text); } catch {
+    throw new Error(`Pesapal auth non-JSON (status ${r.status}): ${text.slice(0, 200)}`);
+  }
+  if (!j.token) throw new Error(`Pesapal auth failed (status ${r.status}): ${JSON.stringify(j)}`);
   return j.token as string;
 }
 
