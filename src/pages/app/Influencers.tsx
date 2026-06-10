@@ -91,7 +91,7 @@ const Influencers = () => {
       if (error) return toast.error(error.message);
       toast.success("Influencer updated");
     } else {
-      const { error } = await supabase.from("influencers").insert(payload);
+      const { error } = await (supabase.from("influencers") as any).insert(payload);
       if (error) return toast.error(error.message);
       toast.success("Influencer added");
     }

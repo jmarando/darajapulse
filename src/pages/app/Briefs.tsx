@@ -122,7 +122,7 @@ const Briefs = () => {
     if (!newName.trim() || !selectedClientId) return;
     const preset = newPreset !== "blank" ? STARTER_PRESETS[newPreset] : {};
     const payload = { ...blank(selectedClientId), ...preset, name: newName.trim(), client_id: selectedClientId };
-    const { data, error } = await supabase.from("brief_templates").insert(payload).select("*").single();
+    const { data, error } = await (supabase.from("brief_templates") as any).insert(payload).select("*").single();
     if (error) return toast.error(error.message);
     toast.success("Brief created");
     setNewOpen(false); setNewName(""); setNewPreset("blank");
@@ -224,7 +224,7 @@ const Briefs = () => {
         source_file_url: attachedUrl,
         source_file_name: file_name ?? null,
       };
-      const { data: row, error: insErr } = await supabase.from("brief_templates").insert(payload).select("*").single();
+      const { data: row, error: insErr } = await (supabase.from("brief_templates") as any).insert(payload).select("*").single();
       if (insErr) throw insErr;
       toast.success("Brief imported");
       setImportOpen(false); setImportText(""); setImportFile(null);

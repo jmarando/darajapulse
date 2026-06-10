@@ -137,7 +137,7 @@ const Campaigns = () => {
     e.preventDefault();
     const payload: any = { ...form, budget_kes: Number(form.budget_kes) };
     if (!payload.brief_template_id) delete payload.brief_template_id;
-    const { error } = await supabase.from("campaigns").insert(payload);
+    const { error } = await (supabase.from("campaigns") as any).insert(payload);
     if (error) return toast.error(error.message);
     toast.success("Campaign created"); setOpen(false); load();
   };
