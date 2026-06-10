@@ -171,6 +171,7 @@ const Influencers = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="relative mb-6 max-w-md">
