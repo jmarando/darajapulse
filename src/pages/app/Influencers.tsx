@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Users, Search, ShieldCheck, Link2, Pencil, ChevronDown, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, TrendingUp } from "lucide-react";
+import { Plus, Users, Search, ShieldCheck, Link2, Pencil, ChevronDown, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, TrendingUp, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformPicker } from "@/components/PlatformPicker";
 
@@ -18,6 +18,18 @@ const fmtCompact = (n: number) => {
   if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M`;
   if (abs >= 1_000) return `${(n / 1_000).toFixed(abs >= 10_000 ? 0 : 1).replace(/\.0$/, "")}K`;
   return n.toLocaleString();
+};
+
+const fmtAgo = (iso?: string | null) => {
+  if (!iso) return "Never refreshed";
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60_000) return "Just now";
+  const m = Math.floor(ms / 60_000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
 };
 
 const PLATFORM_ICON: Record<string, any> = { tiktok: Music2, instagram: Instagram, youtube: Youtube, twitter: Twitter, facebook: Facebook };
@@ -120,6 +132,19 @@ const Influencers = () => {
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Discovery</div>
           <h1 className="font-display text-4xl font-semibold mt-1">Influencer roster</h1>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              toast.message("Refreshing stats…", { description: "Pulling live follower counts and engagement" });
+              const { data, error } = await supabase.functions.invoke("refresh-influencer-stats", { body: { force: true, limit: 200 } });
+              if (error) return toast.error(error.message);
+              toast.success(`Refreshed ${data?.updated ?? 0} of ${data?.checked ?? 0}`);
+              load();
+            }}
+          >
+            <RefreshCw className="w-4 h-4 mr-2" /> Refresh stats
+          </Button>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingId(null); } }}>
           <DialogTrigger asChild><Button className="bg-primary" onClick={openAdd}><Plus className="w-4 h-4 mr-2" /> Add influencer</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
@@ -146,6 +171,7 @@ const Influencers = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="relative mb-6 max-w-md">
@@ -213,9 +239,14 @@ const Influencers = () => {
                     <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5">{n}</Badge>
                   ))}
                 </div>
-                <div className="inline-flex items-center gap-1 text-[10px] text-muted-foreground shrink-0" title="Authenticity score">
-                  <ShieldCheck className="w-3 h-3 text-success" />
-                  <span className="tabular-nums">{Math.round(Number(r.authenticity_score || 0))}</span>
+                <div className="inline-flex items-center gap-2 text-[10px] text-muted-foreground shrink-0">
+                  <span title={r.last_metrics_sync ? `Last refreshed ${new Date(r.last_metrics_sync).toLocaleString()}` : "Stats never refreshed"}>
+                    {fmtAgo(r.last_metrics_sync)}
+                  </span>
+                  <span className="inline-flex items-center gap-1" title="Authenticity score">
+                    <ShieldCheck className="w-3 h-3 text-success" />
+                    <span className="tabular-nums">{Math.round(Number(r.authenticity_score || 0))}</span>
+                  </span>
                 </div>
               </div>
 

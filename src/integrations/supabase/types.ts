@@ -1295,6 +1295,7 @@ export type Database = {
           handle: string | null
           id: string
           languages: string[] | null
+          last_metrics_sync: string | null
           niche: string | null
           notes: string | null
           phone_mpesa: string | null
@@ -1319,6 +1320,7 @@ export type Database = {
           handle?: string | null
           id?: string
           languages?: string[] | null
+          last_metrics_sync?: string | null
           niche?: string | null
           notes?: string | null
           phone_mpesa?: string | null
@@ -1343,6 +1345,7 @@ export type Database = {
           handle?: string | null
           id?: string
           languages?: string[] | null
+          last_metrics_sync?: string | null
           niche?: string | null
           notes?: string | null
           phone_mpesa?: string | null
