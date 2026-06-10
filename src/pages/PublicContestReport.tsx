@@ -269,30 +269,57 @@ const PublicContestReport = () => {
           })}
         </div>
 
-        {/* Announced winners */}
-        {winners.length > 0 && (
-          <Card className="p-5 mb-6 overflow-hidden border-highlight/40 bg-highlight/5">
-            <div className="mb-4 flex items-center gap-2">
-              <Crown className="w-4 h-4 text-highlight" />
-              <div className="text-[10px] uppercase tracking-widest text-highlight font-semibold">Announced winners</div>
-              <span className="text-xs text-muted-foreground">· removed from the running</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {winners.map((w: any) => {
-                const placement = w?.metadata?.placement || "Winner";
-                const prize = w?.metadata?.prize;
-                return (
-                  <div key={w.id} className="rounded-md border border-border bg-card p-3">
-                    <div className="text-[10px] uppercase tracking-widest text-highlight font-semibold">{placement}</div>
-                    <div className="font-medium mt-1">{w.full_name || w.handle || "Winner"}</div>
-                    <div className="text-xs text-muted-foreground">@{w.handle || w.instagram_handle || w.tiktok_handle || w.facebook_handle}</div>
-                    {prize && <div className="text-xs text-muted-foreground mt-1">🎁 {prize}</div>}
+        {/* Announced winners — grouped by week/round */}
+        {winners.length > 0 && (() => {
+          const byRound = new Map<string, any[]>();
+          for (const w of winners) {
+            const r = w?.metadata?.round ?? "—";
+            const k = String(r);
+            if (!byRound.has(k)) byRound.set(k, []);
+            byRound.get(k)!.push(w);
+          }
+          const rounds = Array.from(byRound.entries()).sort((a, b) => {
+            const na = Number(a[0]); const nb = Number(b[0]);
+            if (isNaN(na) && isNaN(nb)) return 0;
+            if (isNaN(na)) return 1;
+            if (isNaN(nb)) return -1;
+            return nb - na; // most recent week first
+          });
+          return (
+            <Card className="p-5 mb-6 overflow-hidden border-highlight/40 bg-highlight/5">
+              <div className="mb-4 flex items-center gap-2">
+                <Crown className="w-4 h-4 text-highlight" />
+                <div className="text-[10px] uppercase tracking-widest text-highlight font-semibold">Announced winners</div>
+                <span className="text-xs text-muted-foreground">· removed from the running</span>
+              </div>
+              <div className="space-y-5">
+                {rounds.map(([round, list]) => (
+                  <div key={round}>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">
+                      {round === "—" ? "Earlier rounds" : `Week ${round}`}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {list
+                        .sort((a, b) => Number(a?.metadata?.placement_rank ?? 99) - Number(b?.metadata?.placement_rank ?? 99))
+                        .map((w: any) => {
+                          const placement = w?.metadata?.placement || "Winner";
+                          const prize = w?.metadata?.prize;
+                          return (
+                            <div key={w.id} className="rounded-md border border-border bg-card p-3">
+                              <div className="text-[10px] uppercase tracking-widest text-highlight font-semibold">{placement}</div>
+                              <div className="font-medium mt-1">{w.full_name || w.handle || "Winner"}</div>
+                              <div className="text-xs text-muted-foreground">@{w.handle || w.instagram_handle || w.tiktok_handle || w.facebook_handle}</div>
+                              {prize && <div className="text-xs text-muted-foreground mt-1">🎁 {prize}</div>}
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          </Card>
-        )}
+                ))}
+              </div>
+            </Card>
+          );
+        })()}
 
         {/* Leaderboard */}
         <Card className="p-5 mb-6 overflow-hidden">
