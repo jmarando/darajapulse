@@ -239,9 +239,14 @@ const Influencers = () => {
                     <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5">{n}</Badge>
                   ))}
                 </div>
-                <div className="inline-flex items-center gap-1 text-[10px] text-muted-foreground shrink-0" title="Authenticity score">
-                  <ShieldCheck className="w-3 h-3 text-success" />
-                  <span className="tabular-nums">{Math.round(Number(r.authenticity_score || 0))}</span>
+                <div className="inline-flex items-center gap-2 text-[10px] text-muted-foreground shrink-0">
+                  <span title={r.last_metrics_sync ? `Last refreshed ${new Date(r.last_metrics_sync).toLocaleString()}` : "Stats never refreshed"}>
+                    {fmtAgo(r.last_metrics_sync)}
+                  </span>
+                  <span className="inline-flex items-center gap-1" title="Authenticity score">
+                    <ShieldCheck className="w-3 h-3 text-success" />
+                    <span className="tabular-nums">{Math.round(Number(r.authenticity_score || 0))}</span>
+                  </span>
                 </div>
               </div>
 
