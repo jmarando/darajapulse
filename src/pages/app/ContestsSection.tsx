@@ -913,8 +913,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                     placement: m.placement as string | undefined,
                     prize: m.prize as string | undefined,
                     rank: (m.placement_rank as number | undefined) ?? 99,
+                    round: (m.round as number | undefined) ?? 0,
                   };
-                }).sort((a, b) => a.rank - b.rank);
+                }).sort((a, b) => (b.round - a.round) || (a.rank - b.rank));
                 // Steady-state announced scores (locked so live metric drift doesn't change them).
                 const FROZEN_WINNER_PTS: Record<string, number> = {
                   irenenduku0: 205918,
