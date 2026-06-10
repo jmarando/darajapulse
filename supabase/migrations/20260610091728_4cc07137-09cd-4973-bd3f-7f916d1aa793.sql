@@ -1,0 +1,3 @@
+CREATE POLICY "Agency admins insert brand orgs" ON public.brand_orgs FOR INSERT TO authenticated WITH CHECK (public.has_role(auth.uid(), 'agency_admin') OR public.has_role(auth.uid(), 'super_admin'));
+CREATE POLICY "Agency admins update brand orgs" ON public.brand_orgs FOR UPDATE TO authenticated USING (public.has_role(auth.uid(), 'agency_admin') OR public.has_role(auth.uid(), 'super_admin')) WITH CHECK (public.has_role(auth.uid(), 'agency_admin') OR public.has_role(auth.uid(), 'super_admin'));
+CREATE POLICY "Agency admins delete brand orgs" ON public.brand_orgs FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'agency_admin') OR public.has_role(auth.uid(), 'super_admin'));
