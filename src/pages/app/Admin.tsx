@@ -215,6 +215,8 @@ function BrandOrgsTab() {
 
   const save = async (b: BrandOrg) => {
     const isNew = !b.id;
+    const prev = !isNew ? rows.find((r) => r.id === b.id) : null;
+    const emailChanged = !!b.support_email && (prev?.support_email ?? "").toLowerCase() !== String(b.support_email).toLowerCase();
     let err, newId: string | undefined;
     if (b.id) ({ error: err } = await (supabase.from("brand_orgs") as any).update(b).eq("id", b.id));
     else {
@@ -222,12 +224,14 @@ function BrandOrgsTab() {
       err = res.error; newId = (res.data as any)?.id;
     }
     if (err) return toast({ title: "Save failed", description: err.message, variant: "destructive" });
-    if (isNew && newId && b.support_email) {
+    const orgId = newId ?? b.id;
+    const shouldInvite = (isNew || emailChanged) && orgId && b.support_email;
+    if (shouldInvite) {
       const { error: invErr } = await supabase.functions.invoke("invite-org-admin", {
-        body: { kind: "brand_org", org_id: newId, email: b.support_email, redirect_to: `${window.location.origin}/app` },
+        body: { kind: "brand_org", org_id: orgId, email: b.support_email, redirect_to: `${window.location.origin}/app` },
       });
       if (invErr) toast({ title: "Saved, but invite failed", description: invErr.message, variant: "destructive" });
-      else toast({ title: "Saved", description: `Invite email sent to ${b.support_email}` });
+      else toast({ title: "Saved", description: `Welcome email sent to ${b.support_email}` });
     } else {
       toast({ title: "Saved" });
     }
