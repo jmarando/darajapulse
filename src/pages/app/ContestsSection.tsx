@@ -913,8 +913,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                     placement: m.placement as string | undefined,
                     prize: m.prize as string | undefined,
                     rank: (m.placement_rank as number | undefined) ?? 99,
+                    round: (m.round as number | undefined) ?? 0,
                   };
-                }).sort((a, b) => a.rank - b.rank);
+                }).sort((a, b) => (b.round - a.round) || (a.rank - b.rank));
                 // Steady-state announced scores (locked so live metric drift doesn't change them).
                 const FROZEN_WINNER_PTS: Record<string, number> = {
                   irenenduku0: 205918,
@@ -933,6 +934,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                     else if (nameKey.includes("gordon")) w.total = FROZEN_WINNER_PTS.gordoncooks1;
                   }
                 }
+                const rounds = Array.from(new Set(winners.map(w => w.round))).sort((a, b) => b - a);
                 return (
                   <div className="mb-5 p-4 rounded-lg border border-accent/30 bg-accent/5">
                     <div className="flex items-center gap-2 mb-3">
@@ -940,15 +942,27 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                       <div className="text-[10px] uppercase tracking-widest text-accent font-semibold">Announced winners</div>
                       <span className="text-[11px] text-muted-foreground">removed from the running</span>
                     </div>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2">
-                      {winners.map((w) => (
-                        <div key={w.id} className="p-3 rounded-md bg-background/60 border border-border flex flex-col gap-1">
-                          <div className="text-[10px] uppercase tracking-wider text-accent font-semibold">{w.placement || "Winner"}</div>
-                          <div className="text-sm font-medium truncate">{w.name}</div>
-                          {w.handle && <div className="text-[11px] text-muted-foreground truncate">@{w.handle}</div>}
-                          {w.prize && <div className="text-[11px] text-foreground mt-1 leading-snug">🎁 {w.prize}</div>}
-                        </div>
-                      ))}
+                    <div className="space-y-4">
+                      {rounds.map(r => {
+                        const list = winners.filter(w => w.round === r).sort((a, b) => a.rank - b.rank);
+                        return (
+                          <div key={r}>
+                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-2">
+                              {r ? `Round ${r}` : "Earlier rounds"}
+                            </div>
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                              {list.map((w) => (
+                                <div key={w.id} className="p-3 rounded-md bg-background/60 border border-border flex flex-col gap-1">
+                                  <div className="text-[10px] uppercase tracking-wider text-accent font-semibold">{w.placement || "Winner"}</div>
+                                  <div className="text-sm font-medium truncate">{w.name}</div>
+                                  {w.handle && <div className="text-[11px] text-muted-foreground truncate">@{w.handle}</div>}
+                                  {w.prize && <div className="text-[11px] text-foreground mt-1 leading-snug">🎁 {w.prize}</div>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
