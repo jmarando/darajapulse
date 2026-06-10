@@ -22,6 +22,7 @@ import Briefs from "./pages/app/Briefs";
 import Content from "./pages/app/Content";
 import Moderation from "./pages/app/Moderation";
 import Team from "./pages/app/Team";
+import AdminBilling from "./pages/app/AdminBilling";
 import PublicModeration from "./pages/PublicModeration";
 import PublicReport from "./pages/PublicReport";
 import PublicPlan from "./pages/PublicPlan";
@@ -105,6 +106,7 @@ const App = () => (
               <Route path="content" element={<Content />} />
               <Route path="moderation" element={<Moderation />} />
               <Route path="team" element={<Team />} />
+              <Route path="admin/billing" element={<AdminBilling />} />
               <Route path="approvals" element={<Stub title="Approvals" body="Two-round content approvals with versioning and threaded comments per asset. Ships in v0.2." />} />
               <Route path="payouts" element={<Stub title="Payouts" body="M-Pesa B2C disbursements via Daraja API with WHT computation and e-TIMS-ready records. Ships in v0.2." />} />
             </Route>

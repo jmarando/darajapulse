@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       agencies: {
         Row: {
+          billing_cycle: string
+          billing_notes: string | null
           created_at: string
           display_name: string | null
           hide_powered_by: boolean
@@ -27,6 +29,7 @@ export type Database = {
           legal_name: string | null
           logo_url: string | null
           max_seats: number
+          monthly_fee_kes: number
           name: string
           primary_color: string | null
           slug: string
@@ -35,6 +38,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_cycle?: string
+          billing_notes?: string | null
           created_at?: string
           display_name?: string | null
           hide_powered_by?: boolean
@@ -46,6 +51,7 @@ export type Database = {
           legal_name?: string | null
           logo_url?: string | null
           max_seats?: number
+          monthly_fee_kes?: number
           name: string
           primary_color?: string | null
           slug: string
@@ -54,6 +60,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_cycle?: string
+          billing_notes?: string | null
           created_at?: string
           display_name?: string | null
           hide_powered_by?: boolean
@@ -65,6 +73,7 @@ export type Database = {
           legal_name?: string | null
           logo_url?: string | null
           max_seats?: number
+          monthly_fee_kes?: number
           name?: string
           primary_color?: string | null
           slug?: string
@@ -153,6 +162,8 @@ export type Database = {
       }
       brand_orgs: {
         Row: {
+          billing_cycle: string
+          billing_notes: string | null
           created_at: string
           display_name: string | null
           id: string
@@ -165,10 +176,13 @@ export type Database = {
           primary_color: string | null
           slug: string
           subdomain: string | null
+          subscription_fee_kes: number
           support_email: string | null
           updated_at: string
         }
         Insert: {
+          billing_cycle?: string
+          billing_notes?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -181,10 +195,13 @@ export type Database = {
           primary_color?: string | null
           slug: string
           subdomain?: string | null
+          subscription_fee_kes?: number
           support_email?: string | null
           updated_at?: string
         }
         Update: {
+          billing_cycle?: string
+          billing_notes?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -197,6 +214,7 @@ export type Database = {
           primary_color?: string | null
           slug?: string
           subdomain?: string | null
+          subscription_fee_kes?: number
           support_email?: string | null
           updated_at?: string
         }
