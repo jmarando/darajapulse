@@ -132,6 +132,19 @@ const Influencers = () => {
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Discovery</div>
           <h1 className="font-display text-4xl font-semibold mt-1">Influencer roster</h1>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              toast.message("Refreshing stats…", { description: "Pulling live follower counts and engagement" });
+              const { data, error } = await supabase.functions.invoke("refresh-influencer-stats", { body: { force: true, limit: 200 } });
+              if (error) return toast.error(error.message);
+              toast.success(`Refreshed ${data?.updated ?? 0} of ${data?.checked ?? 0}`);
+              load();
+            }}
+          >
+            <RefreshCw className="w-4 h-4 mr-2" /> Refresh stats
+          </Button>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingId(null); } }}>
           <DialogTrigger asChild><Button className="bg-primary" onClick={openAdd}><Plus className="w-4 h-4 mr-2" /> Add influencer</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
