@@ -174,9 +174,17 @@ function AgencyForm({ value, onChange }: any) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <Field label="Name"><Input value={value.name ?? ""} onChange={(e) => set("name", e.target.value)} /></Field>
-      <Field label="Slug"><Input value={value.slug ?? ""} onChange={(e) => set("slug", e.target.value)} placeholder="auto from name" /></Field>
-      <Field label="Subdomain"><Input value={value.subdomain ?? ""} onChange={(e) => set("subdomain", e.target.value)} /></Field>
-      <Field label="KRA PIN"><Input value={value.kra_pin ?? ""} onChange={(e) => set("kra_pin", e.target.value)} /></Field>
+      <Field label="Type">
+        <Select value={value.kind ?? "agency"} onValueChange={(v) => set("kind", v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="agency">Agency</SelectItem>
+            <SelectItem value="media_house">Media House</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Slug"><Input value={value.slug ?? ""} onChange={(e) => set("slug", e.target.value)} placeholder="auto from name (used in URLs)" /></Field>
+      <Field label="Subdomain"><Input value={value.subdomain ?? ""} onChange={(e) => set("subdomain", e.target.value)} placeholder="e.g. mediamax" /></Field>
       <Field label="Fee (KES)"><Input type="number" value={value.monthly_fee_kes ?? 0} onChange={(e) => set("monthly_fee_kes", Number(e.target.value))} /></Field>
       <Field label="Cycle">
         <Select value={value.billing_cycle ?? "monthly"} onValueChange={(v) => set("billing_cycle", v)}>
