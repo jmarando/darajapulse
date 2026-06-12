@@ -15,10 +15,10 @@ export const InviteEmail = ({ siteName, siteUrl, confirmationUrl }: InviteEmailP
         <Text style={wordmark}><span style={dot} />Daraja Pulse</Text>
         <Heading style={h1}>You're invited.</Heading>
         <Text style={text}>
-          You've been invited to{' '}
-          <Link href={siteUrl} style={link}><strong>{siteName}</strong></Link>{' '}— the platform to brief, publish, measure & pay creators across TikTok, Instagram, YouTube & X. Accept the invite to set up your account.
+          You've been invited to join{' '}
+          <Link href={siteUrl} style={link}><strong>{siteName}</strong></Link>{' '}— the platform to brief, publish, measure & pay creators across TikTok, Instagram, YouTube & X. Click below to accept the invite and choose a password for your account.
         </Text>
-        <Button style={button} href={confirmationUrl}>Accept invitation</Button>
+        <Button style={button} href={confirmationUrl}>Accept & set password</Button>
         <Hr style={divider} />
         <Text style={tagline}>Influence, measured.</Text>
         <Text style={footer}>Not expecting this? You can safely ignore the email.</Text>
