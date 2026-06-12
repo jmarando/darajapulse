@@ -213,13 +213,13 @@ function BrandOrgsTab() {
   const [open, setOpen] = useState(false);
   const load = async () => {
     const { data } = await (supabase.from("brand_orgs") as any)
-      .select("id,name,slug,subdomain,kra_pin,subscription_fee_kes,billing_cycle,billing_notes,is_active,logo_url,support_email")
+      .select("id,name,slug,subdomain,subscription_fee_kes,billing_cycle,billing_notes,is_active,logo_url,support_email")
       .order("name");
     setRows((data as any) ?? []);
   };
   useEffect(() => { load(); }, []);
 
-  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", subscription_fee_kes: 180000, billing_cycle: "quarterly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
+  const blank = { name: "", slug: "", subdomain: "", subscription_fee_kes: 180000, billing_cycle: "quarterly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
 
   const save = async (b: BrandOrg) => {
     const isNew = !b.id;
