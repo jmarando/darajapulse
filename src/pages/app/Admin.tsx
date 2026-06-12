@@ -142,13 +142,13 @@ function AgenciesTab() {
         <Button onClick={() => { setEditing(blank); setOpen(true); }}><Plus className="w-4 h-4 mr-2" />New agency</Button>
       </div>
       <Card><CardContent className="p-0">
-        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Subdomain</TableHead><TableHead>KRA PIN</TableHead><TableHead>Fee</TableHead><TableHead>Cycle</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
+        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Type</TableHead><TableHead>Subdomain</TableHead><TableHead>Fee</TableHead><TableHead>Cycle</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
             {rows.map((a) => (
               <TableRow key={a.id}>
                 <TableCell className="font-medium">{a.name}</TableCell>
+                <TableCell><Badge variant="outline" className="capitalize">{((a as any).kind ?? "agency").replace("_"," ")}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{a.subdomain ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">{a.kra_pin ?? "—"}</TableCell>
                 <TableCell>{fmtKES(a.monthly_fee_kes ?? 0)}</TableCell>
                 <TableCell className="capitalize">{a.billing_cycle ?? "—"}</TableCell>
                 <TableCell><Badge variant={a.is_active ? "default" : "secondary"}>{a.is_active ? "active" : "inactive"}</Badge></TableCell>
