@@ -11,14 +11,52 @@ type Reg = {
   phone?: string;
   address?: string;
   lga?: string;
+  platform?: string;
+  post_url?: string;
   instagram?: string;
   tiktok?: string;
   facebook?: string;
   raw: any;
 };
 
-const cleanHandle = (s?: string) =>
-  (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || null;
+const cleanValue = (s?: any) => {
+  const value = String(s ?? "").trim();
+  if (!value || /^(-|none|null|n\/a|na)$/i.test(value)) return null;
+  return value;
+};
+
+const cleanHandle = (s?: string) => {
+  const value = cleanValue(s);
+  if (!value) return null;
+  return value.replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || null;
+};
+
+function canonicalPostUrl(raw?: string | null): string | null {
+  const url = cleanValue(raw);
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  const tt = url.match(/tiktok\.com\/.*?(?:\/video\/|\/v\/|share_item_id=)(\d{6,})/i);
+  if (tt) return `https://www.tiktok.com/video/${tt[1]}`;
+  const ig = url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
+  if (ig) return `https://www.instagram.com/p/${ig[1]}/`;
+  try { const u = new URL(url); return `${u.origin}${u.pathname}`.replace(/\/+$/, ""); } catch { return url; }
+}
+
+const platformFromPostUrl = (url?: string | null) => {
+  const u = (url || "").toLowerCase();
+  if (/instagram\.com/.test(u)) return "instagram";
+  if (/tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com/.test(u)) return "tiktok";
+  if (/facebook\.com|fb\.watch/.test(u)) return "facebook";
+  return null;
+};
+
+const stableRegistrationId = (r: any, i: number, get: (...keys: string[]) => string | undefined) => {
+  const response = String(r?.id ?? r?._id ?? r?.uid ?? r?.responseId ?? r?.submission_id ?? get("response", "Response #") ?? `row-${i + 1}`).trim();
+  const email = (get("email", "Email") || "").trim().toLowerCase();
+  const phone = (get("phone", "Phone", "phoneNumber", "Phone Number") || "").replace(/\D/g, "");
+  const stamp = (get("timestamp", "Timestamp", "created_at") || "").trim().toLowerCase();
+  const name = (get("name", "Name", "fullName", "full_name", "Full Name") || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return `csv:${response}:${email || phone || `${name}:${stamp}` || `row-${i + 1}`}`.slice(0, 220);
+};
 
 // Try to normalize a feed payload from a variety of shapes (Flutter/Firebase
 // exports, generic REST, JSONForms, etc).
@@ -37,26 +75,35 @@ function normalize(payload: any): Reg[] {
     const get = (...keys: string[]) => {
       for (const k of keys) {
         const direct = flat[k];
-        if (direct != null && String(direct).trim() !== "") return String(direct).trim();
+        const directValue = cleanValue(direct);
+        if (directValue) return directValue;
         // case-insensitive
         const ck = Object.keys(flat).find(x => x.toLowerCase().replace(/[\s_-]/g, "") === k.toLowerCase().replace(/[\s_-]/g, ""));
-        if (ck && flat[ck] != null && String(flat[ck]).trim() !== "") return String(flat[ck]).trim();
+        const matchedValue = ck ? cleanValue(flat[ck]) : null;
+        if (matchedValue) return matchedValue;
       }
       return undefined;
     };
+    const postUrl = canonicalPostUrl(get("postUrl", "post_url", "Post URL", "url", "video url"));
+    const selectedPlatform = (get("selectedPlatform", "Selected Platform", "platform") || "").toLowerCase();
+    const platform = ["tiktok", "instagram", "facebook", "youtube", "twitter"].includes(selectedPlatform)
+      ? selectedPlatform
+      : platformFromPostUrl(postUrl) ?? undefined;
     return {
-      external_id: String(r?.id ?? r?._id ?? r?.uid ?? r?.responseId ?? r?.submission_id ?? `${i}-${get("email", "Email") || get("phone", "Phone") || ""}`),
+      external_id: stableRegistrationId(r, i, get),
       full_name: get("name", "Name", "fullName", "full_name"),
       email: get("email", "Email"),
       phone: get("phone", "Phone", "phoneNumber"),
       address: get("address", "Address"),
       lga: get("lga", "LGA", "localGovernmentArea", "local_government_area", "Local Government Area"),
+      platform,
+      post_url: postUrl ?? undefined,
       instagram: cleanHandle(get("instagram", "Instagram", "ig", "igHandle", "instagram_handle")),
       tiktok: cleanHandle(get("tiktok", "TikTok", "tiktokHandle", "tiktok_handle")),
       facebook: cleanHandle(get("facebook", "Facebook", "facebookHandle")),
       raw: r,
     } as Reg;
-  }).filter(r => r.email || r.instagram || r.tiktok || r.facebook || r.phone);
+  }).filter(r => r.email || r.instagram || r.tiktok || r.facebook || r.phone || r.post_url);
 }
 
 Deno.serve(async (req) => {
