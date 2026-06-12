@@ -119,27 +119,28 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const feedUrl = Deno.env.get("CONTESTANT_FEED_URL");
-    if (!feedUrl) {
-      return new Response(JSON.stringify({ error: "CONTESTANT_FEED_URL not set" }), { status: 412, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const authHeader = Deno.env.get("CONTESTANT_FEED_AUTH_HEADER");
-
     const { data: run } = await sb.from("contestant_sync_runs").insert({
       contest_id, source: "feed", triggered_by, status: "running",
     }).select("id").single();
     runId = run?.id ?? null;
 
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (authHeader) {
-      const idx = authHeader.indexOf(":");
-      if (idx > -1) headers[authHeader.slice(0, idx).trim()] = authHeader.slice(idx + 1).trim();
-      else headers["Authorization"] = authHeader;
+    let payload: any = body.registrations ?? body.rows ?? null;
+    if (!payload) {
+      const feedUrl = Deno.env.get("CONTESTANT_FEED_URL");
+      if (!feedUrl) {
+        return new Response(JSON.stringify({ error: "CONTESTANT_FEED_URL not set" }), { status: 412, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const authHeader = Deno.env.get("CONTESTANT_FEED_AUTH_HEADER");
+      const headers: Record<string, string> = { Accept: "application/json" };
+      if (authHeader) {
+        const idx = authHeader.indexOf(":");
+        if (idx > -1) headers[authHeader.slice(0, idx).trim()] = authHeader.slice(idx + 1).trim();
+        else headers["Authorization"] = authHeader;
+      }
+      const res = await fetch(feedUrl, { headers });
+      if (!res.ok) throw new Error(`Feed responded ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      payload = await res.json();
     }
-
-    const res = await fetch(feedUrl, { headers });
-    if (!res.ok) throw new Error(`Feed responded ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    const payload = await res.json();
     const regs = normalize(payload);
 
     let upserted = 0;
