@@ -423,8 +423,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
       const errors: string[] = [];
       const { data: existingRows } = await supabase
         .from("contest_entries")
-        .select("id, external_registration_id, post_url, full_name, submitter_name, submitter_email, phone, views, likes, comments, shares");
-      const existing = (existingRows ?? []).filter((r: any) => r.contest_id === activeId || true);
+        .select("id, external_registration_id, post_url, full_name, submitter_name, submitter_email, phone, views, likes, comments, shares")
+        .eq("contest_id", activeId);
+      const existing = existingRows ?? [];
       const byExt = new Map(existing.filter((r: any) => r.external_registration_id).map((r: any) => [String(r.external_registration_id), r]));
       const byUrl = new Map(existing.filter((r: any) => r.post_url).map((r: any) => [canonicalPostUrl(r.post_url), r]));
 
