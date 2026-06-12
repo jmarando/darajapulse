@@ -191,6 +191,11 @@ Deno.serve(async (req) => {
         const target = (urlKey ? byUrl.get(urlKey) : null) || byExt.get(r.external_id) || (legacy && sameContestant(legacy, row) ? legacy : null);
         const targetUrl = canonicalPostUrl(target?.post_url);
         const payload: any = { ...row };
+        if (target) {
+          for (const key of ["handle", "instagram_handle", "tiktok_handle", "facebook_handle"]) {
+            if (payload[key] == null) delete payload[key];
+          }
+        }
         if (target && r.post_url && targetUrl !== urlKey) Object.assign(payload, { views: 0, likes: 0, comments: 0, shares: 0, score: 0, cross_posts: [] });
         const { error } = target
           ? await sb.from("contest_entries").update(payload).eq("id", target.id)
