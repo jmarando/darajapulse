@@ -31,7 +31,21 @@ const cleanHandle = (s?: string) => {
   return value.replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || null;
 };
 
-function canonicalPostUrl(raw?: string | null): string | null {
+async function resolveTikTokShort(url: string): Promise<string> {
+  if (!/(?:vt|vm)\.tiktok\.com\//i.test(url)) return url;
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15" },
+    });
+    return res.url || url;
+  } catch {
+    return url;
+  }
+}
+
+function canonicalPostUrlSync(raw?: string | null): string | null {
   const url = cleanValue(raw);
   if (!url || !/^https?:\/\//i.test(url)) return null;
   const tt = url.match(/tiktok\.com\/.*?(?:\/video\/|\/v\/|share_item_id=)(\d{6,})/i);
@@ -39,6 +53,12 @@ function canonicalPostUrl(raw?: string | null): string | null {
   const ig = url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
   if (ig) return `https://www.instagram.com/p/${ig[1]}/`;
   try { const u = new URL(url); return `${u.origin}${u.pathname}`.replace(/\/+$/, ""); } catch { return url; }
+}
+
+async function canonicalPostUrl(raw?: string | null): Promise<string | null> {
+  const value = cleanValue(raw);
+  if (!value) return null;
+  return canonicalPostUrlSync(await resolveTikTokShort(value));
 }
 
 const platformFromPostUrl = (url?: string | null) => {
@@ -60,7 +80,7 @@ const stableRegistrationId = (r: any, i: number, get: (...keys: string[]) => str
 
 // Try to normalize a feed payload from a variety of shapes (Flutter/Firebase
 // exports, generic REST, JSONForms, etc).
-function normalize(payload: any): Reg[] {
+async function normalize(payload: any): Promise<Reg[]> {
   const rows: any[] =
     Array.isArray(payload) ? payload :
     Array.isArray(payload?.responses) ? payload.responses :
@@ -70,7 +90,9 @@ function normalize(payload: any): Reg[] {
     typeof payload === "object" && payload !== null ? Object.entries(payload).map(([k, v]: any) => ({ id: k, ...v })) :
     [];
 
-  return rows.map((r: any, i: number) => {
+  const regs: Reg[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
     const flat = { ...(r?.fields || {}), ...(r?.answers || {}), ...r };
     const get = (...keys: string[]) => {
       for (const k of keys) {
@@ -84,12 +106,12 @@ function normalize(payload: any): Reg[] {
       }
       return undefined;
     };
-    const postUrl = canonicalPostUrl(get("postUrl", "post_url", "Post URL", "url", "video url"));
+    const postUrl = await canonicalPostUrl(get("postUrl", "post_url", "Post URL", "url", "video url"));
     const selectedPlatform = (get("selectedPlatform", "Selected Platform", "platform") || "").toLowerCase();
     const platform = ["tiktok", "instagram", "facebook", "youtube", "twitter"].includes(selectedPlatform)
       ? selectedPlatform
       : platformFromPostUrl(postUrl) ?? undefined;
-    return {
+    const reg = {
       external_id: stableRegistrationId(r, i, get),
       full_name: get("name", "Name", "fullName", "full_name"),
       email: get("email", "Email"),
@@ -103,7 +125,9 @@ function normalize(payload: any): Reg[] {
       facebook: cleanHandle(get("facebook", "Facebook", "facebookHandle")),
       raw: r,
     } as Reg;
-  }).filter(r => r.email || r.instagram || r.tiktok || r.facebook || r.phone || r.post_url);
+    if (reg.email || reg.instagram || reg.tiktok || reg.facebook || reg.phone || reg.post_url) regs.push(reg);
+  }
+  return regs;
 }
 
 Deno.serve(async (req) => {
