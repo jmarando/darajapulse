@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
       if (!res.ok) throw new Error(`Feed responded ${res.status}: ${(await res.text()).slice(0, 300)}`);
       payload = await res.json();
     }
-    const regs = normalize(payload);
+    const regs = await normalize(payload);
 
     let upserted = 0;
     let skipped_excluded = 0;
@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
       .select("id, external_registration_id, post_url, full_name, submitter_name, submitter_email, phone")
       .eq("contest_id", contest_id);
     const byExt = new Map(((existingRows ?? []) as any[]).filter(r => r.external_registration_id).map(r => [String(r.external_registration_id), r]));
-    const byUrl = new Map(((existingRows ?? []) as any[]).filter(r => r.post_url).map(r => [canonicalPostUrl(r.post_url), r]));
+    const byUrl = new Map(((existingRows ?? []) as any[]).filter(r => r.post_url).map(r => [canonicalPostUrlSync(r.post_url), r]));
     const norm = (v?: any) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
     const sameContestant = (a: any, b: any) => {
       const ae = norm(a.submitter_email); const be = norm(b.submitter_email);
@@ -212,9 +212,9 @@ Deno.serve(async (req) => {
         };
         const legacyId = String(r.raw?.id ?? r.raw?._id ?? r.raw?.uid ?? r.raw?.responseId ?? r.raw?.submission_id ?? r.raw?.["Response #"] ?? "");
         const legacy = legacyId ? byExt.get(legacyId) : null;
-        const urlKey = canonicalPostUrl(r.post_url);
+        const urlKey = canonicalPostUrlSync(r.post_url);
         const target = (urlKey ? byUrl.get(urlKey) : null) || byExt.get(r.external_id) || (legacy && sameContestant(legacy, row) ? legacy : null);
-        const targetUrl = canonicalPostUrl(target?.post_url);
+        const targetUrl = canonicalPostUrlSync(target?.post_url);
         const payload: any = { ...row };
         if (target) {
           for (const key of ["handle", "instagram_handle", "tiktok_handle", "facebook_handle"]) {
