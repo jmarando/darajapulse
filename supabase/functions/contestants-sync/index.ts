@@ -148,6 +148,20 @@ Deno.serve(async (req) => {
     const cleanH = (s?: string | null) => (s || "").trim().replace(/^@+/, "").toLowerCase();
     const { data: excluded } = await sb.from("contest_excluded_handles").select("handle").eq("contest_id", contest_id);
     const excludedSet = new Set<string>(((excluded ?? []) as any[]).map((r: any) => cleanH(r.handle)).filter(Boolean));
+    const { data: existingRows } = await sb.from("contest_entries")
+      .select("id, external_registration_id, post_url, full_name, submitter_name, submitter_email, phone")
+      .eq("contest_id", contest_id);
+    const byExt = new Map(((existingRows ?? []) as any[]).filter(r => r.external_registration_id).map(r => [String(r.external_registration_id), r]));
+    const byUrl = new Map(((existingRows ?? []) as any[]).filter(r => r.post_url).map(r => [canonicalPostUrl(r.post_url), r]));
+    const norm = (v?: any) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    const sameContestant = (a: any, b: any) => {
+      const ae = norm(a.submitter_email); const be = norm(b.submitter_email);
+      if (ae && be && ae === be) return true;
+      const ap = String(a.phone || "").replace(/\D/g, ""); const bp = String(b.phone || "").replace(/\D/g, "");
+      if (ap.length >= 7 && bp.length >= 7 && ap === bp) return true;
+      const an = norm(a.full_name || a.submitter_name); const bn = norm(b.full_name || b.submitter_name);
+      return !!an && !!bn && an === bn;
+    };
     for (const r of regs) {
       try {
         const handles = [r.instagram, r.tiktok, r.facebook].map(cleanH).filter(Boolean);
@@ -155,7 +169,8 @@ Deno.serve(async (req) => {
         const row = {
           contest_id,
           external_registration_id: r.external_id,
-          platform: (r.tiktok ? "tiktok" : r.instagram ? "instagram" : "facebook") as any,
+          platform: (r.platform || (r.tiktok ? "tiktok" : r.instagram ? "instagram" : "facebook")) as any,
+          ...(r.post_url ? { post_url: r.post_url } : {}),
           status: "registered",
           source: "registration",
           full_name: r.full_name ?? null,
@@ -170,8 +185,16 @@ Deno.serve(async (req) => {
           handle: r.instagram || r.tiktok || r.facebook || null,
           metadata: { raw: r.raw },
         };
-        const { error } = await sb.from("contest_entries")
-          .upsert(row, { onConflict: "contest_id,external_registration_id", ignoreDuplicates: false });
+        const legacyId = String(r.raw?.id ?? r.raw?._id ?? r.raw?.uid ?? r.raw?.responseId ?? r.raw?.submission_id ?? r.raw?.["Response #"] ?? "");
+        const legacy = legacyId ? byExt.get(legacyId) : null;
+        const urlKey = canonicalPostUrl(r.post_url);
+        const target = (urlKey ? byUrl.get(urlKey) : null) || byExt.get(r.external_id) || (legacy && sameContestant(legacy, row) ? legacy : null);
+        const targetUrl = canonicalPostUrl(target?.post_url);
+        const payload: any = { ...row };
+        if (target && r.post_url && targetUrl !== urlKey) Object.assign(payload, { views: 0, likes: 0, comments: 0, shares: 0, score: 0, cross_posts: [] });
+        const { error } = target
+          ? await sb.from("contest_entries").update(payload).eq("id", target.id)
+          : await sb.from("contest_entries").insert(payload);
         if (error) errors.push({ external_id: r.external_id, msg: error.message });
         else upserted++;
       } catch (e) {
