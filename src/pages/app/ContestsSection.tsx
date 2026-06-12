@@ -438,6 +438,11 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
         const postChanged = !!target && !!base.post_url && targetUrl !== urlKey;
         const payload: any = { ...base };
         if (!base.post_url) delete payload.post_url;
+        if (target) {
+          for (const key of ["handle", "instagram_handle", "tiktok_handle", "facebook_handle"]) {
+            if (payload[key] == null) delete payload[key];
+          }
+        }
         if (postChanged) Object.assign(payload, { views: 0, likes: 0, comments: 0, shares: 0, score: 0, cross_posts: [] });
 
         const { error } = target
