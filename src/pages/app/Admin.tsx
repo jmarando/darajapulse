@@ -286,7 +286,7 @@ function BrandOrgForm({ value, onChange }: any) {
       <Field label="Name"><Input value={value.name ?? ""} onChange={(e) => set("name", e.target.value)} /></Field>
       <Field label="Slug"><Input value={value.slug ?? ""} onChange={(e) => set("slug", e.target.value)} placeholder="auto from name (used in URLs)" /></Field>
       <Field label="Subdomain"><Input value={value.subdomain ?? ""} onChange={(e) => set("subdomain", e.target.value)} /></Field>
-      <Field label="KRA PIN"><Input value={value.kra_pin ?? ""} onChange={(e) => set("kra_pin", e.target.value)} /></Field>
+      
       <Field label="Fee (KES)"><Input type="number" value={value.subscription_fee_kes ?? 0} onChange={(e) => set("subscription_fee_kes", Number(e.target.value))} /></Field>
       <Field label="Cycle">
         <Select value={value.billing_cycle ?? "quarterly"} onValueChange={(v) => set("billing_cycle", v)}>
