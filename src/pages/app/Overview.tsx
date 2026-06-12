@@ -176,6 +176,9 @@ const Overview = () => {
         </div>
       </header>
 
+      <OnboardingChecklist />
+
+
       {compact ? (
         <Card className="mb-6">
           <Table>
