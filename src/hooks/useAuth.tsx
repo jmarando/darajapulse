@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-type Role = "agency_admin" | "account_manager" | "client_user" | "client_viewer" | "influencer";
+type Role = "super_admin" | "agency_admin" | "account_manager" | "client_user" | "client_viewer" | "brand_owner" | "brand_viewer" | "influencer";
 
 interface AuthCtx {
   user: User | null;
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const isAgency = roles.includes("agency_admin") || roles.includes("account_manager");
   const isClient = roles.includes("client_user");
-  const isSuperAdmin = roles.includes("super_admin" as Role);
+  const isSuperAdmin = roles.includes("super_admin");
 
   return (
     <Ctx.Provider value={{ user, session, roles, agencyIds, loading, isAgency, isClient, isSuperAdmin, signOut: async () => { await supabase.auth.signOut(); } }}>
