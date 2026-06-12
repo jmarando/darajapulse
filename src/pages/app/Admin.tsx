@@ -101,13 +101,13 @@ function AgenciesTab() {
   const [open, setOpen] = useState(false);
   const load = async () => {
     const { data } = await (supabase.from("agencies") as any)
-      .select("id,name,slug,subdomain,kra_pin,monthly_fee_kes,billing_cycle,billing_notes,is_active,logo_url,support_email")
+      .select("id,name,slug,subdomain,kind,monthly_fee_kes,billing_cycle,billing_notes,is_active,logo_url,support_email")
       .order("name");
     setRows((data as any) ?? []);
   };
   useEffect(() => { load(); }, []);
 
-  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", monthly_fee_kes: 0, billing_cycle: "monthly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
+  const blank = { name: "", slug: "", subdomain: "", kind: "agency", monthly_fee_kes: 0, billing_cycle: "monthly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
 
   const save = async (a: Agency) => {
     const payload = { ...a };
