@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Building2, ArrowUpRight, UserPlus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
+import { useAuth } from "@/hooks/useAuth";
 
 const Clients = () => {
+  const { agencyIds, isSuperAdmin, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -32,13 +34,20 @@ const Clients = () => {
   const [inviting, setInviting] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase
+    if (authLoading) return;
+    if (!isSuperAdmin && agencyIds.length === 0) {
+      setRows([]);
+      return;
+    }
+    let query = supabase
       .from("clients")
       .select("*, campaigns(id)")
       .order("created_at", { ascending: false });
+    if (!isSuperAdmin) query = query.in("agency_id", agencyIds);
+    const { data } = await query;
     setRows(data ?? []);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [authLoading, isSuperAdmin, agencyIds.join(",")]);
 
   const reset = () => {
     setForm({ name: "", industry: "", primary_contact_name: "", primary_contact_email: "", logo_url: "" });
