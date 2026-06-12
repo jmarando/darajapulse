@@ -253,13 +253,12 @@ function BrandOrgsTab() {
         <Button onClick={() => { setEditing(blank); setOpen(true); }}><Plus className="w-4 h-4 mr-2" />New brand org</Button>
       </div>
       <Card><CardContent className="p-0">
-        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Subdomain</TableHead><TableHead>KRA PIN</TableHead><TableHead>Fee</TableHead><TableHead>Cycle</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
+        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Subdomain</TableHead><TableHead>Fee</TableHead><TableHead>Cycle</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
             {rows.map((b) => (
               <TableRow key={b.id}>
                 <TableCell className="font-medium">{b.name}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{b.subdomain ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">{b.kra_pin ?? "—"}</TableCell>
                 <TableCell>{fmtKES(b.subscription_fee_kes ?? 0)}</TableCell>
                 <TableCell className="capitalize">{b.billing_cycle ?? "—"}</TableCell>
                 <TableCell><Badge variant={b.is_active ? "default" : "secondary"}>{b.is_active ? "active" : "inactive"}</Badge></TableCell>
