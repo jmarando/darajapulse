@@ -31,6 +31,9 @@ Deno.serve(async (req) => {
       return json({ error: "kind, org_id, and email required" }, 400);
     }
     const appUrl = redirect_to || "https://darajapulse.com/app";
+    // New invites land on /reset-password so the user sets a password they can
+    // re-use to sign in later. Existing users get a magic-link to /app.
+    const setupUrl = appUrl.replace(/\/app\/?$/, "/reset-password");
 
     const table = kind === "agency" ? "agencies" : "brand_orgs";
     const { data: org } = await admin.from(table).select("name").eq("id", org_id).maybeSingle();
@@ -46,7 +49,7 @@ Deno.serve(async (req) => {
       existed = true;
     } else {
       const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: appUrl,
+        redirectTo: setupUrl,
         data: { org_name: orgName, org_kind: kind },
       });
       if (invErr || !invited?.user) return json({ error: invErr?.message ?? "invite failed" }, 500);
