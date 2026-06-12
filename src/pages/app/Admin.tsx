@@ -101,13 +101,13 @@ function AgenciesTab() {
   const [open, setOpen] = useState(false);
   const load = async () => {
     const { data } = await (supabase.from("agencies") as any)
-      .select("id,name,slug,subdomain,kra_pin,monthly_fee_kes,billing_cycle,billing_notes,is_active,logo_url,support_email")
+      .select("id,name,slug,subdomain,kind,monthly_fee_kes,billing_cycle,billing_notes,is_active,logo_url,support_email")
       .order("name");
     setRows((data as any) ?? []);
   };
   useEffect(() => { load(); }, []);
 
-  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", monthly_fee_kes: 0, billing_cycle: "monthly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
+  const blank = { name: "", slug: "", subdomain: "", kind: "agency", monthly_fee_kes: 0, billing_cycle: "monthly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
 
   const save = async (a: Agency) => {
     const payload = { ...a };
@@ -142,13 +142,13 @@ function AgenciesTab() {
         <Button onClick={() => { setEditing(blank); setOpen(true); }}><Plus className="w-4 h-4 mr-2" />New agency</Button>
       </div>
       <Card><CardContent className="p-0">
-        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Subdomain</TableHead><TableHead>KRA PIN</TableHead><TableHead>Fee</TableHead><TableHead>Cycle</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
+        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Type</TableHead><TableHead>Subdomain</TableHead><TableHead>Fee</TableHead><TableHead>Cycle</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
             {rows.map((a) => (
               <TableRow key={a.id}>
                 <TableCell className="font-medium">{a.name}</TableCell>
+                <TableCell><Badge variant="outline" className="capitalize">{((a as any).kind ?? "agency").replace("_"," ")}</Badge></TableCell>
                 <TableCell className="text-muted-foreground text-sm">{a.subdomain ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">{a.kra_pin ?? "—"}</TableCell>
                 <TableCell>{fmtKES(a.monthly_fee_kes ?? 0)}</TableCell>
                 <TableCell className="capitalize">{a.billing_cycle ?? "—"}</TableCell>
                 <TableCell><Badge variant={a.is_active ? "default" : "secondary"}>{a.is_active ? "active" : "inactive"}</Badge></TableCell>
@@ -174,9 +174,17 @@ function AgencyForm({ value, onChange }: any) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <Field label="Name"><Input value={value.name ?? ""} onChange={(e) => set("name", e.target.value)} /></Field>
-      <Field label="Slug"><Input value={value.slug ?? ""} onChange={(e) => set("slug", e.target.value)} placeholder="auto from name" /></Field>
-      <Field label="Subdomain"><Input value={value.subdomain ?? ""} onChange={(e) => set("subdomain", e.target.value)} /></Field>
-      <Field label="KRA PIN"><Input value={value.kra_pin ?? ""} onChange={(e) => set("kra_pin", e.target.value)} /></Field>
+      <Field label="Type">
+        <Select value={value.kind ?? "agency"} onValueChange={(v) => set("kind", v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="agency">Agency</SelectItem>
+            <SelectItem value="media_house">Media House</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Slug"><Input value={value.slug ?? ""} onChange={(e) => set("slug", e.target.value)} placeholder="auto from name (used in URLs)" /></Field>
+      <Field label="Subdomain"><Input value={value.subdomain ?? ""} onChange={(e) => set("subdomain", e.target.value)} placeholder="e.g. mediamax" /></Field>
       <Field label="Fee (KES)"><Input type="number" value={value.monthly_fee_kes ?? 0} onChange={(e) => set("monthly_fee_kes", Number(e.target.value))} /></Field>
       <Field label="Cycle">
         <Select value={value.billing_cycle ?? "monthly"} onValueChange={(v) => set("billing_cycle", v)}>
@@ -205,13 +213,13 @@ function BrandOrgsTab() {
   const [open, setOpen] = useState(false);
   const load = async () => {
     const { data } = await (supabase.from("brand_orgs") as any)
-      .select("id,name,slug,subdomain,kra_pin,subscription_fee_kes,billing_cycle,billing_notes,is_active,logo_url,support_email")
+      .select("id,name,slug,subdomain,subscription_fee_kes,billing_cycle,billing_notes,is_active,logo_url,support_email")
       .order("name");
     setRows((data as any) ?? []);
   };
   useEffect(() => { load(); }, []);
 
-  const blank = { name: "", slug: "", subdomain: "", kra_pin: "", subscription_fee_kes: 180000, billing_cycle: "quarterly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
+  const blank = { name: "", slug: "", subdomain: "", subscription_fee_kes: 180000, billing_cycle: "quarterly", billing_notes: "", is_active: true, logo_url: "", support_email: user?.email ?? "" };
 
   const save = async (b: BrandOrg) => {
     const isNew = !b.id;
@@ -245,13 +253,12 @@ function BrandOrgsTab() {
         <Button onClick={() => { setEditing(blank); setOpen(true); }}><Plus className="w-4 h-4 mr-2" />New brand org</Button>
       </div>
       <Card><CardContent className="p-0">
-        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Subdomain</TableHead><TableHead>KRA PIN</TableHead><TableHead>Fee</TableHead><TableHead>Cycle</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
+        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Subdomain</TableHead><TableHead>Fee</TableHead><TableHead>Cycle</TableHead><TableHead>Status</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
             {rows.map((b) => (
               <TableRow key={b.id}>
                 <TableCell className="font-medium">{b.name}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{b.subdomain ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">{b.kra_pin ?? "—"}</TableCell>
                 <TableCell>{fmtKES(b.subscription_fee_kes ?? 0)}</TableCell>
                 <TableCell className="capitalize">{b.billing_cycle ?? "—"}</TableCell>
                 <TableCell><Badge variant={b.is_active ? "default" : "secondary"}>{b.is_active ? "active" : "inactive"}</Badge></TableCell>
@@ -277,9 +284,9 @@ function BrandOrgForm({ value, onChange }: any) {
   return (
     <div className="grid grid-cols-2 gap-3">
       <Field label="Name"><Input value={value.name ?? ""} onChange={(e) => set("name", e.target.value)} /></Field>
-      <Field label="Slug"><Input value={value.slug ?? ""} onChange={(e) => set("slug", e.target.value)} /></Field>
+      <Field label="Slug"><Input value={value.slug ?? ""} onChange={(e) => set("slug", e.target.value)} placeholder="auto from name (used in URLs)" /></Field>
       <Field label="Subdomain"><Input value={value.subdomain ?? ""} onChange={(e) => set("subdomain", e.target.value)} /></Field>
-      <Field label="KRA PIN"><Input value={value.kra_pin ?? ""} onChange={(e) => set("kra_pin", e.target.value)} /></Field>
+      
       <Field label="Fee (KES)"><Input type="number" value={value.subscription_fee_kes ?? 0} onChange={(e) => set("subscription_fee_kes", Number(e.target.value))} /></Field>
       <Field label="Cycle">
         <Select value={value.billing_cycle ?? "quarterly"} onValueChange={(v) => set("billing_cycle", v)}>

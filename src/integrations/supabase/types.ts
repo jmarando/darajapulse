@@ -25,6 +25,7 @@ export type Database = {
           invoice_address: string | null
           is_active: boolean
           is_default: boolean
+          kind: Database["public"]["Enums"]["agency_kind"]
           kra_pin: string | null
           legal_name: string | null
           logo_url: string | null
@@ -47,6 +48,7 @@ export type Database = {
           invoice_address?: string | null
           is_active?: boolean
           is_default?: boolean
+          kind?: Database["public"]["Enums"]["agency_kind"]
           kra_pin?: string | null
           legal_name?: string | null
           logo_url?: string | null
@@ -69,6 +71,7 @@ export type Database = {
           invoice_address?: string | null
           is_active?: boolean
           is_default?: boolean
+          kind?: Database["public"]["Enums"]["agency_kind"]
           kra_pin?: string | null
           legal_name?: string | null
           logo_url?: string | null
@@ -2137,6 +2140,7 @@ export type Database = {
       }
     }
     Enums: {
+      agency_kind: "agency" | "media_house"
       app_role:
         | "agency_admin"
         | "account_manager"
@@ -2284,6 +2288,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      agency_kind: ["agency", "media_house"],
       app_role: [
         "agency_admin",
         "account_manager",

@@ -14,6 +14,7 @@ import {
 import { BarChart, Bar, Cell, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { buildPeakMetricsByPost } from "@/lib/metrics";
+import OnboardingChecklist from "@/components/OnboardingChecklist";
 
 const fmt = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : `${n}`;
 
@@ -174,6 +175,9 @@ const Overview = () => {
           <Button variant="ghost" size="sm" onClick={() => { setFrom(twoWeeksAgo); setTo(today); }}>Reset</Button>
         </div>
       </header>
+
+      <OnboardingChecklist />
+
 
       {compact ? (
         <Card className="mb-6">
