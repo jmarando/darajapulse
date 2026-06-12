@@ -318,8 +318,17 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     setCreatorHandles(set);
   };
 
-  const cleanHandle = (s?: string) =>
-    (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || null;
+  const cleanCsvValue = (value?: any) => {
+    const s = String(value ?? "").trim();
+    if (!s || /^(-|none|null|n\/a|na)$/i.test(s)) return null;
+    return s;
+  };
+
+  const cleanHandle = (s?: string | null) => {
+    const value = cleanCsvValue(s);
+    if (!value) return null;
+    return value.replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || null;
+  };
 
   const pick = (row: any, ...keys: string[]) => {
     const norm = (s: string) => s.toLowerCase().replace(/[\s_\-#]/g, "");
@@ -327,9 +336,45 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     for (const k of Object.keys(row)) lookup[norm(k)] = row[k];
     for (const k of keys) {
       const v = lookup[norm(k)];
-      if (v != null && String(v).trim() !== "") return String(v).trim();
+        const cleaned = cleanCsvValue(v);
+        if (cleaned) return cleaned;
     }
     return null;
+  };
+
+  const platformFromPostUrl = (url?: string | null) => {
+    const u = (url || "").toLowerCase();
+    if (/instagram\.com/.test(u)) return "instagram";
+    if (/tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com/.test(u)) return "tiktok";
+    if (/facebook\.com|fb\.watch/.test(u)) return "facebook";
+    return null;
+  };
+
+  const normalizeCsvPostUrl = (url?: string | null) => {
+    const value = cleanCsvValue(url);
+    if (!value || !/^https?:\/\//i.test(value)) return null;
+    // Keep real post links only; profile links are handled via username fields.
+    if (!/(instagram\.com\/(?:p|reel|reels|tv)\/|tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com|facebook\.com|fb\.watch)/i.test(value)) return null;
+    return canonicalPostUrl(value);
+  };
+
+  const stableRegistrationId = (row: any, i: number) => {
+    const response = pick(row, "response", "response #", "id", "submission id", "registration id") || `row-${i + 1}`;
+    const email = normalizedText(pick(row, "email", "email address"));
+    const phone = String(pick(row, "phone", "phone number", "mobile") || "").replace(/\D/g, "");
+    const stamp = normalizedText(pick(row, "timestamp", "submitted at", "created at"));
+    const name = normalizedText(pick(row, "full name", "name", "fullname"));
+    const who = email || phone || `${name}:${stamp}` || `row-${i + 1}`;
+    return `csv:${String(response).trim()}:${who}`.slice(0, 220);
+  };
+
+  const sameContestant = (a: any, b: any) => {
+    const ae = normalizedText(a.submitter_email); const be = normalizedText(b.submitter_email);
+    if (ae && be && ae === be) return true;
+    const ap = String(a.phone || "").replace(/\D/g, ""); const bp = String(b.phone || "").replace(/\D/g, "");
+    if (ap.length >= 7 && bp.length >= 7 && ap === bp) return true;
+    const an = normalizedText(a.full_name || a.submitter_name); const bn = normalizedText(b.full_name || b.submitter_name);
+    return !!an && !!bn && an === bn;
   };
 
   const uploadCsv = async (file: File) => {
@@ -341,15 +386,21 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
       const rows = (parsed.data as any[]).filter(Boolean);
       if (!rows.length) { toast.error("No rows in CSV"); return; }
 
-      const upserts = rows.map((r, i) => {
+      const prepared = rows.map((r, i) => {
         const ig = cleanHandle(pick(r, "instagram", "instagram handle", "ig"));
         const tt = cleanHandle(pick(r, "tiktok", "tiktok handle"));
         const fb = cleanHandle(pick(r, "facebook", "facebook handle", "fb"));
-        const ext = pick(r, "response", "response #", "id", "submission id", "registration id") || `csv-${Date.now()}-${i}`;
+        const rawPostUrl = pick(r, "post url", "post", "url", "submission url", "video url");
+        const postUrl = normalizeCsvPostUrl(rawPostUrl);
+        const selectedPlatform = (pick(r, "selected platform", "platform") || "").toLowerCase();
+        const platform = (PLATFORMS.includes(selectedPlatform) ? selectedPlatform : platformFromPostUrl(postUrl) || (tt ? "tiktok" : ig ? "instagram" : fb ? "facebook" : "instagram")) as any;
+        const legacyExt = pick(r, "response", "response #", "id", "submission id", "registration id");
         return {
           contest_id: activeId,
-          external_registration_id: String(ext),
-          platform: (tt ? "tiktok" : ig ? "instagram" : "facebook") as any,
+          external_registration_id: stableRegistrationId(r, i),
+          _legacyExternalId: legacyExt ? String(legacyExt) : null,
+          platform,
+          post_url: postUrl,
           status: "registered",
           source: "registration",
           full_name: pick(r, "full name", "name", "fullname"),
@@ -364,25 +415,47 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
           handle: ig || tt || fb,
           metadata: { raw: r },
         };
-      }).filter(r => r.submitter_email || r.instagram_handle || r.tiktok_handle || r.facebook_handle || r.phone);
+      }).filter(r => r.submitter_email || r.instagram_handle || r.tiktok_handle || r.facebook_handle || r.phone || r.post_url);
 
-      if (!upserts.length) { toast.error("No valid contestants found in CSV"); return; }
+      if (!prepared.length) { toast.error("No valid contestants found in CSV"); return; }
 
-      const chunkSize = 200;
       let ok = 0;
       const errors: string[] = [];
-      for (let i = 0; i < upserts.length; i += chunkSize) {
-        const chunk = upserts.slice(i, i + chunkSize);
-        const { error } = await supabase.from("contest_entries")
-          .upsert(chunk, { onConflict: "contest_id,external_registration_id", ignoreDuplicates: false });
-        if (error) errors.push(error.message); else ok += chunk.length;
+      const { data: existingRows } = await supabase
+        .from("contest_entries")
+        .select("id, external_registration_id, post_url, full_name, submitter_name, submitter_email, phone, views, likes, comments, shares")
+        .eq("contest_id", activeId);
+      const existing = existingRows ?? [];
+      const byExt = new Map(existing.filter((r: any) => r.external_registration_id).map((r: any) => [String(r.external_registration_id), r]));
+      const byUrl = new Map(existing.filter((r: any) => r.post_url).map((r: any) => [canonicalPostUrl(r.post_url), r]));
+
+      for (const row of prepared) {
+        const { _legacyExternalId, ...base } = row;
+        const urlKey = canonicalPostUrl(base.post_url);
+        const legacy = _legacyExternalId ? byExt.get(_legacyExternalId) : null;
+        const target = (urlKey && byUrl.get(urlKey)) || byExt.get(base.external_registration_id) || (legacy && sameContestant(legacy, base) ? legacy : null);
+        const targetUrl = canonicalPostUrl(target?.post_url);
+        const postChanged = !!target && !!base.post_url && targetUrl !== urlKey;
+        const payload: any = { ...base };
+        if (!base.post_url) delete payload.post_url;
+        if (target) {
+          for (const key of ["handle", "instagram_handle", "tiktok_handle", "facebook_handle"]) {
+            if (payload[key] == null) delete payload[key];
+          }
+        }
+        if (postChanged) Object.assign(payload, { views: 0, likes: 0, comments: 0, shares: 0, score: 0, cross_posts: [] });
+
+        const { error } = target
+          ? await supabase.from("contest_entries").update(payload).eq("id", target.id)
+          : await supabase.from("contest_entries").insert(payload);
+        if (error) errors.push(error.message); else ok++;
       }
       await (supabase as any).from("contestant_sync_runs").insert({
         contest_id: activeId, source: "csv_upload", triggered_by: "manual",
         fetched: rows.length, upserted: ok, status: errors.length ? "partial" : "ok",
         errors: errors.map(msg => ({ msg })), finished_at: new Date().toISOString(),
       });
-      if (errors.length) toast.error(`Upserted ${ok}/${upserts.length} — ${errors[0]}`);
+      if (errors.length) toast.error(`Imported ${ok}/${prepared.length} — ${errors[0]}`);
       else toast.success(`Imported ${ok} contestants from CSV`);
       load();
     } catch (e: any) {

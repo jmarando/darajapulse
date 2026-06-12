@@ -11,18 +11,76 @@ type Reg = {
   phone?: string;
   address?: string;
   lga?: string;
+  platform?: string;
+  post_url?: string;
   instagram?: string;
   tiktok?: string;
   facebook?: string;
   raw: any;
 };
 
-const cleanHandle = (s?: string) =>
-  (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || null;
+const cleanValue = (s?: any) => {
+  const value = String(s ?? "").trim();
+  if (!value || /^(-|none|null|n\/a|na)$/i.test(value)) return null;
+  return value;
+};
+
+const cleanHandle = (s?: string) => {
+  const value = cleanValue(s);
+  if (!value) return null;
+  return value.replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || null;
+};
+
+async function resolveTikTokShort(url: string): Promise<string> {
+  if (!/(?:vt|vm)\.tiktok\.com\//i.test(url)) return url;
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15" },
+    });
+    return res.url || url;
+  } catch {
+    return url;
+  }
+}
+
+function canonicalPostUrlSync(raw?: string | null): string | null {
+  const url = cleanValue(raw);
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  const tt = url.match(/tiktok\.com\/.*?(?:\/video\/|\/v\/|share_item_id=)(\d{6,})/i);
+  if (tt) return `https://www.tiktok.com/video/${tt[1]}`;
+  const ig = url.match(/instagram\.com\/(?:p|reel|reels|tv)\/([A-Za-z0-9_-]+)/i);
+  if (ig) return `https://www.instagram.com/p/${ig[1]}/`;
+  try { const u = new URL(url); return `${u.origin}${u.pathname}`.replace(/\/+$/, ""); } catch { return url; }
+}
+
+async function canonicalPostUrl(raw?: string | null): Promise<string | null> {
+  const value = cleanValue(raw);
+  if (!value) return null;
+  return canonicalPostUrlSync(await resolveTikTokShort(value));
+}
+
+const platformFromPostUrl = (url?: string | null) => {
+  const u = (url || "").toLowerCase();
+  if (/instagram\.com/.test(u)) return "instagram";
+  if (/tiktok\.com|vt\.tiktok\.com|vm\.tiktok\.com/.test(u)) return "tiktok";
+  if (/facebook\.com|fb\.watch/.test(u)) return "facebook";
+  return null;
+};
+
+const stableRegistrationId = (r: any, i: number, get: (...keys: string[]) => string | undefined) => {
+  const response = String(r?.id ?? r?._id ?? r?.uid ?? r?.responseId ?? r?.submission_id ?? get("response", "Response #") ?? `row-${i + 1}`).trim();
+  const email = (get("email", "Email") || "").trim().toLowerCase();
+  const phone = (get("phone", "Phone", "phoneNumber", "Phone Number") || "").replace(/\D/g, "");
+  const stamp = (get("timestamp", "Timestamp", "created_at") || "").trim().toLowerCase();
+  const name = (get("name", "Name", "fullName", "full_name", "Full Name") || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return `csv:${response}:${email || phone || `${name}:${stamp}` || `row-${i + 1}`}`.slice(0, 220);
+};
 
 // Try to normalize a feed payload from a variety of shapes (Flutter/Firebase
 // exports, generic REST, JSONForms, etc).
-function normalize(payload: any): Reg[] {
+async function normalize(payload: any): Promise<Reg[]> {
   const rows: any[] =
     Array.isArray(payload) ? payload :
     Array.isArray(payload?.responses) ? payload.responses :
@@ -32,31 +90,44 @@ function normalize(payload: any): Reg[] {
     typeof payload === "object" && payload !== null ? Object.entries(payload).map(([k, v]: any) => ({ id: k, ...v })) :
     [];
 
-  return rows.map((r: any, i: number) => {
+  const regs: Reg[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
     const flat = { ...(r?.fields || {}), ...(r?.answers || {}), ...r };
     const get = (...keys: string[]) => {
       for (const k of keys) {
         const direct = flat[k];
-        if (direct != null && String(direct).trim() !== "") return String(direct).trim();
+        const directValue = cleanValue(direct);
+        if (directValue) return directValue;
         // case-insensitive
         const ck = Object.keys(flat).find(x => x.toLowerCase().replace(/[\s_-]/g, "") === k.toLowerCase().replace(/[\s_-]/g, ""));
-        if (ck && flat[ck] != null && String(flat[ck]).trim() !== "") return String(flat[ck]).trim();
+        const matchedValue = ck ? cleanValue(flat[ck]) : null;
+        if (matchedValue) return matchedValue;
       }
       return undefined;
     };
-    return {
-      external_id: String(r?.id ?? r?._id ?? r?.uid ?? r?.responseId ?? r?.submission_id ?? `${i}-${get("email", "Email") || get("phone", "Phone") || ""}`),
+    const postUrl = await canonicalPostUrl(get("postUrl", "post_url", "Post URL", "url", "video url"));
+    const selectedPlatform = (get("selectedPlatform", "Selected Platform", "platform") || "").toLowerCase();
+    const platform = ["tiktok", "instagram", "facebook", "youtube", "twitter"].includes(selectedPlatform)
+      ? selectedPlatform
+      : platformFromPostUrl(postUrl) ?? undefined;
+    const reg = {
+      external_id: stableRegistrationId(r, i, get),
       full_name: get("name", "Name", "fullName", "full_name"),
       email: get("email", "Email"),
       phone: get("phone", "Phone", "phoneNumber"),
       address: get("address", "Address"),
       lga: get("lga", "LGA", "localGovernmentArea", "local_government_area", "Local Government Area"),
+      platform,
+      post_url: postUrl ?? undefined,
       instagram: cleanHandle(get("instagram", "Instagram", "ig", "igHandle", "instagram_handle")),
       tiktok: cleanHandle(get("tiktok", "TikTok", "tiktokHandle", "tiktok_handle")),
       facebook: cleanHandle(get("facebook", "Facebook", "facebookHandle")),
       raw: r,
     } as Reg;
-  }).filter(r => r.email || r.instagram || r.tiktok || r.facebook || r.phone);
+    if (reg.email || reg.instagram || reg.tiktok || reg.facebook || reg.phone || reg.post_url) regs.push(reg);
+  }
+  return regs;
 }
 
 Deno.serve(async (req) => {
@@ -72,28 +143,29 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const feedUrl = Deno.env.get("CONTESTANT_FEED_URL");
-    if (!feedUrl) {
-      return new Response(JSON.stringify({ error: "CONTESTANT_FEED_URL not set" }), { status: 412, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-    const authHeader = Deno.env.get("CONTESTANT_FEED_AUTH_HEADER");
-
     const { data: run } = await sb.from("contestant_sync_runs").insert({
       contest_id, source: "feed", triggered_by, status: "running",
     }).select("id").single();
     runId = run?.id ?? null;
 
-    const headers: Record<string, string> = { Accept: "application/json" };
-    if (authHeader) {
-      const idx = authHeader.indexOf(":");
-      if (idx > -1) headers[authHeader.slice(0, idx).trim()] = authHeader.slice(idx + 1).trim();
-      else headers["Authorization"] = authHeader;
+    let payload: any = body.registrations ?? body.rows ?? null;
+    if (!payload) {
+      const feedUrl = Deno.env.get("CONTESTANT_FEED_URL");
+      if (!feedUrl) {
+        return new Response(JSON.stringify({ error: "CONTESTANT_FEED_URL not set" }), { status: 412, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const authHeader = Deno.env.get("CONTESTANT_FEED_AUTH_HEADER");
+      const headers: Record<string, string> = { Accept: "application/json" };
+      if (authHeader) {
+        const idx = authHeader.indexOf(":");
+        if (idx > -1) headers[authHeader.slice(0, idx).trim()] = authHeader.slice(idx + 1).trim();
+        else headers["Authorization"] = authHeader;
+      }
+      const res = await fetch(feedUrl, { headers });
+      if (!res.ok) throw new Error(`Feed responded ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      payload = await res.json();
     }
-
-    const res = await fetch(feedUrl, { headers });
-    if (!res.ok) throw new Error(`Feed responded ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    const payload = await res.json();
-    const regs = normalize(payload);
+    const regs = await normalize(payload);
 
     let upserted = 0;
     let skipped_excluded = 0;
@@ -101,6 +173,20 @@ Deno.serve(async (req) => {
     const cleanH = (s?: string | null) => (s || "").trim().replace(/^@+/, "").toLowerCase();
     const { data: excluded } = await sb.from("contest_excluded_handles").select("handle").eq("contest_id", contest_id);
     const excludedSet = new Set<string>(((excluded ?? []) as any[]).map((r: any) => cleanH(r.handle)).filter(Boolean));
+    const { data: existingRows } = await sb.from("contest_entries")
+      .select("id, external_registration_id, post_url, full_name, submitter_name, submitter_email, phone")
+      .eq("contest_id", contest_id);
+    const byExt = new Map(((existingRows ?? []) as any[]).filter(r => r.external_registration_id).map(r => [String(r.external_registration_id), r]));
+    const byUrl = new Map(((existingRows ?? []) as any[]).filter(r => r.post_url).map(r => [canonicalPostUrlSync(r.post_url), r]));
+    const norm = (v?: any) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    const sameContestant = (a: any, b: any) => {
+      const ae = norm(a.submitter_email); const be = norm(b.submitter_email);
+      if (ae && be && ae === be) return true;
+      const ap = String(a.phone || "").replace(/\D/g, ""); const bp = String(b.phone || "").replace(/\D/g, "");
+      if (ap.length >= 7 && bp.length >= 7 && ap === bp) return true;
+      const an = norm(a.full_name || a.submitter_name); const bn = norm(b.full_name || b.submitter_name);
+      return !!an && !!bn && an === bn;
+    };
     for (const r of regs) {
       try {
         const handles = [r.instagram, r.tiktok, r.facebook].map(cleanH).filter(Boolean);
@@ -108,7 +194,8 @@ Deno.serve(async (req) => {
         const row = {
           contest_id,
           external_registration_id: r.external_id,
-          platform: (r.tiktok ? "tiktok" : r.instagram ? "instagram" : "facebook") as any,
+          platform: (r.platform || (r.tiktok ? "tiktok" : r.instagram ? "instagram" : "facebook")) as any,
+          ...(r.post_url ? { post_url: r.post_url } : {}),
           status: "registered",
           source: "registration",
           full_name: r.full_name ?? null,
@@ -123,8 +210,21 @@ Deno.serve(async (req) => {
           handle: r.instagram || r.tiktok || r.facebook || null,
           metadata: { raw: r.raw },
         };
-        const { error } = await sb.from("contest_entries")
-          .upsert(row, { onConflict: "contest_id,external_registration_id", ignoreDuplicates: false });
+        const legacyId = String(r.raw?.id ?? r.raw?._id ?? r.raw?.uid ?? r.raw?.responseId ?? r.raw?.submission_id ?? r.raw?.["Response #"] ?? "");
+        const legacy = legacyId ? byExt.get(legacyId) : null;
+        const urlKey = canonicalPostUrlSync(r.post_url);
+        const target = (urlKey ? byUrl.get(urlKey) : null) || byExt.get(r.external_id) || (legacy && sameContestant(legacy, row) ? legacy : null);
+        const targetUrl = canonicalPostUrlSync(target?.post_url);
+        const payload: any = { ...row };
+        if (target) {
+          for (const key of ["handle", "instagram_handle", "tiktok_handle", "facebook_handle"]) {
+            if (payload[key] == null) delete payload[key];
+          }
+        }
+        if (target && r.post_url && targetUrl !== urlKey) Object.assign(payload, { views: 0, likes: 0, comments: 0, shares: 0, score: 0, cross_posts: [] });
+        const { error } = target
+          ? await sb.from("contest_entries").update(payload).eq("id", target.id)
+          : await sb.from("contest_entries").insert(payload);
         if (error) errors.push({ external_id: r.external_id, msg: error.message });
         else upserted++;
       } catch (e) {
