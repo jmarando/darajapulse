@@ -135,6 +135,16 @@ const CampaignDetail = () => {
     setCi(ciAll ?? []);
     const { data: r } = await supabase.from("influencers").select("*");
     setRosterAll(r ?? []);
+    if (c1?.agency_id) {
+      const { data: inv } = await supabase
+        .from("inventory_items")
+        .select("*")
+        .eq("agency_id", c1.agency_id)
+        .eq("is_active", true)
+        .order("sort_order")
+        .order("title");
+      setInventory(inv ?? []);
+    } else setInventory([]);
     const { data: p } = await supabase.from("posts").select("*, influencers(full_name, handle)").eq("campaign_id", id);
     setPosts(p ?? []);
     const postIds = (p ?? []).map((x: any) => x.id);
