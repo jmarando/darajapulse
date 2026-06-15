@@ -850,6 +850,75 @@ export type Database = {
         }
         Relationships: []
       }
+      contest_winners: {
+        Row: {
+          contest_id: string
+          created_at: string
+          entry_id: string | null
+          frozen_score: number | null
+          full_name: string | null
+          handle: string | null
+          id: string
+          placement: string
+          placement_rank: number
+          platform: string | null
+          post_url: string | null
+          prize: string | null
+          round_number: number
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          contest_id: string
+          created_at?: string
+          entry_id?: string | null
+          frozen_score?: number | null
+          full_name?: string | null
+          handle?: string | null
+          id?: string
+          placement: string
+          placement_rank: number
+          platform?: string | null
+          post_url?: string | null
+          prize?: string | null
+          round_number: number
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contest_id?: string
+          created_at?: string
+          entry_id?: string | null
+          frozen_score?: number | null
+          full_name?: string | null
+          handle?: string | null
+          id?: string
+          placement?: string
+          placement_rank?: number
+          platform?: string | null
+          post_url?: string | null
+          prize?: string | null
+          round_number?: number
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contest_winners_contest_id_fkey"
+            columns: ["contest_id"]
+            isOneToOne: false
+            referencedRelation: "contests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contest_winners_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "contest_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contestant_sync_runs: {
         Row: {
           contest_id: string | null
