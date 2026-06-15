@@ -1431,6 +1431,158 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_bookings: {
+        Row: {
+          agency_id: string
+          budget_kes: number | null
+          company: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          created_at: string
+          id: string
+          internal_notes: string | null
+          inventory_item_id: string | null
+          items: Json
+          message: string | null
+          status: Database["public"]["Enums"]["booking_status"]
+          target_end: string | null
+          target_start: string | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          budget_kes?: number | null
+          company?: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          internal_notes?: string | null
+          inventory_item_id?: string | null
+          items?: Json
+          message?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          target_end?: string | null
+          target_start?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          budget_kes?: number | null
+          company?: string | null
+          contact_email?: string
+          contact_name?: string
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          internal_notes?: string | null
+          inventory_item_id?: string | null
+          items?: Json
+          message?: string | null
+          status?: Database["public"]["Enums"]["booking_status"]
+          target_end?: string | null
+          target_start?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_bookings_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_bookings_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_items: {
+        Row: {
+          agency_id: string
+          audience_demo: Json | null
+          base_rate_kes: number | null
+          cover_url: string | null
+          created_at: string
+          deliverable_type: string | null
+          description: string | null
+          engagement_rate: number | null
+          follower_count: number | null
+          handle: string | null
+          id: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["inventory_kind"]
+          platform: string | null
+          revisions: number | null
+          sort_order: number
+          subtitle: string | null
+          tags: string[] | null
+          title: string
+          turnaround_days: number | null
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          audience_demo?: Json | null
+          base_rate_kes?: number | null
+          cover_url?: string | null
+          created_at?: string
+          deliverable_type?: string | null
+          description?: string | null
+          engagement_rate?: number | null
+          follower_count?: number | null
+          handle?: string | null
+          id?: string
+          is_active?: boolean
+          kind: Database["public"]["Enums"]["inventory_kind"]
+          platform?: string | null
+          revisions?: number | null
+          sort_order?: number
+          subtitle?: string | null
+          tags?: string[] | null
+          title: string
+          turnaround_days?: number | null
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          audience_demo?: Json | null
+          base_rate_kes?: number | null
+          cover_url?: string | null
+          created_at?: string
+          deliverable_type?: string | null
+          description?: string | null
+          engagement_rate?: number | null
+          follower_count?: number | null
+          handle?: string | null
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["inventory_kind"]
+          platform?: string | null
+          revisions?: number | null
+          sort_order?: number
+          subtitle?: string | null
+          tags?: string[] | null
+          title?: string
+          turnaround_days?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_kes: number
@@ -2079,6 +2231,7 @@ export type Database = {
           title: string
         }[]
       }
+      get_public_storefront: { Args: { _agency_slug: string }; Returns: Json }
       get_tenant_by_host: { Args: { _host: string }; Returns: Json }
       has_role: {
         Args: {
@@ -2151,6 +2304,7 @@ export type Database = {
         | "brand_owner"
         | "brand_viewer"
       approval_status: "pending" | "approved" | "changes_requested"
+      booking_status: "new" | "reviewing" | "quoted" | "won" | "lost"
       campaign_status:
         | "draft"
         | "pitched"
@@ -2158,6 +2312,7 @@ export type Database = {
         | "live"
         | "reporting"
         | "closed"
+      inventory_kind: "owned_account" | "influencer" | "ad_slot" | "bundle"
       payout_status: "pending" | "processing" | "paid" | "failed"
       platform: "tiktok" | "instagram" | "youtube" | "twitter" | "facebook"
       post_status: "drafted" | "approved" | "live" | "completed"
@@ -2300,6 +2455,7 @@ export const Constants = {
         "brand_viewer",
       ],
       approval_status: ["pending", "approved", "changes_requested"],
+      booking_status: ["new", "reviewing", "quoted", "won", "lost"],
       campaign_status: [
         "draft",
         "pitched",
@@ -2308,6 +2464,7 @@ export const Constants = {
         "reporting",
         "closed",
       ],
+      inventory_kind: ["owned_account", "influencer", "ad_slot", "bundle"],
       payout_status: ["pending", "processing", "paid", "failed"],
       platform: ["tiktok", "instagram", "youtube", "twitter", "facebook"],
       post_status: ["drafted", "approved", "live", "completed"],
