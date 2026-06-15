@@ -47,6 +47,8 @@ import LandingBento from "./pages/landings/LandingBento";
 import PortalShell from "./components/PortalShell";
 import PortalOverview from "./pages/portal/PortalOverview";
 import PortalCampaign from "./pages/portal/PortalCampaign";
+import PublicStorefront from "./pages/PublicStorefront";
+import Inventory from "./pages/app/Inventory";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +91,7 @@ const App = () => (
             <Route path="/connect/twitter/done" element={<ConnectTwitter />} />
             <Route path="/connect/facebook/:influencerId" element={<ConnectFacebook />} />
             <Route path="/connect/facebook/done" element={<ConnectFacebook />} />
+            <Route path="/shop/:agencySlug" element={<PublicStorefront />} />
             <Route path="/portal" element={<PortalShell />}>
               <Route index element={<PortalOverview />} />
               <Route path="campaigns" element={<PortalOverview />} />
@@ -107,6 +110,7 @@ const App = () => (
               <Route path="content" element={<Content />} />
               <Route path="moderation" element={<Moderation />} />
               <Route path="team" element={<Team />} />
+              <Route path="inventory" element={<Inventory />} />
               <Route path="admin" element={<Admin />} />
               <Route path="admin/billing" element={<AdminBilling />} />
               <Route path="approvals" element={<Stub title="Approvals" body="Two-round content approvals with versioning and threaded comments per asset. Ships in v0.2." />} />

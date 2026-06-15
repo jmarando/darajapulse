@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare, UserCog, Menu, Search, Bell, Sparkles, Trophy, Compass, Shield } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, MessageSquare, UserCog, Menu, Search, Bell, Sparkles, Trophy, Compass, Shield, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -30,6 +30,12 @@ const navGroups: { label?: string; items: { to: string; icon: any; label: string
       { to: "/app/clients", icon: Building2, label: "Clients" },
       { to: "/app/influencers", icon: Users, label: "Influencers" },
       { to: "/app/discovery", icon: Compass, label: "Discovery" },
+    ],
+  },
+  {
+    label: "Media house",
+    items: [
+      { to: "/app/inventory", icon: Store, label: "Storefront" },
     ],
   },
   {
