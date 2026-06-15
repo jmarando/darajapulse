@@ -212,6 +212,44 @@ const CampaignDetail = () => {
     }
   };
 
+  // Convert (or re-use) an inventory item as an influencer on this campaign.
+  const adoptInventory = async (item: any) => {
+    if (!c?.agency_id) return toast.error("Campaign has no agency");
+    const cleanHandle = (item.handle || "").replace(/^@/, "").trim();
+    let inflRow: any = null;
+    if (cleanHandle) {
+      const { data: existing } = await supabase
+        .from("influencers")
+        .select("*")
+        .eq("agency_id", c.agency_id)
+        .ilike("handle", cleanHandle)
+        .maybeSingle();
+      if (existing) inflRow = existing;
+    }
+    if (!inflRow) {
+      const platformMap: Record<string, string> = { tv: "youtube", radio: "youtube", web: "instagram", mixed: "instagram" };
+      const platform = platformMap[item.platform] ?? item.platform ?? "instagram";
+      const { data, error } = await (supabase.from("influencers") as any).insert({
+        agency_id: c.agency_id,
+        full_name: item.title,
+        handle: cleanHandle || null,
+        primary_platform: platform,
+        follower_count: Number(item.follower_count) || 0,
+        engagement_rate: Number(item.engagement_rate) || 0,
+        avatar_url: item.cover_url || null,
+        niche: Array.isArray(item.tags) ? item.tags.join(", ") : null,
+        notes: `Imported from storefront inventory · ${item.kind}${item.subtitle ? ` · ${item.subtitle}` : ""}`,
+      }).select().single();
+      if (error) return toast.error(error.message);
+      inflRow = data;
+    }
+    setPicked(inflRow);
+    setAddFee(item.base_rate_kes ? String(item.base_rate_kes) : "");
+    const platform = inflRow.primary_platform || "instagram";
+    setAddBreakdown({ [platform]: { video: 1 } });
+    load();
+  };
+
   const addPost = async (e: React.FormEvent) => {
     e.preventDefault();
     const { error } = await supabase.from("posts").insert({ ...post, campaign_id: id, status: "live", posted_at: new Date().toISOString() });
