@@ -100,6 +100,10 @@ const CampaignDetail = () => {
   const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
   const [briefExpanded, setBriefExpanded] = useState(false);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [pickSource, setPickSource] = useState<"roster" | "inventory">("roster");
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryKindFilter, setInventoryKindFilter] = useState<string>("all");
   const [searchParams, setSearchParams] = useSearchParams();
   // When a campaign has no creator roster but does have contest activity, treat it as contest-only:
   // default the active tab to "contests" and adapt hero KPIs / hide the empty creators tab.
