@@ -100,6 +100,10 @@ const CampaignDetail = () => {
   const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
   const [briefExpanded, setBriefExpanded] = useState(false);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [pickSource, setPickSource] = useState<"roster" | "inventory">("roster");
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryKindFilter, setInventoryKindFilter] = useState<string>("all");
   const [searchParams, setSearchParams] = useSearchParams();
   // When a campaign has no creator roster but does have contest activity, treat it as contest-only:
   // default the active tab to "contests" and adapt hero KPIs / hide the empty creators tab.
@@ -131,6 +135,16 @@ const CampaignDetail = () => {
     setCi(ciAll ?? []);
     const { data: r } = await supabase.from("influencers").select("*");
     setRosterAll(r ?? []);
+    if (c1?.agency_id) {
+      const { data: inv } = await supabase
+        .from("inventory_items")
+        .select("*")
+        .eq("agency_id", c1.agency_id)
+        .eq("is_active", true)
+        .order("sort_order")
+        .order("title");
+      setInventory(inv ?? []);
+    } else setInventory([]);
     const { data: p } = await supabase.from("posts").select("*, influencers(full_name, handle)").eq("campaign_id", id);
     setPosts(p ?? []);
     const postIds = (p ?? []).map((x: any) => x.id);
@@ -196,6 +210,44 @@ const CampaignDetail = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Convert (or re-use) an inventory item as an influencer on this campaign.
+  const adoptInventory = async (item: any) => {
+    if (!c?.agency_id) return toast.error("Campaign has no agency");
+    const cleanHandle = (item.handle || "").replace(/^@/, "").trim();
+    let inflRow: any = null;
+    if (cleanHandle) {
+      const { data: existing } = await supabase
+        .from("influencers")
+        .select("*")
+        .eq("agency_id", c.agency_id)
+        .ilike("handle", cleanHandle)
+        .maybeSingle();
+      if (existing) inflRow = existing;
+    }
+    if (!inflRow) {
+      const platformMap: Record<string, string> = { tv: "youtube", radio: "youtube", web: "instagram", mixed: "instagram" };
+      const platform = platformMap[item.platform] ?? item.platform ?? "instagram";
+      const { data, error } = await (supabase.from("influencers") as any).insert({
+        agency_id: c.agency_id,
+        full_name: item.title,
+        handle: cleanHandle || null,
+        primary_platform: platform,
+        follower_count: Number(item.follower_count) || 0,
+        engagement_rate: Number(item.engagement_rate) || 0,
+        avatar_url: item.cover_url || null,
+        niche: Array.isArray(item.tags) ? item.tags.join(", ") : null,
+        notes: `Imported from storefront inventory · ${item.kind}${item.subtitle ? ` · ${item.subtitle}` : ""}`,
+      }).select().single();
+      if (error) return toast.error(error.message);
+      inflRow = data;
+    }
+    setPicked(inflRow);
+    setAddFee(item.base_rate_kes ? String(item.base_rate_kes) : "");
+    const platform = inflRow.primary_platform || "instagram";
+    setAddBreakdown({ [platform]: { video: 1 } });
+    load();
   };
 
   const addPost = async (e: React.FormEvent) => {
@@ -1308,29 +1360,93 @@ const CampaignDetail = () => {
                 </form>
               ) : (
                 <>
-                  <Input
-                    placeholder="Search your roster…"
-                    value={rosterSearch}
-                    onChange={(e) => setRosterSearch(e.target.value)}
-                    className="mb-2"
-                  />
-                  <div className="space-y-1 max-h-72 overflow-auto">
-                    {rosterAll
-                      .filter(r => !ci.some(x => x.influencer_id === r.id))
-                      .filter(r => !rosterSearch || `${r.full_name} ${r.handle ?? ""}`.toLowerCase().includes(rosterSearch.toLowerCase()))
-                      .map(r => (
-                        <button key={r.id} onClick={() => { setPicked(r); setAddBreakdown({ [r.primary_platform || "tiktok"]: { video: 1 } }); }} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
-                          <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      ))}
-                    {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).length === 0 && (
-                      <p className="text-sm text-muted-foreground p-3 text-center">{rosterAll.length === 0 ? "No influencers in your roster yet." : "All your influencers are already on this campaign."}</p>
-                    )}
-                  </div>
-                  <Button variant="outline" className="w-full mt-2" onClick={() => setCreating(true)}>
-                    <Plus className="w-4 h-4 mr-2" /> Create new influencer
-                  </Button>
+                  <Tabs value={pickSource} onValueChange={(v) => setPickSource(v as any)} className="mb-3">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="roster" className="flex-1">My roster ({rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).length})</TabsTrigger>
+                      <TabsTrigger value="inventory" className="flex-1">Storefront ({inventory.length})</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+
+                  {pickSource === "roster" ? (
+                    <>
+                      <Input
+                        placeholder="Search your roster…"
+                        value={rosterSearch}
+                        onChange={(e) => setRosterSearch(e.target.value)}
+                        className="mb-2"
+                      />
+                      <div className="space-y-1 max-h-72 overflow-auto">
+                        {rosterAll
+                          .filter(r => !ci.some(x => x.influencer_id === r.id))
+                          .filter(r => !rosterSearch || `${r.full_name} ${r.handle ?? ""}`.toLowerCase().includes(rosterSearch.toLowerCase()))
+                          .map(r => (
+                            <button key={r.id} onClick={() => { setPicked(r); setAddBreakdown({ [r.primary_platform || "tiktok"]: { video: 1 } }); }} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center">
+                              <span>{r.full_name} <span className="text-muted-foreground text-xs">· {r.primary_platform}</span></span>
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          ))}
+                        {rosterAll.filter(r => !ci.some(x => x.influencer_id === r.id)).length === 0 && (
+                          <p className="text-sm text-muted-foreground p-3 text-center">{rosterAll.length === 0 ? "No influencers in your roster yet." : "All your influencers are already on this campaign."}</p>
+                        )}
+                      </div>
+                      <Button variant="outline" className="w-full mt-2" onClick={() => setCreating(true)}>
+                        <Plus className="w-4 h-4 mr-2" /> Create new influencer
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex gap-2 mb-2">
+                        <Input
+                          placeholder="Search inventory…"
+                          value={inventorySearch}
+                          onChange={(e) => setInventorySearch(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Select value={inventoryKindFilter} onValueChange={setInventoryKindFilter}>
+                          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All types</SelectItem>
+                            <SelectItem value="influencer">Signed creators</SelectItem>
+                            <SelectItem value="owned_account">Owned channels</SelectItem>
+                            <SelectItem value="ad_slot">Ad slots</SelectItem>
+                            <SelectItem value="bundle">Bundles</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1 max-h-80 overflow-auto">
+                        {inventory
+                          .filter(i => inventoryKindFilter === "all" || i.kind === inventoryKindFilter)
+                          .filter(i => !inventorySearch || `${i.title} ${i.handle ?? ""} ${(i.tags ?? []).join(" ")}`.toLowerCase().includes(inventorySearch.toLowerCase()))
+                          .map(i => {
+                            const kindLabel: Record<string,string> = { influencer: "Creator", owned_account: "Channel", ad_slot: "Ad slot", bundle: "Bundle" };
+                            return (
+                              <button key={i.id} onClick={() => adoptInventory(i)} className="w-full text-left p-3 rounded-md hover:bg-secondary flex justify-between items-center gap-3">
+                                <div className="min-w-0 flex items-center gap-3">
+                                  {i.cover_url ? (
+                                    <img src={i.cover_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                                  ) : (
+                                    <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-xs shrink-0">{i.title?.[0]}</div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="font-medium truncate">{i.title}</div>
+                                    <div className="text-[11px] text-muted-foreground truncate">
+                                      <Badge variant="outline" className="text-[9px] mr-1">{kindLabel[i.kind] ?? i.kind}</Badge>
+                                      {i.platform}{i.handle ? ` · ${i.handle}` : ""}{i.follower_count ? ` · ${Number(i.follower_count).toLocaleString()} reach` : ""}
+                                    </div>
+                                  </div>
+                                </div>
+                                <Plus className="w-4 h-4 shrink-0" />
+                              </button>
+                            );
+                          })}
+                        {inventory.length === 0 && (
+                          <p className="text-sm text-muted-foreground p-3 text-center">
+                            No inventory yet. Add channels & creators in <Link to="/app/inventory" className="underline">Storefront</Link>.
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </DialogContent>
