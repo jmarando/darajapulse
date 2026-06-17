@@ -112,10 +112,41 @@ function isValidPostUrl(platform: string, url: string): boolean {
   const u = (url || "").trim();
   if (!/^https?:\/\//i.test(u)) return false;
   const p = (platform || "").toLowerCase();
-  if (p === "tiktok") return /(?:vt|vm)\.tiktok\.com\/[A-Za-z0-9]+/i.test(u) || /tiktok\.com\/.+\/video\/\d+/i.test(u) || /tiktok\.com\/video\/\d+/i.test(u);
-  if (p === "instagram") return /instagram\.com\/(?:p|reel|reels|tv)\/[A-Za-z0-9_-]+/i.test(u);
-  if (p === "facebook") return /facebook\.com\/.+\/(?:posts|videos|reel|photos)\/|fb\.watch\//i.test(u);
+  // LOOSENED: accept any tiktok.com / instagram.com / facebook.com URL and let Ensemble try.
+  // Only "obviously not a post" URLs (e.g. profile-only) will fall through to handle-rescue.
+  if (p === "tiktok") return /tiktok\.com\//i.test(u);
+  if (p === "instagram") return /instagram\.com\//i.test(u);
+  if (p === "facebook") return /facebook\.com\/|fb\.watch\//i.test(u);
   return false;
+}
+
+// ---------- Facebook public HTML og:tag fallback ----------
+async function scrapeFacebookHtml(url: string) {
+  const r = await fetch(url, {
+    redirect: "follow",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15",
+      "Accept": "text/html,application/xhtml+xml",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  const html = await r.text();
+  if (!r.ok || !html) throw new Error(`fb html ${r.status}`);
+  const og = (prop: string) =>
+    html.match(new RegExp(`<meta[^>]+property=["']${prop}["'][^>]+content=["']([^"']+)["']`, "i"))?.[1] ?? null;
+  // Try embedded JSON counters first (very fragile, but free).
+  const viewsM = html.match(/"video_view_count":\s*"?(\d+)/) ?? html.match(/"play_count":\s*"?(\d+)/);
+  const likesM = html.match(/"reaction_count":\{[^}]*"count":\s*(\d+)/) ?? html.match(/"likes":\s*\{[^}]*"count":\s*(\d+)/);
+  const commentsM = html.match(/"comment_count":\{[^}]*"total_count":\s*(\d+)/) ?? html.match(/"comments":\s*\{[^}]*"count":\s*(\d+)/);
+  const sharesM = html.match(/"share_count":\{[^}]*"count":\s*(\d+)/) ?? html.match(/"shares":\s*\{[^}]*"count":\s*(\d+)/);
+  return {
+    views: num(viewsM?.[1]),
+    likes: num(likesM?.[1]),
+    comments: num(commentsM?.[1]),
+    shares: num(sharesM?.[1]),
+    caption: og("og:description"),
+    thumbnail_url: og("og:image"),
+  };
 }
 
 // ---------- Apify fallback ----------
