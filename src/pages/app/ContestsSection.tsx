@@ -646,13 +646,19 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
       if (!grp) continue;
       const nameTokens = String(wRow.full_name || wRow.submitter_name || "")
         .toLowerCase().split(/\s+/).filter(t => t.length >= 5);
-      if (!nameTokens.length) continue;
+      // Require ≥2 tokens AND all-present-as-whole-tokens to avoid swallowing
+      // unrelated contestants whose handle merely contains a common first name
+      // (e.g. @bettysmemoir matched winner "Betty Wambua" on substring "betty").
+      if (nameTokens.length < 2) continue;
       for (const e of entries) {
         if (used.has(e.id)) continue;
         if (Number(e.views || 0) <= 0 && Number(e.likes || 0) <= 0) continue;
-        const hay = [e.handle, e.tiktok_handle, e.instagram_handle, e.facebook_handle, e.full_name, e.submitter_name]
-          .map(s => String(s || "").toLowerCase()).join(" ");
-        if (nameTokens.some(t => hay.includes(t))) { grp.push(e); used.add(e.id); }
+        const hayTokens = new Set(
+          [e.handle, e.tiktok_handle, e.instagram_handle, e.facebook_handle, e.full_name, e.submitter_name]
+            .flatMap(s => String(s || "").toLowerCase().split(/[^a-z0-9]+/))
+            .filter(Boolean),
+        );
+        if (nameTokens.every(t => hayTokens.has(t))) { grp.push(e); used.add(e.id); }
       }
     }
     const winnerRelatedRowIds = new Set<string>(winnerGroups.flat().map((r: any) => r.id));
