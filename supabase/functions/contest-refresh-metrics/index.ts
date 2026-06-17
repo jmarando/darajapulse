@@ -243,12 +243,14 @@ Deno.serve(async (req) => {
     if (!contest_id) return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const onlyEmpty: boolean = body.only_empty ?? false;
     const wait: boolean = body.wait ?? false;
+    // retry_invalid: include rows previously flagged invalid (run on a slower cadence)
+    const retryInvalid: boolean = body.retry_invalid ?? false;
 
     let q = sb.from("contest_entries")
       .select("id, platform, post_url, views, likes, comments, shares, status")
       .eq("contest_id", contest_id)
-      .not("post_url", "is", null)
-      .neq("status", "invalid");
+      .not("post_url", "is", null);
+    if (!retryInvalid) q = q.neq("status", "invalid");
     if (onlyEmpty) q = q.eq("views", 0).eq("likes", 0).eq("comments", 0).eq("shares", 0);
     const { data: entries, error } = await q;
     if (error) throw error;
