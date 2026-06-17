@@ -51,10 +51,12 @@ Deno.serve(async (req) => {
       updated++;
     }
 
-    // Auto-mark winner per completed round — but NEVER override manually-curated winners.
+    // Auto-mark winner per completed round — but NEVER override any declared winner.
+    // Rule: only operators remove people from the running by declaring them top-10 winners.
+    // If ANY winner exists for this contest, the auto-winner block is skipped entirely.
     const { data: manualWinners } = await sb.from("contest_entries")
-      .select("id, metadata").eq("contest_id", contest_id).eq("status", "winner");
-    const hasManualWinners = (manualWinners ?? []).some((w: any) => w?.metadata?.placement_rank != null);
+      .select("id").eq("contest_id", contest_id).eq("status", "winner").limit(1);
+    const hasManualWinners = (manualWinners ?? []).length > 0;
     if (!hasManualWinners) {
       const now = Date.now();
       for (let i = 0; i < roundEnds.length; i++) {
