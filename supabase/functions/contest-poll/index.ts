@@ -30,25 +30,33 @@ Deno.serve(async (req) => {
       return Math.max(1, Math.floor((t - start) / roundMs) + 1);
     };
 
+    // Pre-compute round windows so we can reference them both for tagging and the return value.
+    const roundEnds: number[] = cutoffs.length
+      ? [...cutoffs, new Date(contest.end_date).getTime()]
+      : Array.from(
+          { length: Math.max(1, Math.ceil((new Date(contest.end_date).getTime() - start) / roundMs)) },
+          (_, i) => start + (i + 1) * roundMs,
+        );
+
     let updated = 0;
     for (const e of entries ?? []) {
-      const t = new Date(e.posted_at || e.created_at).getTime();
+      // Use the LATER of posted_at and created_at: a late-registered older video should
+      // count toward the round in which it was registered, not a past locked round.
+      const tPosted = e.posted_at ? new Date(e.posted_at).getTime() : 0;
+      const tCreated = new Date(e.created_at).getTime();
+      const t = Math.max(tPosted, tCreated);
       const round_number = roundFor(t);
       const sc = score(e);
       await sb.from("contest_entries").update({ score: sc, round_number, last_polled_at: new Date().toISOString() }).eq("id", e.id);
       updated++;
     }
 
-    // Auto-mark winner per completed round — but NEVER override manually-curated winners
-    // (any entry whose metadata carries a placement_rank is treated as locked-in by an operator).
+    // Auto-mark winner per completed round — but NEVER override manually-curated winners.
     const { data: manualWinners } = await sb.from("contest_entries")
       .select("id, metadata").eq("contest_id", contest_id).eq("status", "winner");
     const hasManualWinners = (manualWinners ?? []).some((w: any) => w?.metadata?.placement_rank != null);
     if (!hasManualWinners) {
       const now = Date.now();
-      const roundEnds: number[] = cutoffs.length
-        ? [...cutoffs, new Date(contest.end_date).getTime()]
-        : Array.from({ length: Math.ceil((new Date(contest.end_date).getTime() - start) / roundMs) }, (_, i) => start + (i + 1) * roundMs);
       for (let i = 0; i < roundEnds.length; i++) {
         const roundEnd = roundEnds[i];
         const r = i + 1;
