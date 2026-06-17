@@ -112,10 +112,41 @@ function isValidPostUrl(platform: string, url: string): boolean {
   const u = (url || "").trim();
   if (!/^https?:\/\//i.test(u)) return false;
   const p = (platform || "").toLowerCase();
-  if (p === "tiktok") return /(?:vt|vm)\.tiktok\.com\/[A-Za-z0-9]+/i.test(u) || /tiktok\.com\/.+\/video\/\d+/i.test(u) || /tiktok\.com\/video\/\d+/i.test(u);
-  if (p === "instagram") return /instagram\.com\/(?:p|reel|reels|tv)\/[A-Za-z0-9_-]+/i.test(u);
-  if (p === "facebook") return /facebook\.com\/.+\/(?:posts|videos|reel|photos)\/|fb\.watch\//i.test(u);
+  // LOOSENED: accept any tiktok.com / instagram.com / facebook.com URL and let Ensemble try.
+  // Only "obviously not a post" URLs (e.g. profile-only) will fall through to handle-rescue.
+  if (p === "tiktok") return /tiktok\.com\//i.test(u);
+  if (p === "instagram") return /instagram\.com\//i.test(u);
+  if (p === "facebook") return /facebook\.com\/|fb\.watch\//i.test(u);
   return false;
+}
+
+// ---------- Facebook public HTML og:tag fallback ----------
+async function scrapeFacebookHtml(url: string) {
+  const r = await fetch(url, {
+    redirect: "follow",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15",
+      "Accept": "text/html,application/xhtml+xml",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  const html = await r.text();
+  if (!r.ok || !html) throw new Error(`fb html ${r.status}`);
+  const og = (prop: string) =>
+    html.match(new RegExp(`<meta[^>]+property=["']${prop}["'][^>]+content=["']([^"']+)["']`, "i"))?.[1] ?? null;
+  // Try embedded JSON counters first (very fragile, but free).
+  const viewsM = html.match(/"video_view_count":\s*"?(\d+)/) ?? html.match(/"play_count":\s*"?(\d+)/);
+  const likesM = html.match(/"reaction_count":\{[^}]*"count":\s*(\d+)/) ?? html.match(/"likes":\s*\{[^}]*"count":\s*(\d+)/);
+  const commentsM = html.match(/"comment_count":\{[^}]*"total_count":\s*(\d+)/) ?? html.match(/"comments":\s*\{[^}]*"count":\s*(\d+)/);
+  const sharesM = html.match(/"share_count":\{[^}]*"count":\s*(\d+)/) ?? html.match(/"shares":\s*\{[^}]*"count":\s*(\d+)/);
+  return {
+    views: num(viewsM?.[1]),
+    likes: num(likesM?.[1]),
+    comments: num(commentsM?.[1]),
+    shares: num(sharesM?.[1]),
+    caption: og("og:description"),
+    thumbnail_url: og("og:image"),
+  };
 }
 
 // ---------- Apify fallback ----------
@@ -177,7 +208,7 @@ async function scrape(platform: string, url: string) {
 
   if (hasSignal(primary)) return { ...primary, _source: "ensembledata" };
 
-  // Apify fallback
+  // Apify fallback (only if token present — may be out of credits)
   if (APIFY) {
     try {
       let fb: any = null;
@@ -187,6 +218,15 @@ async function scrape(platform: string, url: string) {
       if (hasSignal(fb)) return { ...fb, _source: "apify" };
     } catch (e) { if (!primaryErr) primaryErr = e; }
   }
+
+  // Facebook public HTML fallback (free, ~40% hit rate on public reels)
+  if (isFB) {
+    try {
+      const h = await scrapeFacebookHtml(url);
+      if (hasSignal(h)) return { ...h, _source: "fb_html" };
+    } catch (e) { if (!primaryErr) primaryErr = e; }
+  }
+
   if (primaryErr) throw primaryErr;
   return primary ?? { views: 0, likes: 0, comments: 0, shares: 0 };
 }
@@ -203,12 +243,14 @@ Deno.serve(async (req) => {
     if (!contest_id) return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const onlyEmpty: boolean = body.only_empty ?? false;
     const wait: boolean = body.wait ?? false;
+    // retry_invalid: include rows previously flagged invalid (run on a slower cadence)
+    const retryInvalid: boolean = body.retry_invalid ?? false;
 
     let q = sb.from("contest_entries")
       .select("id, platform, post_url, views, likes, comments, shares, status")
       .eq("contest_id", contest_id)
-      .not("post_url", "is", null)
-      .neq("status", "invalid");
+      .not("post_url", "is", null);
+    if (!retryInvalid) q = q.neq("status", "invalid");
     if (onlyEmpty) q = q.eq("views", 0).eq("likes", 0).eq("comments", 0).eq("shares", 0);
     const { data: entries, error } = await q;
     if (error) throw error;
@@ -258,6 +300,8 @@ Deno.serve(async (req) => {
               ...merged,
               score, last_polled_at: new Date().toISOString(), source: s._source || "ensembledata",
             };
+            // If this row was previously flagged invalid but now returns metrics, clear the flag.
+            if (e.status === "invalid") upd.status = "registered";
             if (s.caption) upd.caption = String(s.caption).slice(0, 1000);
             if (s.thumbnail_url) upd.thumbnail_url = s.thumbnail_url;
             const { error: uerr } = await sb.from("contest_entries").update(upd).eq("id", e.id);
