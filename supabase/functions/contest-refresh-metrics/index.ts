@@ -300,6 +300,8 @@ Deno.serve(async (req) => {
               ...merged,
               score, last_polled_at: new Date().toISOString(), source: s._source || "ensembledata",
             };
+            // If this row was previously flagged invalid but now returns metrics, clear the flag.
+            if (e.status === "invalid") upd.status = "registered";
             if (s.caption) upd.caption = String(s.caption).slice(0, 1000);
             if (s.thumbnail_url) upd.thumbnail_url = s.thumbnail_url;
             const { error: uerr } = await sb.from("contest_entries").update(upd).eq("id", e.id);
