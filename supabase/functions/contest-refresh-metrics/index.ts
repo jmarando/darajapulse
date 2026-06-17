@@ -208,7 +208,7 @@ async function scrape(platform: string, url: string) {
 
   if (hasSignal(primary)) return { ...primary, _source: "ensembledata" };
 
-  // Apify fallback
+  // Apify fallback (only if token present — may be out of credits)
   if (APIFY) {
     try {
       let fb: any = null;
@@ -218,6 +218,15 @@ async function scrape(platform: string, url: string) {
       if (hasSignal(fb)) return { ...fb, _source: "apify" };
     } catch (e) { if (!primaryErr) primaryErr = e; }
   }
+
+  // Facebook public HTML fallback (free, ~40% hit rate on public reels)
+  if (isFB) {
+    try {
+      const h = await scrapeFacebookHtml(url);
+      if (hasSignal(h)) return { ...h, _source: "fb_html" };
+    } catch (e) { if (!primaryErr) primaryErr = e; }
+  }
+
   if (primaryErr) throw primaryErr;
   return primary ?? { views: 0, likes: 0, comments: 0, shares: 0 };
 }
