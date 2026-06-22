@@ -166,9 +166,9 @@ function Bento() {
                 Connect your entire influence network into a single, cohesive dashboard. Eliminate
                 fragmentation and gain absolute clarity on performance across every channel.
               </p>
-              <button className="bg-foreground text-background px-5 py-2.5 rounded text-sm font-medium hover:opacity-90 transition-[opacity,scale] active:scale-[0.96]">
+              <Link to="/auth" className="inline-block bg-foreground text-background px-5 py-2.5 rounded text-sm font-medium hover:opacity-90 transition-[opacity,scale] active:scale-[0.96]">
                 Explore Architecture
-              </button>
+              </Link>
             </div>
             <Network className="absolute -right-10 -bottom-10 size-[320px] text-accent/10 pointer-events-none" strokeWidth={0.5} />
           </div>
