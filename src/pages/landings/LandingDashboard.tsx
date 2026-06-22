@@ -1,254 +1,344 @@
 import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import PublicFooter from "@/components/PublicFooter";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import {
-  ArrowRight, Eye, Heart, MessageCircle, Share2, Sparkles, FileText,
-  Users, Trophy, BarChart3, ShieldCheck, Zap, Globe, CheckCircle2, TrendingUp, Play
-} from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area, XAxis } from "recharts";
+import { ArrowUpRight, TrendingUp } from "lucide-react";
+import creatorPortrait from "@/assets/landing-creator.jpg";
 import logo from "@/assets/logo-pulse-mark.png";
 
-const seed = Array.from({ length: 16 }, (_, i) => ({ x: i, v: 30 + Math.sin(i / 1.5) * 22 + i * 5 }));
+// Charcoal & Ember palette — locked from selected design direction
+const INK = "#1a1a1a";
+const SURFACE = "#2d2d2d";
+const MUTED = "#4a4a4a";
+const PAPER = "#f5f3ee";
+const EMBER = "#e85d3a";
 
+const display = { fontFamily: "'Space Grotesk', system-ui, sans-serif" } as const;
+const body = { fontFamily: "'DM Sans', system-ui, sans-serif" } as const;
 
-const ticker = [
-  "TikTok view captured · @wanjiruke · +12,408",
-  "Content approved · Royco — Mama Mboga Q1",
-  "Contest entry · #BoltKE — 38 submissions today",
-  "Brief opened · NCBA Loop · 6 creators viewing",
-  "Instagram Reels metrics synced · 21 posts",
-  "Facebook Reel published · @sauticreates · live now",
-  "YouTube Short tracked · @kenyanvibes · +4,210 views",
-];
-
-const LandingDashboard = () => {
-  const [views, setViews] = useState(2_413_902);
-  const [tickIdx, setTickIdx] = useState(0);
+// Count-up hook — animates once when element enters viewport
+function useCountUp(target: number, duration = 1200) {
+  const [value, setValue] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const started = useRef(false);
 
   useEffect(() => {
-    const t = setInterval(() => setViews(v => v + Math.floor(20 + Math.random() * 80)), 1500);
-    const tk = setInterval(() => setTickIdx(i => (i + 1) % ticker.length), 2400);
-    return () => { clearInterval(t); clearInterval(tk); };
-  }, []);
+    if (!ref.current) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || started.current) return;
+      started.current = true;
+      const start = performance.now();
+      const step = (now: number) => {
+        const p = Math.min(1, (now - start) / duration);
+        // ease-out-cubic
+        const eased = 1 - Math.pow(1 - p, 3);
+        setValue(target * eased);
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }, { threshold: 0.4 });
+    obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [target, duration]);
 
+  return { ref, value };
+}
+
+const KPI = ({ label, value, format }: { label: string; value: number; format: (n: number) => string }) => {
+  const { ref, value: v } = useCountUp(value);
   return (
-    <div className="min-h-screen bg-gradient-paper overflow-hidden">
-      {/* Ambient floating accents */}
-      <div className="pointer-events-none fixed inset-0 -z-0">
-        <div className="absolute top-[-10%] left-[-5%] w-[40rem] h-[40rem] rounded-full bg-accent/15 blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-15%] right-[-10%] w-[50rem] h-[50rem] rounded-full bg-highlight/10 blur-[140px]" style={{ animation: "pulse 6s ease-in-out infinite" }} />
-      </div>
+    <div style={{ background: INK }} className="p-8">
+      <p className="text-[10px] uppercase tracking-[0.2em] font-bold mb-4" style={{ color: MUTED }}>{label}</p>
+      <p ref={ref} style={display} className="text-4xl font-bold text-[#f5f3ee] tabular-nums">{format(v)}</p>
+    </div>
+  );
+};
 
-      <header className="relative max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-        <img src={logo} alt="Daraja Pulse" className="h-16 w-auto" />
-        <div className="flex items-center gap-2">
-          <Link to="/auth"><Button variant="ghost">Sign in</Button></Link>
-          <Link to="/auth"><Button className="bg-primary">Start free</Button></Link>
+const LandingDashboard = () => {
+  return (
+    <div style={{ background: INK, color: PAPER, ...body }} className="min-h-screen selection:bg-[#e85d3a] selection:text-[#1a1a1a]">
+      {/* Masthead */}
+      <header className="border-b" style={{ borderColor: SURFACE }}>
+        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3 transition-[opacity] duration-150 hover:opacity-80">
+            <img src={logo} alt="Daraja Pulse" data-no-outline className="h-8 w-auto" width={32} height={32} />
+            <div className="leading-tight">
+              <div style={display} className="text-base font-bold">DarajaPulse</div>
+              <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: MUTED }}>Influencer OS</div>
+            </div>
+          </Link>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: PAPER }}>
+            <a href="#product" className="transition-[color] duration-150 hover:text-[#e85d3a]">Product</a>
+            <a href="#proof" className="transition-[color] duration-150 hover:text-[#e85d3a]">Proof</a>
+            <Link to="/landing" className="transition-[color] duration-150 hover:text-[#e85d3a]">Studios</Link>
+            <Link to="/auth" className="transition-[color] duration-150 hover:text-[#e85d3a]">Sign in</Link>
+          </nav>
+          <Link
+            to="/auth"
+            style={{ background: EMBER, color: INK }}
+            className="hidden sm:inline-flex items-center px-4 py-2 font-bold text-sm transition-[filter,scale] duration-150 ease-out active:scale-[0.96] hover:brightness-110"
+          >
+            Book demo
+          </Link>
         </div>
       </header>
 
-      {/* HERO */}
-      <section className="relative max-w-7xl mx-auto px-6 pt-12 pb-20 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
-        <div className="animate-fade-in">
-          <h1 className="font-display text-6xl md:text-7xl lg:text-[5.5rem] leading-[0.98] font-semibold text-balance tracking-tight">
-            Influence,<br />
-            <span className="text-accent italic relative inline-block">
-              orchestrated.
-              <svg className="absolute -bottom-2 left-0 w-full" height="14" viewBox="0 0 300 14" fill="none">
-                <path d="M2 8 Q 75 2, 150 7 T 298 6" stroke="hsl(0 99% 57%)" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.4" />
-              </svg>
-            </span>
-          </h1>
-          <p className="mt-7 text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
-            Discover creators. Send briefs. Approve content. Track every post across <span className="text-foreground font-medium">TikTok, Instagram, Facebook, YouTube and X</span> in real time. Hand your client a live, self-refreshing report — not a stale PDF.
+      <main className="max-w-7xl mx-auto px-6 py-16 md:py-20 flex flex-col gap-16">
+        {/* HERO — magazine feature */}
+        <section className="grid lg:grid-cols-12 gap-8 items-start">
+          <div className="lg:col-span-8 flex flex-col gap-8">
+            <div
+              className="inline-flex items-center gap-2 border px-3 py-1 w-fit animate-enter"
+              style={{ background: SURFACE, borderColor: MUTED, animationDelay: "0ms" }}
+            >
+              <span style={{ background: EMBER }} className="w-2 h-2 rounded-full animate-pulse-counter" />
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold" style={{ color: MUTED }}>
+                Influencer OS · Built in Nairobi
+              </span>
+            </div>
+
+            <h1
+              style={{ ...display, color: PAPER, animationDelay: "80ms" }}
+              className="text-6xl md:text-8xl lg:text-9xl font-bold leading-[0.85] tracking-[-0.02em] text-balance animate-enter"
+            >
+              Influence is <br />
+              <span style={{ color: EMBER }}>institutional.</span>
+            </h1>
+
+            <p
+              style={{ color: MUTED, animationDelay: "180ms" }}
+              className="text-xl md:text-2xl max-w-xl leading-relaxed text-pretty animate-enter"
+            >
+              The operating system for African marketing agencies. Run campaigns, settle creators via M-Pesa, and publish live ROI to clients — in one interface.
+            </p>
+
+            <div className="flex flex-wrap gap-4 pt-2 animate-enter" style={{ animationDelay: "280ms" }}>
+              <Link
+                to="/auth"
+                style={{ background: EMBER, color: INK }}
+                className="px-8 py-5 font-bold text-lg transition-[filter,scale] duration-150 ease-out active:scale-[0.96] hover:brightness-110"
+              >
+                Book demo
+              </Link>
+              <Link
+                to="/landing"
+                style={{ borderColor: MUTED, color: PAPER }}
+                className="px-8 py-5 border-2 font-bold text-lg transition-[border-color,color,scale] duration-150 ease-out active:scale-[0.96] hover:border-[#e85d3a] hover:text-[#e85d3a]"
+              >
+                See live report
+              </Link>
+            </div>
+          </div>
+
+          {/* Featured case study side card */}
+          <div className="lg:col-span-4 animate-enter" style={{ animationDelay: "360ms" }}>
+            <div
+              style={{ background: SURFACE, borderColor: MUTED }}
+              className="border aspect-[4/5] relative overflow-hidden group"
+            >
+              <img
+                src={creatorPortrait}
+                alt="Featured creator portrait"
+                width={800}
+                height={1000}
+                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-[#1a1a1a]/30 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-7">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] mb-2" style={{ color: EMBER }}>
+                  Case Study
+                </p>
+                <h3 style={display} className="text-2xl font-bold leading-tight text-pretty">
+                  How a Nairobi agency settled 2,000+ creators in 48 hours
+                </h3>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* LIVE KPI STRIP */}
+        <section
+          aria-label="Live platform metrics"
+          style={{ background: MUTED, borderColor: MUTED }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-px border"
+        >
+          <KPI label="Campaigns run" value={1482} format={(n) => Math.round(n).toLocaleString()} />
+          <KPI label="Creators paid (KES)" value={84.2} format={(n) => `${n.toFixed(1)}M`} />
+          <KPI label="Posts tracked" value={120} format={(n) => `${Math.round(n)}K+`} />
+          <KPI label="Active agencies" value={38} format={(n) => Math.round(n).toLocaleString()} />
+        </section>
+
+        {/* PRODUCT MODULES — magazine sub-grid */}
+        <section id="product" className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* M-Pesa Payouts — ember tile */}
+          <div
+            style={{ background: EMBER }}
+            className="p-10 flex flex-col justify-between md:aspect-auto group transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-1"
+          >
+            <div>
+              <h4 style={{ ...display, color: INK }} className="text-4xl font-bold leading-none mb-4">
+                M-Pesa<br />Disburse
+              </h4>
+              <p style={{ color: "rgba(26,26,26,0.8)" }} className="font-medium text-pretty">
+                Instant bulk payouts to creators. No manual reconciliations — just API-driven settlement and WHT-ready records.
+              </p>
+            </div>
+            <div style={{ background: INK, color: PAPER }} className="p-4 flex flex-col gap-2 mt-8">
+              <div className="flex justify-between text-xs font-bold">
+                <span>Status: Ready</span>
+                <span style={{ color: EMBER }} className="inline-flex items-center gap-1.5">
+                  <span style={{ background: EMBER }} className="w-1.5 h-1.5 rounded-full animate-pulse-counter" />
+                  LIVE
+                </span>
+              </div>
+              <div style={{ background: MUTED }} className="h-1 w-full overflow-hidden">
+                <div style={{ background: EMBER }} className="h-full w-2/3" />
+              </div>
+            </div>
+          </div>
+
+          {/* Omnichannel Tracking — wide */}
+          <div
+            id="proof"
+            style={{ background: SURFACE, borderColor: MUTED }}
+            className="md:col-span-2 border p-10 relative overflow-hidden group"
+          >
+            <div className="flex justify-between items-start mb-10">
+              <div className="max-w-xs">
+                <h4 style={display} className="text-4xl font-bold leading-none mb-4" >Omnichannel tracking</h4>
+                <p style={{ color: MUTED }} className="text-pretty">
+                  Real-time engagement across Instagram, TikTok, Facebook, YouTube and X — with fraud detection on every post.
+                </p>
+              </div>
+              <div
+                style={{ borderColor: MUTED, color: EMBER }}
+                className="w-16 h-16 border flex items-center justify-center transition-[background-color,color] duration-200 ease-out group-hover:bg-[#e85d3a] group-hover:text-[#1a1a1a]"
+              >
+                <TrendingUp className="w-7 h-7" />
+              </div>
+            </div>
+            {/* Mini chart */}
+            <div style={{ background: INK, borderColor: MUTED }} className="border h-48 p-5 flex items-end gap-2">
+              {[20, 32, 28, 44, 38, 56, 50, 68, 62, 80, 74, 92, 86, 100].map((h, i) => (
+                <div
+                  key={i}
+                  style={{ background: i === 13 ? EMBER : `rgba(232,93,58,${0.25 + (h / 100) * 0.5})`, height: `${h}%` }}
+                  className="flex-1 transition-[height] duration-300"
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Public Reports — paper tile */}
+          <div
+            style={{ background: PAPER, color: INK }}
+            className="md:col-span-1 p-10 flex flex-col justify-between aspect-square transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-1"
+          >
+            <div>
+              <h4 style={display} className="text-4xl font-bold leading-none mb-4">Public<br />reports</h4>
+              <p style={{ color: "rgba(26,26,26,0.65)" }} className="text-pretty">
+                White-labeled client dashboards. Share live ROI with a URL — no spreadsheets, no screenshots.
+              </p>
+            </div>
+            <div style={{ borderColor: "rgba(26,26,26,0.12)" }} className="border-t pt-6">
+              <Link
+                to="/landing"
+                style={{ color: EMBER }}
+                className="font-bold text-sm tracking-[0.2em] uppercase inline-flex items-center gap-2 transition-[gap] duration-150 hover:gap-3"
+              >
+                View demo report <ArrowUpRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Live Contests — wide */}
+          <div
+            style={{ background: SURFACE, borderColor: MUTED }}
+            className="md:col-span-2 border p-10"
+          >
+            <div className="flex flex-col md:flex-row gap-12">
+              <div className="flex-1">
+                <h4 style={display} className="text-4xl font-bold leading-none mb-4">Live<br />contests</h4>
+                <p style={{ color: MUTED }} className="mb-6 text-pretty">
+                  Gamify creator performance with automated leaderboards, reward tiers, and round locking.
+                </p>
+                <Link
+                  to="/landing"
+                  style={{ borderColor: EMBER, color: EMBER }}
+                  className="text-xs font-bold uppercase tracking-[0.2em] border-b pb-1 transition-[opacity] duration-150 hover:opacity-80"
+                >
+                  Explore contests
+                </Link>
+              </div>
+              <div style={{ background: INK, borderColor: MUTED }} className="flex-1 border p-6 space-y-4">
+                {[
+                  { rank: 1, handle: "@yung_milly", score: 12_400, hi: true },
+                  { rank: 2, handle: "@sharon_w", score: 9_410 },
+                  { rank: 3, handle: "@kenyanvibes", score: 7_820 },
+                ].map((row) => (
+                  <div key={row.rank} className="flex items-center gap-4">
+                    <div
+                      style={{ background: SURFACE, color: row.hi ? EMBER : MUTED }}
+                      className="w-8 h-8 flex items-center justify-center font-bold tabular-nums"
+                    >
+                      {row.rank}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div style={{ color: PAPER }} className="text-xs font-medium truncate mb-1.5">{row.handle}</div>
+                      <div style={{ background: SURFACE }} className="h-2 w-full overflow-hidden">
+                        <div
+                          style={{ background: row.hi ? EMBER : MUTED, width: `${(row.score / 12_400) * 100}%` }}
+                          className="h-full"
+                        />
+                      </div>
+                    </div>
+                    <span
+                      style={{ color: row.hi ? PAPER : MUTED }}
+                      className="text-xs font-bold tabular-nums w-16 text-right"
+                    >
+                      {row.score.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* AGENCY LOGOS */}
+        <section className="pt-16 border-t flex flex-col gap-10" style={{ borderColor: MUTED }}>
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-center" style={{ color: MUTED }}>
+            Infrastructure for the operators behind the brands
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/auth"><Button size="lg" className="bg-primary text-base h-12 px-6 group">Open the console <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" /></Button></Link>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="lg" variant="outline" className="h-12 px-6 group">
-                  <Play className="w-4 h-4 mr-2 fill-current" /> Watch the 60s tour
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black border-0">
-                <div className="aspect-video w-full">
-                  <iframe
-                    className="w-full h-full"
-                    src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0"
-                    title="Daraja Pulse — 60 second tour"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {/* Live ticker */}
-          <div className="mt-8 flex items-center gap-3 px-4 py-3 rounded-lg bg-card/70 border border-border max-w-xl backdrop-blur-sm">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
-            <div className="text-xs text-muted-foreground font-mono truncate animate-fade-in" key={tickIdx}>
-              {ticker[tickIdx]}
-            </div>
-          </div>
-
-        </div>
-
-        {/* Live report mock */}
-        <div className="relative animate-fade-in">
-          <div className="absolute -inset-8 bg-gradient-warm opacity-25 blur-3xl rounded-full" />
-
-          <div className="relative rounded-3xl bg-card border border-border shadow-elegant overflow-hidden flex">
-            {/* Mini sidebar */}
-            <div className="hidden md:flex w-14 bg-sidebar text-sidebar-foreground flex-col items-center py-4 gap-3 border-r border-sidebar-border">
-              <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-accent-foreground text-xs font-bold">DP</div>
-              <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center"><BarChart3 className="w-4 h-4 text-accent" /></div>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center opacity-50"><Users className="w-4 h-4" /></div>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center opacity-50"><Trophy className="w-4 h-4" /></div>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center opacity-50"><FileText className="w-4 h-4" /></div>
-              <div className="mt-auto w-8 h-8 rounded-full bg-gradient-warm flex items-center justify-center text-[10px] font-bold text-accent-foreground">J</div>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              {/* Top bar */}
-              <div className="px-5 py-3 border-b border-border flex items-center justify-between text-xs bg-background/50">
-                <div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> Hustler Fund · Live</div>
-                <div className="text-muted-foreground">updated just now</div>
-              </div>
-
-              <div className="p-6">
-                {/* Two stat tiles like the fintech ref */}
-                <div className="grid grid-cols-2 gap-3 mb-5">
-                  <div className="rounded-2xl bg-secondary/60 p-4 border border-border/50">
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total views</div>
-                    <div className="font-display text-3xl mt-1 tabular-nums">{views.toLocaleString()}</div>
-                    <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-medium">
-                      <TrendingUp className="w-3 h-3" /> +12.4% this week
-                    </div>
-                  </div>
-                  <div className="rounded-2xl bg-primary text-primary-foreground p-4">
-                    <div className="text-[10px] uppercase tracking-widest opacity-60">Engagements</div>
-                    <div className="font-display text-3xl mt-1 tabular-nums">214k</div>
-                    <div className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-highlight/20 text-highlight text-[10px] font-medium">
-                      <Sparkles className="w-3 h-3" /> likes · comments · shares
-                    </div>
-                  </div>
-                </div>
-
-                <div className="h-24 -mx-2">
-                  <ResponsiveContainer>
-                    <AreaChart data={seed}>
-                      <defs>
-                        <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(0 99% 57%)" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="hsl(0 99% 57%)" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="x" hide />
-                      <Area type="monotone" dataKey="v" stroke="hsl(0 99% 57%)" strokeWidth={2.5} fill="url(#g)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="grid grid-cols-4 gap-2 mt-4">
-                  {[
-                    { i: Eye, l: "Views", v: "2.4M" },
-                    { i: Heart, l: "Likes", v: "184k" },
-                    { i: MessageCircle, l: "Comments", v: "9.2k" },
-                    { i: Share2, l: "Shares", v: "21k" },
-                  ].map(({ i: I, l, v }) => (
-                    <div key={l} className="rounded-xl bg-secondary/50 p-3">
-                      <I className="w-3.5 h-3.5 text-muted-foreground" />
-                      <div className="font-display text-base mt-1 tabular-nums">{v}</div>
-                      <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{l}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="px-5 py-3 bg-secondary/40 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                <span>14 creators · 21 posts</span>
-                <span className="font-mono">daraja.pulse/r/h7s2k</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-      {/* USP DEEP DIVE */}
-      <section className="relative max-w-7xl mx-auto px-6 py-24">
-        <div className="text-xs uppercase tracking-[0.3em] text-accent mb-3">Why Daraja Pulse</div>
-        <h2 className="font-display text-4xl md:text-6xl font-semibold max-w-3xl leading-[1.05] mb-16">
-          Everything between the brief and the report — <span className="italic text-muted-foreground">finally in one place.</span>
-        </h2>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[
-            { i: Users, t: "Creator roster & discovery", b: "TikTok-first database with audience authenticity, niche, language and Kenya-vs-diaspora splits. Build a list in minutes, not weeks." },
-            { i: FileText, t: "Tokenized creator briefs", b: "Send a single link. Creators see the deliverables, deadlines and scope — no logins, no chasing on WhatsApp." },
-            { i: CheckCircle2, t: "Two-round content approvals", b: "Threaded comments per asset. Brand and account manager align before a single post goes live." },
-            { i: BarChart3, t: "Live, self-refreshing reports", b: "A tokenized client URL that updates every few minutes. Brand managers actually forward this internally." },
-            { i: Trophy, t: "UGC contests & leaderboards", b: "Public submission links, auto-leaderboards and entry tracking. Turn fans into your next campaign roster." },
-            { i: ShieldCheck, t: "Brand portal access", b: "Invite client-side stakeholders to a read-only portal. They see only their campaigns — never your fees or other accounts." },
-            { i: Sparkles, t: "AI campaign learnings", b: "Auto-generated insights on what worked, who outperformed and what to repeat next quarter. Powered by Lovable AI." },
-            { i: Globe, t: "Five-platform tracking", b: "Native OAuth + polling for TikTok. Embeds and metrics for Instagram, Facebook, YouTube and X. One dashboard, every channel." },
-            { i: TrendingUp, t: "Cost efficiency dashboards", b: "Cost-per-view, cost-per-engagement and CPM calculated from real spend and real impressions — so you can prove ROI to the brand." },
-          ].map(({ i: I, t, b }) => (
-            <div key={t} className="group relative p-6 rounded-xl bg-card border border-border hover:border-accent/40 hover:shadow-elegant hover:-translate-y-1 transition-all duration-300">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
-                <I className="w-5 h-5 text-accent group-hover:text-accent-foreground transition-colors" />
-              </div>
-              <h3 className="font-display text-xl mb-2">{t}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{b}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* WORKFLOW */}
-      <section className="relative bg-primary text-primary-foreground py-24">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-xs uppercase tracking-[0.3em] text-accent mb-3">The flow</div>
-          <h2 className="font-display text-4xl md:text-6xl font-semibold max-w-3xl leading-[1.05] mb-16">
-            From brief to report — <span className="italic opacity-70">in one continuous motion.</span>
-          </h2>
-          <div className="grid md:grid-cols-5 gap-4">
-            {[
-              { n: "01", t: "Discover", d: "Build a creator shortlist" },
-              { n: "02", t: "Brief", d: "Tokenized link to creators" },
-              { n: "03", t: "Approve", d: "Round 1 + 2 with comments" },
-              { n: "04", t: "Publish", d: "Auto-tracked across platforms" },
-              { n: "05", t: "Report", d: "Live URL for the brand" },
-            ].map((s, i) => (
-              <div key={s.n} className="relative p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                <div className="text-accent font-mono text-xs">{s.n}</div>
-                <div className="font-display text-2xl mt-2">{s.t}</div>
-                <div className="text-sm opacity-60 mt-1">{s.d}</div>
-                {i < 4 && <ArrowRight className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-accent z-10 bg-primary rounded-full p-0.5" />}
+          <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20 opacity-50">
+            {["SCANGROUP", "OGILVY AFRICA", "DENTSU", "VMLY&R", "PUBLICIS", "WPP"].map((name) => (
+              <div
+                key={name}
+                style={display}
+                className="text-2xl font-bold tracking-tighter transition-[opacity] duration-150 hover:opacity-100"
+              >
+                {name}
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CLOSING CTA */}
-      <section className="relative max-w-5xl mx-auto px-6 py-24 text-center">
-        <h2 className="font-display text-5xl md:text-7xl font-semibold leading-[1.02] text-balance">
-          Stop losing nights<br />
-          <span className="italic text-accent">to spreadsheets.</span>
-        </h2>
-        <p className="mt-6 text-lg text-muted-foreground max-w-xl mx-auto">
-          Spin up your first campaign today. No credit card. No 30-day demo dance.
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Link to="/auth"><Button size="lg" className="bg-primary text-base h-12 px-8 group">Start free <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" /></Button></Link>
-        </div>
-        <div className="mt-10 flex justify-center items-center gap-2 text-xs text-muted-foreground">
-          <TrendingUp className="w-3.5 h-3.5 text-success" /> Trusted by agencies running campaigns across East Africa
-        </div>
-      </section>
+        {/* FOOTER CTA */}
+        <section
+          style={{ background: SURFACE, borderColor: MUTED }}
+          className="border p-12 md:p-16 text-center flex flex-col items-center gap-8"
+        >
+          <h2 style={display} className="text-4xl md:text-5xl font-bold leading-tight max-w-2xl text-balance">
+            Ready to professionalize your influencer operations?
+          </h2>
+          <Link
+            to="/auth"
+            style={{ background: PAPER, color: INK }}
+            className="px-12 py-6 font-bold text-xl transition-[background-color,color,scale] duration-150 ease-out active:scale-[0.96] hover:bg-[#e85d3a] hover:text-[#1a1a1a]"
+          >
+            Get started
+          </Link>
+        </section>
+      </main>
 
       <PublicFooter />
     </div>
