@@ -85,19 +85,35 @@
 
 @layer base {
   * { @apply border-border; }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
     font-feature-settings: "ss01","cv11";
+    text-wrap: pretty;
   }
   h1, h2, h3, .font-display {
     font-family: var(--font-display);
     font-optical-sizing: auto;
     letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  /* Subtle neutral outline on raster images for consistent depth.
+     Pure black in light mode, pure white in dark — never tinted. */
+  img:not([data-no-outline]) {
+    outline: 1px solid rgba(0, 0, 0, 0.1);
+    outline-offset: -1px;
+  }
+  .dark img:not([data-no-outline]) {
+    outline-color: rgba(255, 255, 255, 0.1);
   }
 }
 
 @layer utilities {
+  .tabular-nums { font-variant-numeric: tabular-nums; }
   .bg-gradient-warm { background: var(--gradient-warm); }
   .bg-gradient-ink { background: var(--gradient-ink); }
   .bg-gradient-paper { background: var(--gradient-paper); }
