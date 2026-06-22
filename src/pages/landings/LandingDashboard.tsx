@@ -18,7 +18,7 @@ const body = { fontFamily: "'DM Sans', system-ui, sans-serif" } as const;
 // Count-up hook — animates once when element enters viewport
 function useCountUp(target: number, duration = 1200) {
   const [value, setValue] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
+  const ref = useRef<HTMLElement>(null);
   const started = useRef(false);
 
   useEffect(() => {
