@@ -128,9 +128,9 @@ function FiveSteps() {
               Our precision methodology ensures every campaign is a calculated victory.
             </p>
           </div>
-          <a href="#flow" className="text-sm font-semibold text-accent inline-flex items-center gap-2 hover:underline">
-            View Full Methodology <ArrowRight className="size-4" />
-          </a>
+          <Link to="/auth" className="text-sm font-semibold text-accent inline-flex items-center gap-2 hover:underline">
+            Get started <ArrowRight className="size-4" />
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
