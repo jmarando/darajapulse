@@ -2271,6 +2271,15 @@ export type Database = {
         Args: { _post_id: string; _user_id: string }
         Returns: boolean
       }
+      campaign_perf_summary: {
+        Args: { campaign_ids: string[] }
+        Returns: {
+          campaign_id: string
+          engagement: number
+          posts: number
+          views: number
+        }[]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
