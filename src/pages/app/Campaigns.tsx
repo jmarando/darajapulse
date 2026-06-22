@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Megaphone, ArrowUpRight, Eye, BarChart3, FileText, Trophy, Users, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { buildPeakMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
+
 
 const statusColor: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -48,29 +48,21 @@ const Campaigns = () => {
     const { data: cs } = await supabase.from("clients").select("id,name");
     setClients(cs ?? []);
 
-    // Per-campaign performance preview
+    // Per-campaign performance preview — aggregated server-side via RPC
     const ids = (data ?? []).map((c) => c.id);
     if (ids.length) {
-      const { data: ps } = await supabase.from("posts").select("id, campaign_id").in("campaign_id", ids);
-      const postIds = (ps ?? []).map((p) => p.id);
-      // Fetch metric history per post and use peak values so bad zero polls do not erase performance.
-      // Batch by 100 post ids to keep URLs short and avoid the 1000-row default cap.
-      const ms = await fetchAllPostMetrics(supabase, postIds, "post_id, views, likes, comments, shares, saves, captured_at");
-      const latest = buildPeakMetricsByPost(ms);
-      const map: Record<string, { views: number; er: number; posts: number; eng: number }> = {};
-      for (const p of ps ?? []) {
-        const cur = map[p.campaign_id] ?? { views: 0, er: 0, posts: 0, eng: 0 };
-        cur.posts += 1;
-        const m = latest.get(p.id);
-        if (m) {
-          cur.views += Number(m.views || 0);
-          cur.eng += Number((m.likes||0) + (m.comments||0) + (m.shares||0) + (m.saves||0));
-        }
-        map[p.campaign_id] = cur;
-      }
+      const { data: perfRows, error: perfErr } = await (supabase as any)
+        .rpc("campaign_perf_summary", { campaign_ids: ids });
+      if (perfErr) console.warn("campaign_perf_summary", perfErr);
       const out: Record<string, { views: number; er: number; posts: number }> = {};
-      for (const [k, v] of Object.entries(map)) {
-        out[k] = { views: v.views, posts: v.posts, er: v.views > 0 ? (v.eng / v.views) * 100 : 0 };
+      for (const row of perfRows ?? []) {
+        const views = Number(row.views || 0);
+        const eng = Number(row.engagement || 0);
+        out[row.campaign_id] = {
+          views,
+          posts: Number(row.posts || 0),
+          er: views > 0 ? (eng / views) * 100 : 0,
+        };
       }
       setPerf(out);
     } else {
