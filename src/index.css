@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
+/* Fonts loaded via @fontsource in src/main.tsx — Geist, Instrument Serif, JetBrains Mono */
 
 @tailwind base;
 @tailwind components;
@@ -58,8 +58,10 @@
     --shadow-elegant: 0 30px 60px -30px hsl(20 14% 10% / 0.25);
     --shadow-soft: 0 4px 16px -8px hsl(20 14% 10% / 0.12);
 
-    --font-display: 'Geist', system-ui, sans-serif;
-    --font-body: 'Geist', system-ui, sans-serif;
+    --font-display: 'Geist Sans', 'Geist', system-ui, sans-serif;
+    --font-body: 'Geist Sans', 'Geist', system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   }
 
   .dark {
