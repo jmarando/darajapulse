@@ -27,17 +27,15 @@ const STEPS = [
 function TopNav() {
   return (
     <nav className="w-full sticky top-0 z-50 bg-background/85 backdrop-blur-md border-b border-border">
-      <div className="flex justify-between items-center h-20 px-6 lg:px-16 max-w-screen-2xl mx-auto">
+      <div className="flex justify-between items-center h-24 px-6 lg:px-16 max-w-screen-2xl mx-auto">
         <div className="flex items-center gap-10">
-          <Link to="/" className="flex items-center gap-2">
-            <img src={logo} alt="DarajaPulse" className="h-8 w-auto" data-no-outline />
-            <span className="font-display font-semibold tracking-tight">DarajaPulse</span>
+          <Link to="/" className="flex items-center gap-3">
+            <img src={logo} alt="DarajaPulse" className="h-14 w-auto" data-no-outline />
+            <span className="font-display font-semibold tracking-tight text-lg">DarajaPulse</span>
           </Link>
           <div className="hidden md:flex gap-6">
-            <a href="#product" className="text-sm font-semibold text-accent border-b-2 border-accent pb-1">Product</a>
-            <a href="#flow" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Flow</a>
-            <a href="#creators" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Creators</a>
-            <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Pricing</a>
+            <a href="#product" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Product</a>
+            <a href="#flow" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">How it works</a>
           </div>
         </div>
         <div className="flex items-center gap-3">
