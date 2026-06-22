@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import PublicFooter from "@/components/PublicFooter";
 import {
   ArrowRight,
-  Hub,
+  Network,
   Wallet,
   ShieldCheck,
   Globe2,
