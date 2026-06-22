@@ -27,17 +27,15 @@ const STEPS = [
 function TopNav() {
   return (
     <nav className="w-full sticky top-0 z-50 bg-background/85 backdrop-blur-md border-b border-border">
-      <div className="flex justify-between items-center h-20 px-6 lg:px-16 max-w-screen-2xl mx-auto">
+      <div className="flex justify-between items-center h-24 px-6 lg:px-16 max-w-screen-2xl mx-auto">
         <div className="flex items-center gap-10">
-          <Link to="/" className="flex items-center gap-2">
-            <img src={logo} alt="DarajaPulse" className="h-8 w-auto" data-no-outline />
-            <span className="font-display font-semibold tracking-tight">DarajaPulse</span>
+          <Link to="/" className="flex items-center gap-3">
+            <img src={logo} alt="DarajaPulse" className="h-14 w-auto" data-no-outline />
+            <span className="font-display font-semibold tracking-tight text-lg">DarajaPulse</span>
           </Link>
           <div className="hidden md:flex gap-6">
-            <a href="#product" className="text-sm font-semibold text-accent border-b-2 border-accent pb-1">Product</a>
-            <a href="#flow" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Flow</a>
-            <a href="#creators" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Creators</a>
-            <a href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Pricing</a>
+            <a href="#product" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Product</a>
+            <a href="#flow" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">How it works</a>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -130,9 +128,9 @@ function FiveSteps() {
               Our precision methodology ensures every campaign is a calculated victory.
             </p>
           </div>
-          <a href="#flow" className="text-sm font-semibold text-accent inline-flex items-center gap-2 hover:underline">
-            View Full Methodology <ArrowRight className="size-4" />
-          </a>
+          <Link to="/auth" className="text-sm font-semibold text-accent inline-flex items-center gap-2 hover:underline">
+            Get started <ArrowRight className="size-4" />
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
@@ -168,9 +166,9 @@ function Bento() {
                 Connect your entire influence network into a single, cohesive dashboard. Eliminate
                 fragmentation and gain absolute clarity on performance across every channel.
               </p>
-              <button className="bg-foreground text-background px-5 py-2.5 rounded text-sm font-medium hover:opacity-90 transition-[opacity,scale] active:scale-[0.96]">
+              <Link to="/auth" className="inline-block bg-foreground text-background px-5 py-2.5 rounded text-sm font-medium hover:opacity-90 transition-[opacity,scale] active:scale-[0.96]">
                 Explore Architecture
-              </button>
+              </Link>
             </div>
             <Network className="absolute -right-10 -bottom-10 size-[320px] text-accent/10 pointer-events-none" strokeWidth={0.5} />
           </div>
