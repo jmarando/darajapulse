@@ -172,7 +172,7 @@ function Bento() {
                 Explore Architecture
               </button>
             </div>
-            <Hub className="absolute -right-10 -bottom-10 size-[320px] text-accent/10 pointer-events-none" strokeWidth={0.5} />
+            <Network className="absolute -right-10 -bottom-10 size-[320px] text-accent/10 pointer-events-none" strokeWidth={0.5} />
           </div>
 
           {/* Side accent card */}
