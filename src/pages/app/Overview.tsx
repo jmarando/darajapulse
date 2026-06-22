@@ -20,7 +20,7 @@ const fmt = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `$
 
 const Stat = ({ icon: Icon, label, value, sub, delta, to }: any) => {
   const inner = (
-    <Card className="p-5 h-full rounded-2xl border-border/60 bg-card hover:shadow-elegant hover:-translate-y-0.5 transition-all group cursor-pointer">
+    <Card className="p-5 h-full rounded-2xl border-border/60 bg-card hover:shadow-elegant hover:-translate-y-0.5 transition-[box-shadow,transform] duration-200 ease-out group cursor-pointer">
       <div className="flex items-center justify-between">
         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
         <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center">
