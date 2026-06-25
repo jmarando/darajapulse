@@ -337,7 +337,33 @@ const Campaigns = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete dialog */}
+      <Dialog open={!!deleting} onOpenChange={(o) => { if (!o) { setDeleting(null); setDeleteConfirm(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="font-display text-xl">Delete campaign</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              This permanently deletes <span className="font-semibold text-foreground">{deleting?.name}</span> and all its posts, creators, and metrics. This cannot be undone.
+            </p>
+            <div>
+              <Label>Type <span className="font-mono font-bold">DELETE</span> to confirm</Label>
+              <Input
+                autoFocus
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") doDelete(); }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setDeleting(null); setDeleteConfirm(""); }}>Cancel</Button>
+              <Button variant="destructive" onClick={doDelete} disabled={deletingNow || deleteConfirm !== "DELETE"}>Delete</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 export default Campaigns;
