@@ -685,7 +685,10 @@ const ContactAdder = ({ creatorId, onAdd }: { creatorId: string; onAdd: (id: str
         <Input placeholder="value" value={value} onChange={e => setValue(e.target.value)} className="h-9" />
       </div>
       <div className="flex items-center justify-between">
-        <label className="text-xs flex items-center gap-2"><Switch checked={isPublic} onCheckedChange={setIsPublic} /> Public</label>
+        <label className="text-xs flex items-center gap-2" title="Public = openly listed in the creator's bio/linktree (safe to surface in shared reports). Private = sourced internally (kept hidden from external/public views).">
+          <Switch checked={isPublic} onCheckedChange={setIsPublic} />
+          Public (from bio/linktree)
+        </label>
         <Button size="sm" onClick={() => { onAdd(creatorId, kind, value, isPublic); setValue(""); }}>Add</Button>
       </div>
     </div>
