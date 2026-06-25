@@ -594,16 +594,19 @@ const CampaignDetail = () => {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 md:gap-6">
           <div className="min-w-0 flex-1 flex items-start gap-4">
-            {c.clients?.logo_url ? (
-              <img src={c.clients.logo_url} alt={`${c.clients?.name} logo`} className="w-14 h-14 rounded-md object-contain bg-white border border-border p-1 shrink-0" />
-            ) : (
-              <div className="w-14 h-14 rounded-md bg-secondary border border-border flex items-center justify-center font-display text-lg shrink-0">
-                {c.clients?.name?.slice(0, 2).toUpperCase()}
-              </div>
-            )}
+            <div className="relative shrink-0">
+              <div className="absolute -inset-2 bg-gradient-to-tr from-primary to-accent rounded-2xl blur-md opacity-15" />
+              {c.clients?.logo_url ? (
+                <img src={c.clients.logo_url} alt={`${c.clients?.name} logo`} className="relative w-20 h-20 rounded-2xl object-contain bg-white border border-border p-2 shadow-sm" />
+              ) : (
+                <div className="relative w-20 h-20 rounded-2xl bg-white border border-border flex items-center justify-center font-display text-2xl shadow-sm">
+                  {c.clients?.name?.slice(0, 2).toUpperCase()}
+                </div>
+              )}
+            </div>
             <div className="min-w-0 flex-1">
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">{c.clients?.name}</div>
-            <h1 className="font-display text-3xl md:text-4xl font-semibold mt-1 break-words">{c.name}</h1>
+            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{c.clients?.name}</div>
+            <h1 className="font-display text-3xl md:text-[2.5rem] font-semibold mt-1 break-words leading-[1.1] tracking-tight">{c.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-sm text-muted-foreground">
               {(c.hashtag || c.brief_templates?.hashtag) && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(c.hashtag || c.brief_templates?.hashtag).replace(/^#/, "")}</span>}
               {c.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />Budget KES {Number(c.budget_kes).toLocaleString()}</span>}
