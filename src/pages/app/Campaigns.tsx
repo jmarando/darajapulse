@@ -166,7 +166,7 @@ const Campaigns = () => {
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-end mb-8">
         <div>
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">Pipeline</div>
+          
           <h1 className="font-display text-4xl font-semibold mt-1">Campaigns</h1>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
