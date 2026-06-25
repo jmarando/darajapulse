@@ -37,7 +37,7 @@ const CAPABILITIES = [
   {
     icon: Users,
     title: "Influencer Management",
-    desc: "One roster for every relationship: briefs, deliverables, approvals, deadlines, payouts. Everything you used to track in spreadsheets and DMs, now in one operating system.",
+    desc: "One roster for every relationship: briefs, deliverables, approvals, deadlines, deliverable tracking. Everything you used to track in spreadsheets and DMs, now in one operating system.",
   },
   {
     icon: Trophy,
