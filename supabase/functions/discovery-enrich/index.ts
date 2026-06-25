@@ -184,6 +184,54 @@ Only include socials you are confident exist for THIS exact person. If you canno
     }
   }
 
+  // ----- 1b) Promote pr_csv stub creators (placeholder handle "pr_...") to real socials -----
+  const { data: prRows } = await supabase
+    .from("discovery_creators")
+    .select("id, full_name, handle, city, bio")
+    .eq("source", "pr_csv")
+    .like("handle", "pr_%");
+  for (const w of prRows ?? []) {
+    const parsed = await ai(
+      `Find the Kenyan creator/influencer/personality named "${w.full_name}"${w.city ? ` (based in ${w.city})` : ""}. Return strict JSON:
+{
+  "bio": "short bio under 140 chars or empty",
+  "niche": ["lowercase",...] (max 4),
+  "socials":[{"platform":"instagram|tiktok|youtube|twitter|facebook","handle":"no-at","profile_url":"https://...","follower_estimate":int,"engagement_estimate":float}]
+}
+Only include socials you are confident exist for THIS exact person. If unsure, return {"socials":[]}.`
+    );
+    const socials = Array.isArray(parsed?.socials) ? parsed.socials : [];
+    const niche = Array.isArray(parsed?.niche) ? parsed.niche.slice(0, 4) : [];
+    let firstRealId: string | null = null;
+    for (const s of socials) {
+      const platform = String(s.platform || "").toLowerCase();
+      const handle = String(s.handle || "").replace(/^@/, "").toLowerCase();
+      if (!handle || !["instagram", "tiktok", "youtube", "twitter", "facebook"].includes(platform)) continue;
+      const { data: exists } = await supabase
+        .from("discovery_creators").select("id").eq("platform", platform).eq("handle", handle).maybeSingle();
+      if (exists) { firstRealId ??= exists.id; continue; }
+      const { data: ins } = await supabase.from("discovery_creators").insert({
+        full_name: w.full_name,
+        handle, platform,
+        profile_url: s.profile_url ?? null,
+        niche, region: "Kenya", city: w.city || null,
+        follower_count: Number(s.follower_estimate) || 0,
+        engagement_rate: Number(s.engagement_estimate) || 0,
+        bio: parsed?.bio || w.bio || null,
+        source: "pr_csv_enriched",
+        ai_confidence: 0.55,
+      }).select("id").maybeSingle();
+      if (ins?.id) { firstRealId ??= ins.id; promoted++; }
+    }
+    // Move the PR phone contact to the new real profile so the contact stays grouped.
+    if (firstRealId) {
+      await supabase.from("discovery_contacts")
+        .update({ creator_id: firstRealId })
+        .eq("creator_id", w.id);
+      await supabase.from("discovery_creators").delete().eq("id", w.id);
+    }
+  }
+
   // ----- 2) Fill in email/phone where missing -----
   const { data: candidates } = await supabase
     .from("discovery_creators")
