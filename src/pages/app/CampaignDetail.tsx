@@ -65,7 +65,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "rec
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
 
-import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
+import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
 
 
 const CampaignDetail = () => {
@@ -150,10 +150,25 @@ const CampaignDetail = () => {
     const postIds = (p ?? []).map((x: any) => x.id);
     if (postIds.length) {
       try {
-        setMetrics(await fetchAllPostMetrics(supabase, postIds));
+        // Load campaign KPIs from the database first. Some campaigns have tens of thousands
+        // of metric snapshots, so downloading the full history before rendering made the
+        // hero cards sit at 0 even though the metrics existed in Postgres.
+        setMetrics(await fetchCampaignPeakMetrics(supabase, id));
+
+        // Then hydrate the chart/date-window history in the background. If this fails,
+        // keep the peak KPI rows instead of wiping the campaign back to zero.
+        fetchAllPostMetrics(supabase, postIds, "post_id,captured_at,views,likes,comments,shares,saves,reach,impressions")
+          .then((history) => {
+            if (history.length) setMetrics(history);
+          })
+          .catch((error: any) => console.warn("Could not load full metric history", error));
       } catch (error: any) {
-        toast.error(error.message || "Could not load metrics");
-        setMetrics([]);
+        try {
+          setMetrics(await fetchAllPostMetrics(supabase, postIds, "post_id,captured_at,views,likes,comments,shares,saves,reach,impressions"));
+        } catch (fallbackError: any) {
+          toast.error(fallbackError.message || error.message || "Could not load metrics");
+          setMetrics([]);
+        }
       }
     } else setMetrics([]);
     const { data: l } = await supabase.from("report_links").select("*").eq("campaign_id", id).maybeSingle();

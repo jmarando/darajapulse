@@ -114,3 +114,13 @@ export const fetchAllPostMetrics = async (client: any, postIds: string[], column
   }
   return rows;
 };
+
+export const fetchCampaignPeakMetrics = async (client: any, campaignId?: string | null) => {
+  if (!campaignId) return [] as MetricSnapshot[];
+  const { data, error } = await client.rpc("campaign_post_peak_metrics", { target_campaign_id: campaignId });
+  if (error) throw error;
+  return (data ?? []).map((row: MetricSnapshot) => ({
+    ...row,
+    captured_at: row.captured_at ?? new Date().toISOString(),
+  })) as MetricSnapshot[];
+};

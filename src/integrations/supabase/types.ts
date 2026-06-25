@@ -2280,6 +2280,20 @@ export type Database = {
           views: number
         }[]
       }
+      campaign_post_peak_metrics: {
+        Args: { target_campaign_id: string }
+        Returns: {
+          captured_at: string
+          comments: number
+          impressions: number
+          likes: number
+          post_id: string
+          reach: number
+          saves: number
+          shares: number
+          views: number
+        }[]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
