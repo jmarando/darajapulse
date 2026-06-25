@@ -1067,6 +1067,42 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_requests: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          email_status: string | null
+          id: string
+          message: string | null
+          name: string
+          role: string | null
+          source: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          email_status?: string | null
+          id?: string
+          message?: string | null
+          name: string
+          role?: string | null
+          source?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          email_status?: string | null
+          id?: string
+          message?: string | null
+          name?: string
+          role?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       discovery_contacts: {
         Row: {
           added_by: string | null
