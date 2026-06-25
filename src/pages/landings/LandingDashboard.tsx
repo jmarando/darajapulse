@@ -49,18 +49,18 @@ const CAPABILITIES = [
 function TopNav({ onDemo }: { onDemo: () => void }) {
   return (
     <nav className="w-full sticky top-0 z-50 bg-background/85 backdrop-blur-md border-b border-border">
-      <div className="flex justify-between items-center h-24 px-6 lg:px-16 max-w-screen-2xl mx-auto">
-        <div className="flex items-center gap-10">
-          <Link to="/" className="flex items-center gap-3">
-            <img src={logo} alt="DarajaPulse" className="h-14 w-auto" data-no-outline />
-            <span className="font-display font-semibold tracking-tight text-lg">DarajaPulse</span>
+      <div className="flex justify-between items-center gap-3 h-20 md:h-24 px-4 md:px-6 lg:px-16 max-w-screen-2xl mx-auto">
+        <div className="flex items-center gap-10 min-w-0">
+          <Link to="/" className="flex items-center gap-2 md:gap-3 min-w-0">
+            <img src={logo} alt="DarajaPulse" className="h-10 md:h-14 w-auto shrink-0" data-no-outline />
+            <span className="hidden sm:inline font-display font-semibold tracking-tight text-lg truncate">DarajaPulse</span>
           </Link>
           <div className="hidden md:flex gap-6">
             <a href="#capabilities" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Platform</a>
             <a href="#flow" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">How it works</a>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 shrink-0">
           <Link
             to="/auth"
             className="text-sm font-medium px-3 py-2 rounded hover:bg-secondary transition-[background-color,scale] active:scale-[0.96]"
@@ -69,7 +69,7 @@ function TopNav({ onDemo }: { onDemo: () => void }) {
           </Link>
           <button
             onClick={onDemo}
-            className="bg-accent text-accent-foreground text-sm font-semibold px-5 py-2.5 rounded hover:brightness-110 transition-[filter,scale] active:scale-[0.96]"
+            className="bg-accent text-accent-foreground text-sm font-semibold px-3 md:px-5 py-2.5 rounded hover:brightness-110 transition-[filter,scale] active:scale-[0.96] whitespace-nowrap"
           >
             Request Demo
           </button>
