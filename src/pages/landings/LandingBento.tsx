@@ -60,12 +60,12 @@ const LandingBento = () => (
           </div>
         </div>
 
-        {/* KRA */}
+        {/* Audit-ready */}
         <div className="col-span-6 md:col-span-3 rounded-2xl bg-card border border-border p-5 flex flex-col justify-between">
           <ShieldCheck className="w-5 h-5 text-accent" />
           <div>
-            <div className="font-display text-lg">KRA aware</div>
-            <div className="text-xs text-muted-foreground">WHT · e-TIMS records</div>
+            <div className="font-display text-lg">Audit-ready</div>
+            <div className="text-xs text-muted-foreground">Every metric, every post</div>
           </div>
         </div>
 
