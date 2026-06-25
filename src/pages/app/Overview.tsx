@@ -194,7 +194,6 @@ const Overview = () => {
                 [["Campaigns", `${s.campaigns} (${s.live} live)`, "/app/campaigns"], ["Reach", fmt(totals.reach)]],
                 [["Influencers", s.influencers, "/app/influencers"], ["Likes", fmt(totals.likes)]],
                 [["Content items", s.briefs, "/app/content"], ["Comments", fmt(totals.comments)]],
-                [["Content items", s.briefs, "/app/content"], ["Shares", fmt(totals.shares)]],
                 [["Posts tracked", s.posts, "/app/content"], ["Engagement", `${er.toFixed(2)}%`]],
                 [["Contests", s.contests], ["", ""]],
               ].map((row: any, i) => (
