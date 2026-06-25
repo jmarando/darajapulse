@@ -66,7 +66,7 @@ export default function DemoRequestDialog({ open, onOpenChange }: Props) {
           <div className="py-10 text-center">
             <CheckCircle2 className="size-12 text-accent mx-auto mb-4" strokeWidth={1.5} />
             <h3 className="font-display text-2xl font-semibold mb-2">Request received</h3>
-            <p className="text-muted-foreground text-sm">Justin will be in touch within one business day.</p>
+            <p className="text-muted-foreground text-sm">We'll be in touch within one business day.</p>
           </div>
         ) : (
           <>
