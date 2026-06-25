@@ -189,9 +189,27 @@ const Discovery = () => {
     }
     return best;
   };
-  const personContacts = (p: Person) => p.all_ids.flatMap(id => contactsByCreator[id] || []);
+  const personContacts = (p: Person) => {
+    const all = p.all_ids.flatMap(id => contactsByCreator[id] || []);
+    const seen = new Set<string>();
+    return all.filter(c => {
+      const k = `${c.kind}::${(c.value || "").trim().toLowerCase()}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  };
   const openPerson = openCreator ? people.find(p => p.all_ids.includes(openCreator.id)) : null;
-  const openContacts = openPerson ? personContacts(openPerson) : openCreator ? contactsByCreator[openCreator.id] || [] : [];
+  const openContactsRaw = openPerson ? personContacts(openPerson) : openCreator ? contactsByCreator[openCreator.id] || [] : [];
+  const openContacts = (() => {
+    const seen = new Set<string>();
+    return openContactsRaw.filter(c => {
+      const k = `${c.kind}::${(c.value || "").trim().toLowerCase()}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  })();
   const openProfiles = openPerson?.profiles || (openCreator ? [openCreator] : []);
 
   const lookupCreator = async (rawQuery = q) => {
