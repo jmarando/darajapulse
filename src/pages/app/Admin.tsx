@@ -583,3 +583,63 @@ function LogoUploader({ value, onChange }: { value: string; onChange: (v: string
     </div>
   );
 }
+
+/* ---------------- Demo Requests ---------------- */
+function DemoRequestsTab() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    const { data, error } = await (supabase.from("demo_requests") as any)
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) toast({ title: "Failed to load", description: error.message, variant: "destructive" });
+    setRows(data ?? []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Demo Requests</CardTitle>
+        <Button size="sm" variant="outline" onClick={load}><RefreshCw className="w-3 h-3 mr-1" /> Refresh</Button>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : rows.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No demo requests yet.</div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>When</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Company</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Message</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</TableCell>
+                  <TableCell className="font-medium">{r.name}</TableCell>
+                  <TableCell><a className="underline" href={`mailto:${r.email}`}>{r.email}</a></TableCell>
+                  <TableCell>{r.company ?? "—"}</TableCell>
+                  <TableCell>{r.role ?? "—"}</TableCell>
+                  <TableCell className="max-w-md whitespace-pre-wrap text-sm">{r.message ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
