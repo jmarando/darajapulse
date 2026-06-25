@@ -190,6 +190,9 @@ const Discovery = () => {
     return best;
   };
   const personContacts = (p: Person) => p.all_ids.flatMap(id => contactsByCreator[id] || []);
+  const openPerson = openCreator ? people.find(p => p.all_ids.includes(openCreator.id)) : null;
+  const openContacts = openPerson ? personContacts(openPerson) : openCreator ? contactsByCreator[openCreator.id] || [] : [];
+  const openProfiles = openPerson?.profiles || (openCreator ? [openCreator] : []);
 
   const lookupCreator = async (rawQuery = q) => {
     const trimmed = rawQuery.trim();
@@ -618,14 +621,35 @@ const Discovery = () => {
                     {!openCreator.verified_at && <Button size="sm" variant="ghost" onClick={() => verifyCreator(openCreator.id)}><BadgeCheck className="w-3 h-3 mr-1" /> Mark verified</Button>}
                   </div>
                   <div className="space-y-2">
-                    {(contactsByCreator[openCreator.id] || []).map(ct => (
+                    {openProfiles.length > 1 && (
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {openProfiles.map(pr => {
+                          const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+                          return (
+                            <a
+                              key={pr.id}
+                              href={pr.profile_url || "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={e => { if (!pr.profile_url) e.preventDefault(); }}
+                              className="inline-flex items-center gap-1.5 text-[11px] bg-secondary hover:bg-secondary/70 rounded-lg px-2 py-1 transition-colors max-w-full"
+                            >
+                              <Icon className="w-3 h-3 shrink-0" />
+                              @{pr.handle}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {openContacts.map(ct => (
                       <div key={ct.id} className="flex items-center gap-2 border border-border rounded-md px-2 py-1.5 text-sm">
                         <Badge variant="outline" className="text-[10px] capitalize">{ct.kind}</Badge>
                         <span className="flex-1 truncate">{ct.value}</span>
                         {ct.is_public ? <span className="text-[10px] text-muted-foreground">public</span> : <span className="text-[10px] text-accent">private</span>}
-                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteContact(ct.id, openCreator.id)}><Trash2 className="w-3 h-3" /></Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => deleteContact(ct.id, ct.creator_id)}><Trash2 className="w-3 h-3" /></Button>
                       </div>
                     ))}
+                    {openContacts.length === 0 && <div className="text-sm text-muted-foreground border border-dashed rounded-md p-3">No contacts saved yet for these profiles.</div>}
                   </div>
                   <ContactAdder creatorId={openCreator.id} onAdd={addContact} />
                 </div>
