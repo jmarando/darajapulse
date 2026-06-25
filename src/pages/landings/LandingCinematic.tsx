@@ -46,8 +46,8 @@ const LandingCinematic = () => (
       <div className="mt-20 grid md:grid-cols-3 gap-4 text-left">
         {[
           { icon: Activity, k: "2.41M views", v: "Hustler Fund · Day 6", glow: true },
-          { icon: Wallet, k: "Paid in 9 min", v: "Creator payouts · WHT auto" },
-          { icon: ShieldCheck, k: "KRA aware", v: "e-TIMS ready records" },
+          { icon: Wallet, k: "12 platforms", v: "Unified measurement" },
+          { icon: ShieldCheck, k: "Audit-ready", v: "Every metric, every post" },
         ].map(({ icon: Icon, k, v, glow }) => (
           <div key={k} className={`rounded-xl p-5 border border-white/10 bg-white/[0.03] backdrop-blur ${glow ? 'ring-1 ring-accent/40' : ''}`}>
             <Icon className={`w-5 h-5 ${glow ? 'text-accent' : 'text-white/70'}`} />
