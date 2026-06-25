@@ -42,13 +42,7 @@ const PublicBrief = () => {
 
   const final = ["confirmed","declined"].includes(b.status);
 
-  const paymentSteps = [
-    { icon: CheckCircle2, label: "Brief accepted", desc: "You confirm and connect your accounts" },
-    { icon: Clapperboard, label: "Content created", desc: "You shoot and submit drafts" },
-    { icon: Eye, label: "Approved & live", desc: "Brand reviews, you publish" },
-    { icon: Smartphone, label: "Performance tracked", desc: "Daily metric updates" },
-    { icon: Banknote, label: "M-Pesa payout", desc: "Net fee sent to your phone" },
-  ];
+  const paymentSteps: Array<{ icon: any; label: string; desc: string }> = [];
 
   const breakdown = normalizeBreakdown(b.deliverables_breakdown, b.influencer?.primary_platform || "tiktok");
   // Group items by platform for display; cross-posted items appear under every platform with a "cross-post" badge.
