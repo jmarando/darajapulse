@@ -352,7 +352,29 @@ const Discovery = () => {
           <p className="text-muted-foreground mt-2 text-sm">Click <strong>Seed Kenya roster</strong> to brainstorm ~1,000 creators.</p>
         </Card>
       ) : (
+        <>
+        {q.trim() && ordered.length === 0 && (
+          <Card className="p-8 text-center mb-6 border-dashed">
+            <p className="text-sm text-muted-foreground">No creators in your roster match <strong>"{q}"</strong>.</p>
+            <Button
+              className="mt-3"
+              onClick={async () => {
+                const t = toast.loading(`Looking up "${q}" across socials…`);
+                try {
+                  const { data, error } = await supabase.functions.invoke("discovery-enrich", { body: { query: q.trim() } });
+                  if (error) throw error;
+                  if (!data?.ok) { toast.error(data?.message || "Couldn't identify that person.", { id: t }); return; }
+                  toast.success(`Added ${data.added} profile${data.added === 1 ? "" : "s"} for ${data.name}`, { id: t });
+                  await load();
+                } catch (e: any) { toast.error(e.message || "Lookup failed", { id: t }); }
+              }}
+            >
+              <Wand2 className="w-4 h-4 mr-2" />Find "{q}" across socials
+            </Button>
+          </Card>
+        )}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
           {ordered.map(p => {
             const match = personMatch(p);
             const contacts = personContacts(p);
