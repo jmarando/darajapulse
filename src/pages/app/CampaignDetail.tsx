@@ -718,14 +718,40 @@ const CampaignDetail = () => {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsList className="mb-6 h-auto gap-1 rounded-xl border bg-muted/40 p-1.5 shadow-sm">
+          <TabsTrigger
+            value="overview"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Overview
+          </TabsTrigger>
           {!isContestOnly && (
-            <TabsTrigger value="creators">Creators &amp; content<span className="ml-1.5 text-xs opacity-60">{ci.length}</span></TabsTrigger>
+            <TabsTrigger
+              value="creators"
+              className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+            >
+              Creators &amp; content
+              <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary">{ci.length}</span>
+            </TabsTrigger>
           )}
-          <TabsTrigger value="contests">Contests</TabsTrigger>
-          <TabsTrigger value="emails">Email reports</TabsTrigger>
-          <TabsTrigger value="share">Share &amp; wrap</TabsTrigger>
+          <TabsTrigger
+            value="contests"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Contests
+          </TabsTrigger>
+          <TabsTrigger
+            value="emails"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Email reports
+          </TabsTrigger>
+          <TabsTrigger
+            value="share"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Share &amp; wrap
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-0">
