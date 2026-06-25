@@ -42,13 +42,7 @@ const PublicBrief = () => {
 
   const final = ["confirmed","declined"].includes(b.status);
 
-  const paymentSteps = [
-    { icon: CheckCircle2, label: "Brief accepted", desc: "You confirm and connect your accounts" },
-    { icon: Clapperboard, label: "Content created", desc: "You shoot and submit drafts" },
-    { icon: Eye, label: "Approved & live", desc: "Brand reviews, you publish" },
-    { icon: Smartphone, label: "Performance tracked", desc: "Daily metric updates" },
-    { icon: Banknote, label: "M-Pesa payout", desc: "Net fee sent to your phone" },
-  ];
+  const paymentSteps: Array<{ icon: any; label: string; desc: string }> = [];
 
   const breakdown = normalizeBreakdown(b.deliverables_breakdown, b.influencer?.primary_platform || "tiktok");
   // Group items by platform for display; cross-posted items appear under every platform with a "cross-post" badge.
@@ -245,44 +239,6 @@ const PublicBrief = () => {
           </Card>
         )}
 
-        {b.fee_kes > 0 && b.campaign.wht_percent > 0 && (
-          <Card className="p-5 mt-4 bg-secondary/50">
-            <div className="flex items-start gap-3">
-              <FileText className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-              <div className="text-sm">
-                <div className="font-medium">Payment & withholding tax</div>
-                <p className="text-muted-foreground mt-1">
-                  Gross fee: KES {Number(b.fee_kes).toLocaleString()} · WHT ({b.campaign.wht_percent}%): KES {Math.round(Number(b.fee_kes) * Number(b.campaign.wht_percent) / 100).toLocaleString()} · <span className="text-foreground font-medium">Net to you: KES {Math.round(Number(b.fee_kes) * (1 - Number(b.campaign.wht_percent) / 100)).toLocaleString()}</span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">Paid via M-Pesa after content goes live and is approved. We file WHT on your behalf.</p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Payment timeline — content → payout */}
-        <Card className="p-6 mt-4">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">How you get paid</div>
-          <h3 className="font-display text-xl mt-1 mb-5">From acceptance to M-Pesa</h3>
-          <ol className="relative">
-            {paymentSteps.map((s, i) => {
-              const Icon = s.icon;
-              const isLast = i === paymentSteps.length - 1;
-              return (
-                <li key={i} className="relative flex gap-4 pb-5 last:pb-0">
-                  {!isLast && <span aria-hidden className="absolute left-[18px] top-9 bottom-0 w-px bg-border" />}
-                  <div className="w-9 h-9 rounded-full bg-accent/15 text-accent flex items-center justify-center shrink-0 ring-4 ring-background">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 pt-1">
-                    <div className="text-sm font-medium">{s.label}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{s.desc}</div>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </Card>
 
         {/* Status indicator on page (sticky bar handles primary CTAs) */}
         <div className="mt-8 flex items-center gap-3 flex-wrap">
@@ -295,7 +251,7 @@ const PublicBrief = () => {
           <div className="mt-8 space-y-3">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">One last step</div>
             <div className="font-display text-xl">Connect your {connectPlatforms.length === 1 ? PLATFORM_LABEL[connectPlatforms[0]] || connectPlatforms[0] : "accounts"}</div>
-            <p className="text-sm text-muted-foreground">So we can track your post performance for the brand and pay you accurately. Read-only access — we never post on your behalf.</p>
+            <p className="text-sm text-muted-foreground">So we can track your post performance for the brand. Read-only access — we never post on your behalf.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {connectPlatforms.map((p) => {
                 const Icon = PLATFORM_ICON[p] || Music2;

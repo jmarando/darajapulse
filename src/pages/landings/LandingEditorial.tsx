@@ -7,8 +7,8 @@ import logo from "@/assets/logo-pulse-mark.png";
 const ticker = [
   { label: "Live campaigns", value: "27" },
   { label: "Views measured today", value: "4.8M" },
-  { label: "Creators paid this week", value: "312" },
-  { label: "Avg payout time", value: "9 min" },
+  { label: "Creators on roster", value: "312" },
+  { label: "Avg refresh", value: "2 min" },
 ];
 
 const LandingEditorial = () => (

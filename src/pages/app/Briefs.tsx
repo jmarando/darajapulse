@@ -547,20 +547,6 @@ const Briefs = () => {
               </div>
             </Card>
 
-            <Card className="p-5">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Compliance & payout</div>
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div>
-                  <Label>Withholding tax %</Label>
-                  <Input type="number" step="0.5" value={t.wht_percent ?? 5} onChange={e => setT({ ...t, wht_percent: e.target.value })} className="mt-1.5" />
-                  <p className="text-[10px] text-muted-foreground mt-1">KE residents: 5% standard. Non-residents: 20%.</p>
-                </div>
-                <div className="sm:col-span-2 bg-secondary/40 rounded-md p-4 text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground mb-1 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" />How this works</p>
-                  <p>Link this brief to a campaign in the campaign's New/Edit dialog. Every creator brief link for that campaign reads from here in real time — including do's, don'ts, hashtags and mentions.</p>
-                </div>
-              </div>
-            </Card>
           </div>
         )}
       </div>

@@ -27,7 +27,7 @@ const Landing = () => (
       {[
         { icon: Users, title: "Roster & discovery", body: "TikTok-first influencer database with audience authenticity, niche, language, and Kenya-vs-diaspora splits." },
         { icon: BarChart3, title: "The live client report", body: "A tokenized, embed-grade page brand managers actually forward internally. Updated every few minutes." },
-        { icon: Wallet, title: "Fast creator payouts", body: "Pay creators in minutes, not 30 days. Tax records handled the way KRA wants." },
+        { icon: Wallet, title: "Always-on measurement", body: "Auto-refreshing post metrics across TikTok, Instagram, YouTube and Facebook — no manual screenshots." },
       ].map(({ icon: Icon, title, body }) => (
         <div key={title} className="p-6 rounded-xl bg-card border border-border shadow-soft">
           <Icon className="w-6 h-6 text-accent" />

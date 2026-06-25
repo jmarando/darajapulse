@@ -37,7 +37,7 @@ const CAPABILITIES = [
   {
     icon: Users,
     title: "Influencer Management",
-    desc: "One roster for every relationship: briefs, deliverables, approvals, deadlines, payouts. Everything you used to track in spreadsheets and DMs, now in one operating system.",
+    desc: "One roster for every relationship: briefs, deliverables, approvals, deadlines, deliverable tracking. Everything you used to track in spreadsheets and DMs, now in one operating system.",
   },
   {
     icon: Trophy,
@@ -235,15 +235,15 @@ function Bento({ onDemo }: { onDemo: () => void }) {
 
           <div className="col-span-12 lg:col-span-4 p-8 md:p-10 rounded-2xl bg-accent text-accent-foreground flex flex-col justify-between min-h-[320px] shadow-elegant overflow-hidden">
             <div>
-              <Wallet className="size-10 mb-5" strokeWidth={1.25} />
-              <h3 className="font-display text-xl md:text-2xl font-semibold mb-3">Instant Liquidity</h3>
+              <Activity className="size-10 mb-5" strokeWidth={1.25} />
+              <h3 className="font-display text-xl md:text-2xl font-semibold mb-3">Always-on Measurement</h3>
               <p className="opacity-90 text-sm leading-relaxed text-pretty">
-                Automated payout systems that handle cross-border compliance and instant transfers for creators.
+                Auto-refreshing views, engagement and reach across TikTok, Instagram, YouTube and Facebook — no manual screenshots.
               </p>
             </div>
             <div className="flex items-center gap-3 mt-8">
               <div className="h-px w-12 bg-accent-foreground/60" />
-              <span className="font-mono text-[10px] tracking-wider uppercase">Active Settlements</span>
+              <span className="font-mono text-[10px] tracking-wider uppercase">Live Metrics</span>
             </div>
           </div>
 

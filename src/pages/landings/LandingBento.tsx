@@ -23,12 +23,12 @@ const LandingBento = () => (
           <Link to="/auth" className="self-start"><Button className="bg-accent text-accent-foreground hover:bg-accent/90">Open the console <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
         </div>
 
-        {/* Payouts */}
+        {/* Refresh cadence */}
         <div className="col-span-6 md:col-span-4 rounded-2xl bg-card border border-border p-5 flex flex-col justify-between">
           <Wallet className="w-5 h-5 text-accent" />
           <div>
-            <div className="font-display text-3xl">9 min</div>
-            <div className="text-xs text-muted-foreground">avg creator payout</div>
+            <div className="font-display text-3xl">2 min</div>
+            <div className="text-xs text-muted-foreground">avg metric refresh</div>
           </div>
         </div>
 
@@ -44,7 +44,7 @@ const LandingBento = () => (
         {/* Subhead */}
         <div className="col-span-12 md:col-span-4 rounded-2xl bg-secondary p-5 flex items-center">
           <p className="text-sm leading-snug">
-            Brief, approve, publish, measure and pay across TikTok, Instagram, YouTube and X. The end of the PDF report.
+            Brief, approve, publish and measure across TikTok, Instagram, YouTube and X. The end of the PDF report.
           </p>
         </div>
 
@@ -60,12 +60,12 @@ const LandingBento = () => (
           </div>
         </div>
 
-        {/* KRA */}
+        {/* Audit-ready */}
         <div className="col-span-6 md:col-span-3 rounded-2xl bg-card border border-border p-5 flex flex-col justify-between">
           <ShieldCheck className="w-5 h-5 text-accent" />
           <div>
-            <div className="font-display text-lg">KRA aware</div>
-            <div className="text-xs text-muted-foreground">WHT · e-TIMS records</div>
+            <div className="font-display text-lg">Audit-ready</div>
+            <div className="text-xs text-muted-foreground">Every metric, every post</div>
           </div>
         </div>
 
