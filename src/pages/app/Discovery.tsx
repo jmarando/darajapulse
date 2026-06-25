@@ -30,6 +30,17 @@ type Creator = {
 };
 type Contact = { id: string; creator_id: string; kind: string; value: string; label?: string; is_public: boolean };
 
+const Stat = ({ label, value, suffix }: { label: string; value: string; suffix?: string }) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-[9px] font-bold text-background/50 uppercase tracking-[0.2em]">{label}</span>
+    <div className="flex items-baseline gap-1">
+      <span className="font-display text-2xl md:text-[1.65rem] font-semibold text-background tracking-tight tabular-nums">{value}</span>
+      {suffix && <span className="text-sm font-medium text-background/60">{suffix}</span>}
+    </div>
+  </div>
+);
+const Divider = () => <div className="h-9 w-px bg-background/15" />;
+
 const Discovery = () => {
   const [rows, setRows] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -320,70 +331,110 @@ const Discovery = () => {
           <p className="text-muted-foreground mt-2 text-sm">Click <strong>Seed Kenya roster</strong> to brainstorm ~1,000 creators with AI.</p>
         </Card>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {ordered.map(p => {
             const match = personMatch(p);
             const contacts = personContacts(p);
             return (
-              <Card key={p.key} className={`p-5 flex flex-col group hover:shadow-md transition-all ${match ? "border-accent" : ""}`}>
+              <Card
+                key={p.key}
+                className={`relative overflow-hidden rounded-[2rem] border bg-card p-0 shadow-sm hover:shadow-elegant hover:-translate-y-1 transition-all duration-500 h-full flex flex-col group ${match ? "border-accent" : "border-border"}`}
+              >
                 {match && (
-                  <div className="mb-3 -mt-1 text-xs bg-accent/10 text-accent rounded-md px-2 py-1.5">
-                    <div className="font-medium">Match {match.score} — {match.reason}</div>
+                  <div className="px-7 pt-5 -mb-1 text-[11px] bg-accent/10 text-accent">
+                    <div className="font-semibold">Match {match.score} — {match.reason}</div>
                     {match.angle && <div className="text-accent/80 italic mt-0.5">Angle: {match.angle}</div>}
                   </div>
                 )}
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 shrink-0 rounded-full bg-gradient-to-br from-secondary to-secondary/40 border border-border flex items-center justify-center font-display text-lg uppercase">
-                    {p.full_name?.[0] ?? "?"}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-display text-base leading-tight truncate flex items-center gap-1">
-                      {p.full_name}
-                      {p.verified_at && <BadgeCheck className="w-3.5 h-3.5 text-success shrink-0" />}
+
+                {/* Header */}
+                <div className="p-7 pb-5">
+                  <div className="flex justify-between items-start mb-5 gap-3">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="relative shrink-0">
+                        <div className="absolute -inset-1.5 bg-gradient-to-tr from-primary to-accent rounded-2xl blur-md opacity-15 group-hover:opacity-35 transition-opacity" />
+                        <div className="relative w-16 h-16 rounded-xl bg-white border border-border flex items-center justify-center shadow-sm overflow-hidden font-display text-2xl uppercase text-foreground/70">
+                          {p.full_name?.[0] ?? "?"}
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold tracking-[0.22em] text-muted-foreground uppercase">Creator</p>
+                        <p className="text-[11px] font-semibold text-foreground/70 mt-0.5 uppercase tracking-wider truncate">
+                          {p.city || "Kenya"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {p.profiles.map(pr => {
-                        const Icon = PLATFORM_ICON[pr.platform] || Instagram;
-                        return (
-                          <a
-                            key={pr.id}
-                            href={pr.profile_url || "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={e => { if (!pr.profile_url) e.preventDefault(); }}
-                            className="inline-flex items-center gap-1 text-[11px] border border-border rounded-md px-1.5 py-0.5 hover:bg-secondary/40 max-w-full"
-                            title={`@${pr.handle} · ${fmtCompact(pr.follower_count)} on ${pr.platform}`}
-                          >
-                            <Icon className="w-3 h-3 shrink-0" />
-                            <span className="truncate max-w-[90px]">@{pr.handle}</span>
-                            <span className="text-muted-foreground">{fmtCompact(pr.follower_count)}</span>
-                          </a>
-                        );
-                      })}
+                    {p.verified_at ? (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/10 border border-success/20 shrink-0">
+                        <BadgeCheck className="w-3 h-3 text-success" />
+                        <span className="text-[10px] font-bold text-success uppercase tracking-widest">Verified</span>
+                      </div>
+                    ) : (
+                      <div className="px-3 py-1.5 rounded-full bg-secondary border border-border shrink-0">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">AI {Math.round(p.ai_confidence * 100)}%</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <h2 className="font-display text-2xl md:text-[1.6rem] font-semibold text-foreground leading-[1.15] break-words mb-3 group-hover:text-primary transition-colors duration-300">
+                    {p.full_name}
+                  </h2>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {p.profiles.map(pr => {
+                      const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+                      return (
+                        <a
+                          key={pr.id}
+                          href={pr.profile_url || "#"}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={e => { if (!pr.profile_url) e.preventDefault(); }}
+                          className="inline-flex items-center gap-1.5 text-[11px] bg-secondary hover:bg-secondary/70 rounded-lg px-2 py-1 transition-colors max-w-full"
+                          title={`@${pr.handle} · ${fmtCompact(pr.follower_count)} on ${pr.platform}`}
+                        >
+                          <Icon className="w-3 h-3 shrink-0 text-foreground/70" />
+                          <span className="truncate max-w-[90px] font-semibold text-foreground/80">@{pr.handle}</span>
+                          <span className="text-muted-foreground tabular-nums">{fmtCompact(pr.follower_count)}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* KPI strip */}
+                <div className="mx-5 mb-5 rounded-2xl bg-foreground text-background p-6 flex items-center justify-between shadow-lg mt-auto">
+                  <Stat label="Total Reach" value={fmtCompact(p.follower_total)} />
+                  <Divider />
+                  <Stat label="Avg Eng" value={p.engagement_avg.toFixed(1)} suffix="%" />
+                  <Divider />
+                  <Stat label="Profiles" value={String(p.profiles.length)} />
+                </div>
+
+                {/* Niches + actions */}
+                <div className="px-7 pb-5 flex flex-col gap-3">
+                  {p.niches.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {p.niches.slice(0, 4).map(n => <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5 capitalize">{n}</Badge>)}
+                      {p.niches.length > 4 && <span className="text-[10px] text-muted-foreground self-center">+{p.niches.length - 4}</span>}
                     </div>
+                  )}
+                  <div className="flex gap-1.5">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(p.primary)}>
+                      Details {contacts.length > 0 && <span className="ml-1 text-[10px] text-muted-foreground">({contacts.length})</span>}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => addToRoster(p.primary)} title="Add to influencer roster"><Plus className="w-3 h-3" /></Button>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 mt-4 rounded-md border border-border bg-secondary/30 divide-x divide-border overflow-hidden">
-                  <div className="p-2.5 text-center"><div className="font-display text-base">{fmtCompact(p.follower_total)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Total reach</div></div>
-                  <div className="p-2.5 text-center"><div className="font-display text-base">{p.engagement_avg.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Avg eng.</div></div>
-                  <div className="p-2.5 text-center"><div className="font-display text-base inline-flex items-center gap-1 justify-center max-w-full"><MapPin className="w-3 h-3 text-muted-foreground shrink-0" /><span className="truncate">{p.city || "—"}</span></div><div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">City</div></div>
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-2 flex-wrap min-h-[22px]">
-                  <div className="flex flex-wrap gap-1">
-                    {p.niches.slice(0, 4).map(n => <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5 capitalize">{n}</Badge>)}
-                    {p.niches.length > 4 && <span className="text-[10px] text-muted-foreground">+{p.niches.length - 4}</span>}
-                  </div>
-                  {!p.verified_at && <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1"><ShieldCheck className="w-3 h-3" />AI {Math.round(p.ai_confidence * 100)}%</span>}
-                </div>
-                <div className="mt-3 flex gap-1">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(p.primary)}>Details {contacts.length > 0 && <span className="ml-1 text-[10px]">({contacts.length})</span>}</Button>
-                  <Button variant="outline" size="sm" onClick={() => addToRoster(p.primary)} title="Add to influencer roster"><Plus className="w-3 h-3" /></Button>
-                </div>
+
+                {/* Accent bar */}
+                <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary" />
               </Card>
             );
           })}
         </div>
       )}
+
 
       {/* Detail drawer */}
       <Sheet open={!!openCreator} onOpenChange={(o) => !o && setOpenCreator(null)}>
