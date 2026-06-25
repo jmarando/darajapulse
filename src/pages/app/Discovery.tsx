@@ -506,6 +506,7 @@ const Discovery = () => {
             );
           })}
         </div>
+        </>
       )}
 
 
