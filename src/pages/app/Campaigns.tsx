@@ -249,7 +249,16 @@ const Campaigns = () => {
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleting({ id: r.id, name: r.name }); setDeleteConfirm(""); }}
+                      className="mt-1 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                      aria-label="Delete campaign"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
+
 
                   <div className="flex flex-wrap items-center gap-3">
                     {r.hashtag && (
