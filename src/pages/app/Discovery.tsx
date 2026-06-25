@@ -80,25 +80,39 @@ const Discovery = () => {
     return Array.from(s).sort();
   }, [rows]);
 
+  const normalizeSearch = (value: string) =>
+    (value || "")
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/^@+/, "")
+      .replace(/[^a-z0-9+@.]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const rowSearchText = (r: Creator) => normalizeSearch([
+    r.full_name, r.handle, r.city, r.region, r.bio,
+    ...(r.niche || []),
+    ...(contactsByCreator[r.id] || []).map(c => c.value),
+  ].filter(Boolean).join(" "));
+
+  const queryMatches = useMemo(() => {
+    const ql = normalizeSearch(q);
+    if (!ql) return rows;
+    return rows.filter(r => rowSearchText(r).includes(ql));
+  }, [rows, q, contactsByCreator]);
+
   const filtered = useMemo(() => {
-    const ql = q.trim().toLowerCase();
-    return rows.filter(r => {
+    return queryMatches.filter(r => {
       if (platformFilter !== "all" && r.platform !== platformFilter) return false;
       if (nicheFilter !== "all" && !(r.niche || []).includes(nicheFilter)) return false;
       if (minFollowers && (r.follower_count || 0) < minFollowers) return false;
       if (verifiedOnly && !r.verified_at) return false;
       if (hasContact && !(contactsByCreator[r.id]?.length)) return false;
-      if (ql) {
-        const hay = [
-          r.full_name, r.handle, r.city, r.region, r.bio,
-          ...(r.niche || []),
-          ...(contactsByCreator[r.id] || []).map(c => c.value),
-        ].filter(Boolean).join(" ").toLowerCase();
-        if (!hay.includes(ql)) return false;
-      }
       return true;
     });
-  }, [rows, q, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
+  }, [queryMatches, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
+
+  const activeFiltersCount = [platformFilter !== "all", nicheFilter !== "all", !!minFollowers, verifiedOnly, hasContact].filter(Boolean).length;
 
   // Group rows that are clearly the same person across platforms / handle variants.
   const normalizeName = (s: string) =>
@@ -353,7 +367,27 @@ const Discovery = () => {
         </Card>
       ) : (
         <>
-        {q.trim() && ordered.length === 0 && (
+        {q.trim() && ordered.length === 0 && queryMatches.length > 0 && (
+          <Card className="p-8 text-center mb-6 border-dashed">
+            <p className="text-sm text-muted-foreground">
+              Found <strong>{queryMatches.length}</strong> profile{queryMatches.length === 1 ? "" : "s"} matching <strong>"{q}"</strong>, but {activeFiltersCount ? "your current filters are hiding them" : "they are hidden by the current view"}.
+            </p>
+            <Button
+              className="mt-3"
+              variant="outline"
+              onClick={() => {
+                setPlatformFilter("all");
+                setNicheFilter("all");
+                setMinFollowers(0);
+                setVerifiedOnly(false);
+                setHasContact(false);
+              }}
+            >
+              Clear filters and show results
+            </Button>
+          </Card>
+        )}
+        {q.trim() && ordered.length === 0 && queryMatches.length === 0 && (
           <Card className="p-8 text-center mb-6 border-dashed">
             <p className="text-sm text-muted-foreground">No creators in your roster match <strong>"{q}"</strong>.</p>
             <Button
