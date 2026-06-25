@@ -76,11 +76,10 @@ const Overview = () => {
 
   useEffect(() => {
     (async () => {
-      const [c, ca, i, p, lv, pm, posts, briefs, contests, recent, topC] = await Promise.all([
+      const [c, ca, i, lv, pm, posts, briefs, contests, recent, topC] = await Promise.all([
         supabase.from("clients").select("id", { count: "exact", head: true }),
         supabase.from("campaigns").select("id", { count: "exact", head: true }),
         supabase.from("influencers").select("id", { count: "exact", head: true }),
-        supabase.from("payouts").select("net_kes"),
         supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("status", "live"),
         supabase.from("post_metrics").select("captured_at, views, reach, likes, comments, shares, post_id").order("captured_at", { ascending: true }),
         supabase.from("posts").select("id", { count: "exact", head: true }),
@@ -90,12 +89,11 @@ const Overview = () => {
         supabase.from("posts").select("id, caption, campaign_id, influencer_id, campaigns(name), influencers(handle, full_name), post_metrics(views, likes)").limit(50),
       ]);
 
-      const totalPayout = (p.data ?? []).reduce((a: number, r: any) => a + Number(r.net_kes || 0), 0);
       setS({
         clients: c.count ?? 0,
         campaigns: ca.count ?? 0,
         influencers: i.count ?? 0,
-        payouts: totalPayout,
+        payouts: 0,
         live: lv.count ?? 0,
         posts: posts.count ?? 0,
         briefs: briefs.count ?? 0, // content items count
