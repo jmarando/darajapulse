@@ -9,10 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck } from "lucide-react";
+import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck, Phone, Mail, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
-const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook };
+const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, whatsapp: MessageCircle };
 const PLATFORMS = ["instagram", "tiktok", "youtube", "twitter", "facebook"];
 
 const fmtCompact = (n: number) => {
@@ -159,7 +159,7 @@ const Discovery = () => {
   const personContacts = (p: Person) => p.all_ids.flatMap(id => contactsByCreator[id] || []);
 
   const runSeed = async () => {
-    if (!confirm("Generate AI-suggested Kenya creators across all platforms? This runs in the background for several minutes.")) return;
+    if (!confirm("Generate more suggested Kenyan creators across all platforms? This runs in the background for several minutes.")) return;
     setSeeding(true);
     const t = toast.loading("Starting background seed…");
     try {
@@ -227,7 +227,7 @@ const Discovery = () => {
         <div>
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Discovery</div>
           <h1 className="font-display text-4xl font-semibold mt-1">Find creators</h1>
-          <p className="text-sm text-muted-foreground mt-1">AI-suggested Kenyan influencers across Instagram, TikTok, YouTube, X, and Facebook. Verify before outreach.</p>
+          <p className="text-sm text-muted-foreground mt-1">Kenyan creators and industry contacts across Instagram, TikTok, YouTube, X, Facebook and direct WhatsApp/phone. Verify before outreach.</p>
         </div>
         <Button variant="outline" onClick={runSeed} disabled={seeding}>
           {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
@@ -237,7 +237,7 @@ const Discovery = () => {
 
       {/* Matchmaker */}
       <Card className="p-5 mb-6 border-accent/40">
-        <div className="flex items-center gap-2 mb-3"><Wand2 className="w-4 h-4 text-accent" /><h2 className="font-display text-lg">Find creators for a brief</h2></div>
+        <div className="flex items-center gap-2 mb-3"><Wand2 className="w-4 h-4 text-accent" /><h2 className="font-display text-lg">Match creators to a brief</h2></div>
         <div className="grid md:grid-cols-3 gap-3">
           <div><Label>Brand / product</Label><Input value={brief.brand} onChange={e => setBrief({ ...brief, brand: e.target.value })} placeholder="e.g. Lipa Later" /></div>
           <div><Label>Category</Label><Input value={brief.category} onChange={e => setBrief({ ...brief, category: e.target.value })} placeholder="fintech, beauty, food" /></div>
@@ -278,7 +278,7 @@ const Discovery = () => {
             </div>
           </div>
         </div>
-        <div className="mt-3"><Label>Notes</Label><Textarea rows={2} value={brief.notes} onChange={e => setBrief({ ...brief, notes: e.target.value })} placeholder="Anything else the matcher should weigh" /></div>
+        <div className="mt-3"><Label>Notes</Label><Textarea rows={2} value={brief.notes} onChange={e => setBrief({ ...brief, notes: e.target.value })} placeholder="Anything else to weigh in the match" /></div>
         <div className="mt-3 flex gap-2">
           <Button onClick={runMatch} disabled={matching} className="bg-primary">
             {matching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}Rank matches
@@ -328,7 +328,7 @@ const Discovery = () => {
         <Card className="p-16 text-center">
           <Sparkles className="w-10 h-10 mx-auto text-muted-foreground" />
           <h3 className="font-display text-2xl mt-4">No creators yet</h3>
-          <p className="text-muted-foreground mt-2 text-sm">Click <strong>Seed Kenya roster</strong> to brainstorm ~1,000 creators with AI.</p>
+          <p className="text-muted-foreground mt-2 text-sm">Click <strong>Seed Kenya roster</strong> to brainstorm ~1,000 creators.</p>
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
