@@ -65,7 +65,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "rec
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
 
-import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics } from "@/lib/metrics";
+import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
 
 
 const CampaignDetail = () => {
@@ -153,13 +153,7 @@ const CampaignDetail = () => {
         // Load campaign KPIs from the database first. Some campaigns have tens of thousands
         // of metric snapshots, so downloading the full history before rendering made the
         // hero cards sit at 0 even though the metrics existed in Postgres.
-        const { data: peakRows, error: peakErr } = await (supabase as any)
-          .rpc("campaign_post_peak_metrics", { target_campaign_id: id });
-        if (peakErr) throw peakErr;
-        setMetrics((peakRows ?? []).map((row: any) => ({
-          ...row,
-          captured_at: row.captured_at ?? new Date().toISOString(),
-        })));
+        setMetrics(await fetchCampaignPeakMetrics(supabase, id));
 
         // Then hydrate the chart/date-window history in the background. If this fails,
         // keep the peak KPI rows instead of wiping the campaign back to zero.
