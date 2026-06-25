@@ -21,11 +21,12 @@ Deno.serve(async (req) => {
     if (!u?.user) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", u.user.id);
+    const { data: roles } = await admin.from("user_roles").select("role, agency_id").eq("user_id", u.user.id);
     const roleSet = new Set((roles ?? []).map((r: any) => r.role));
     if (!roleSet.has("agency_admin")) {
       return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const callerAgencyId: string | null = (roles ?? []).find((r: any) => r.agency_id)?.agency_id ?? null;
 
     const { email, role, title, redirect_to } = await req.json();
     const cleanEmail = String(email ?? "").trim().toLowerCase();
