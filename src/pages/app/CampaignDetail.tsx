@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,7 @@ import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, 
 
 const CampaignDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [c, setC] = useState<any>(null);
   const [rosterAll, setRosterAll] = useState<any[]>([]);
   const [ci, setCi] = useState<any[]>([]);
@@ -332,6 +333,18 @@ const CampaignDetail = () => {
   const setStatus = async (status: string) => {
     await supabase.from("campaigns").update({ status: status as any }).eq("id", id);
     load();
+  };
+
+  const deleteCampaign = async () => {
+    if (!c) return;
+    const confirmed = window.confirm(`Delete campaign "${c.name}"? This permanently removes its creators, posts and metrics. This cannot be undone.`);
+    if (!confirmed) return;
+    const typed = window.prompt(`Type DELETE to confirm removing "${c.name}"`);
+    if (typed !== "DELETE") { toast.error("Cancelled — confirmation text didn't match"); return; }
+    const { error } = await supabase.from("campaigns").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Campaign deleted");
+    navigate("/app/campaigns");
   };
 
   const saveLearnings = async () => {
@@ -652,6 +665,8 @@ const CampaignDetail = () => {
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setActiveTab("share")}><Sparkles className="w-4 h-4 mr-2" /> Manage sharing</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={deleteCampaign} className="text-destructive focus:text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete campaign</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
