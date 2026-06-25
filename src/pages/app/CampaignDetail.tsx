@@ -335,6 +335,18 @@ const CampaignDetail = () => {
     load();
   };
 
+  const deleteCampaign = async () => {
+    if (!c) return;
+    const confirmed = window.confirm(`Delete campaign "${c.name}"? This permanently removes its creators, posts and metrics. This cannot be undone.`);
+    if (!confirmed) return;
+    const typed = window.prompt(`Type DELETE to confirm removing "${c.name}"`);
+    if (typed !== "DELETE") { toast.error("Cancelled — confirmation text didn't match"); return; }
+    const { error } = await supabase.from("campaigns").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Campaign deleted");
+    navigate("/app/campaigns");
+  };
+
   const saveLearnings = async () => {
     setSavingLearnings(true);
     const { error } = await supabase.from("campaigns").update({ learnings }).eq("id", id);
