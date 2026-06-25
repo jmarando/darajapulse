@@ -665,6 +665,8 @@ const CampaignDetail = () => {
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setActiveTab("share")}><Sparkles className="w-4 h-4 mr-2" /> Manage sharing</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={deleteCampaign} className="text-destructive focus:text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete campaign</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
