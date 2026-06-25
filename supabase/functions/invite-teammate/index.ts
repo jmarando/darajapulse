@@ -50,7 +50,11 @@ Deno.serve(async (req) => {
     }
 
     await admin.from("profiles").upsert({ id: userId!, email: cleanEmail, ...(cleanTitle ? { title: cleanTitle } : {}) }, { onConflict: "id" });
-    await admin.from("user_roles").upsert({ user_id: userId, role: newRole }, { onConflict: "user_id,role" });
+    await admin.from("user_roles").upsert({ user_id: userId, role: newRole, agency_id: callerAgencyId }, { onConflict: "user_id,role" });
+    // Backfill agency_id on any existing row that's missing it
+    if (callerAgencyId) {
+      await admin.from("user_roles").update({ agency_id: callerAgencyId }).eq("user_id", userId).eq("role", newRole).is("agency_id", null);
+    }
 
     return new Response(JSON.stringify({ ok: true, user_id: userId, existed: !!found, role: newRole }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
