@@ -251,7 +251,7 @@ const PublicBrief = () => {
           <div className="mt-8 space-y-3">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">One last step</div>
             <div className="font-display text-xl">Connect your {connectPlatforms.length === 1 ? PLATFORM_LABEL[connectPlatforms[0]] || connectPlatforms[0] : "accounts"}</div>
-            <p className="text-sm text-muted-foreground">So we can track your post performance for the brand and pay you accurately. Read-only access — we never post on your behalf.</p>
+            <p className="text-sm text-muted-foreground">So we can track your post performance for the brand. Read-only access — we never post on your behalf.</p>
             <div className="grid gap-3 sm:grid-cols-2">
               {connectPlatforms.map((p) => {
                 const Icon = PLATFORM_ICON[p] || Music2;
