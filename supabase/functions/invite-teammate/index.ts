@@ -21,11 +21,12 @@ Deno.serve(async (req) => {
     if (!u?.user) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", u.user.id);
+    const { data: roles } = await admin.from("user_roles").select("role, agency_id").eq("user_id", u.user.id);
     const roleSet = new Set((roles ?? []).map((r: any) => r.role));
     if (!roleSet.has("agency_admin")) {
       return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const callerAgencyId: string | null = (roles ?? []).find((r: any) => r.agency_id)?.agency_id ?? null;
 
     const { email, role, title, redirect_to } = await req.json();
     const cleanEmail = String(email ?? "").trim().toLowerCase();
@@ -49,7 +50,11 @@ Deno.serve(async (req) => {
     }
 
     await admin.from("profiles").upsert({ id: userId!, email: cleanEmail, ...(cleanTitle ? { title: cleanTitle } : {}) }, { onConflict: "id" });
-    await admin.from("user_roles").upsert({ user_id: userId, role: newRole }, { onConflict: "user_id,role" });
+    await admin.from("user_roles").upsert({ user_id: userId, role: newRole, agency_id: callerAgencyId }, { onConflict: "user_id,role" });
+    // Backfill agency_id on any existing row that's missing it
+    if (callerAgencyId) {
+      await admin.from("user_roles").update({ agency_id: callerAgencyId }).eq("user_id", userId).eq("role", newRole).is("agency_id", null);
+    }
 
     return new Response(JSON.stringify({ ok: true, user_id: userId, existed: !!found, role: newRole }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
