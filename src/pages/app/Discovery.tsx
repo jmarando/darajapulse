@@ -416,12 +416,37 @@ const Discovery = () => {
                   <Stat label="Profiles" value={String(p.profiles.length)} />
                 </div>
 
-                {/* Niches + actions */}
+                {/* Niches + contacts + actions */}
                 <div className="px-7 pb-5 flex flex-col gap-3">
                   {p.niches.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {p.niches.slice(0, 4).map(n => <Badge key={n} variant="outline" className="text-[10px] font-normal py-0 px-1.5 h-5 capitalize">{n}</Badge>)}
                       {p.niches.length > 4 && <span className="text-[10px] text-muted-foreground self-center">+{p.niches.length - 4}</span>}
+                    </div>
+                  )}
+                  {contacts.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {contacts.slice(0, 3).map(ct => {
+                        const isEmail = ct.kind === "email" || ct.kind === "manager_email";
+                        const isPhone = ct.kind === "phone" || ct.kind === "whatsapp";
+                        const Icon = isEmail ? Mail : isPhone ? Phone : ExternalLink;
+                        const href = isEmail ? `mailto:${ct.value}` : isPhone ? `tel:${ct.value.replace(/\s+/g, "")}` : ct.value;
+                        return (
+                          <a
+                            key={ct.id}
+                            href={href}
+                            target={isEmail || isPhone ? undefined : "_blank"}
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 text-[11px] bg-secondary hover:bg-secondary/70 rounded-lg px-2 py-1 transition-colors max-w-full"
+                            title={`${ct.kind}: ${ct.value}`}
+                          >
+                            <Icon className="w-3 h-3 shrink-0 text-foreground/70" />
+                            <span className="truncate max-w-[160px] font-medium text-foreground/80">{ct.value}</span>
+                          </a>
+                        );
+                      })}
+                      {contacts.length > 3 && <span className="text-[10px] text-muted-foreground self-center">+{contacts.length - 3}</span>}
                     </div>
                   )}
                   <div className="flex gap-1.5">
