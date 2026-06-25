@@ -239,44 +239,6 @@ const PublicBrief = () => {
           </Card>
         )}
 
-        {b.fee_kes > 0 && b.campaign.wht_percent > 0 && (
-          <Card className="p-5 mt-4 bg-secondary/50">
-            <div className="flex items-start gap-3">
-              <FileText className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-              <div className="text-sm">
-                <div className="font-medium">Payment & withholding tax</div>
-                <p className="text-muted-foreground mt-1">
-                  Gross fee: KES {Number(b.fee_kes).toLocaleString()} · WHT ({b.campaign.wht_percent}%): KES {Math.round(Number(b.fee_kes) * Number(b.campaign.wht_percent) / 100).toLocaleString()} · <span className="text-foreground font-medium">Net to you: KES {Math.round(Number(b.fee_kes) * (1 - Number(b.campaign.wht_percent) / 100)).toLocaleString()}</span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">Paid via M-Pesa after content goes live and is approved. We file WHT on your behalf.</p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Payment timeline — content → payout */}
-        <Card className="p-6 mt-4">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">How you get paid</div>
-          <h3 className="font-display text-xl mt-1 mb-5">From acceptance to M-Pesa</h3>
-          <ol className="relative">
-            {paymentSteps.map((s, i) => {
-              const Icon = s.icon;
-              const isLast = i === paymentSteps.length - 1;
-              return (
-                <li key={i} className="relative flex gap-4 pb-5 last:pb-0">
-                  {!isLast && <span aria-hidden className="absolute left-[18px] top-9 bottom-0 w-px bg-border" />}
-                  <div className="w-9 h-9 rounded-full bg-accent/15 text-accent flex items-center justify-center shrink-0 ring-4 ring-background">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 pt-1">
-                    <div className="text-sm font-medium">{s.label}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{s.desc}</div>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        </Card>
 
         {/* Status indicator on page (sticky bar handles primary CTAs) */}
         <div className="mt-8 flex items-center gap-3 flex-wrap">
