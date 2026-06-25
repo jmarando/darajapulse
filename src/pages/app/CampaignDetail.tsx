@@ -70,6 +70,7 @@ import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, 
 
 const CampaignDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [c, setC] = useState<any>(null);
   const [rosterAll, setRosterAll] = useState<any[]>([]);
   const [ci, setCi] = useState<any[]>([]);
