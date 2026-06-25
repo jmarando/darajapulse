@@ -94,10 +94,7 @@ const TopBar = ({ user }: any) => {
   const initial = (user.email || "?")[0].toUpperCase();
   return (
     <header className="hidden lg:flex items-center gap-4 px-8 h-16 border-b border-border bg-background/80 backdrop-blur sticky top-0 z-20">
-      <div className="flex-1 max-w-md relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Search campaigns, creators, briefs…" className="pl-9 h-10 bg-secondary/50 border-secondary rounded-lg text-sm" />
-      </div>
+      <div className="flex-1" />
       <div className="ml-auto flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full"><Bell className="w-4 h-4" /></Button>
         <div className="h-10 w-10 rounded-full bg-gradient-warm text-accent-foreground flex items-center justify-center font-semibold text-sm shadow-soft">
