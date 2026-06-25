@@ -30,6 +30,17 @@ type Creator = {
 };
 type Contact = { id: string; creator_id: string; kind: string; value: string; label?: string; is_public: boolean };
 
+const Stat = ({ label, value, suffix }: { label: string; value: string; suffix?: string }) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-[9px] font-bold text-background/50 uppercase tracking-[0.2em]">{label}</span>
+    <div className="flex items-baseline gap-1">
+      <span className="font-display text-2xl md:text-[1.65rem] font-semibold text-background tracking-tight tabular-nums">{value}</span>
+      {suffix && <span className="text-sm font-medium text-background/60">{suffix}</span>}
+    </div>
+  </div>
+);
+const Divider = () => <div className="h-9 w-px bg-background/15" />;
+
 const Discovery = () => {
   const [rows, setRows] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
