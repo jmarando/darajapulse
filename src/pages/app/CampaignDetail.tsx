@@ -202,6 +202,22 @@ const CampaignDetail = () => {
     load();
   };
 
+  const removeCi = async (x: any) => {
+    const name = x?.influencers?.full_name || "this creator";
+    if (!window.confirm(`Remove ${name} from this campaign? Their posts and metrics in this campaign will also be deleted.`)) return;
+    // Remove dependent posts first (post_metrics cascade from posts)
+    const { data: relPosts } = await supabase.from("posts").select("id").eq("campaign_id", id).eq("influencer_id", x.influencer_id);
+    if (relPosts && relPosts.length) {
+      const ids = relPosts.map((p: any) => p.id);
+      await supabase.from("post_metrics").delete().in("post_id", ids);
+      await supabase.from("posts").delete().in("id", ids);
+    }
+    const { error } = await supabase.from("campaign_influencers").delete().eq("id", x.id);
+    if (error) return toast.error(error.message);
+    toast.success(`${name} removed`);
+    load();
+  };
+
   const saveEdit = async (ciId: string) => {
     const total = breakdownTotal(editBreakdown);
     await updateCi(ciId, { fee_kes: Number(editFee) || 0, deliverables_count: total > 0 ? total : 1, deliverables_breakdown: editBreakdown as any });
