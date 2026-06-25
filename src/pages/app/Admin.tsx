@@ -42,6 +42,7 @@ export default function Admin() {
           <TabsTrigger value="clients">Clients</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="demo-requests">Demo Requests</TabsTrigger>
         </TabsList>
         <TabsContent value="dashboard"><Dashboard /></TabsContent>
         <TabsContent value="agencies"><AgenciesTab /></TabsContent>
@@ -49,6 +50,7 @@ export default function Admin() {
         <TabsContent value="clients"><ClientsTab /></TabsContent>
         <TabsContent value="users"><UsersTab /></TabsContent>
         <TabsContent value="billing"><BillingTab /></TabsContent>
+        <TabsContent value="demo-requests"><DemoRequestsTab /></TabsContent>
       </Tabs>
     </div>
   );
