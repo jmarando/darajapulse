@@ -139,9 +139,70 @@ Never invent. If unsure, return empty strings.`
   console.log(`[discovery-enrich] DONE promoted=${promoted} contacts_added=${contactsAdded}`);
 }
 
+async function findByName(query: string) {
+  const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+  const parsed = await ai(
+    `Find the Kenyan creator/influencer/personality matching "${query}". Return strict JSON:
+{
+  "full_name":"canonical name",
+  "city":"Kenyan city or empty",
+  "bio":"short bio under 140 chars or empty",
+  "niche":["lowercase",...] (max 4),
+  "socials":[{"platform":"instagram|tiktok|youtube|twitter|facebook","handle":"no-at","profile_url":"https://...","follower_estimate":int,"engagement_estimate":float,"verified":bool}],
+  "contacts":[{"kind":"email|manager_email|phone","value":"...","is_public":true}]
+}
+Only include socials/contacts you're confident exist for THIS exact person. If you can't identify them confidently, return {"full_name":"","socials":[]}.`
+  );
+  if (!parsed?.full_name) return { ok: false, message: "Couldn't confidently identify that person." };
+  const inserted: any[] = [];
+  for (const s of parsed.socials ?? []) {
+    const platform = String(s.platform || "").toLowerCase();
+    const handle = String(s.handle || "").replace(/^@/, "").toLowerCase();
+    if (!handle || !["instagram", "tiktok", "youtube", "twitter", "facebook"].includes(platform)) continue;
+    const { data: exists } = await supabase
+      .from("discovery_creators").select("id").eq("platform", platform).eq("handle", handle).maybeSingle();
+    let id = exists?.id;
+    if (!id) {
+      const { data: ins, error } = await supabase.from("discovery_creators").insert({
+        full_name: parsed.full_name,
+        handle, platform,
+        profile_url: s.profile_url ?? null,
+        niche: Array.isArray(parsed.niche) ? parsed.niche.slice(0, 4) : [],
+        region: "Kenya", city: parsed.city || null,
+        follower_count: Number(s.follower_estimate) || 0,
+        engagement_rate: Number(s.engagement_estimate) || 0,
+        bio: parsed.bio || null,
+        source: "ai_search",
+        ai_confidence: 0.55,
+        verified_at: s.verified ? new Date().toISOString() : null,
+      }).select("id").maybeSingle();
+      if (error) continue;
+      id = ins?.id;
+    }
+    if (id) inserted.push({ id, platform, handle });
+  }
+  // Attach contacts to the first/best inserted profile.
+  const anchorId = inserted[0]?.id;
+  if (anchorId) {
+    for (const c of parsed.contacts ?? []) {
+      const value = String(c.value || "").trim();
+      if (!value || value.length < 4) continue;
+      await supabase.from("discovery_contacts").upsert({
+        creator_id: anchorId, kind: c.kind, value, is_public: c.is_public !== false, label: "from search",
+      }, { onConflict: "creator_id,kind,value" as any, ignoreDuplicates: true } as any).catch(() => {});
+    }
+  }
+  return { ok: true, name: parsed.full_name, added: inserted.length, profiles: inserted };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    const body = await req.json().catch(() => ({}));
+    if (body?.query && typeof body.query === "string") {
+      const result = await findByName(body.query.trim());
+      return new Response(JSON.stringify(result), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     // @ts-ignore EdgeRuntime is provided by Supabase
     EdgeRuntime.waitUntil(runEnrich());
     return new Response(JSON.stringify({
