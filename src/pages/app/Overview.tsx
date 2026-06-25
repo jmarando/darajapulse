@@ -212,11 +212,10 @@ const Overview = () => {
       ) : (
         <>
       {/* Primary KPIs */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <Stat icon={Building2} label="Clients" value={s.clients} to="/app/clients" />
         <Stat icon={Megaphone} label="Campaigns" value={s.campaigns} delta={`${s.live} live now`} to="/app/campaigns" />
         <Stat icon={Users} label="Influencers" value={s.influencers} to="/app/influencers" />
-        <Stat icon={Wallet} label="Paid (KES)" value={s.payouts.toLocaleString()} to="/app/payouts" />
       </div>
 
       {/* Secondary KPIs */}
