@@ -25,14 +25,27 @@ export default function DemoRequestDialog({ open, onOpenChange }: Props) {
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "demo-request",
-          recipientEmail: "justin@glab.africa",
-          templateData: form,
-        },
+      // Persist to the database so Super Admin can see it even if email fails.
+      const { error: insertErr } = await (supabase.from("demo_requests") as any).insert({
+        name: form.name,
+        email: form.email,
+        company: form.company || null,
+        role: form.role || null,
+        message: form.message || null,
+        source: "website",
       });
-      if (error) throw error;
+      if (insertErr) throw insertErr;
+
+      // Fire-and-forget notification email; don't block the success state on it.
+      supabase.functions
+        .invoke("send-transactional-email", {
+          body: {
+            templateName: "demo-request",
+            recipientEmail: "justin@glab.africa",
+            templateData: form,
+          },
+        })
+        .catch(() => {});
       setDone(true);
     } catch (err: any) {
       toast({ title: "Could not send request", description: err?.message ?? "Please try again.", variant: "destructive" });
@@ -53,7 +66,7 @@ export default function DemoRequestDialog({ open, onOpenChange }: Props) {
           <div className="py-10 text-center">
             <CheckCircle2 className="size-12 text-accent mx-auto mb-4" strokeWidth={1.5} />
             <h3 className="font-display text-2xl font-semibold mb-2">Request received</h3>
-            <p className="text-muted-foreground text-sm">Justin will be in touch within one business day.</p>
+            <p className="text-muted-foreground text-sm">We'll be in touch within one business day.</p>
           </div>
         ) : (
           <>
