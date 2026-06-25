@@ -51,6 +51,7 @@ const Discovery = () => {
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [hasContact, setHasContact] = useState(false);
   const [contactsByCreator, setContactsByCreator] = useState<Record<string, Contact[]>>({});
+  const [lookupSearching, setLookupSearching] = useState(false);
 
   // Matchmaker
   const [brief, setBrief] = useState({ brand: "", category: "", audience: "", platforms: [] as string[], budget_tier: "any", goal: "awareness", notes: "" });
@@ -96,9 +97,12 @@ const Discovery = () => {
   ].filter(Boolean).join(" "));
 
   const queryMatches = useMemo(() => {
-    const ql = normalizeSearch(q);
-    if (!ql) return rows;
-    return rows.filter(r => rowSearchText(r).includes(ql));
+    const terms = normalizeSearch(q).split(" ").filter(Boolean);
+    if (!terms.length) return rows;
+    return rows.filter(r => {
+      const haystack = rowSearchText(r);
+      return terms.every(term => haystack.includes(term));
+    });
   }, [rows, q, contactsByCreator]);
 
   const filtered = useMemo(() => {
@@ -113,6 +117,14 @@ const Discovery = () => {
   }, [queryMatches, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
 
   const activeFiltersCount = [platformFilter !== "all", nicheFilter !== "all", !!minFollowers, verifiedOnly, hasContact].filter(Boolean).length;
+
+  const clearDiscoveryFilters = () => {
+    setPlatformFilter("all");
+    setNicheFilter("all");
+    setMinFollowers(0);
+    setVerifiedOnly(false);
+    setHasContact(false);
+  };
 
   // Group rows that are clearly the same person across platforms / handle variants.
   const normalizeName = (s: string) =>
@@ -178,6 +190,38 @@ const Discovery = () => {
     return best;
   };
   const personContacts = (p: Person) => p.all_ids.flatMap(id => contactsByCreator[id] || []);
+
+  const lookupCreator = async (rawQuery = q) => {
+    const trimmed = rawQuery.trim();
+    if (!trimmed || lookupSearching) return;
+    setLookupSearching(true);
+    const t = toast.loading(`Looking up "${trimmed}" across socials…`);
+    try {
+      const { data, error } = await supabase.functions.invoke("discovery-enrich", { body: { query: trimmed } });
+      if (error) throw error;
+      if (!data?.ok) {
+        toast.error(data?.message || "Couldn't identify that person.", { id: t });
+        return;
+      }
+      toast.success(`Added ${data.added} profile${data.added === 1 ? "" : "s"} for ${data.name}`, { id: t });
+      await load();
+    } catch (e: any) {
+      toast.error(e.message || "Lookup failed", { id: t });
+    } finally {
+      setLookupSearching(false);
+    }
+  };
+
+  const submitSearch = async () => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    if (queryMatches.length > 0) {
+      if (activeFiltersCount) clearDiscoveryFilters();
+      toast.success(`Showing ${queryMatches.length} matching profile${queryMatches.length === 1 ? "" : "s"}`);
+      return;
+    }
+    await lookupCreator(trimmed);
+  };
 
   const runSeed = async () => {
     if (!confirm("Generate more suggested Kenyan creators across all platforms? This runs in the background for several minutes.")) return;
@@ -326,8 +370,25 @@ const Discovery = () => {
       <div className="flex gap-2 mb-4 flex-wrap items-center">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Name, handle, city…" value={q} onChange={e => setQ(e.target.value)} />
+          <Input
+            className="pl-9"
+            placeholder="Name, handle, city…"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void submitSearch();
+              }
+            }}
+            aria-label="Search creators"
+          />
         </div>
+        <Button type="button" variant="secondary" onClick={() => void submitSearch()} disabled={loading || lookupSearching || !q.trim()}>
+          {lookupSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+          Search
+        </Button>
+        {q.trim() && <Button type="button" variant="ghost" onClick={() => setQ("")}>Clear</Button>}
         <Select value={platformFilter} onValueChange={setPlatformFilter}>
           <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -375,13 +436,7 @@ const Discovery = () => {
             <Button
               className="mt-3"
               variant="outline"
-              onClick={() => {
-                setPlatformFilter("all");
-                setNicheFilter("all");
-                setMinFollowers(0);
-                setVerifiedOnly(false);
-                setHasContact(false);
-              }}
+              onClick={clearDiscoveryFilters}
             >
               Clear filters and show results
             </Button>
@@ -392,18 +447,11 @@ const Discovery = () => {
             <p className="text-sm text-muted-foreground">No creators in your roster match <strong>"{q}"</strong>.</p>
             <Button
               className="mt-3"
-              onClick={async () => {
-                const t = toast.loading(`Looking up "${q}" across socials…`);
-                try {
-                  const { data, error } = await supabase.functions.invoke("discovery-enrich", { body: { query: q.trim() } });
-                  if (error) throw error;
-                  if (!data?.ok) { toast.error(data?.message || "Couldn't identify that person.", { id: t }); return; }
-                  toast.success(`Added ${data.added} profile${data.added === 1 ? "" : "s"} for ${data.name}`, { id: t });
-                  await load();
-                } catch (e: any) { toast.error(e.message || "Lookup failed", { id: t }); }
-              }}
+              onClick={() => void lookupCreator(q)}
+              disabled={lookupSearching}
             >
-              <Wand2 className="w-4 h-4 mr-2" />Find "{q}" across socials
+              {lookupSearching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
+              Find "{q}" across socials
             </Button>
           </Card>
         )}
