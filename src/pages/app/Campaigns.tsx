@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Megaphone, ArrowUpRight, Eye, BarChart3, FileText, Trophy, Users, Pencil } from "lucide-react";
+import { Plus, Megaphone, ArrowUpRight, Eye, BarChart3, FileText, Trophy, Users, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -53,6 +53,9 @@ const Campaigns = () => {
   const [form, setForm] = useState<any>({ client_id: "", name: "", brief: "", hashtag: "", budget_kes: 0, status: "draft", brief_template_id: "" });
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   const [savingName, setSavingName] = useState(false);
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deletingNow, setDeletingNow] = useState(false);
 
   const load = async () => {
     const { data } = await supabase.from("campaigns").select("*, clients(name, logo_url)").order("created_at", { ascending: false });
@@ -130,6 +133,19 @@ const Campaigns = () => {
     setEditing(null);
     load();
   };
+
+  const doDelete = async () => {
+    if (!deleting || deleteConfirm !== "DELETE") return;
+    setDeletingNow(true);
+    const { error } = await supabase.from("campaigns").delete().eq("id", deleting.id);
+    setDeletingNow(false);
+    if (error) return toast.error(error.message);
+    toast.success("Campaign deleted");
+    setDeleting(null);
+    setDeleteConfirm("");
+    load();
+  };
+
 
   useEffect(() => {
     if (!form.client_id) { setTemplates([]); return; }
@@ -246,7 +262,16 @@ const Campaigns = () => {
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleting({ id: r.id, name: r.name }); setDeleteConfirm(""); }}
+                      className="mt-1 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                      aria-label="Delete campaign"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
+
 
                   <div className="flex flex-wrap items-center gap-3">
                     {r.hashtag && (
@@ -312,7 +337,33 @@ const Campaigns = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete dialog */}
+      <Dialog open={!!deleting} onOpenChange={(o) => { if (!o) { setDeleting(null); setDeleteConfirm(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="font-display text-xl">Delete campaign</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              This permanently deletes <span className="font-semibold text-foreground">{deleting?.name}</span> and all its posts, creators, and metrics. This cannot be undone.
+            </p>
+            <div>
+              <Label>Type <span className="font-mono font-bold">DELETE</span> to confirm</Label>
+              <Input
+                autoFocus
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") doDelete(); }}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setDeleting(null); setDeleteConfirm(""); }}>Cancel</Button>
+              <Button variant="destructive" onClick={doDelete} disabled={deletingNow || deleteConfirm !== "DELETE"}>Delete</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 export default Campaigns;
