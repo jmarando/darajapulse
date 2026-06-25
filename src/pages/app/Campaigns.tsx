@@ -134,6 +134,19 @@ const Campaigns = () => {
     load();
   };
 
+  const doDelete = async () => {
+    if (!deleting || deleteConfirm !== "DELETE") return;
+    setDeletingNow(true);
+    const { error } = await supabase.from("campaigns").delete().eq("id", deleting.id);
+    setDeletingNow(false);
+    if (error) return toast.error(error.message);
+    toast.success("Campaign deleted");
+    setDeleting(null);
+    setDeleteConfirm("");
+    load();
+  };
+
+
   useEffect(() => {
     if (!form.client_id) { setTemplates([]); return; }
     supabase.from("brief_templates").select("id,name").eq("client_id", form.client_id).order("updated_at", { ascending: false })
