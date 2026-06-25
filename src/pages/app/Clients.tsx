@@ -292,7 +292,7 @@ const Clients = () => {
             <DialogTitle className="font-display text-2xl">Access — {memberClient?.name}</DialogTitle>
           </DialogHeader>
           <div className="text-xs uppercase tracking-widest text-muted-foreground mt-2">Brand contacts</div>
-          <p className="text-sm text-muted-foreground">Invite people from the brand to log in and view their campaigns. They won't see fees, payouts, or other clients.</p>
+          <p className="text-sm text-muted-foreground">Invite people from the brand to log in and view their campaigns. They won't see fees or other clients.</p>
 
           <div className="border rounded-md p-3 space-y-3 bg-secondary/30">
             <div className="flex gap-2">
