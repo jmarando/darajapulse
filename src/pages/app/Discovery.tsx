@@ -354,7 +354,16 @@ const Discovery = () => {
                       <div className="relative shrink-0">
                         <div className="absolute -inset-1.5 bg-gradient-to-tr from-primary to-accent rounded-2xl blur-md opacity-15 group-hover:opacity-35 transition-opacity" />
                         <div className="relative w-16 h-16 rounded-xl bg-white border border-border flex items-center justify-center shadow-sm overflow-hidden font-display text-2xl uppercase text-foreground/70">
-                          {p.full_name?.[0] ?? "?"}
+                          {p.primary.avatar_url ? (
+                            <img
+                              src={p.primary.avatar_url}
+                              alt={p.full_name}
+                              loading="lazy"
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                            />
+                          ) : null}
+                          <span className="relative">{p.full_name?.[0] ?? "?"}</span>
                         </div>
                       </div>
                       <div className="min-w-0">
@@ -369,11 +378,7 @@ const Discovery = () => {
                         <BadgeCheck className="w-3 h-3 text-success" />
                         <span className="text-[10px] font-bold text-success uppercase tracking-widest">Verified</span>
                       </div>
-                    ) : (
-                      <div className="px-3 py-1.5 rounded-full bg-secondary border border-border shrink-0">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">AI {Math.round(p.ai_confidence * 100)}%</span>
-                      </div>
-                    )}
+                    ) : null}
                   </div>
 
                   <h2 className="font-display text-2xl md:text-[1.6rem] font-semibold text-foreground leading-[1.15] break-words mb-3 group-hover:text-primary transition-colors duration-300">
