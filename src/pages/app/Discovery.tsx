@@ -236,10 +236,24 @@ const Discovery = () => {
           <h1 className="font-display text-4xl font-semibold mt-1">Find creators</h1>
           <p className="text-sm text-muted-foreground mt-1">Kenyan creators and industry contacts across Instagram, TikTok, YouTube, X, Facebook and direct WhatsApp/phone. Verify before outreach.</p>
         </div>
-        <Button variant="outline" onClick={runSeed} disabled={seeding}>
-          {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-          {rows.length ? "Top up roster" : "Seed Kenya roster"}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={async () => {
+            const t = toast.loading("Pulling socials + contacts in background…");
+            try {
+              const { data, error } = await supabase.functions.invoke("discovery-enrich", { body: {} });
+              if (error) throw error;
+              toast.success(data?.message || "Enrichment started", { id: t, duration: 8000 });
+              setTimeout(load, 60_000);
+              setTimeout(load, 180_000);
+            } catch (e: any) { toast.error(e.message || "Enrich failed", { id: t }); }
+          }}>
+            <BadgeCheck className="w-4 h-4 mr-2" />Enrich contacts
+          </Button>
+          <Button variant="outline" onClick={runSeed} disabled={seeding}>
+            {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+            {rows.length ? "Top up roster" : "Seed Kenya roster"}
+          </Button>
+        </div>
       </div>
 
       {/* Matchmaker */}
