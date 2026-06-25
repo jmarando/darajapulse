@@ -114,7 +114,6 @@ const App = () => (
               <Route path="admin" element={<Admin />} />
               <Route path="admin/billing" element={<AdminBilling />} />
               <Route path="approvals" element={<Stub title="Approvals" body="Two-round content approvals with versioning and threaded comments per asset. Ships in v0.2." />} />
-              <Route path="payouts" element={<Stub title="Payouts" body="M-Pesa B2C disbursements via Daraja API with WHT computation and e-TIMS-ready records. Ships in v0.2." />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
