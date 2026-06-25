@@ -38,12 +38,6 @@ const navGroups: { label?: string; items: { to: string; icon: any; label: string
       { to: "/app/inventory", icon: Store, label: "Storefront" },
     ],
   },
-  {
-    label: "Finance",
-    items: [
-      { to: "/app/payouts", icon: Wallet, label: "Payouts" },
-    ],
-  },
 ];
 
 const SidebarBody = ({ user, isAdmin, isSuper, onSignOut, onNavigate }: any) => (
