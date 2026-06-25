@@ -367,7 +367,27 @@ const Discovery = () => {
         </Card>
       ) : (
         <>
-        {q.trim() && ordered.length === 0 && (
+        {q.trim() && ordered.length === 0 && queryMatches.length > 0 && (
+          <Card className="p-8 text-center mb-6 border-dashed">
+            <p className="text-sm text-muted-foreground">
+              Found <strong>{queryMatches.length}</strong> profile{queryMatches.length === 1 ? "" : "s"} matching <strong>"{q}"</strong>, but {activeFiltersCount ? "your current filters are hiding them" : "they are hidden by the current view"}.
+            </p>
+            <Button
+              className="mt-3"
+              variant="outline"
+              onClick={() => {
+                setPlatformFilter("all");
+                setNicheFilter("all");
+                setMinFollowers(0);
+                setVerifiedOnly(false);
+                setHasContact(false);
+              }}
+            >
+              Clear filters and show results
+            </Button>
+          </Card>
+        )}
+        {q.trim() && ordered.length === 0 && queryMatches.length === 0 && (
           <Card className="p-8 text-center mb-6 border-dashed">
             <p className="text-sm text-muted-foreground">No creators in your roster match <strong>"{q}"</strong>.</p>
             <Button
