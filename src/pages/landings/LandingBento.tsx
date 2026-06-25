@@ -44,7 +44,7 @@ const LandingBento = () => (
         {/* Subhead */}
         <div className="col-span-12 md:col-span-4 rounded-2xl bg-secondary p-5 flex items-center">
           <p className="text-sm leading-snug">
-            Brief, approve, publish, measure and pay across TikTok, Instagram, YouTube and X. The end of the PDF report.
+            Brief, approve, publish and measure across TikTok, Instagram, YouTube and X. The end of the PDF report.
           </p>
         </div>
 
