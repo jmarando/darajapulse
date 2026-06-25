@@ -81,14 +81,21 @@ const Discovery = () => {
   }, [rows]);
 
   const filtered = useMemo(() => {
-    const ql = q.toLowerCase();
+    const ql = q.trim().toLowerCase();
     return rows.filter(r => {
       if (platformFilter !== "all" && r.platform !== platformFilter) return false;
       if (nicheFilter !== "all" && !(r.niche || []).includes(nicheFilter)) return false;
       if (minFollowers && (r.follower_count || 0) < minFollowers) return false;
       if (verifiedOnly && !r.verified_at) return false;
       if (hasContact && !(contactsByCreator[r.id]?.length)) return false;
-      if (ql && !(r.full_name.toLowerCase().includes(ql) || (r.handle || "").toLowerCase().includes(ql) || (r.city || "").toLowerCase().includes(ql))) return false;
+      if (ql) {
+        const hay = [
+          r.full_name, r.handle, r.city, r.region, r.bio,
+          ...(r.niche || []),
+          ...(contactsByCreator[r.id] || []).map(c => c.value),
+        ].filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(ql)) return false;
+      }
       return true;
     });
   }, [rows, q, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
