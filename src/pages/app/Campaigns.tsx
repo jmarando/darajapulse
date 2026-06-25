@@ -182,85 +182,100 @@ const Campaigns = () => {
           <h3 className="font-display text-2xl mt-4">No campaigns yet</h3>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {rows.map(r => (
-            <Link key={r.id} to={`/app/campaigns/${r.id}`}>
-              <Card className="p-5 hover:shadow-elegant transition-all hover:-translate-y-0.5 group h-full">
-                <div className="flex items-start gap-3">
-                  {r.clients?.logo_url ? (
-                    <div className="w-11 h-11 rounded-md bg-white border border-border shrink-0 flex items-center justify-center overflow-hidden">
-                      <img src={r.clients.logo_url} alt={`${r.clients?.name} logo`} className="max-w-[80%] max-h-[80%] object-contain" loading="lazy" />
+        <div className="grid md:grid-cols-2 gap-6">
+          {rows.map(r => {
+            const isLive = r.status === "live";
+            const cp = contestPerf[r.id];
+            const hasContest = !!cp?.contests;
+            return (
+            <Link key={r.id} to={`/app/campaigns/${r.id}`} className="group">
+              <Card className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-0 shadow-sm hover:shadow-elegant hover:-translate-y-1 transition-all duration-500 h-full flex flex-col">
+                {/* Header */}
+                <div className="p-7 pb-5">
+                  <div className="flex justify-between items-start mb-6 gap-3">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="relative shrink-0">
+                        <div className="absolute -inset-1.5 bg-gradient-to-tr from-primary to-accent rounded-2xl blur-md opacity-15 group-hover:opacity-35 transition-opacity" />
+                        <div className="relative w-16 h-16 rounded-xl bg-white border border-border flex items-center justify-center p-2 shadow-sm overflow-hidden">
+                          {r.clients?.logo_url ? (
+                            <img src={r.clients.logo_url} alt={`${r.clients?.name} logo`} className="max-w-full max-h-full object-contain" loading="lazy" />
+                          ) : (
+                            <span className="font-display text-lg text-muted-foreground">{(r.clients?.name || "?").slice(0,2).toUpperCase()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold tracking-[0.22em] text-muted-foreground uppercase truncate">{r.clients?.name}</p>
+                        <p className="text-[11px] font-semibold text-foreground/70 mt-0.5 uppercase tracking-wider">Brand Partner</p>
+                      </div>
                     </div>
+                    {isLive ? (
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 shrink-0">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                        </span>
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Live</span>
+                      </div>
+                    ) : (
+                      <Badge className={`${statusColor[r.status]} shrink-0 uppercase text-[10px] tracking-widest font-bold px-3 py-1`}>{r.status}</Badge>
+                    )}
+                  </div>
+
+                  <div className="flex items-start gap-1.5 mb-4">
+                    <h2 className="font-display text-2xl md:text-[1.6rem] font-semibold text-foreground leading-[1.15] break-words flex-1 group-hover:text-primary transition-colors duration-300">
+                      {r.name}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditing({ id: r.id, name: r.name }); }}
+                      className="mt-1 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                      aria-label="Rename campaign"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    {r.hashtag && (
+                      <div className="px-3 py-1 bg-secondary rounded-lg">
+                        <span className="text-xs font-semibold text-foreground/80 tracking-tight">{r.hashtag.startsWith("#") ? r.hashtag : `#${r.hashtag}`}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Budget</span>
+                      <span className="text-xs font-bold text-foreground tabular-nums">KES {Number(r.budget_kes).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KPI strip */}
+                <div className="mx-5 mb-5 rounded-2xl bg-foreground text-background p-6 flex items-center justify-between shadow-lg mt-auto">
+                  {hasContest ? (
+                    <>
+                      <Stat label="Contestants" value={fmtNum(cp.contestants)} />
+                      <Divider />
+                      <Stat label="Entries" value={fmtNum(cp.entries)} />
+                      <Divider />
+                      <Stat label="Views" value={fmtNum(cp.views)} />
+                    </>
                   ) : (
-                    <div className="w-11 h-11 rounded-md bg-muted shrink-0 flex items-center justify-center text-xs font-display text-muted-foreground">
-                      {(r.clients?.name || "?").slice(0, 2).toUpperCase()}
-                    </div>
+                    <>
+                      <Stat label="Views" value={fmtNum(perf[r.id]?.views ?? 0)} />
+                      <Divider />
+                      <Stat label="Engagement" value={`${(perf[r.id]?.er ?? 0).toFixed(1)}`} suffix="%" />
+                      <Divider />
+                      <Stat label="Posts" value={String(perf[r.id]?.posts ?? 0)} />
+                    </>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs uppercase tracking-widest text-muted-foreground truncate">{r.clients?.name}</div>
-                    <div className="flex items-start gap-1.5">
-                      <div className="font-display text-xl mt-0.5 leading-tight break-words flex-1">{r.name}</div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditing({ id: r.id, name: r.name }); }}
-                        className="mt-1 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        aria-label="Rename campaign"
-                        title="Rename campaign"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <Badge className={`${statusColor[r.status]} shrink-0`}>{r.status}</Badge>
                 </div>
-                <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
-                  <span className="truncate">{r.hashtag || "—"}</span>
-                  <span className="font-display text-foreground shrink-0 ml-3">KES {Number(r.budget_kes).toLocaleString()}</span>
-                </div>
-                {/* Performance preview — contest metrics when a contest exists, otherwise post performance */}
-                {contestPerf[r.id]?.contests ? (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-                      <Trophy className="w-3 h-3 text-highlight" /> Contest
-                      <span className="ml-auto normal-case tracking-normal text-muted-foreground/70">{contestPerf[r.id].contests} active</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Users className="w-3 h-3" /> Contestants</div>
-                        <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(contestPerf[r.id].contestants)}</div>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Entries</div>
-                        <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(contestPerf[r.id].entries)}</div>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
-                        <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(contestPerf[r.id].views)}</div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-3">
-                    <div>
-                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><Eye className="w-3 h-3" /> Views</div>
-                      <div className="font-display text-lg mt-0.5 tabular-nums">{fmtNum(perf[r.id]?.views ?? 0)}</div>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><BarChart3 className="w-3 h-3" /> ER</div>
-                      <div className="font-display text-lg mt-0.5 tabular-nums">{(perf[r.id]?.er ?? 0).toFixed(1)}%</div>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground"><FileText className="w-3 h-3" /> Posts</div>
-                      <div className="font-display text-lg mt-0.5 tabular-nums">{perf[r.id]?.posts ?? 0}</div>
-                    </div>
-                  </div>
-                )}
-                <div className="flex justify-end mt-2">
-                  <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
+
+                {/* Accent bar */}
+                <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary" />
               </Card>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
 
