@@ -53,7 +53,7 @@ function TopNav({ onDemo }: { onDemo: () => void }) {
         <div className="flex items-center gap-10 min-w-0">
           <Link to="/" className="flex items-center gap-2 md:gap-3 min-w-0">
             <img src={logo} alt="DarajaPulse" className="h-10 md:h-14 w-auto shrink-0" data-no-outline />
-            <span className="hidden sm:inline font-display font-semibold tracking-tight text-lg truncate">DarajaPulse</span>
+            <span className="hidden lg:inline font-display font-semibold tracking-tight text-lg truncate">DarajaPulse</span>
           </Link>
           <div className="hidden md:flex gap-6">
             <a href="#capabilities" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Platform</a>
@@ -63,7 +63,7 @@ function TopNav({ onDemo }: { onDemo: () => void }) {
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
           <Link
             to="/auth"
-            className="text-sm font-medium px-3 py-2 rounded hover:bg-secondary transition-[background-color,scale] active:scale-[0.96]"
+            className="text-sm font-medium px-3 py-2 rounded hover:bg-secondary transition-[background-color,scale] active:scale-[0.96] whitespace-nowrap"
           >
             Sign In
           </Link>
