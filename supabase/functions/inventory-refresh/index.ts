@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
   await Promise.all(targets.map(async (r: any) => {
     const s = await fetchAny(r.platform, r.handle);
     if (!s) { results.push({ id: r.id, skipped: "no_data" }); return; }
-    const update: any = { follower_count: s.followers, last_synced_at: new Date().toISOString() };
+    const update: any = { follower_count: s.followers };
     if (s.engagement_rate > 0) update.engagement_rate = s.engagement_rate;
     const { error } = await (supabase.from("inventory_items") as any).update(update).eq("id", r.id);
     results.push({ id: r.id, ...update, error: error?.message });
