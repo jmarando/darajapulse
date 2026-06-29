@@ -1,0 +1,1 @@
+UPDATE public.brand_orgs SET subdomain = lower(subdomain), slug = lower(slug) WHERE id = 'c5bca915-bd9d-4f5a-9939-60a8cf985940';
