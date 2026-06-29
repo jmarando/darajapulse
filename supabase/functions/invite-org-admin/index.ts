@@ -84,16 +84,19 @@ Deno.serve(async (req) => {
     }
 
     // For existing users: inviteUserByEmail wasn't called, so send a welcome
-    // email with a magic-link sign-in URL so they know they have access.
+    // email with a password-recovery URL pointing at /reset-password so the
+    // user explicitly (re)sets a password for this new org context. This
+    // mirrors the fresh-invite flow and avoids silent magic-link sign-in
+    // into a workspace they didn't know they had access to.
     let welcomeSent = false;
     let welcomeError: string | null = null;
     if (existed) {
-      let signInUrl = appUrl;
+      let signInUrl = setupUrl;
       try {
         const { data: linkData } = await admin.auth.admin.generateLink({
-          type: "magiclink",
+          type: "recovery",
           email: cleanEmail,
-          options: { redirectTo: appUrl },
+          options: { redirectTo: setupUrl },
         });
         if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
       } catch (_) { /* fall back to app url */ }
