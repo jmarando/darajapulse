@@ -5,6 +5,7 @@ import { LayoutDashboard, Megaphone, LogOut, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 import GettingStartedDialog from "@/components/GettingStartedDialog";
+import TenantGuard from "@/components/TenantGuard";
 
 const nav = [
   { to: "/portal", icon: LayoutDashboard, label: "Overview", end: true },
