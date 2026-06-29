@@ -22,6 +22,8 @@ const PortalShell = () => {
   if (isAgency && !isClient) { navigate("/app"); return null; }
 
   return (
+  return (
+    <TenantGuard>
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
         <div className="p-6 border-b border-sidebar-border bg-white">
