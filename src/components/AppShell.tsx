@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import logo from "@/assets/logo-pulse-mark.png";
+import TenantGuard from "@/components/TenantGuard";
 
 const navGroups: { label?: string; items: { to: string; icon: any; label: string; end?: boolean }[] }[] = [
   {
