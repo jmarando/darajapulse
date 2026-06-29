@@ -150,6 +150,7 @@ const AppShell = () => {
         </main>
       </div>
     </div>
+    </TenantGuard>
   );
 };
 
