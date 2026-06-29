@@ -94,7 +94,8 @@ const SidebarBody = ({ user, isAdmin, isSuper, onSignOut, onNavigate }: any) => 
       </Button>
     </div>
   </>
-);
+  );
+};
 
 const TopBar = ({ user }: any) => {
   const initial = (user.email || "?")[0].toUpperCase();

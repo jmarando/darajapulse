@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 import GettingStartedDialog from "@/components/GettingStartedDialog";
 import TenantGuard from "@/components/TenantGuard";
+import { useTenant } from "@/hooks/useTenant";
 
 const nav = [
   { to: "/portal", icon: LayoutDashboard, label: "Overview", end: true },
@@ -14,8 +15,11 @@ const nav = [
 
 const PortalShell = () => {
   const { user, loading, signOut, isClient, isAgency } = useAuth();
+  const { tenant } = useTenant();
   const navigate = useNavigate();
   const [tourOpen, setTourOpen] = useState<boolean | undefined>(undefined);
+  const brandLogo = tenant?.logo_url || logo;
+  const brandName = tenant?.display_name || tenant?.name || "Daraja Pulse";
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (!user) { navigate("/auth"); return null; }
