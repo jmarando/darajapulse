@@ -1,0 +1,1 @@
+DELETE FROM public.user_roles WHERE user_id='5b594b59-4c45-42d8-a221-f5aa87c52734' AND role IN ('account_manager','agency_admin','client_user');
