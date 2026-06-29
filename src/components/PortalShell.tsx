@@ -5,6 +5,7 @@ import { LayoutDashboard, Megaphone, LogOut, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 import GettingStartedDialog from "@/components/GettingStartedDialog";
+import TenantGuard from "@/components/TenantGuard";
 
 const nav = [
   { to: "/portal", icon: LayoutDashboard, label: "Overview", end: true },
@@ -21,6 +22,7 @@ const PortalShell = () => {
   if (isAgency && !isClient) { navigate("/app"); return null; }
 
   return (
+    <TenantGuard>
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
         <div className="p-6 border-b border-sidebar-border bg-white">
@@ -51,6 +53,7 @@ const PortalShell = () => {
       </main>
       <GettingStartedDialog open={tourOpen} onOpenChange={setTourOpen} />
     </div>
+    </TenantGuard>
   );
 };
 export default PortalShell;

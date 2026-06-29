@@ -9,6 +9,7 @@ interface AuthCtx {
   session: Session | null;
   roles: Role[];
   agencyIds: string[];
+  brandOrgIds: string[];
   loading: boolean;
   isAgency: boolean;
   isClient: boolean;
@@ -16,13 +17,14 @@ interface AuthCtx {
   signOut: () => Promise<void>;
 }
 
-const Ctx = createContext<AuthCtx>({ user: null, session: null, roles: [], agencyIds: [], loading: true, isAgency: false, isClient: false, isSuperAdmin: false, signOut: async () => {} });
+const Ctx = createContext<AuthCtx>({ user: null, session: null, roles: [], agencyIds: [], brandOrgIds: [], loading: true, isAgency: false, isClient: false, isSuperAdmin: false, signOut: async () => {} });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [agencyIds, setAgencyIds] = useState<string[]>([]);
+  const [brandOrgIds, setBrandOrgIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,13 +33,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(s?.user ?? null);
       if (s?.user) {
         setTimeout(async () => {
-          const { data } = await supabase.from("user_roles").select("role, agency_id").eq("user_id", s.user.id);
+          const { data } = await supabase.from("user_roles").select("role, agency_id, brand_org_id").eq("user_id", s.user.id);
           setRoles((data ?? []).map((r: any) => r.role));
           setAgencyIds(Array.from(new Set((data ?? []).map((r: any) => r.agency_id).filter(Boolean))));
+          setBrandOrgIds(Array.from(new Set((data ?? []).map((r: any) => r.brand_org_id).filter(Boolean))));
         }, 0);
       } else {
         setRoles([]);
         setAgencyIds([]);
+        setBrandOrgIds([]);
       }
     });
 
@@ -45,9 +49,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       if (data.session?.user) {
-        const { data: r } = await supabase.from("user_roles").select("role, agency_id").eq("user_id", data.session.user.id);
+        const { data: r } = await supabase.from("user_roles").select("role, agency_id, brand_org_id").eq("user_id", data.session.user.id);
         setRoles((r ?? []).map((x: any) => x.role));
         setAgencyIds(Array.from(new Set((r ?? []).map((x: any) => x.agency_id).filter(Boolean))));
+        setBrandOrgIds(Array.from(new Set((r ?? []).map((x: any) => x.brand_org_id).filter(Boolean))));
       }
       setLoading(false);
     });
@@ -60,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const isSuperAdmin = roles.includes("super_admin");
 
   return (
-    <Ctx.Provider value={{ user, session, roles, agencyIds, loading, isAgency, isClient, isSuperAdmin, signOut: async () => { await supabase.auth.signOut(); } }}>
+    <Ctx.Provider value={{ user, session, roles, agencyIds, brandOrgIds, loading, isAgency, isClient, isSuperAdmin, signOut: async () => { await supabase.auth.signOut(); } }}>
       {children}
     </Ctx.Provider>
   );

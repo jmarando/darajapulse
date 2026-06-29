@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import logo from "@/assets/logo-pulse-mark.png";
+import TenantGuard from "@/components/TenantGuard";
 
 const navGroups: { label?: string; items: { to: string; icon: any; label: string; end?: boolean }[] }[] = [
   {
@@ -119,6 +120,7 @@ const AppShell = () => {
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
   return (
+    <TenantGuard>
     <div className="min-h-screen flex bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border">
@@ -148,6 +150,7 @@ const AppShell = () => {
         </main>
       </div>
     </div>
+    </TenantGuard>
   );
 };
 
