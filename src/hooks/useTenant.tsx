@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type TenantInfo = {
@@ -17,41 +17,90 @@ export type TenantInfo = {
 const ROOT_LABELS = new Set(["www", "app", "darajapulse", "localhost"]);
 
 function getSubdomainLabel(hostname: string): string | null {
-  // Strip port
   const host = hostname.split(":")[0];
   if (!host) return null;
-  // Lovable preview hosts (e.g. id-preview--xxx.lovable.app) — never scoped
   if (host.endsWith(".lovable.app") || host.endsWith(".lovable.dev")) return null;
   if (host === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return null;
   const parts = host.split(".");
-  if (parts.length < 3) return null; // apex like darajapulse.com
+  if (parts.length < 3) return null;
   const label = parts[0].toLowerCase();
   if (ROOT_LABELS.has(label)) return null;
   return label;
 }
 
-export function useTenant() {
+// Convert any CSS color (hex/rgb/named) into an HSL triplet "H S% L%" for our CSS vars.
+function toHslTriplet(input: string): string | null {
+  if (!input) return null;
+  const el = document.createElement("div");
+  el.style.color = input;
+  document.body.appendChild(el);
+  const rgb = getComputedStyle(el).color;
+  document.body.removeChild(el);
+  const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!m) return null;
+  let r = +m[1] / 255, g = +m[2] / 255, b = +m[3] / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0; const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
+type Ctx = { tenant: TenantInfo | null; loading: boolean; scoped: boolean };
+const TenantCtx = createContext<Ctx>({ tenant: null, loading: false, scoped: false });
+
+export const TenantProvider = ({ children }: { children: ReactNode }) => {
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [scoped, setScoped] = useState(false); // true when hostname is a tenant subdomain
+  const [scoped, setScoped] = useState(false);
 
   useEffect(() => {
     const sub = getSubdomainLabel(window.location.hostname);
-    if (!sub) {
-      setScoped(false);
-      setTenant(null);
-      setLoading(false);
-      return;
-    }
+    if (!sub) { setScoped(false); setTenant(null); setLoading(false); return; }
     setScoped(true);
     (async () => {
       const { data, error } = await supabase.rpc("get_tenant_by_host", { _host: window.location.hostname });
-      if (!error && data && typeof data === "object") {
-        setTenant(data as unknown as TenantInfo);
-      }
+      if (!error && data && typeof data === "object") setTenant(data as unknown as TenantInfo);
       setLoading(false);
     })();
   }, []);
 
-  return { tenant, loading, scoped };
-}
+  // Apply tenant branding: page title, favicon, accent color.
+  useEffect(() => {
+    if (!tenant) return;
+    const label = tenant.display_name || tenant.name;
+    if (label) document.title = label;
+    if (tenant.logo_url) {
+      let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.appendChild(link);
+      }
+      link.href = tenant.logo_url;
+    }
+    if (tenant.primary_color) {
+      const hsl = toHslTriplet(tenant.primary_color);
+      if (hsl) {
+        const root = document.documentElement;
+        root.style.setProperty("--accent", hsl);
+        root.style.setProperty("--ring", hsl);
+        root.style.setProperty("--sidebar-primary", hsl);
+        root.style.setProperty("--sidebar-ring", hsl);
+        root.style.setProperty("--gradient-warm", `linear-gradient(135deg, hsl(${hsl}), hsl(${hsl} / 0.8))`);
+      }
+    }
+  }, [tenant]);
+
+  return <TenantCtx.Provider value={{ tenant, loading, scoped }}>{children}</TenantCtx.Provider>;
+};
+
+export function useTenant() { return useContext(TenantCtx); }

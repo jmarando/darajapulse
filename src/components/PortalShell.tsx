@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 import GettingStartedDialog from "@/components/GettingStartedDialog";
 import TenantGuard from "@/components/TenantGuard";
+import { useTenant } from "@/hooks/useTenant";
 
 const nav = [
   { to: "/portal", icon: LayoutDashboard, label: "Overview", end: true },
@@ -14,8 +15,11 @@ const nav = [
 
 const PortalShell = () => {
   const { user, loading, signOut, isClient, isAgency } = useAuth();
+  const { tenant } = useTenant();
   const navigate = useNavigate();
   const [tourOpen, setTourOpen] = useState<boolean | undefined>(undefined);
+  const brandLogo = tenant?.logo_url || logo;
+  const brandName = tenant?.display_name || tenant?.name || "Daraja Pulse";
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (!user) { navigate("/auth"); return null; }
@@ -26,9 +30,9 @@ const PortalShell = () => {
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
         <div className="p-6 border-b border-sidebar-border bg-white">
-          <img src={logo} alt="Daraja Pulse" className="h-20 w-auto mx-auto" />
+          <img src={brandLogo} alt={brandName} className="h-20 w-auto mx-auto object-contain" />
         </div>
-        <div className="px-4 pt-3 text-[10px] uppercase tracking-widest text-sidebar-foreground/60">Brand portal</div>
+        <div className="px-4 pt-3 text-[10px] uppercase tracking-widest text-sidebar-foreground/60">{brandName} · Brand portal</div>
         <nav className="flex-1 p-3 space-y-1">
           {nav.map(({ to, icon: Icon, label, end }) => (
             <NavLink key={to} to={to} end={end as any}
