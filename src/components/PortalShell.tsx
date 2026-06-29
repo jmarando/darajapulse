@@ -53,6 +53,7 @@ const PortalShell = () => {
       </main>
       <GettingStartedDialog open={tourOpen} onOpenChange={setTourOpen} />
     </div>
+    </TenantGuard>
   );
 };
 export default PortalShell;
