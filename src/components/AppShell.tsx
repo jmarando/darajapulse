@@ -120,6 +120,7 @@ const AppShell = () => {
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
 
   return (
+    <TenantGuard>
     <div className="min-h-screen flex bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border">
