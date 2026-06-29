@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
+import { TenantProvider } from "@/hooks/useTenant";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -58,7 +59,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AuthProvider>
+        <AuthProvider><TenantProvider>
           <Routes>
             <Route path="/" element={<LandingDashboard />} />
             <Route path="/auth" element={<Auth />} />
@@ -117,7 +118,7 @@ const App = () => (
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </AuthProvider>
+        </TenantProvider></AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
