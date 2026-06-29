@@ -9,6 +9,7 @@ interface AuthCtx {
   session: Session | null;
   roles: Role[];
   agencyIds: string[];
+  brandOrgIds: string[];
   loading: boolean;
   isAgency: boolean;
   isClient: boolean;
@@ -16,7 +17,7 @@ interface AuthCtx {
   signOut: () => Promise<void>;
 }
 
-const Ctx = createContext<AuthCtx>({ user: null, session: null, roles: [], agencyIds: [], loading: true, isAgency: false, isClient: false, isSuperAdmin: false, signOut: async () => {} });
+const Ctx = createContext<AuthCtx>({ user: null, session: null, roles: [], agencyIds: [], brandOrgIds: [], loading: true, isAgency: false, isClient: false, isSuperAdmin: false, signOut: async () => {} });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
