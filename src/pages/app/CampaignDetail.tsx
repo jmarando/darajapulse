@@ -172,7 +172,7 @@ const CampaignDetail = () => {
         }
       }
     } else setMetrics([]);
-    const { data: l } = await supabase.from("report_links").select("*").eq("campaign_id", id).maybeSingle();
+    const { data: l } = await supabase.from("report_links").select("*").eq("campaign_id", id).order("created_at", { ascending: true }).limit(1).maybeSingle();
     setLink(l);
     const { data: pl } = await supabase.from("plan_links").select("*").eq("campaign_id", id).maybeSingle();
     setPlanLink(pl);
