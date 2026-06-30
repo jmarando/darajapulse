@@ -1,0 +1,1 @@
+ALTER TYPE public.agency_kind ADD VALUE IF NOT EXISTS 'brand';
