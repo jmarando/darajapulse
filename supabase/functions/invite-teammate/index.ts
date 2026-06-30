@@ -34,6 +34,9 @@ Deno.serve(async (req) => {
     const cleanTitle = typeof title === "string" && title.length ? title : null;
     if (!cleanEmail) return new Response(JSON.stringify({ error: "email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const appUrl = redirect_to || `${new URL(req.url).origin}/app`;
+    const setupUrl = String(appUrl).replace(/\/app\/?$/, "/reset-password");
+
     let userId: string | null = null;
     const { data: existing } = await admin.auth.admin.listUsers();
     const found = existing?.users?.find((x: any) => (x.email ?? "").toLowerCase() === cleanEmail);
@@ -41,7 +44,7 @@ Deno.serve(async (req) => {
       userId = found.id;
     } else {
       const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: redirect_to ?? undefined,
+        redirectTo: setupUrl,
       });
       if (invErr || !invited?.user) {
         return new Response(JSON.stringify({ error: invErr?.message ?? "invite failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
