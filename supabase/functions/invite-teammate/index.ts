@@ -34,6 +34,9 @@ Deno.serve(async (req) => {
     const cleanTitle = typeof title === "string" && title.length ? title : null;
     if (!cleanEmail) return new Response(JSON.stringify({ error: "email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const appUrl = redirect_to || `${new URL(req.url).origin}/app`;
+    const setupUrl = String(appUrl).replace(/\/app\/?$/, "/reset-password");
+
     let userId: string | null = null;
     const { data: existing } = await admin.auth.admin.listUsers();
     const found = existing?.users?.find((x: any) => (x.email ?? "").toLowerCase() === cleanEmail);
@@ -41,7 +44,7 @@ Deno.serve(async (req) => {
       userId = found.id;
     } else {
       const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: redirect_to ?? undefined,
+        redirectTo: setupUrl,
       });
       if (invErr || !invited?.user) {
         return new Response(JSON.stringify({ error: invErr?.message ?? "invite failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -56,7 +59,47 @@ Deno.serve(async (req) => {
       await admin.from("user_roles").update({ agency_id: callerAgencyId }).eq("user_id", userId).eq("role", newRole).is("agency_id", null);
     }
 
-    return new Response(JSON.stringify({ ok: true, user_id: userId, existed: !!found, role: newRole }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // For existing users, inviteUserByEmail wasn't called → send a recovery link
+    // so they can (re)set a password and learn about their new workspace access.
+    let welcomeSent = false;
+    let welcomeError: string | null = null;
+    if (found) {
+      let signInUrl = setupUrl;
+      try {
+        const { data: linkData } = await admin.auth.admin.generateLink({
+          type: "recovery",
+          email: cleanEmail,
+          options: { redirectTo: setupUrl },
+        });
+        if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
+      } catch (_) { /* fall back */ }
+
+      // Resolve caller's agency name for the welcome email
+      let orgName = "your team";
+      if (callerAgencyId) {
+        const { data: ag } = await admin.from("agencies").select("name").eq("id", callerAgencyId).maybeSingle();
+        if ((ag as any)?.name) orgName = (ag as any).name;
+      }
+
+      const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader || `Bearer ${SERVICE_KEY}`,
+          "apikey": SERVICE_KEY,
+        },
+        body: JSON.stringify({
+          templateName: "org-admin-welcome",
+          recipientEmail: cleanEmail,
+          idempotencyKey: `teammate-welcome-${callerAgencyId ?? "na"}-${userId}-${Date.now()}`,
+          templateData: { org_name: orgName, org_kind: "agency", sign_in_url: signInUrl, app_url: appUrl },
+        }),
+      });
+      if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;
+      else welcomeSent = true;
+    }
+
+    return new Response(JSON.stringify({ ok: true, user_id: userId, existed: !!found, role: newRole, welcome_sent: welcomeSent, welcome_error: welcomeError }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
