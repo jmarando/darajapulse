@@ -104,7 +104,7 @@ const Team = () => {
     <div className="p-8 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="font-display text-3xl font-semibold">Team</h1>
-        <p className="text-muted-foreground">Invite agency staff and manage roles. Public signup is disabled — accounts are invite-only.</p>
+        <p className="text-muted-foreground">{copy.teamSubtitle}</p>
       </div>
 
       <Card className="p-6">
@@ -112,7 +112,7 @@ const Team = () => {
         <form onSubmit={invite} className="grid sm:grid-cols-[1fr_180px_auto] gap-3 items-end">
           <div>
             <Label>Email</Label>
-            <Input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="teammate@agency.com" />
+            <Input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder={copy.invitePlaceholder} />
           </div>
           <div>
             <Label>Role</Label>
