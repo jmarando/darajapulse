@@ -141,7 +141,7 @@ async function buildCampaignWeekly(supa: any, campaign_id: string) {
   const wkStart = new Date(now - 7 * 86400000).toISOString()
   const prevStart = new Date(now - 14 * 86400000).toISOString()
   const { data: posts } = await supa
-    .from('posts').select('id, influencer_id, platform, posted_at, post_url')
+    .from('posts').select('id, influencer_id, platform, posted_at, post_url, caption')
     .eq('campaign_id', campaign_id)
   const postIds = (posts || []).map((p: any) => p.id)
   let metrics: any[] = []
@@ -162,40 +162,103 @@ async function buildCampaignWeekly(supa: any, campaign_id: string) {
     (p: any) => p.posted_at && p.posted_at >= prevStart && p.posted_at < wkStart,
   )
 
+  const engOf = (m: any) =>
+    (m?.likes || 0) + (m?.comments || 0) + (m?.shares || 0) + (m?.saves || 0)
+
   const sum = (ps: any[]) => {
-    let reach = 0, impressions = 0, engagement = 0
+    let reach = 0, impressions = 0, engagement = 0,
+      views = 0, likes = 0, comments = 0, shares = 0
     for (const p of ps) {
       const m = latestByPost.get(p.id)
       if (!m) continue
       reach += m.reach || 0
       impressions += m.impressions || m.views || 0
-      engagement += (m.likes || 0) + (m.comments || 0) + (m.shares || 0) + (m.saves || 0)
+      views += m.views || m.impressions || 0
+      likes += m.likes || 0
+      comments += m.comments || 0
+      shares += m.shares || 0
+      engagement += engOf(m)
     }
-    return { reach, impressions, engagement }
+    return { reach, impressions, engagement, views, likes, comments, shares }
   }
   const cur = sum(weekPosts), prev = sum(prevPosts)
+  const allTotals = sum(posts || [])
   const wow = (c: number, p: number) => (p > 0 ? ((c - p) / p) * 100 : 0)
+
+  // Platform breakdown (this week)
+  const byPlatform = new Map<string, { posts: number; views: number; engagement: number }>()
+  for (const p of weekPosts) {
+    const m = latestByPost.get(p.id) || {}
+    const key = String(p.platform || 'other').toLowerCase()
+    const rec = byPlatform.get(key) || { posts: 0, views: 0, engagement: 0 }
+    rec.posts += 1
+    rec.views += m.views || m.impressions || 0
+    rec.engagement += engOf(m)
+    byPlatform.set(key, rec)
+  }
+  const platforms = [...byPlatform.entries()]
+    .map(([platform, v]) => ({ platform, ...v }))
+    .sort((a, b) => b.engagement - a.engagement)
 
   // top creators by engagement this week
   const byInf = new Map<string, { views: number; engagement: number; posts: number }>()
   for (const p of weekPosts) {
     const m = latestByPost.get(p.id) || {}
+    if (!p.influencer_id) continue
     const rec = byInf.get(p.influencer_id) || { views: 0, engagement: 0, posts: 0 }
     rec.views += m.views || m.impressions || 0
-    rec.engagement += (m.likes || 0) + (m.comments || 0) + (m.shares || 0) + (m.saves || 0)
+    rec.engagement += engOf(m)
     rec.posts += 1
     byInf.set(p.influencer_id, rec)
   }
-  const top_creators: any[] = []
+  let infMap: Map<string, any> = new Map()
   if (byInf.size) {
     const ids = [...byInf.keys()]
     const { data: infs } = await supa.from('influencers').select('id, handle, primary_platform').in('id', ids)
-    const sorted = [...byInf.entries()].sort((a, b) => b[1].engagement - a[1].engagement).slice(0, 5)
-    for (const [id, agg] of sorted) {
-      const inf = (infs || []).find((x: any) => x.id === id)
-      top_creators.push({ handle: inf?.handle || 'creator', platform: inf?.primary_platform, ...agg })
+    for (const inf of (infs || [])) infMap.set(inf.id, inf)
+  }
+  const top_creators = [...byInf.entries()]
+    .sort((a, b) => b[1].engagement - a[1].engagement)
+    .slice(0, 5)
+    .map(([id, agg]) => {
+      const inf = infMap.get(id)
+      return { handle: inf?.handle || 'creator', platform: inf?.primary_platform, ...agg }
+    })
+
+  // Top posts this week — ranked by engagement
+  const scored = weekPosts.map((p: any) => {
+    const m = latestByPost.get(p.id) || {}
+    const inf = p.influencer_id ? infMap.get(p.influencer_id) : null
+    return {
+      handle: inf?.handle,
+      platform: p.platform,
+      post_url: p.post_url,
+      posted_at: p.posted_at,
+      views: m.views || m.impressions || 0,
+      likes: m.likes || 0,
+      comments: m.comments || 0,
+      shares: m.shares || 0,
+      _eng: engOf(m),
+    }
+  }).sort((a: any, b: any) => b._eng - a._eng).slice(0, 5)
+  // Backfill missing influencer handles for posts whose creator wasn't already loaded
+  const missingInfIds = weekPosts
+    .filter((p: any) => p.influencer_id && !infMap.has(p.influencer_id))
+    .map((p: any) => p.influencer_id)
+  if (missingInfIds.length) {
+    const { data: more } = await supa.from('influencers').select('id, handle').in('id', missingInfIds)
+    for (const inf of (more || [])) infMap.set(inf.id, inf)
+    for (const s of scored) {
+      if (!s.handle) {
+        const wp = weekPosts.find((p: any) => p.post_url === s.post_url)
+        const inf = wp?.influencer_id ? infMap.get(wp.influencer_id) : null
+        if (inf) s.handle = inf.handle
+      }
     }
   }
+  const top_posts = scored.map(({ _eng, ...rest }: any) => rest)
+
+  const totalCreators = new Set(weekPosts.map((p: any) => p.influencer_id).filter(Boolean)).size
 
   const { data: camp } = await supa.from('campaigns').select('budget_kes').eq('id', campaign_id).maybeSingle()
 
@@ -207,9 +270,20 @@ async function buildCampaignWeekly(supa: any, campaign_id: string) {
     impressions: cur.impressions,
     engagement: cur.engagement,
     posts: weekPosts.length,
+    views: cur.views,
+    likes: cur.likes,
+    comments: cur.comments,
+    shares: cur.shares,
+    total_creators: totalCreators,
     wow_engagement_pct: Number(wow(cur.engagement, prev.engagement).toFixed(1)),
     wow_reach_pct: Number(wow(cur.reach, prev.reach).toFixed(1)),
+    wow_views_pct: Number(wow(cur.views, prev.views).toFixed(1)),
+    platforms,
     top_creators,
+    top_posts,
+    cumulative_posts: (posts || []).length,
+    cumulative_views: allTotals.views,
+    cumulative_engagement: allTotals.engagement,
     budget_kes: camp?.budget_kes || 0,
     spend_kes: 0,
   }

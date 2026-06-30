@@ -172,7 +172,7 @@ const CampaignDetail = () => {
         }
       }
     } else setMetrics([]);
-    const { data: l } = await supabase.from("report_links").select("*").eq("campaign_id", id).maybeSingle();
+    const { data: l } = await supabase.from("report_links").select("*").eq("campaign_id", id).order("created_at", { ascending: true }).limit(1).maybeSingle();
     setLink(l);
     const { data: pl } = await supabase.from("plan_links").select("*").eq("campaign_id", id).maybeSingle();
     setPlanLink(pl);
@@ -325,8 +325,32 @@ const CampaignDetail = () => {
   };
 
   const generateLink = async () => {
-    const { error } = await supabase.from("report_links").insert({ campaign_id: id });
-    if (error) return toast.error(error.message);
+    // If a link already exists for this campaign, just reuse it.
+    const { data: existing } = await supabase
+      .from("report_links")
+      .select("*")
+      .eq("campaign_id", id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (existing) {
+      setLink(existing);
+      try { await navigator.clipboard.writeText(`${window.location.origin}/r/${existing.token}`); } catch {}
+      toast.success("Report link ready — copied to clipboard");
+      return;
+    }
+    const { data, error } = await supabase
+      .from("report_links")
+      .insert({ campaign_id: id })
+      .select()
+      .single();
+    if (error) {
+      toast.error(error.message || "Could not create report link");
+      return;
+    }
+    setLink(data);
+    try { await navigator.clipboard.writeText(`${window.location.origin}/r/${data.token}`); } catch {}
+    toast.success("Report link created — copied to clipboard");
     load();
   };
 
