@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant, tenantCopy } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,20 +19,21 @@ type Member = {
   roles: string[];
 };
 
-const TITLE_OPTIONS = [
-  { value: "lead", label: "Lead" },
-  { value: "account_manager", label: "Account manager" },
-  { value: "strategist", label: "Strategist" },
-  { value: "creative", label: "Creative" },
-  { value: "analyst", label: "Analyst" },
-  { value: "agency_admin", label: "Agency admin" },
-] as const;
-
-const titleLabel = (v?: string | null) =>
-  TITLE_OPTIONS.find((o) => o.value === v)?.label ?? (v ? v.replace(/_/g, " ") : "");
-
 const Team = () => {
   const { roles: myRoles, user } = useAuth();
+  const { tenant } = useTenant();
+  const copy = tenantCopy(tenant?.agency_kind);
+  const TITLE_OPTIONS = [
+    { value: "lead", label: "Lead" },
+    { value: "account_manager", label: "Account manager" },
+    { value: "strategist", label: "Strategist" },
+    { value: "creative", label: "Creative" },
+    { value: "analyst", label: "Analyst" },
+    { value: "agency_admin", label: copy.adminRole },
+  ] as const;
+
+  const titleLabel = (v?: string | null) =>
+    TITLE_OPTIONS.find((o) => o.value === v)?.label ?? (v ? v.replace(/_/g, " ") : "");
   const isAdmin = myRoles.includes("agency_admin");
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
