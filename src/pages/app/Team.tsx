@@ -71,7 +71,7 @@ const Team = () => {
     return (
       <div className="p-8">
         <h1 className="font-display text-2xl font-semibold">Team</h1>
-        <p className="text-muted-foreground mt-2">Only agency admins can manage the team.</p>
+        <p className="text-muted-foreground mt-2">Only {copy.adminRole.toLowerCase()}s can manage the team.</p>
       </div>
     );
   }
