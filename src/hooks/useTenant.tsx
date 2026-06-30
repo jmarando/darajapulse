@@ -1,8 +1,11 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export type TenantKind = "agency" | "media_house" | "brand";
 export type TenantInfo = {
   kind: "agency" | "brand_org";
+  /** Business model of the workspace: traditional agency, media house, or direct brand/client. */
+  agency_kind?: TenantKind | null;
   id: string;
   name: string;
   slug: string;
@@ -12,6 +15,36 @@ export type TenantInfo = {
   support_email?: string | null;
   hide_powered_by?: boolean | null;
 };
+
+/** Copy variants based on the workspace kind. Use in UI to swap "agency" wording. */
+export function tenantCopy(kind?: TenantKind | null) {
+  const k = kind ?? "agency";
+  if (k === "brand") {
+    return {
+      orgWord: "brand",
+      teamLabel: "Team",
+      teamSubtitle: "Invite your team and manage roles. Public signup is disabled — accounts are invite-only.",
+      invitePlaceholder: "teammate@yourbrand.com",
+      adminRole: "Brand admin",
+    };
+  }
+  if (k === "media_house") {
+    return {
+      orgWord: "media house",
+      teamLabel: "Team",
+      teamSubtitle: "Invite your media house staff and manage roles. Public signup is disabled — accounts are invite-only.",
+      invitePlaceholder: "teammate@mediahouse.com",
+      adminRole: "Media house admin",
+    };
+  }
+  return {
+    orgWord: "agency",
+    teamLabel: "Team",
+    teamSubtitle: "Invite agency staff and manage roles. Public signup is disabled — accounts are invite-only.",
+    invitePlaceholder: "teammate@agency.com",
+    adminRole: "Agency admin",
+  };
+}
 
 // Hostnames where tenant-scoping is NOT enforced (root marketing, dev, previews).
 const ROOT_LABELS = new Set(["www", "app", "darajapulse", "localhost"]);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant, tenantCopy } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,20 +19,21 @@ type Member = {
   roles: string[];
 };
 
-const TITLE_OPTIONS = [
-  { value: "lead", label: "Lead" },
-  { value: "account_manager", label: "Account manager" },
-  { value: "strategist", label: "Strategist" },
-  { value: "creative", label: "Creative" },
-  { value: "analyst", label: "Analyst" },
-  { value: "agency_admin", label: "Agency admin" },
-] as const;
-
-const titleLabel = (v?: string | null) =>
-  TITLE_OPTIONS.find((o) => o.value === v)?.label ?? (v ? v.replace(/_/g, " ") : "");
-
 const Team = () => {
   const { roles: myRoles, user } = useAuth();
+  const { tenant } = useTenant();
+  const copy = tenantCopy(tenant?.agency_kind);
+  const TITLE_OPTIONS = [
+    { value: "lead", label: "Lead" },
+    { value: "account_manager", label: "Account manager" },
+    { value: "strategist", label: "Strategist" },
+    { value: "creative", label: "Creative" },
+    { value: "analyst", label: "Analyst" },
+    { value: "agency_admin", label: copy.adminRole },
+  ] as const;
+
+  const titleLabel = (v?: string | null) =>
+    TITLE_OPTIONS.find((o) => o.value === v)?.label ?? (v ? v.replace(/_/g, " ") : "");
   const isAdmin = myRoles.includes("agency_admin");
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,7 @@ const Team = () => {
     return (
       <div className="p-8">
         <h1 className="font-display text-2xl font-semibold">Team</h1>
-        <p className="text-muted-foreground mt-2">Only agency admins can manage the team.</p>
+        <p className="text-muted-foreground mt-2">Only {copy.adminRole.toLowerCase()}s can manage the team.</p>
       </div>
     );
   }
@@ -102,7 +104,7 @@ const Team = () => {
     <div className="p-8 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="font-display text-3xl font-semibold">Team</h1>
-        <p className="text-muted-foreground">Invite agency staff and manage roles. Public signup is disabled — accounts are invite-only.</p>
+        <p className="text-muted-foreground">{copy.teamSubtitle}</p>
       </div>
 
       <Card className="p-6">
@@ -110,7 +112,7 @@ const Team = () => {
         <form onSubmit={invite} className="grid sm:grid-cols-[1fr_180px_auto] gap-3 items-end">
           <div>
             <Label>Email</Label>
-            <Input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="teammate@agency.com" />
+            <Input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder={copy.invitePlaceholder} />
           </div>
           <div>
             <Label>Role</Label>

@@ -2421,7 +2421,7 @@ export type Database = {
       }
     }
     Enums: {
-      agency_kind: "agency" | "media_house"
+      agency_kind: "agency" | "media_house" | "brand"
       app_role:
         | "agency_admin"
         | "account_manager"
@@ -2571,7 +2571,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      agency_kind: ["agency", "media_house"],
+      agency_kind: ["agency", "media_house", "brand"],
       app_role: [
         "agency_admin",
         "account_manager",
