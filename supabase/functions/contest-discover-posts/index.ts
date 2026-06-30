@@ -8,7 +8,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 const ED_TOKENS = [
   Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
   Deno.env.get("ENSEMBLE_DATA_API_TOKEN"),
-  Deno.env.get("ENSEMBLEDATA_API_TOKEN_2"),
 ].filter((t): t is string => !!t && t.length > 0);
 const ENSEMBLEDATA_TOKEN = ED_TOKENS[0];
 const META_GRAPH_VERSION = "v21.0";

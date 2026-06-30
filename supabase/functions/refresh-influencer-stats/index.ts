@@ -11,7 +11,6 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ED_TOKENS = [
   Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
   Deno.env.get("ENSEMBLE_DATA_API_TOKEN"),
-  Deno.env.get("ENSEMBLEDATA_API_TOKEN_2"),
 ].filter((t): t is string => !!t && t.length > 0);
 
 type Stats = {
