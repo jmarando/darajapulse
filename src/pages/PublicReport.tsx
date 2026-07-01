@@ -617,12 +617,13 @@ const PublicReport = () => {
         })()}
 
         {/* ── Posting cadence heatmap ────────────────────────────────── */}
-        {filteredPosts.some(p => p.posted_at) && (() => {
+        {filteredPosts.some(p => p.posted_at || p.created_at) && (() => {
           const dayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
           const cells = new Map<string, { posts: number; views: number }>();
           for (const p of filteredPosts) {
-            if (!p.posted_at) continue;
-            const d = new Date(p.posted_at);
+            const when = p.posted_at || p.created_at;
+            if (!when) continue;
+            const d = new Date(when);
             const dow = (d.getDay() + 6) % 7; // Mon=0
             const hour = d.getHours();
             const key = `${dow}-${hour}`;
