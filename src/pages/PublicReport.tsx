@@ -758,7 +758,7 @@ const PublicReport = () => {
         })()}
 
         {/* ── Share of voice ─────────────────────────────────────────── */}
-        {totals.views > 0 && byCreator.size > 1 && (() => {
+        {totals.views > 0 && byCreator.size > 0 && (() => {
           const rows = influencers
             .map(ci => {
               const s = byCreator.get(ci.influencer_id);
