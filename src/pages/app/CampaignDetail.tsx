@@ -1128,13 +1128,14 @@ const CampaignDetail = () => {
       })()}
 
       {/* ── Posting cadence heatmap ────────────────────────────────── */}
-      {posts.some(p => p.posted_at) && (() => {
+      {posts.some(p => p.posted_at || (p as any).created_at) && (() => {
         const dayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
         const cells = new Map<string, { posts: number; views: number }>();
         for (const p of posts) {
-          if (!p.posted_at) continue;
+          const when = p.posted_at || (p as any).created_at;
+          if (!when) continue;
           const m = latestByPost.get(p.id) || {};
-          const d = new Date(p.posted_at);
+          const d = new Date(when);
           const dow = (d.getDay() + 6) % 7;
           const hour = d.getHours();
           const key = `${dow}-${hour}`;
