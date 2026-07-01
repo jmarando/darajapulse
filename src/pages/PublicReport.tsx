@@ -1088,7 +1088,7 @@ const PublicReport = () => {
         })()}
 
         {/* Learnings & Recommendations */}
-        {campaign.learnings && (
+        {campaign.learnings && String(campaign.learnings).trim().length > 0 && (
           <Card className="p-6 mb-6">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Narrative</div>
             <h2 className="font-display text-2xl mt-1 mb-3">Learnings & recommendations</h2>
