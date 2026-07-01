@@ -394,44 +394,83 @@ const PublicReport = () => {
 
         </div>
 
-        {/* Top performer + Efficiency */}
-        {(topPerformer || campaign.budget_kes > 0) && (
-          <div className="grid lg:grid-cols-3 gap-6 mb-6">
-            {topPerformer && (
-              <Card className="p-6 lg:col-span-2">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-accent/15 text-accent flex items-center justify-center"><Trophy className="w-6 h-6" /></div>
+        {/* Top 3 performers + Efficiency */}
+        {(byCreator.size > 0 || campaign.budget_kes > 0) && (() => {
+          const topThree = influencers
+            .map(x => {
+              const s = byCreator.get(x.influencer_id);
+              if (!s || s.views === 0) return null;
+              const eng = s.likes + s.comments + s.shares + s.saves;
+              const erP = s.views > 0 ? (eng / s.views * 100) : 0;
+              const followers = Number(x.influencers?.follower_count || 0);
+              const eff = followers > 0 ? (s.views / followers * 100) : 0;
+              return { ci: x, s, eng, erP, followers, eff };
+            })
+            .filter(Boolean)
+            .sort((a: any, b: any) => b.s.views - a.s.views)
+            .slice(0, 3) as any[];
+          if (topThree.length === 0 && !(campaign.budget_kes > 0)) return null;
+          return (
+            <div className="grid lg:grid-cols-3 gap-6 mb-6">
+              {topThree.length > 0 && (
+                <Card className="p-6 lg:col-span-2">
+                  <div className="flex items-baseline justify-between mb-4">
                     <div>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Top performer</div>
-                      <div className="font-display text-2xl mt-0.5">{topPerformer.ci.influencers?.full_name}</div>
-                      <div className="text-sm text-muted-foreground">@{topPerformer.ci.influencers?.handle?.replace(/^@/, "")} · {byCreator.get(topPerformer.ci.influencer_id)?.posts} post{byCreator.get(topPerformer.ci.influencer_id)?.posts === 1 ? "" : "s"}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Trophy className="w-3 h-3 text-accent" />Top performers</div>
+                      <h2 className="font-display text-2xl mt-1">Who moved the needle</h2>
                     </div>
+                    <div className="text-xs text-muted-foreground hidden md:block">Ranked by views delivered</div>
                   </div>
-                  <div className="flex gap-6 text-right">
-                    <div><div className="font-display text-3xl">{fmt(topPerformer.views)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                    <div><div className="font-display text-3xl">{fmt(byCreator.get(topPerformer.ci.influencer_id)?.likes ?? 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                  <div className="grid md:grid-cols-3 gap-3">
+                    {topThree.map((r, i) => {
+                      const badge = i === 0 ? "bg-accent text-accent-foreground" : i === 1 ? "bg-highlight text-highlight-foreground" : "bg-secondary text-foreground";
+                      return (
+                        <div key={r.ci.id} className="rounded-lg border border-border p-4 bg-card">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-semibold ${badge}`}>#{i + 1}</span>
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{r.ci.influencers?.full_name ?? "—"}</div>
+                              <div className="text-[11px] text-muted-foreground truncate">@{(r.ci.influencers?.handle || "").replace(/^@/, "")} · {r.s.posts} post{r.s.posts === 1 ? "" : "s"}</div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                            <div><div className="font-display text-base tabular-nums">{fmt(r.s.views)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                            <div><div className="font-display text-base tabular-nums">{fmt(r.eng)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Eng.</div></div>
+                            <div><div className="font-display text-base tabular-nums">{r.erP.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">ER</div></div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 mt-2 text-center">
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(r.s.likes)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(r.s.comments)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
+                            <div><div className="text-xs font-medium tabular-nums">{fmt(r.s.shares + r.s.saves)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Sh+Sv</div></div>
+                          </div>
+                          {r.eff > 0 && (
+                            <div className="mt-3 pt-3 border-t border-border text-[10px] text-muted-foreground flex justify-between">
+                              <span>Reach eff.</span><span className="tabular-nums text-foreground font-medium">{r.eff.toFixed(0)}%</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-              </Card>
-            )}
-            {campaign.budget_kes > 0 && (
-              <Card className="p-6">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Efficiency</div>
-                <div className="mt-3 space-y-3">
-                  <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per view</span><span className="font-display text-xl">KES {cpv.toFixed(2)}</span></div>
-                  <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per mille</span><span className="font-display text-xl">KES {cpm.toFixed(0)}</span></div>
-                  {(() => {
-                    const eng = totals.likes + totals.comments + totals.shares + totals.saves;
-                    const cpe = eng > 0 && campaign.budget_kes > 0 ? campaign.budget_kes / eng : 0;
-                    return <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per engagement</span><span className="font-display text-xl">{cpe > 0 ? `KES ${cpe.toFixed(2)}` : "—"}</span></div>;
-                  })()}
-                  
-                </div>
-              </Card>
-            )}
-          </div>
-        )}
+                </Card>
+              )}
+              {campaign.budget_kes > 0 && (
+                <Card className="p-6">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Efficiency</div>
+                  <div className="mt-3 space-y-3">
+                    <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per view</span><span className="font-display text-xl">KES {cpv.toFixed(2)}</span></div>
+                    <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per mille</span><span className="font-display text-xl">KES {cpm.toFixed(0)}</span></div>
+                    {(() => {
+                      const eng = totals.likes + totals.comments + totals.shares + totals.saves;
+                      const cpe = eng > 0 && campaign.budget_kes > 0 ? campaign.budget_kes / eng : 0;
+                      return <div className="flex justify-between items-baseline"><span className="text-sm text-muted-foreground">Cost per engagement</span><span className="font-display text-xl">{cpe > 0 ? `KES ${cpe.toFixed(2)}` : "—"}</span></div>;
+                    })()}
+                  </div>
+                </Card>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Platform breakdown */}
         {platformRows.length > 0 && (
