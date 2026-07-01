@@ -217,24 +217,46 @@ const PublicContestReport = () => {
       .sort((a: any, b: any) => Number(a.metadata?.placement_rank ?? 99) - Number(b.metadata?.placement_rank ?? 99));
   }, [visibleEntries]);
 
-  // Totals across all unique counted posts (deduped by URL).
+  // Totals = sum of EVERY entry row for the contest (excluding paid creator
+  // roster), deduped by canonical post URL so scraper + registration rows for
+  // the same post don't double-count. This matches the numbers shown in the
+  // in-app campaign Overview and the emailed report, so all three surfaces
+  // agree. Announced winners are still counted here — their posts are real
+  // contest activity even though they've been moved out of the running.
   const { totals, platformRows, totalPosts } = useMemo(() => {
     let views = 0, likes = 0, comments = 0, shares = 0, postCount = 0;
     const map = new Map<string, { posts: number; views: number; eng: number }>();
-    for (const c of contestants) {
-      const posts: any[] = Array.isArray((c as any)._posts) ? (c as any)._posts : [];
-      for (const p of posts) {
-        postCount += 1;
-        views += Number(p.views || 0);
-        likes += Number(p.likes || 0);
-        comments += Number(p.comments || 0);
-        shares += Number(p.shares || 0);
-        const k = String(p.platform || "other").toLowerCase();
-        const cur = map.get(k) ?? { posts: 0, views: 0, eng: 0 };
-        cur.posts += 1;
-        cur.views += Number(p.views || 0);
-        cur.eng += Number(p.likes || 0) + Number(p.comments || 0) + Number(p.shares || 0);
-        map.set(k, cur);
+    const seenUrls = new Set<string>();
+    const consume = (p: any, plat: string) => {
+      const v = Number(p?.views || 0);
+      const l = Number(p?.likes || 0);
+      const c = Number(p?.comments || 0);
+      const s = Number(p?.shares || 0);
+      views += v; likes += l; comments += c; shares += s;
+      postCount += 1;
+      const cur = map.get(plat) ?? { posts: 0, views: 0, eng: 0 };
+      cur.posts += 1; cur.views += v; cur.eng += l + c + s;
+      map.set(plat, cur);
+    };
+    for (const row of visibleEntries) {
+      const candidates = [row, ...(Array.isArray((row as any).cross_posts) ? (row as any).cross_posts : [])];
+      let countedRowItself = false;
+      for (const post of candidates) {
+        const url = canonicalPostUrl(post?.post_url);
+        const plat = String(post?.platform || row.platform || "other").toLowerCase();
+        if (url) {
+          if (seenUrls.has(url)) continue;
+          seenUrls.add(url);
+          consume(post, plat);
+          if (post === row) countedRowItself = true;
+        } else if (post === row && !countedRowItself) {
+          // Row with no post_url yet (registration-only) — count its stats
+          // once so manually-entered metrics still land in the KPIs.
+          if (Number(post?.views || 0) || Number(post?.likes || 0) || Number(post?.comments || 0) || Number(post?.shares || 0)) {
+            consume(post, plat);
+            countedRowItself = true;
+          }
+        }
       }
     }
     return {
@@ -242,7 +264,7 @@ const PublicContestReport = () => {
       platformRows: Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views),
       totalPosts: postCount,
     };
-  }, [contestants]);
+  }, [visibleEntries]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (notFound || !contest) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Contest report not found or no longer active.</div>;
