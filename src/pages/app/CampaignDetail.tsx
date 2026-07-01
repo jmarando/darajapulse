@@ -515,6 +515,16 @@ const CampaignDetail = () => {
     return map;
   }, [posts, latestByPost]);
 
+  // Raw post counts per creator (regardless of whether metrics were fetched yet)
+  const postsCountByInfluencer = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of posts) {
+      if (!p.influencer_id) continue;
+      map.set(p.influencer_id, (map.get(p.influencer_id) ?? 0) + 1);
+    }
+    return map;
+  }, [posts]);
+
   const topPerformer = useMemo(() => {
     let best: { ci: any; views: number } | null = null;
     for (const x of ci) {
