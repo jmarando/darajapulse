@@ -1,69 +1,51 @@
-## Super Admin Console
 
-A new section at `/app/admin/*` (super_admin only), replacing the single billing page with a full console.
+## Goals
 
-### Pages
-- `/app/admin` — dashboard: counts (agencies, brand orgs, clients, MRR), outstanding payments, recent activity
-- `/app/admin/agencies` — table + create/edit drawer: name, slug, subdomain, logo, KRA PIN, fee, cycle, notes, active toggle
-- `/app/admin/brand-orgs` — table + create/edit drawer: name, slug, subdomain, logo, KRA PIN, fee, cycle, notes, active toggle, owner invite
-- `/app/admin/clients` — cross-agency list (agency, contacts, # campaigns, last activity) with filter
-- `/app/admin/billing` — invoices + payments ledger, per agency/brand_org. "Generate invoice", "Record payment", "Send Pesapal link"
-- `/app/admin/users` — every user, role chips, scope (agency / brand_org / client), invite + role assignment + remove
+Rework the client report so nothing is empty, top performer/top posts show real depth, and the layout reads cleanly. Apply the same upgrade to the emailed report and the in-tool Overview tab.
 
-Existing left-nav "Admin · Billing" item becomes a collapsible "Admin" group with these children.
+## 1. Public report link (`src/pages/PublicReport.tsx`)
 
-### Database
-New columns: `agencies.kra_pin`, `brand_orgs.kra_pin`.
+**Diagnose the "empty" sections first**
+- Share of voice, Creators, Learnings, and Posting cadence appear empty for Royco Q2 Main because of gated conditions or minor data joins, not missing rows (DB confirms 14 creators, 42 posts, learnings text saved).
+- Widen the render conditions and fall back to `created_at` when `posted_at` is missing so the cadence heatmap doesn't blank.
 
-New tables:
-- `invoices` (org_kind: agency|brand_org, org_id, period_start, period_end, amount_kes, status: draft|sent|paid|overdue|void, due_date, pesapal_order_tracking_id, pesapal_merchant_reference, paid_at, pdf_url, notes)
-- `payments` (invoice_id nullable, org_kind, org_id, amount_kes, method: pesapal|mpesa|bank|cash|other, reference, paid_at, recorded_by, notes, pesapal_confirmation_code)
-- `pesapal_ipn` (raw IPN payloads for audit)
+**Top performer → Top 3 (full metrics)**
+- Replace single Top performer card with a 3-column ranked card. For each: name, handle, platform mix, posts count, views, likes, comments, shares, saves, ER%, and reach efficiency vs their follower count.
 
-All with super_admin-only RLS + standard grants.
+**Top posts (already 3 picks) → richer stats**
+- Under each Most viewed / Highest engagement / Strongest intent card, add a compact stat strip: Views · Likes · Comments · Shares · Saves · ER% (instead of just one headline stat).
 
-### Pesapal wiring
-Credentials stored as secrets: `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET`, `PESAPAL_ENV` (sandbox|live), `PESAPAL_IPN_ID` (registered once via setup function).
+**Share of voice**
+- Loosen the `byCreator.size > 1` guard, always render when there is at least one creator with views, and label the section clearly when there's a single dominant creator.
 
-Edge functions:
-- `pesapal-register-ipn` — one-off: registers our IPN URL with Pesapal, stores returned `ipn_id` as secret
-- `pesapal-create-order` — auth'd, super_admin only: creates an order for an invoice, returns `redirect_url`, persists `order_tracking_id` + `merchant_reference`
-- `pesapal-ipn` — public webhook (`verify_jwt=false`): receives IPN, fetches transaction status, marks invoice paid + inserts payment row
-- `pesapal-get-status` — auth'd: manual refresh button on an invoice
+**Learnings & recommendations**
+- Move the block up above Creators/Posts so it isn't buried, and make sure it renders whenever `campaign.learnings` has any text (trimmed).
 
-### Invoice generation
-- Manual "Generate next invoice" button on each org's billing card → uses `fee` + `cycle` to compute period and due_date
-- Optional cron `generate-invoices-monthly` later — not in this pass
+**Creators + Posts layout**
+- Convert the bottom "Roster + Posts" grid: creators stay as a compact card, Posts becomes a responsive grid (2 columns on md, 3 on lg) with thumbnail + metric strip per card, replacing the long single column.
 
-### UI behavior
-- Pay link button on each unpaid invoice → calls `pesapal-create-order` → opens `redirect_url` in new tab
-- Invoice row shows status badge, refresh button, payment history below
+## 2. Emailed report
 
-### Out of scope this pass
-- Self-serve brand_org signup
-- Automated recurring invoice cron
-- WHT computation
-- e-TIMS
+`supabase/functions/_shared/transactional-email-templates/campaign-weekly-report.tsx`:
+- Expand `top_creators` rows from 5 to top 3 with fuller metric block (posts, views, engagement, ER%, reach eff).
+- Expand `top_posts` rows: currently views/likes/comments/shares. Add saves + ER%.
+- Add a compact "Share of voice" list (top 5 creators by % of reach) and a "Standout content" trio mirroring the link picks (Most viewed / Highest engagement / Strongest intent) with per-post metric strip.
+- Keep it text-heavy and email-safe (no external CSS, inline styles only).
 
-### Technical notes
-- Reuse `has_role(auth.uid(), 'super_admin')` everywhere
-- Pesapal v3 REST (auth → SubmitOrderRequest → GetTransactionStatus); base URL switches on `PESAPAL_ENV`
-- IPN URL: `https://<project-ref>.functions.supabase.co/pesapal-ipn` (returned from `project_urls` after function deploy)
-- All money in KES integer
-- `Invoices.types` added through migration → regenerated `supabase/types.ts`
+`supabase/functions/send-campaign-report/index.ts`:
+- Build the new payload fields: `top_creators` (top 3 with ER%, reach eff), `top_posts` (top 5 with saves+ER%), `standout_posts` (three picks), `share_of_voice` list.
+- Include cumulative learnings if present.
 
-### Sequence
-1. Migration (columns + 3 tables + RLS + grants)
-2. Add Pesapal secrets (user prompt)
-3. Edge functions (register-ipn, create-order, ipn, get-status)
-4. Register IPN once (run `pesapal-register-ipn`)
-5. Admin shell + 6 pages
-6. Wire pay buttons + refresh + IPN end-to-end test
+## 3. In-tool Overview tab (`src/pages/app/CampaignDetail.tsx`)
 
-Files touched (approx):
-- `supabase/migrations/<new>.sql`
-- `supabase/functions/pesapal-{register-ipn,create-order,ipn,get-status}/index.ts`
-- `src/pages/app/admin/{AdminLayout,Dashboard,Agencies,BrandOrgs,Clients,Billing,Users}.tsx`
-- `src/components/AppShell.tsx` (admin nav group)
-- `src/App.tsx` (routes)
-- Remove/redirect old `src/pages/app/AdminBilling.tsx`
+- Mirror the report upgrades: Top performer card → Top 3 mini-cards; Top posts strip → 6-metric strip.
+- Fix cadence heatmap to fall back to `created_at`.
+- Bump the "Share of voice" and Learnings blocks so they behave the same way as the public report.
+- No layout tear-down — same section order, richer cards.
+
+## Out of scope
+
+- No backend schema changes; grants and RLS already allow the public read paths (verified via anon fetch).
+- No changes to metric collection.
+
+Proceed?

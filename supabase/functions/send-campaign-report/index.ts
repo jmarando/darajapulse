@@ -200,67 +200,100 @@ async function buildCampaignWeekly(supa: any, campaign_id: string) {
     .map(([platform, v]) => ({ platform, ...v }))
     .sort((a, b) => b.engagement - a.engagement)
 
-  // top creators by engagement this week
-  const byInf = new Map<string, { views: number; engagement: number; posts: number }>()
-  for (const p of weekPosts) {
-    const m = latestByPost.get(p.id) || {}
-    if (!p.influencer_id) continue
-    const rec = byInf.get(p.influencer_id) || { views: 0, engagement: 0, posts: 0 }
-    rec.views += m.views || m.impressions || 0
-    rec.engagement += engOf(m)
-    rec.posts += 1
-    byInf.set(p.influencer_id, rec)
+  // top creators by engagement this week (fallback to all-time if the week is empty)
+  const buildByInf = (ps: any[]) => {
+    const m2 = new Map<string, { views: number; engagement: number; posts: number; likes: number; comments: number; shares: number; saves: number }>()
+    for (const p of ps) {
+      const m = latestByPost.get(p.id) || {}
+      if (!p.influencer_id) continue
+      const rec = m2.get(p.influencer_id) || { views: 0, engagement: 0, posts: 0, likes: 0, comments: 0, shares: 0, saves: 0 }
+      rec.views += m.views || m.impressions || 0
+      rec.likes += m.likes || 0
+      rec.comments += m.comments || 0
+      rec.shares += m.shares || 0
+      rec.saves += m.saves || 0
+      rec.engagement += engOf(m)
+      rec.posts += 1
+      m2.set(p.influencer_id, rec)
+    }
+    return m2
   }
-  let infMap: Map<string, any> = new Map()
-  if (byInf.size) {
-    const ids = [...byInf.keys()]
-    const { data: infs } = await supa.from('influencers').select('id, handle, primary_platform').in('id', ids)
+  const byInf = buildByInf(weekPosts)
+  const byInfAll = buildByInf(posts || [])
+
+  const allInfIds = new Set<string>([...byInf.keys(), ...byInfAll.keys()])
+  const infMap: Map<string, any> = new Map()
+  if (allInfIds.size) {
+    const { data: infs } = await supa.from('influencers').select('id, handle, full_name, primary_platform').in('id', [...allInfIds])
     for (const inf of (infs || [])) infMap.set(inf.id, inf)
   }
-  const top_creators = [...byInf.entries()]
+  const topSourceMap = byInf.size > 0 ? byInf : byInfAll
+  const top_creators = [...topSourceMap.entries()]
     .sort((a, b) => b[1].engagement - a[1].engagement)
-    .slice(0, 5)
+    .slice(0, 3)
     .map(([id, agg]) => {
       const inf = infMap.get(id)
-      return { handle: inf?.handle || 'creator', platform: inf?.primary_platform, ...agg }
+      const er = agg.views > 0 ? (agg.engagement / agg.views) * 100 : 0
+      return {
+        handle: inf?.handle || 'creator',
+        full_name: inf?.full_name,
+        platform: inf?.primary_platform,
+        views: agg.views,
+        engagement: agg.engagement,
+        likes: agg.likes,
+        comments: agg.comments,
+        shares: agg.shares,
+        saves: agg.saves,
+        posts: agg.posts,
+        er_pct: Number(er.toFixed(2)),
+      }
     })
 
-  // Top posts this week — ranked by engagement
-  const scored = weekPosts.map((p: any) => {
+  // Top posts this week — ranked by engagement (fallback to all-time)
+  const postSource = weekPosts.length > 0 ? weekPosts : (posts || [])
+  const scored = postSource.map((p: any) => {
     const m = latestByPost.get(p.id) || {}
     const inf = p.influencer_id ? infMap.get(p.influencer_id) : null
+    const views = m.views || m.impressions || 0
+    const eng = engOf(m)
     return {
       handle: inf?.handle,
+      full_name: inf?.full_name,
       platform: p.platform,
       post_url: p.post_url,
       posted_at: p.posted_at,
-      views: m.views || m.impressions || 0,
+      views,
       likes: m.likes || 0,
       comments: m.comments || 0,
       shares: m.shares || 0,
-      _eng: engOf(m),
+      saves: m.saves || 0,
+      er_pct: views > 0 ? Number(((eng / views) * 100).toFixed(2)) : 0,
+      _eng: eng,
     }
   }).sort((a: any, b: any) => b._eng - a._eng).slice(0, 5)
-  // Backfill missing influencer handles for posts whose creator wasn't already loaded
-  const missingInfIds = weekPosts
-    .filter((p: any) => p.influencer_id && !infMap.has(p.influencer_id))
-    .map((p: any) => p.influencer_id)
-  if (missingInfIds.length) {
-    const { data: more } = await supa.from('influencers').select('id, handle').in('id', missingInfIds)
-    for (const inf of (more || [])) infMap.set(inf.id, inf)
-    for (const s of scored) {
-      if (!s.handle) {
-        const wp = weekPosts.find((p: any) => p.post_url === s.post_url)
-        const inf = wp?.influencer_id ? infMap.get(wp.influencer_id) : null
-        if (inf) s.handle = inf.handle
-      }
-    }
-  }
   const top_posts = scored.map(({ _eng, ...rest }: any) => rest)
 
-  const totalCreators = new Set(weekPosts.map((p: any) => p.influencer_id).filter(Boolean)).size
+  // Share of voice — all-time views per creator
+  const sovTotal = [...byInfAll.values()].reduce((s, v) => s + v.views, 0)
+  const share_of_voice = sovTotal > 0
+    ? [...byInfAll.entries()]
+        .map(([id, agg]) => {
+          const inf = infMap.get(id)
+          return {
+            handle: inf?.handle,
+            full_name: inf?.full_name,
+            views: agg.views,
+            share_pct: Number(((agg.views / sovTotal) * 100).toFixed(2)),
+          }
+        })
+        .filter(r => r.views > 0)
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 8)
+    : []
 
-  const { data: camp } = await supa.from('campaigns').select('budget_kes').eq('id', campaign_id).maybeSingle()
+  const totalCreators = new Set((weekPosts.length ? weekPosts : (posts || [])).map((p: any) => p.influencer_id).filter(Boolean)).size
+
+  const { data: camp } = await supa.from('campaigns').select('budget_kes, learnings').eq('id', campaign_id).maybeSingle()
 
   const weekLabel = `Week of ${new Date(wkStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}–${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
 
@@ -281,6 +314,8 @@ async function buildCampaignWeekly(supa: any, campaign_id: string) {
     platforms,
     top_creators,
     top_posts,
+    share_of_voice,
+    learnings: camp?.learnings || '',
     cumulative_posts: (posts || []).length,
     cumulative_views: allTotals.views,
     cumulative_engagement: allTotals.engagement,
