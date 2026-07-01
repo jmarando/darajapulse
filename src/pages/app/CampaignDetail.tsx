@@ -1630,14 +1630,29 @@ const CampaignDetail = () => {
                       <td className="px-3 py-3 text-right tabular-nums align-top">
                         {isEditing ? (
                           <div className="text-left min-w-[200px]"><DeliverablesEditor value={editBreakdown} onChange={setEditBreakdown} /></div>
-                        ) : (
-                          <div>
-                            <div className="font-medium">{x.deliverables_count}</div>
-                            {breakdownSummary(x.deliverables_breakdown) && (
-                              <div className="text-[10px] text-muted-foreground">{breakdownSummary(x.deliverables_breakdown)}</div>
-                            )}
-                          </div>
-                        )}
+                        ) : (() => {
+                            const target = Number(x.deliverables_count || 0);
+                            const delivered = postsCountByInfluencer.get(x.influencer_id) ?? 0;
+                            const pct = target > 0 ? Math.min(100, Math.round((delivered / target) * 100)) : (delivered > 0 ? 100 : 0);
+                            const complete = target > 0 && delivered >= target;
+                            const barColor = complete ? "bg-accent" : delivered === 0 ? "bg-muted-foreground/30" : "bg-primary";
+                            return (
+                              <div className="min-w-[110px]">
+                                <div className="flex items-baseline justify-end gap-1 tabular-nums">
+                                  <span className={`font-medium ${complete ? "text-accent" : ""}`}>{delivered}</span>
+                                  <span className="text-muted-foreground">/ {target || "—"}</span>
+                                </div>
+                                {target > 0 && (
+                                  <div className="mt-1 h-1 w-full rounded-full bg-secondary overflow-hidden">
+                                    <div className={`h-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+                                  </div>
+                                )}
+                                {breakdownSummary(x.deliverables_breakdown) && (
+                                  <div className="text-[10px] text-muted-foreground mt-0.5 text-right">{breakdownSummary(x.deliverables_breakdown)}</div>
+                                )}
+                              </div>
+                            );
+                          })()}
                       </td>
                       <td className="px-5 py-3 text-right">
                         {isEditing ? (
