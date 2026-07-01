@@ -10,10 +10,16 @@ import {
 
 interface TopCreator {
   handle: string
+  full_name?: string
   platform?: string
   views: number
   engagement: number
+  likes?: number
+  comments?: number
+  shares?: number
+  saves?: number
   posts: number
+  er_pct?: number
 }
 interface PlatformBreakdown {
   platform: string
@@ -23,13 +29,22 @@ interface PlatformBreakdown {
 }
 interface TopPost {
   handle?: string
+  full_name?: string
   platform?: string
   views: number
   likes: number
   comments: number
   shares: number
+  saves?: number
+  er_pct?: number
   post_url?: string
   posted_at?: string
+}
+interface SovRow {
+  handle?: string
+  full_name?: string
+  views: number
+  share_pct: number
 }
 interface Props {
   client_name?: string
