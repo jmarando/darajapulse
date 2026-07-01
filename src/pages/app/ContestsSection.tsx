@@ -19,6 +19,7 @@ const PLATFORMS = ["tiktok","instagram","youtube","twitter","facebook"];
 export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string; contestId?: string }) => {
   const [contests, setContests] = useState<any[]>([]);
   const [entries, setEntries] = useState<any[]>([]);
+  const [officialWinners, setOfficialWinners] = useState<any[]>([]);
   const [creatorHandles, setCreatorHandles] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -90,6 +91,45 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const isAuto = (e: any) => AUTO_SOURCES.has(String(e.source || "").toLowerCase());
 
   const normalizedText = (value?: string | null) => (value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const editDistance = (a: string, b: string, max = 2) => {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      let last = prev[0];
+      prev[0] = i;
+      let rowMin = prev[0];
+      for (let j = 1; j <= b.length; j++) {
+        const old = prev[j];
+        prev[j] = a[i - 1] === b[j - 1] ? last : Math.min(last, prev[j - 1], prev[j]) + 1;
+        last = old;
+        rowMin = Math.min(rowMin, prev[j]);
+      }
+      if (rowMin > max) return max + 1;
+    }
+    return prev[b.length];
+  };
+  const winnerMatchesRow = (winner: any, row: any) => {
+    if (!winner || !row) return false;
+    if (winner.entry_id && winner.entry_id === row.id) return true;
+    const winnerHandle = cleanH(winner.handle);
+    if (winnerHandle) {
+      const rowHandles = [row.handle, row.instagram_handle, row.tiktok_handle, row.facebook_handle].map(cleanH).filter(Boolean);
+      if (rowHandles.includes(winnerHandle)) return true;
+    }
+    const winnerUrl = canonicalPostUrl(winner.post_url);
+    if (winnerUrl && canonicalPostUrl(row.post_url) === winnerUrl) return true;
+    const winnerName = normalizedText(winner.full_name);
+    const rowName = normalizedText(row.full_name || row.submitter_name);
+    if (winnerName && rowName) {
+      if (winnerName === rowName) return true;
+      const wt = winnerName.split(" ").filter(Boolean);
+      const rt = rowName.split(" ").filter(Boolean);
+      // Handles common registration typos without reintroducing the earlier
+      // Betty/Phoebe bug: first name must match exactly, surname can be 1–2 edits off.
+      if (wt.length >= 2 && rt.length >= 2 && wt[0] === rt[0] && editDistance(wt.slice(1).join(""), rt.slice(1).join(""), 2) <= 2) return true;
+    }
+    return false;
+  };
   // Collect EVERY identifier we know about for a row so we can union-find contestants that
   // appear in multiple entry rows (one per platform, plus the original registration).
   const identifiersOf = (e: any): string[] => {
@@ -261,6 +301,23 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     load();
   };
 
+  const fetchAllContestEntries = async (cid: string) => {
+    const rows: any[] = [];
+    const pageSize = 1000;
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase.from("contest_entries")
+        .select("*")
+        .eq("contest_id", cid)
+        .order("score", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      rows.push(...(data ?? []));
+      if (!data || data.length < pageSize) break;
+    }
+    return rows;
+  };
+
   const load = async () => {
     let cs: any[] = [];
     if (contestId) {
@@ -275,10 +332,17 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     setContests(cs);
     const cid = activeId ?? cs[0]?.id;
     if (cid) {
-      const { data: es } = await supabase.from("contest_entries").select("*").eq("contest_id", cid).order("score", { ascending: false });
+      const [es, { data: winners }] = await Promise.all([
+        fetchAllContestEntries(cid),
+        (supabase as any).from("contest_winners").select("*").eq("contest_id", cid).order("round_number", { ascending: true }).order("placement_rank", { ascending: true }),
+      ]);
       setEntries(es ?? []);
+      setOfficialWinners(winners ?? []);
       const { data: lr } = await (supabase as any).from("contestant_sync_runs").select("*").eq("contest_id", cid).order("started_at", { ascending: false }).limit(1).maybeSingle();
       setLastRun(lr ?? null);
+    } else {
+      setEntries([]);
+      setOfficialWinners([]);
     }
     // Paid creators (anyone in the influencer roster) must never appear as
     // contestants — load every roster handle, not just this campaign's, so
@@ -595,11 +659,18 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     return hs.some(h => creatorHandles.has(h));
   };
 
+  const officialWinnerRowIds = useMemo(() => {
+    if (!officialWinners.length || !entries.length) return new Set<string>();
+    return new Set(entries.filter(row => officialWinners.some(w => winnerMatchesRow(w, row))).map(row => row.id));
+  }, [entries, officialWinners]);
+
+  const isAnnouncedWinner = (e: any) => e.status === "winner" || e.metadata?.placement_rank != null || officialWinnerRowIds.has(e.id);
+
   const byRound = useMemo(() => {
     const map = new Map<number, any[]>();
     for (const e of entries) {
       if (isCreator(e)) continue;
-      if (e.status === "winner") continue; // winners shown separately
+      if (isAnnouncedWinner(e)) continue; // winners shown separately
       const k = e.round_number || 1;
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(e);
@@ -607,7 +678,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     return Array.from(map.entries())
       .map(([round, rows]) => [round, groupEntriesByContestant(rows).map(summarizeContestant)] as [number, any[]])
       .sort((a, b) => a[0] - b[0]);
-  }, [entries, creatorHandles]);
+  }, [entries, creatorHandles, officialWinnerRowIds]);
 
   const availableRounds = useMemo(() => {
     const s = new Set<number>();
@@ -626,10 +697,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   }, [availableRounds, selectedRound]);
 
   // Single running list across ALL rounds: include everyone EXCEPT the announced winners.
-  const isAnnouncedWinner = (e: any) => e.status === "winner" || e.metadata?.placement_rank != null;
   const entriesForRound = useMemo(
     () => entries.filter(e => !isAnnouncedWinner(e)),
-    [entries]
+    [entries, officialWinnerRowIds]
   );
 
   // Compute which rows belong to (a) announced winners (incl. fuzzy-matched siblings)
@@ -688,7 +758,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     }).sort((a, b) => b.total - a.total);
     const top10RowIds = new Set<string>(contestants.slice(0, 10).flatMap(c => c.rows.map((r: any) => r.id)));
     return { winnerRelatedRowIds, top10RowIds };
-  }, [entries, creatorHandles]);
+  }, [entries, creatorHandles, officialWinnerRowIds]);
 
 
   const exportCsv = () => {
@@ -935,42 +1005,12 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
               {/* Previous winners — top 5 are removed from the running but kept visible. */}
               {(() => {
                 const winnerRows = entries.filter(isAnnouncedWinner);
-                if (winnerRows.length === 0) return null;
-                // Group ALL entries so a winner's metrics include their non-winner
-                // duplicate rows (CSV / scraper / manually-attached posts).
-                const allGroups = groupEntriesByContestant(entries);
-                const winnerKeys = new Set(winnerRows.map(r => r.id));
-                const winnerGroups = allGroups.filter(rows => rows.some(r => winnerKeys.has(r.id)));
-                // Fuzzy fallback: for winners whose handles don't match any sibling row
-                // (e.g. Helvin's winner row says "Life&style" but her real sibling row
-                // uses "helvin_lifestyle"), pull in rows whose handle/full_name contains
-                // a token from the winner's full_name. Skip single-word tokens shorter
-                // than 5 chars to avoid bad matches like "njagi" → unrelated Njagi rows.
-                const usedRowIds = new Set(winnerGroups.flat().map(r => r.id));
-                for (const wRow of winnerRows) {
-                  const grp = winnerGroups.find(g => g.some(r => r.id === wRow.id));
-                  if (!grp) continue;
-                  const nameTokens = String(wRow.full_name || wRow.submitter_name || "")
-                    .toLowerCase().split(/\s+/).filter(t => t.length >= 5);
-                  if (nameTokens.length < 2) continue;
-                  for (const e of entries) {
-                    if (usedRowIds.has(e.id)) continue;
-                    if (Number(e.views || 0) <= 0 && Number(e.likes || 0) <= 0) continue;
-                    const hayTokens = new Set(
-                      [e.handle, e.tiktok_handle, e.instagram_handle, e.facebook_handle, e.full_name, e.submitter_name]
-                        .flatMap(s => String(s || "").toLowerCase().split(/[^a-z0-9]+/))
-                        .filter(Boolean),
-                    );
-                    if (nameTokens.every(t => hayTokens.has(t))) {
-                      grp.push(e);
-                      usedRowIds.add(e.id);
-                    }
-                  }
-                }
-                const winners = winnerGroups.map(rows => {
-                  const reg = rows.find(r => r.id === winnerRows.find(w => rows.some(rr => rr.id === w.id))?.id)
-                    || rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed")
-                    || rows[0];
+                if (winnerRows.length === 0 && officialWinners.length === 0) return null;
+                const summarizeWinnerRows = (rows: any[], winner?: any) => {
+                  const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed")
+                    || rows.find(r => winner?.entry_id && r.id === winner.entry_id)
+                    || rows[0]
+                    || {};
 
                   // Pick the best post per platform, then sum across platforms.
                   const bestByPlat = new Map<string, { url: string; score: number; platform: string }>();
@@ -984,20 +1024,38 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                       if (!prev || s > prev.score) bestByPlat.set(plat, { url: k, score: s, platform: plat });
                     }
                   }
-                  const total = Array.from(bestByPlat.values()).reduce((s, v) => s + v.score, 0);
-                  const withMeta = rows.find(r => r.metadata?.placement_rank) || reg;
-                  const m = withMeta?.metadata || {};
+                  const liveTotal = Array.from(bestByPlat.values()).reduce((s, v) => s + v.score, 0);
+                  const m = reg?.metadata || {};
+                  const total = Number(winner?.frozen_score ?? 0) > 0 ? Number(winner.frozen_score) : liveTotal;
                   return {
-                    id: reg.id,
-                    name: reg.full_name || reg.submitter_name || reg.handle || "Winner",
-                    handle: reg.handle || reg.tiktok_handle || reg.instagram_handle || reg.facebook_handle,
+                    id: winner?.id || reg.id,
+                    name: winner?.full_name || reg.full_name || reg.submitter_name || reg.handle || "Winner",
+                    handle: winner?.handle || reg.handle || reg.tiktok_handle || reg.instagram_handle || reg.facebook_handle,
                     total,
-                    placement: m.placement as string | undefined,
-                    prize: m.prize as string | undefined,
-                    rank: (m.placement_rank as number | undefined) ?? 99,
-                    round: (m.round as number | undefined) ?? 0,
+                    placement: winner?.placement || (m.placement as string | undefined),
+                    prize: winner?.prize ?? (m.prize as string | undefined),
+                    rank: Number(winner?.placement_rank ?? m.placement_rank ?? 99),
+                    round: Number(winner?.round_number ?? m.round ?? 0),
                   };
-                }).sort((a, b) => (b.round - a.round) || (a.rank - b.rank));
+                };
+
+                // Group ALL entries so a winner's metrics include their non-winner
+                // duplicate rows (CSV / scraper / manually-attached posts).
+                const allGroups = groupEntriesByContestant(entries);
+                const winnersFromTable = officialWinners.map(w => {
+                  const matched = entries.filter(row => winnerMatchesRow(w, row));
+                  const ids = new Set(matched.map(row => row.id));
+                  const rows = allGroups.filter(group => group.some(row => ids.has(row.id))).flat();
+                  const uniqueRows = Array.from(new Map([...matched, ...rows].map(row => [row.id, row])).values());
+                  return summarizeWinnerRows(uniqueRows, w);
+                });
+
+                const covered = new Set(entries.filter(row => officialWinners.some(w => winnerMatchesRow(w, row))).map(row => row.id));
+                const fallbackWinnerRows = winnerRows.filter(row => !covered.has(row.id));
+                const fallbackKeys = new Set(fallbackWinnerRows.map(r => r.id));
+                const fallbackGroups = allGroups.filter(rows => rows.some(r => fallbackKeys.has(r.id)));
+                const winners = [...winnersFromTable, ...fallbackGroups.map(rows => summarizeWinnerRows(rows))]
+                  .sort((a, b) => (b.round - a.round) || (a.rank - b.rank));
                 // Steady-state announced scores (locked so live metric drift doesn't change them).
                 const FROZEN_WINNER_PTS: Record<string, number> = {
                   irenenduku0: 205918,
@@ -1005,6 +1063,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                   lukanjagi: 21047,
                   gordoncooks1: 91876,
                   helvin_lifestyle: 81707,
+                  kentaidamaris: 81916,
                 };
                 for (const w of winners) {
                   const key = String(w.handle || "").toLowerCase().replace(/^@/, "");

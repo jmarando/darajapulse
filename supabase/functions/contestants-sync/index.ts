@@ -78,6 +78,22 @@ const stableRegistrationId = (r: any, i: number, get: (...keys: string[]) => str
   return `csv:${response}:${email || phone || `${name}:${stamp}` || `row-${i + 1}`}`.slice(0, 220);
 };
 
+async function fetchAllContestEntries(sb: any, contest_id: string, columns: string) {
+  const rows: any[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await sb.from("contest_entries")
+      .select(columns)
+      .eq("contest_id", contest_id)
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
 // Try to normalize a feed payload from a variety of shapes (Flutter/Firebase
 // exports, generic REST, JSONForms, etc).
 async function normalize(payload: any): Promise<Reg[]> {
@@ -173,9 +189,11 @@ Deno.serve(async (req) => {
     const cleanH = (s?: string | null) => (s || "").trim().replace(/^@+/, "").toLowerCase();
     const { data: excluded } = await sb.from("contest_excluded_handles").select("handle").eq("contest_id", contest_id);
     const excludedSet = new Set<string>(((excluded ?? []) as any[]).map((r: any) => cleanH(r.handle)).filter(Boolean));
-    const { data: existingRows } = await sb.from("contest_entries")
-      .select("id, external_registration_id, post_url, full_name, submitter_name, submitter_email, phone")
-      .eq("contest_id", contest_id);
+    const existingRows = await fetchAllContestEntries(
+      sb,
+      contest_id,
+      "id, external_registration_id, post_url, full_name, submitter_name, submitter_email, phone",
+    );
     const byExt = new Map(((existingRows ?? []) as any[]).filter(r => r.external_registration_id).map(r => [String(r.external_registration_id), r]));
     const byUrl = new Map(((existingRows ?? []) as any[]).filter(r => r.post_url).map(r => [canonicalPostUrlSync(r.post_url), r]));
     const norm = (v?: any) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, " ");

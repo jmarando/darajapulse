@@ -233,6 +233,42 @@ async function scrape(platform: string, url: string) {
 // deno-lint-ignore no-explicit-any
 declare const EdgeRuntime: any;
 
+async function fetchRefreshEntries(sb: any, contest_id: string, retryInvalid: boolean, onlyEmpty: boolean) {
+  const rows: any[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    let q = sb.from("contest_entries")
+      .select("id, platform, post_url, views, likes, comments, shares, status")
+      .eq("contest_id", contest_id)
+      .not("post_url", "is", null)
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (!retryInvalid) q = q.neq("status", "invalid");
+    if (onlyEmpty) q = q.eq("views", 0).eq("likes", 0).eq("comments", 0).eq("shares", 0);
+    const { data, error } = await q;
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
+async function fetchRescueRows(sb: any, contest_id: string) {
+  const rows: any[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await sb.from("contest_entries")
+      .select("id, status, tiktok_handle, instagram_handle, facebook_handle, handle, post_url, views, likes")
+      .eq("contest_id", contest_id)
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -245,14 +281,7 @@ Deno.serve(async (req) => {
     // retry_invalid: include rows previously flagged invalid (run on a slower cadence)
     const retryInvalid: boolean = body.retry_invalid ?? false;
 
-    let q = sb.from("contest_entries")
-      .select("id, platform, post_url, views, likes, comments, shares, status")
-      .eq("contest_id", contest_id)
-      .not("post_url", "is", null);
-    if (!retryInvalid) q = q.neq("status", "invalid");
-    if (onlyEmpty) q = q.eq("views", 0).eq("likes", 0).eq("comments", 0).eq("shares", 0);
-    const { data: entries, error } = await q;
-    if (error) throw error;
+    const entries = await fetchRefreshEntries(sb, contest_id, retryInvalid, onlyEmpty);
 
     const run = async () => {
       let updated = 0, failed = 0, invalid = 0;
@@ -319,9 +348,7 @@ Deno.serve(async (req) => {
       //    feed it to contest-fetch-handle-posts so we stop showing 0s for people
       //    who only registered with a handle.
       try {
-        const { data: zeroRows } = await sb.from("contest_entries")
-          .select("id, status, tiktok_handle, instagram_handle, facebook_handle, handle, post_url, views, likes")
-          .eq("contest_id", contest_id);
+        const zeroRows = await fetchRescueRows(sb, contest_id);
         const need = (zeroRows ?? []).filter((r: any) => {
           const noMetrics = Number(r.views || 0) <= 0 && Number(r.likes || 0) <= 0;
           const hasHandle = r.tiktok_handle || r.instagram_handle || r.handle;
