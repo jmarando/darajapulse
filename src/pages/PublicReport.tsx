@@ -1165,53 +1165,40 @@ const PublicReport = () => {
                 <p className="text-sm text-muted-foreground">No posts published yet — check back soon.</p>
               </div>
             ) : (
-              <ul className="space-y-2">
-                {filteredPosts.map(p => (
-                  <li key={p.id} className="p-3 rounded-md border border-border hover:bg-secondary/30 transition-colors">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm min-w-0 truncate">
-                        <span className="font-medium">{p.influencers?.full_name}</span>
-                        <span className="text-muted-foreground"> · {p.platform}</span>
-                      </div>
-                      <Badge variant="outline" className="capitalize">{p.status}</Badge>
-                    </div>
-                    {p.post_url && (
-                      <div className="mt-3 grid md:grid-cols-[minmax(0,220px)_1fr] gap-4 items-start">
-                        <div className="no-print w-full max-w-[220px]">
-                          <PostThumb
-                            url={p.post_url}
-                            platform={p.platform}
-                            thumbnailUrl={(p as any).thumbnail_url}
-                            caption={(p as any).caption}
-                            handle={p.influencers?.handle || p.influencers?.full_name}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <a href={p.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent break-all block">{p.post_url}</a>
-                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3 text-center">
-                            <div><div className="font-display text-base">{fmt(p.metrics.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                            <div><div className="font-display text-base">{fmt(p.metrics.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
-                            <div><div className="font-display text-base">{fmt(p.metrics.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
-                            <div><div className="font-display text-base">{fmt(p.metrics.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
-                            <div><div className="font-display text-base">{fmt(p.metrics.saves || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
-                            <div><div className="font-display text-base">{fmt(p.metrics.reach || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Reach</div></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {filteredPosts.map(p => {
+                  const eng = (p.metrics.likes||0)+(p.metrics.comments||0)+(p.metrics.shares||0)+(p.metrics.saves||0);
+                  const erP = p.metrics.views > 0 ? (eng / p.metrics.views) * 100 : 0;
+                  return (
+                    <div key={p.id} className="rounded-md border border-border overflow-hidden hover:border-accent/50 transition-colors bg-card flex flex-col">
+                      {p.post_url ? (
+                        <a href={p.post_url} target="_blank" rel="noreferrer" className="block aspect-[4/5] bg-secondary overflow-hidden">
+                          <PostThumb url={p.post_url} platform={p.platform} thumbnailUrl={(p as any).thumbnail_url} caption={(p as any).caption} handle={p.influencers?.handle || p.influencers?.full_name} />
+                        </a>
+                      ) : (
+                        <div className="aspect-[4/5] bg-secondary flex items-center justify-center text-xs text-muted-foreground">No link</div>
+                      )}
+                      <div className="p-3 flex-1 flex flex-col">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{p.influencers?.full_name || "—"}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">@{(p.influencers?.handle || "").replace(/^@/, "")} · {p.platform}</div>
                           </div>
+                          <Badge variant="outline" className="capitalize text-[10px] shrink-0">{p.status}</Badge>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1 mt-3 text-center">
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(p.metrics.views || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(p.metrics.likes || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(p.metrics.comments || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(p.metrics.shares || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(p.metrics.saves || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{erP.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">ER</div></div>
                         </div>
                       </div>
-                    )}
-                    {!p.post_url && (
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-3 text-center">
-                      <div><div className="font-display text-base">{fmt(p.metrics.views || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                      <div><div className="font-display text-base">{fmt(p.metrics.likes || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
-                      <div><div className="font-display text-base">{fmt(p.metrics.comments || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comments</div></div>
-                      <div><div className="font-display text-base">{fmt(p.metrics.shares || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
-                      <div><div className="font-display text-base">{fmt(p.metrics.saves || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
-                      <div><div className="font-display text-base">{fmt(p.metrics.reach || 0)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Reach</div></div>
                     </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                  );
+                })}
+              </div>
             )}
           </Card>
         </div>
