@@ -1,0 +1,1 @@
+UPDATE posts SET thumbnail_url = replace(replace(replace(thumbnail_url, '&amp;', '&'), '&#38;', '&'), '&quot;', '"') WHERE thumbnail_url LIKE '%&amp;%' OR thumbnail_url LIKE '%&#38;%';
