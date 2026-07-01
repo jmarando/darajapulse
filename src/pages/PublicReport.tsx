@@ -537,21 +537,32 @@ const PublicReport = () => {
                 <div className="text-xs text-muted-foreground">Picked across three signals</div>
               </div>
               <div className="grid md:grid-cols-3 gap-4">
-                {picks.map(({ label, icon: Icon, item, stat }) => (
-                  <a key={label} href={item!.p.post_url || "#"} target="_blank" rel="noreferrer" className="group rounded-lg border border-border overflow-hidden hover:border-accent/50 transition-colors bg-card">
-                    <div className="aspect-[4/5] bg-secondary overflow-hidden flex items-center justify-center">
-                      <PostThumb url={item!.p.post_url} platform={item!.p.platform} thumbnailUrl={item!.p.thumbnail_url} caption={item!.p.caption} handle={item!.p.influencers?.handle} />
-                    </div>
-                    <div className="p-3">
-                      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-accent">
-                        <Icon className="w-3 h-3" /> {label}
+                {picks.map(({ label, icon: Icon, item, stat }) => {
+                  const m = item!.m;
+                  return (
+                    <a key={label} href={item!.p.post_url || "#"} target="_blank" rel="noreferrer" className="group rounded-lg border border-border overflow-hidden hover:border-accent/50 transition-colors bg-card">
+                      <div className="aspect-[4/5] bg-secondary overflow-hidden flex items-center justify-center">
+                        <PostThumb url={item!.p.post_url} platform={item!.p.platform} thumbnailUrl={item!.p.thumbnail_url} caption={item!.p.caption} handle={item!.p.influencers?.handle} />
                       </div>
-                      <div className="font-display text-lg mt-1 truncate">{item!.p.influencers?.full_name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground truncate">@{(item!.p.influencers?.handle || "").replace(/^@/, "")} · {item!.p.platform}</div>
-                      <div className="mt-2 font-display text-xl tabular-nums">{stat}</div>
-                    </div>
-                  </a>
-                ))}
+                      <div className="p-3">
+                        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-accent">
+                          <Icon className="w-3 h-3" /> {label}
+                        </div>
+                        <div className="font-display text-lg mt-1 truncate">{item!.p.influencers?.full_name ?? "—"}</div>
+                        <div className="text-xs text-muted-foreground truncate">@{(item!.p.influencers?.handle || "").replace(/^@/, "")} · {item!.p.platform}</div>
+                        <div className="mt-2 font-display text-xl tabular-nums">{stat}</div>
+                        <div className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-1 text-center">
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(m.views || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(m.likes || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(m.comments || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(m.shares || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{fmt(m.saves || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
+                          <div><div className="text-xs font-medium tabular-nums">{item!.erP.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">ER</div></div>
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
               </div>
             </Card>
           );
