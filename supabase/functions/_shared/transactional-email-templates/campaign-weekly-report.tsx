@@ -234,21 +234,31 @@ const CampaignWeeklyReport = (p: Props) => {
 
             {/* Top creators */}
             <Text style={sectionTitle}>Top creators</Text>
-            {(p.top_creators || []).slice(0, 5).map((c, i) => (
-              <Row key={i} style={{ borderBottom: `1px solid ${brand.border}`, padding: '10px 0' }}>
-                <Column style={{ width: 24, color: brand.textMuted, fontSize: 13 }}>{i + 1}</Column>
-                <Column>
-                  <Text style={{ ...text, margin: 0, fontWeight: 600 }}>@{c.handle}</Text>
-                  <Text style={{ ...muted, fontSize: 11 }}>
-                    {platLabel(c.platform)} · {fmt(c.posts)} posts · {fmt(c.views)} views
-                  </Text>
-                </Column>
-                <Column align="right" style={{ width: 90 }}>
-                  <Text style={{ ...text, margin: 0, fontWeight: 700 }}>{fmt(c.engagement)}</Text>
-                  <Text style={{ ...muted, fontSize: 11 }}>engagements</Text>
-                </Column>
-              </Row>
-            ))}
+            {(p.top_creators || []).slice(0, 3).map((c, i) => {
+              const eng = c.engagement || 0
+              const er = typeof c.er_pct === 'number' ? c.er_pct : (c.views > 0 ? (eng / c.views) * 100 : 0)
+              return (
+                <Section key={i} style={{ borderBottom: `1px solid ${brand.border}`, padding: '12px 0' }}>
+                  <Row>
+                    <Column style={{ width: 24, color: brand.textMuted, fontSize: 13, verticalAlign: 'top' }}>{i + 1}</Column>
+                    <Column>
+                      <Text style={{ ...text, margin: 0, fontWeight: 600 }}>{c.full_name || `@${c.handle}`}</Text>
+                      <Text style={{ ...muted, fontSize: 11, margin: '2px 0 8px' }}>
+                        @{c.handle} · {platLabel(c.platform)} · {fmt(c.posts)} post{c.posts === 1 ? '' : 's'}
+                      </Text>
+                    </Column>
+                  </Row>
+                  <Row>
+                    <Column><Text style={metricLabel}>Views</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(c.views)}</Text></Column>
+                    <Column><Text style={metricLabel}>Likes</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(c.likes || 0)}</Text></Column>
+                    <Column><Text style={metricLabel}>Comments</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(c.comments || 0)}</Text></Column>
+                    <Column><Text style={metricLabel}>Shares</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(c.shares || 0)}</Text></Column>
+                    <Column><Text style={metricLabel}>Saves</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(c.saves || 0)}</Text></Column>
+                    <Column><Text style={metricLabel}>ER</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{er.toFixed(1)}%</Text></Column>
+                  </Row>
+                </Section>
+              )
+            })}
             {(!p.top_creators || p.top_creators.length === 0) && (
               <Text style={muted}>No posts yet this week.</Text>
             )}
@@ -257,27 +267,61 @@ const CampaignWeeklyReport = (p: Props) => {
             {topPosts.length > 0 && (
               <>
                 <Text style={sectionTitle}>Top posts</Text>
-                {topPosts.map((post, i) => (
-                  <Row key={i} style={{ borderBottom: `1px solid ${brand.border}`, padding: '10px 0' }}>
-                    <Column style={{ width: 24, color: brand.textMuted, fontSize: 13 }}>{i + 1}</Column>
-                    <Column>
-                      <Text style={{ ...text, margin: 0, fontWeight: 600 }}>
-                        {post.handle ? `@${post.handle}` : 'Post'}
-                      </Text>
-                      <Text style={{ ...muted, fontSize: 11 }}>
-                        {platLabel(post.platform)}
-                        {post.posted_at ? ` · ${new Date(post.posted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
-                        {' · '}
-                        {fmt(post.views)} views · {fmt(post.likes)} likes · {fmt(post.comments)} comments · {fmt(post.shares)} shares
-                      </Text>
-                      {post.post_url && (
-                        <Link href={post.post_url} style={{ color, fontSize: 11 }}>
-                          View post →
-                        </Link>
-                      )}
+                {topPosts.map((post, i) => {
+                  const eng = (post.likes || 0) + (post.comments || 0) + (post.shares || 0) + (post.saves || 0)
+                  const er = typeof post.er_pct === 'number' ? post.er_pct : (post.views > 0 ? (eng / post.views) * 100 : 0)
+                  return (
+                    <Section key={i} style={{ borderBottom: `1px solid ${brand.border}`, padding: '12px 0' }}>
+                      <Row>
+                        <Column style={{ width: 24, color: brand.textMuted, fontSize: 13, verticalAlign: 'top' }}>{i + 1}</Column>
+                        <Column>
+                          <Text style={{ ...text, margin: 0, fontWeight: 600 }}>{post.full_name || (post.handle ? `@${post.handle}` : 'Post')}</Text>
+                          <Text style={{ ...muted, fontSize: 11, margin: '2px 0 8px' }}>
+                            {post.handle ? `@${post.handle} · ` : ''}{platLabel(post.platform)}
+                            {post.posted_at ? ` · ${new Date(post.posted_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}
+                          </Text>
+                          {post.post_url && (
+                            <Link href={post.post_url} style={{ color, fontSize: 11 }}>View post →</Link>
+                          )}
+                        </Column>
+                      </Row>
+                      <Row>
+                        <Column><Text style={metricLabel}>Views</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(post.views)}</Text></Column>
+                        <Column><Text style={metricLabel}>Likes</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(post.likes)}</Text></Column>
+                        <Column><Text style={metricLabel}>Comments</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(post.comments)}</Text></Column>
+                        <Column><Text style={metricLabel}>Shares</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(post.shares)}</Text></Column>
+                        <Column><Text style={metricLabel}>Saves</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{fmt(post.saves || 0)}</Text></Column>
+                        <Column><Text style={metricLabel}>ER</Text><Text style={{ ...text, margin: 0, fontWeight: 600 }}>{er.toFixed(1)}%</Text></Column>
+                      </Row>
+                    </Section>
+                  )
+                })}
+              </>
+            )}
+
+            {/* Share of voice */}
+            {(p.share_of_voice || []).length > 0 && (
+              <>
+                <Text style={sectionTitle}>Share of voice</Text>
+                {(p.share_of_voice || []).slice(0, 8).map((r, i) => (
+                  <Row key={i} style={{ padding: '6px 0' }}>
+                    <Column><Text style={{ ...text, margin: 0 }}>{r.full_name || `@${r.handle || '—'}`}</Text></Column>
+                    <Column align="right" style={{ width: 80 }}>
+                      <Text style={{ ...text, margin: 0, fontWeight: 700 }}>{r.share_pct.toFixed(1)}%</Text>
+                    </Column>
+                    <Column align="right" style={{ width: 90 }}>
+                      <Text style={{ ...muted, fontSize: 11, margin: 0 }}>{fmt(r.views)} views</Text>
                     </Column>
                   </Row>
                 ))}
+              </>
+            )}
+
+            {/* Learnings */}
+            {p.learnings && p.learnings.trim().length > 0 && (
+              <>
+                <Text style={sectionTitle}>Learnings & recommendations</Text>
+                <Text style={{ ...text, whiteSpace: 'pre-wrap' }}>{p.learnings}</Text>
               </>
             )}
 
