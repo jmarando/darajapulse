@@ -1739,8 +1739,9 @@ const CampaignDetail = () => {
               const m = latestByPost.get(p.id);
               const postedAt = p.posted_at ? new Date(p.posted_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
               return (
-                <li key={p.id} className="rounded-lg border border-border bg-card overflow-hidden flex flex-col hover:shadow-elegant transition-shadow">
-                  <button type="button" onClick={() => setPreviewPost(p)} className="block text-left">
+                <li key={p.id} className="group relative rounded-2xl border border-border bg-card overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_60px_-20px_hsl(var(--primary)/0.35)] hover:border-primary/30">
+                  <div className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
+                  <button type="button" onClick={() => setPreviewPost(p)} className="relative block text-left">
                     <PostThumb
                       url={p.post_url}
                       platform={p.platform}
@@ -1749,24 +1750,24 @@ const CampaignDetail = () => {
                       handle={p.influencers?.handle || p.influencers?.full_name}
                     />
                   </button>
-                  <div className="px-3 py-2 border-t border-border space-y-1">
+                  <div className="relative px-3.5 py-2.5 space-y-1.5 bg-gradient-to-b from-card to-secondary/20">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-xs min-w-0 truncate">
-                        <span className="font-medium">{p.influencers?.full_name}</span>
+                        <span className="font-semibold tracking-tight">{p.influencers?.full_name}</span>
                         {p.influencers?.handle && <span className="text-muted-foreground"> · @{p.influencers.handle}</span>}
                       </div>
-                      <Badge variant="outline" className="capitalize text-[10px] py-0 h-5 shrink-0">{p.status}</Badge>
+                      <Badge variant="outline" className="capitalize text-[10px] py-0 h-5 shrink-0 border-primary/30 bg-primary/5 text-primary">{p.status}</Badge>
                     </div>
                     {p.caption && (
-                      <p className="text-[11px] text-muted-foreground leading-snug line-clamp-3">{p.caption}</p>
+                      <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2 text-pretty">{p.caption}</p>
                     )}
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                      {postedAt && <span>{postedAt}</span>}
-                      <div className="inline-flex items-center gap-2">
-                        <button type="button" onClick={() => setPreviewPost(p)} className="inline-flex items-center gap-1 hover:text-foreground">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/60">
+                      {postedAt && <span className="tabular-nums">{postedAt}</span>}
+                      <div className="inline-flex items-center gap-2.5">
+                        <button type="button" onClick={() => setPreviewPost(p)} className="inline-flex items-center gap-1 hover:text-foreground transition-colors active:scale-[0.96]">
                           <Eye className="w-3 h-3" /> Preview
                         </button>
-                        <button type="button" onClick={() => deletePost(p)} className="inline-flex items-center gap-1 hover:text-destructive" aria-label="Delete post">
+                        <button type="button" onClick={() => deletePost(p)} className="inline-flex items-center gap-1 hover:text-destructive transition-colors active:scale-[0.96]" aria-label="Delete post">
                           <Trash2 className="w-3 h-3" /> Delete
                         </button>
                       </div>
