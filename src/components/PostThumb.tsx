@@ -34,9 +34,18 @@ const PlatformIcon = ({ p, className }: { p: string; className?: string }) => {
   return <Play className={className} />;
 };
 
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&#38;/g, "&")
+    .replace(/&#x26;/gi, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
 export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle }: Props) => {
   const p = detectPlatform(url, platform);
-  let img = thumbnailUrl || null;
+  let img = thumbnailUrl ? decodeEntities(thumbnailUrl) : null;
   if (!img && p === "youtube") {
     const id = getYouTubeId(url);
     if (id) img = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
@@ -47,19 +56,30 @@ export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle }: Prop
       href={url}
       target="_blank"
       rel="noreferrer"
-      className="group relative block aspect-[9/16] w-full overflow-hidden bg-muted"
+      className="group relative block aspect-[9/16] w-full overflow-hidden bg-gradient-to-br from-secondary via-muted to-secondary/40"
     >
       {img ? (
         <img
           src={img}
           alt={caption || handle || "post"}
           loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105"
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+          onError={(e) => {
+            const el = e.currentTarget as HTMLImageElement;
+            if (!el.dataset.retried) {
+              el.dataset.retried = "1";
+              el.removeAttribute("crossorigin");
+              el.src = img!;
+            } else {
+              el.style.display = "none";
+            }
+          }}
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
-          <PlatformIcon p={p} className="w-10 h-10 text-muted-foreground" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <PlatformIcon p={p} className="w-10 h-10 text-muted-foreground/60" />
         </div>
       )}
       {/* gradient overlay */}
