@@ -1269,7 +1269,7 @@ const CampaignDetail = () => {
       })()}
 
       {/* ── Share of voice ─────────────────────────────────────────── */}
-      {totals.views > 0 && byInfluencer.size > 1 && (() => {
+      {totals.views > 0 && byInfluencer.size > 0 && (() => {
         const rows = ci
           .map(x => {
             const s = byInfluencer.get(x.influencer_id);
