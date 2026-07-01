@@ -4,6 +4,22 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 // Weighted formula: shares*3 + comments*2 + likes*1
 const score = (e: any) => Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0);
 
+async function fetchAllContestEntries(sb: any, contest_id: string) {
+  const rows: any[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await sb.from("contest_entries")
+      .select("*")
+      .eq("contest_id", contest_id)
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < pageSize) break;
+  }
+  return rows;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -14,7 +30,7 @@ Deno.serve(async (req) => {
     const { data: contest } = await sb.from("contests").select("*").eq("id", contest_id).single();
     if (!contest) return new Response(JSON.stringify({ error: "not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const { data: entries } = await sb.from("contest_entries").select("*").eq("contest_id", contest_id);
+    const entries = await fetchAllContestEntries(sb, contest_id);
     const start = new Date(contest.start_date).getTime();
     const roundMs = (contest.round_days || 14) * 86400 * 1000;
     const cutoffs: number[] = Array.isArray(contest.manual_round_cutoffs) && contest.manual_round_cutoffs.length
