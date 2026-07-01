@@ -69,6 +69,8 @@ interface Props {
   top_creators?: TopCreator[]
   platforms?: PlatformBreakdown[]
   top_posts?: TopPost[]
+  share_of_voice?: SovRow[]
+  learnings?: string
   cumulative_views?: number
   cumulative_engagement?: number
   cumulative_posts?: number
