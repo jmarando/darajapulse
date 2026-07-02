@@ -472,41 +472,8 @@ function BillingTab() {
     return brandOrgs.find((b: any) => b.id === inv.org_id);
   };
 
-  const manageContacts = async (kind: OrgKind, org: any) => {
-    const { data } = await (supabase.from("billing_contacts") as any)
-      .select("id,name,email,role,is_primary")
-      .eq("org_kind", kind).eq("org_id", org.id).order("is_primary", { ascending: false });
-    const existing = ((data as any) ?? []) as any[];
-    const summary = existing.length
-      ? existing.map((c) => `• ${c.email}${c.name ? ` (${c.name})` : ""}${c.is_primary ? " — primary" : ""}`).join("\n")
-      : "(none)";
-    const action = prompt(
-      `Billing contacts for ${org.name}:\n\n${summary}\n\nType 'add' to add, 'clear' to remove all, or Cancel.`,
-      "add"
-    );
-    if (!action) return;
-    if (action === "clear") {
-      await (supabase.from("billing_contacts") as any).delete().eq("org_kind", kind).eq("org_id", org.id);
-      toast({ title: "Billing contacts cleared" });
-      return;
-    }
-    if (action === "add") {
-      const email = prompt("Email address? (e.g. finance@example.com)");
-      if (!email) return;
-      const name = prompt("Contact name? (optional)", "") || null;
-      const role = prompt("Role? (e.g. Finance)", "Finance") || null;
-      const isPrimary = existing.length === 0 || confirm("Make this the primary billing contact?");
-      if (isPrimary) {
-        await (supabase.from("billing_contacts") as any)
-          .update({ is_primary: false }).eq("org_kind", kind).eq("org_id", org.id);
-      }
-      const { error } = await (supabase.from("billing_contacts") as any).insert({
-        org_kind: kind, org_id: org.id, email, name, role, is_primary: isPrimary,
-      });
-      if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
-      else toast({ title: "Billing contact added", description: email });
-    }
-  };
+  const [peopleFor, setPeopleFor] = useState<{ kind: OrgKind; org: any } | null>(null);
+
 
   const generateInvoice = async (kind: OrgKind, org: any) => {
     const fee = kind === "agency" ? org.monthly_fee_kes : org.subscription_fee_kes;
