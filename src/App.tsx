@@ -96,6 +96,7 @@ const App = () => (
             <Route path="/connect/facebook/done" element={<ConnectFacebook />} />
             <Route path="/shop/:agencySlug" element={<PublicStorefront />} />
             <Route path="/invoice/:token" element={<PublicInvoice />} />
+            <Route path="/pay/:token" element={<PayInvoice />} />
             <Route path="/portal" element={<PortalShell />}>
               <Route index element={<PortalOverview />} />
               <Route path="campaigns" element={<PortalOverview />} />
