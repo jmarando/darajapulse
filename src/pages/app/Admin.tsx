@@ -442,6 +442,7 @@ function BillingTab() {
         return;
       }
       const invoiceUrl = `${window.location.origin}/invoice/${inv.view_token}`;
+      const payUrl = `${window.location.origin}/pay/${inv.view_token}`;
       const results = await Promise.all(recipients.map((email) =>
         supabase.functions.invoke("send-transactional-email", {
           body: {
@@ -456,7 +457,7 @@ function BillingTab() {
               period_start: inv.period_start,
               period_end: inv.period_end,
               invoice_url: invoiceUrl,
-              pay_url: inv.pesapal_redirect_url || null,
+              pay_url: payUrl,
             },
           },
         })
