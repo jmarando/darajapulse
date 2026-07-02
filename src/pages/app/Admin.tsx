@@ -574,7 +574,10 @@ function BillingTab() {
             {agencies.map((a) => (
               <div key={a.id} className="flex items-center justify-between border rounded-md p-2">
                 <div><div className="font-medium text-sm">{a.name}</div><div className="text-xs text-muted-foreground">{fmtKES(a.monthly_fee_kes ?? 0)} · {a.billing_cycle ?? "monthly"}</div></div>
-                <Button size="sm" variant="outline" onClick={() => generateInvoice("agency", a)}>Generate</Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => manageContacts("agency", a)}>Contacts</Button>
+                  <Button size="sm" variant="outline" onClick={() => generateInvoice("agency", a)}>Generate</Button>
+                </div>
               </div>
             ))}
             {agencies.length === 0 && <p className="text-sm text-muted-foreground">No agencies.</p>}
@@ -585,7 +588,10 @@ function BillingTab() {
             {brandOrgs.map((b) => (
               <div key={b.id} className="flex items-center justify-between border rounded-md p-2">
                 <div><div className="font-medium text-sm">{b.name}</div><div className="text-xs text-muted-foreground">{fmtKES(b.subscription_fee_kes ?? 0)} · {b.billing_cycle ?? "quarterly"}</div></div>
-                <Button size="sm" variant="outline" onClick={() => generateInvoice("brand_org", b)}>Generate</Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => manageContacts("brand_org", b)}>Contacts</Button>
+                  <Button size="sm" variant="outline" onClick={() => generateInvoice("brand_org", b)}>Generate</Button>
+                </div>
               </div>
             ))}
             {brandOrgs.length === 0 && <p className="text-sm text-muted-foreground">No brand orgs.</p>}
