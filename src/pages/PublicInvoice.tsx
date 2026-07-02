@@ -93,7 +93,7 @@ export default function PublicInvoice() {
           <div>
             <div className="font-display text-2xl font-semibold tracking-tight">Daraja Pulse</div>
             <div className="text-xs text-muted-foreground mt-1">
-              billing@darajapulse.com
+              finance@darajapulse.com
             </div>
           </div>
           <div className="text-right">
@@ -220,7 +220,7 @@ export default function PublicInvoice() {
 
           <div className="mt-8 text-xs text-muted-foreground border-t pt-4">
             Payment is due within 14 days of the invoice date. Overdue accounts may be suspended after 14 days past
-            the due date. Questions? billing@darajapulse.com
+            the due date. Questions? finance@darajapulse.com
           </div>
         </div>
       </div>
