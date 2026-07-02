@@ -15,6 +15,7 @@ import { template as contestDrawClosed } from './contest-draw-closed.tsx'
 import { template as orgAdminWelcome } from './org-admin-welcome.tsx'
 import { template as demoRequest } from './demo-request.tsx'
 import { template as invoiceNotification } from './invoice-notification.tsx'
+import { template as pakakumiOnboarding } from './pakakumi-onboarding.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'contest-daily-summary': contestDailySummary,
@@ -23,4 +24,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'org-admin-welcome': orgAdminWelcome,
   'demo-request': demoRequest,
   'invoice-notification': invoiceNotification,
+  'pakakumi-onboarding': pakakumiOnboarding,
 }
