@@ -92,45 +92,43 @@ Deno.serve(async (req) => {
           .from("user_roles")
           .upsert({ user_id: userId, role, brand_org_id: org_id }, { onConflict: "user_id,role" });
         if (roleErr) { results.push({ email: cleanEmail, error: roleErr.message }); continue; }
+      // For existing users: inviteUserByEmail wasn't called, so send a welcome
+      // email with a password-recovery link so they explicitly (re)set a password.
+      let welcomeSent = false;
+      let welcomeError: string | null = null;
+      if (existed) {
+        let signInUrl = setupUrl;
+        try {
+          const { data: linkData } = await admin.auth.admin.generateLink({
+            type: "recovery",
+            email: cleanEmail,
+            options: { redirectTo: setupUrl },
+          });
+          if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
+        } catch (_) { /* fall back to app url */ }
+
+        const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": authHeader || `Bearer ${SERVICE_KEY}`,
+            "apikey": SERVICE_KEY,
+          },
+          body: JSON.stringify({
+            templateName: "org-admin-welcome",
+            recipientEmail: cleanEmail,
+            idempotencyKey: `org-admin-welcome-${org_id}-${userId}-${Date.now()}`,
+            templateData: { org_name: orgName, org_kind: kind, sign_in_url: signInUrl, app_url: appUrl },
+          }),
+        });
+        if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;
+        else welcomeSent = true;
       }
 
-    // For existing users: inviteUserByEmail wasn't called, so send a welcome
-    // email with a password-recovery URL pointing at /reset-password so the
-    // user explicitly (re)sets a password for this new org context. This
-    // mirrors the fresh-invite flow and avoids silent magic-link sign-in
-    // into a workspace they didn't know they had access to.
-    let welcomeSent = false;
-    let welcomeError: string | null = null;
-    if (existed) {
-      let signInUrl = setupUrl;
-      try {
-        const { data: linkData } = await admin.auth.admin.generateLink({
-          type: "recovery",
-          email: cleanEmail,
-          options: { redirectTo: setupUrl },
-        });
-        if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
-      } catch (_) { /* fall back to app url */ }
-
-      const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": authHeader || `Bearer ${SERVICE_KEY}`,
-          "apikey": SERVICE_KEY,
-        },
-        body: JSON.stringify({
-          templateName: "org-admin-welcome",
-          recipientEmail: cleanEmail,
-          idempotencyKey: `org-admin-welcome-${org_id}-${userId}-${Date.now()}`,
-          templateData: { org_name: orgName, org_kind: kind, sign_in_url: signInUrl, app_url: appUrl },
-        }),
-      });
-      if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;
-      else welcomeSent = true;
+      results.push({ email: cleanEmail, user_id: userId, existed, invited: !existed, welcome_sent: welcomeSent, welcome_error: welcomeError });
     }
 
-    return json({ ok: true, user_id: userId, existed, invited: !existed, welcome_sent: welcomeSent, welcome_error: welcomeError });
+    return json({ ok: true, results });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
