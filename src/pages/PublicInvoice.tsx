@@ -93,7 +93,6 @@ export default function PublicInvoice() {
           <div>
             <div className="font-display text-2xl font-semibold tracking-tight">Daraja Pulse</div>
             <div className="text-xs text-muted-foreground mt-1">
-              Lana Bespoke Limited<br />
               billing@darajapulse.com
             </div>
           </div>
