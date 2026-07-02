@@ -472,41 +472,8 @@ function BillingTab() {
     return brandOrgs.find((b: any) => b.id === inv.org_id);
   };
 
-  const manageContacts = async (kind: OrgKind, org: any) => {
-    const { data } = await (supabase.from("billing_contacts") as any)
-      .select("id,name,email,role,is_primary")
-      .eq("org_kind", kind).eq("org_id", org.id).order("is_primary", { ascending: false });
-    const existing = ((data as any) ?? []) as any[];
-    const summary = existing.length
-      ? existing.map((c) => `• ${c.email}${c.name ? ` (${c.name})` : ""}${c.is_primary ? " — primary" : ""}`).join("\n")
-      : "(none)";
-    const action = prompt(
-      `Billing contacts for ${org.name}:\n\n${summary}\n\nType 'add' to add, 'clear' to remove all, or Cancel.`,
-      "add"
-    );
-    if (!action) return;
-    if (action === "clear") {
-      await (supabase.from("billing_contacts") as any).delete().eq("org_kind", kind).eq("org_id", org.id);
-      toast({ title: "Billing contacts cleared" });
-      return;
-    }
-    if (action === "add") {
-      const email = prompt("Email address? (e.g. finance@example.com)");
-      if (!email) return;
-      const name = prompt("Contact name? (optional)", "") || null;
-      const role = prompt("Role? (e.g. Finance)", "Finance") || null;
-      const isPrimary = existing.length === 0 || confirm("Make this the primary billing contact?");
-      if (isPrimary) {
-        await (supabase.from("billing_contacts") as any)
-          .update({ is_primary: false }).eq("org_kind", kind).eq("org_id", org.id);
-      }
-      const { error } = await (supabase.from("billing_contacts") as any).insert({
-        org_kind: kind, org_id: org.id, email, name, role, is_primary: isPrimary,
-      });
-      if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
-      else toast({ title: "Billing contact added", description: email });
-    }
-  };
+  const [peopleFor, setPeopleFor] = useState<{ kind: OrgKind; org: any } | null>(null);
+
 
   const generateInvoice = async (kind: OrgKind, org: any) => {
     const fee = kind === "agency" ? org.monthly_fee_kes : org.subscription_fee_kes;
@@ -575,7 +542,7 @@ function BillingTab() {
               <div key={a.id} className="flex items-center justify-between border rounded-md p-2">
                 <div><div className="font-medium text-sm">{a.name}</div><div className="text-xs text-muted-foreground">{fmtKES(a.monthly_fee_kes ?? 0)} · {a.billing_cycle ?? "monthly"}</div></div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => manageContacts("agency", a)}>Contacts</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setPeopleFor({ kind: "agency", org: a })}>People</Button>
                   <Button size="sm" variant="outline" onClick={() => generateInvoice("agency", a)}>Generate</Button>
                 </div>
               </div>
@@ -589,7 +556,7 @@ function BillingTab() {
               <div key={b.id} className="flex items-center justify-between border rounded-md p-2">
                 <div><div className="font-medium text-sm">{b.name}</div><div className="text-xs text-muted-foreground">{fmtKES(b.subscription_fee_kes ?? 0)} · {b.billing_cycle ?? "quarterly"}</div></div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => manageContacts("brand_org", b)}>Contacts</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setPeopleFor({ kind: "brand_org", org: b })}>People</Button>
                   <Button size="sm" variant="outline" onClick={() => generateInvoice("brand_org", b)}>Generate</Button>
                 </div>
               </div>
@@ -660,7 +627,216 @@ function BillingTab() {
       </Card>
 
       <p className="text-xs text-muted-foreground">Pesapal IPN: register once via the <code>pesapal-register-ipn</code> edge function, save the returned <code>ipn_id</code> as the <code>PESAPAL_IPN_ID</code> secret, then use “Create Pesapal link”.</p>
+
+      {peopleFor && (
+        <PeopleDialog
+          kind={peopleFor.kind}
+          org={peopleFor.org}
+          onClose={() => setPeopleFor(null)}
+        />
+      )}
     </div>
+  );
+}
+
+/* ---------------- People (admins + billing contacts) ---------------- */
+type PersonRow = { user_id: string; role: string; email: string; full_name: string | null };
+type BillingRow = { id: string; email: string; name: string | null; role: string | null; is_primary: boolean };
+
+function PeopleDialog({ kind, org, onClose }: { kind: OrgKind; org: any; onClose: () => void }) {
+  const [people, setPeople] = useState<PersonRow[]>([]);
+  const [contacts, setContacts] = useState<BillingRow[]>([]);
+  const [emails, setEmails] = useState("");
+  const [role, setRole] = useState<string>(kind === "agency" ? "agency_admin" : "brand_owner");
+  const [busy, setBusy] = useState(false);
+  const [bcEmails, setBcEmails] = useState("");
+  const [bcRole, setBcRole] = useState("Finance");
+  const [bcPrimary, setBcPrimary] = useState(false);
+
+  const roleOptions = kind === "agency"
+    ? [{ v: "agency_admin", l: "Agency admin (full access)" }, { v: "account_manager", l: "Account manager" }]
+    : [{ v: "brand_owner", l: "Brand owner (full admin)" }, { v: "brand_viewer", l: "Brand viewer (read-only)" }];
+
+  const load = async () => {
+    const scopeCol = kind === "agency" ? "agency_id" : "brand_org_id";
+    const { data: urs } = await (supabase.from("user_roles") as any)
+      .select("user_id,role")
+      .eq(scopeCol, org.id);
+    const ids = Array.from(new Set(((urs as any) ?? []).map((r: any) => r.user_id)));
+    let profs: any[] = [];
+    if (ids.length) {
+      const { data } = await (supabase.from("profiles") as any).select("id,email,full_name").in("id", ids);
+      profs = (data as any) ?? [];
+    }
+    const byId: Record<string, any> = {};
+    profs.forEach((p) => (byId[p.id] = p));
+    setPeople(((urs as any) ?? []).map((r: any) => ({
+      user_id: r.user_id, role: r.role,
+      email: byId[r.user_id]?.email ?? "—",
+      full_name: byId[r.user_id]?.full_name ?? null,
+    })));
+
+    const { data: bc } = await (supabase.from("billing_contacts") as any)
+      .select("id,email,name,role,is_primary")
+      .eq("org_kind", kind).eq("org_id", org.id)
+      .order("is_primary", { ascending: false });
+    setContacts((bc as any) ?? []);
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [kind, org.id]);
+
+  const parseEmails = (raw: string) =>
+    Array.from(new Set(raw.split(/[\s,;\n]+/).map((e) => e.trim().toLowerCase()).filter((e) => /.+@.+\..+/.test(e))));
+
+  const invite = async () => {
+    const list = parseEmails(emails);
+    if (!list.length) return toast({ title: "Enter at least one valid email", variant: "destructive" });
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke("invite-org-admin", {
+      body: { kind, org_id: org.id, emails: list, role, redirect_to: `${window.location.origin}/app` },
+    });
+    setBusy(false);
+    if (error) return toast({ title: "Invite failed", description: error.message, variant: "destructive" });
+    const results = (data as any)?.results ?? [];
+    const ok = results.filter((r: any) => !r.error).length;
+    const failed = results.filter((r: any) => r.error);
+    toast({
+      title: `Invited ${ok}/${results.length}`,
+      description: failed.length ? failed.map((f: any) => `${f.email}: ${f.error}`).join("; ") : `Emails sent to ${list.join(", ")}`,
+      variant: failed.length ? "destructive" : "default",
+    });
+    setEmails("");
+    load();
+  };
+
+  const removePerson = async (p: PersonRow) => {
+    if (!confirm(`Remove ${p.email} as ${p.role}?`)) return;
+    const scopeCol = kind === "agency" ? "agency_id" : "brand_org_id";
+    const { error } = await (supabase.from("user_roles") as any)
+      .delete().eq("user_id", p.user_id).eq("role", p.role).eq(scopeCol, org.id);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: "Removed" });
+    load();
+  };
+
+  const addBillingContacts = async () => {
+    const list = parseEmails(bcEmails);
+    if (!list.length) return toast({ title: "Enter at least one valid email", variant: "destructive" });
+    if (bcPrimary) {
+      await (supabase.from("billing_contacts") as any)
+        .update({ is_primary: false }).eq("org_kind", kind).eq("org_id", org.id);
+    }
+    const rows = list.map((email, i) => ({
+      org_kind: kind, org_id: org.id, email, role: bcRole || null,
+      is_primary: bcPrimary && i === 0,
+    }));
+    const { error } = await (supabase.from("billing_contacts") as any).insert(rows);
+    if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
+    toast({ title: `Added ${rows.length} billing contact${rows.length > 1 ? "s" : ""}` });
+    setBcEmails("");
+    setBcPrimary(false);
+    load();
+  };
+
+  const removeContact = async (c: BillingRow) => {
+    if (!confirm(`Remove billing contact ${c.email}?`)) return;
+    await (supabase.from("billing_contacts") as any).delete().eq("id", c.id);
+    load();
+  };
+
+  const makePrimary = async (c: BillingRow) => {
+    await (supabase.from("billing_contacts") as any)
+      .update({ is_primary: false }).eq("org_kind", kind).eq("org_id", org.id);
+    await (supabase.from("billing_contacts") as any).update({ is_primary: true }).eq("id", c.id);
+    load();
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>People · {org.name}</DialogTitle></DialogHeader>
+
+        <div className="space-y-6">
+          {/* Admins / users */}
+          <section className="space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold">Admins & users</h3>
+              <p className="text-xs text-muted-foreground">People who can sign in to this {kind === "agency" ? "agency" : "brand"} workspace.</p>
+            </div>
+            <div className="border rounded-md divide-y">
+              {people.length === 0 && <div className="p-3 text-xs text-muted-foreground">No users yet.</div>}
+              {people.map((p) => (
+                <div key={`${p.user_id}-${p.role}`} className="flex items-center justify-between p-2 text-sm">
+                  <div>
+                    <div className="font-medium">{p.full_name ?? p.email}</div>
+                    <div className="text-xs text-muted-foreground">{p.email} · <Badge variant="secondary" className="ml-1">{p.role}</Badge></div>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => removePerson(p)}><Trash2 className="w-3 h-3" /></Button>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-[1fr_220px_auto] items-end">
+              <div>
+                <Label className="text-xs">Emails (comma, space or newline separated)</Label>
+                <Textarea rows={2} value={emails} onChange={(e) => setEmails(e.target.value)} placeholder="jane@example.com, john@example.com" />
+              </div>
+              <div>
+                <Label className="text-xs">Role</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{roleOptions.map((o) => <SelectItem key={o.v} value={o.v}>{o.l}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <Button onClick={invite} disabled={busy}>{busy ? "Inviting…" : "Invite"}</Button>
+            </div>
+          </section>
+
+          {/* Billing contacts */}
+          <section className="space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold">Billing contacts</h3>
+              <p className="text-xs text-muted-foreground">Recipients of invoices and payment reminders. Primary contact is To:, the rest CC.</p>
+            </div>
+            <div className="border rounded-md divide-y">
+              {contacts.length === 0 && <div className="p-3 text-xs text-muted-foreground">No billing contacts. Invoices fall back to the org support email.</div>}
+              {contacts.map((c) => (
+                <div key={c.id} className="flex items-center justify-between p-2 text-sm">
+                  <div>
+                    <div className="font-medium">{c.email} {c.is_primary && <Badge className="ml-1">primary</Badge>}</div>
+                    <div className="text-xs text-muted-foreground">{c.name ?? "—"} · {c.role ?? "—"}</div>
+                  </div>
+                  <div className="flex gap-1">
+                    {!c.is_primary && <Button size="sm" variant="ghost" onClick={() => makePrimary(c)}>Make primary</Button>}
+                    <Button size="sm" variant="ghost" onClick={() => removeContact(c)}><Trash2 className="w-3 h-3" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-[1fr_160px_auto] items-end">
+              <div>
+                <Label className="text-xs">Emails (comma, space or newline separated)</Label>
+                <Textarea rows={2} value={bcEmails} onChange={(e) => setBcEmails(e.target.value)} placeholder="finance@company.com, ap@company.com" />
+              </div>
+              <div>
+                <Label className="text-xs">Role label</Label>
+                <Input value={bcRole} onChange={(e) => setBcRole(e.target.value)} placeholder="Finance" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={bcPrimary} onChange={(e) => setBcPrimary(e.target.checked)} />
+                  Make first primary
+                </label>
+                <Button onClick={addBillingContacts}>Add</Button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <DialogFooter><Button variant="outline" onClick={onClose}>Done</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

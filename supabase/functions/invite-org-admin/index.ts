@@ -25,101 +25,110 @@ Deno.serve(async (req) => {
       return json({ error: "forbidden" }, 403);
     }
 
-    const { kind, org_id, email, redirect_to } = await req.json();
-    const cleanEmail = String(email ?? "").trim().toLowerCase();
-    if (!cleanEmail || !org_id || (kind !== "agency" && kind !== "brand_org")) {
-      return json({ error: "kind, org_id, and email required" }, 400);
+    const body = await req.json();
+    const { kind, org_id, redirect_to } = body;
+    // Accept single email or list; also accept explicit role
+    const rawEmails: string[] = Array.isArray(body.emails)
+      ? body.emails
+      : (body.email ? [body.email] : []);
+    const emails = Array.from(new Set(
+      rawEmails.map((e) => String(e ?? "").trim().toLowerCase()).filter((e) => /.+@.+\..+/.test(e))
+    ));
+    if (!emails.length || !org_id || (kind !== "agency" && kind !== "brand_org")) {
+      return json({ error: "kind, org_id, and at least one valid email required" }, 400);
     }
+    // Role: if not provided, default to full admin for the org kind
+    const requestedRole: string | undefined = body.role;
+    const validAgencyRoles = new Set(["agency_admin", "account_manager"]);
+    const validBrandRoles = new Set(["brand_owner", "brand_viewer"]);
+    if (requestedRole) {
+      if (kind === "agency" && !validAgencyRoles.has(requestedRole)) return json({ error: "invalid role for agency" }, 400);
+      if (kind === "brand_org" && !validBrandRoles.has(requestedRole)) return json({ error: "invalid role for brand_org" }, 400);
+    }
+
     const appUrl = redirect_to || "https://darajapulse.com/app";
-    // New invites land on /reset-password so the user sets a password they can
-    // re-use to sign in later. Existing users get a magic-link to /app.
     const setupUrl = appUrl.replace(/\/app\/?$/, "/reset-password");
 
     const table = kind === "agency" ? "agencies" : "brand_orgs";
     const { data: org } = await admin.from(table).select("name").eq("id", org_id).maybeSingle();
     const orgName = (org as any)?.name ?? (kind === "agency" ? "your agency" : "your brand");
 
-    // Find or invite the auth user
-    let userId: string | null = null;
-    let existed = false;
     const { data: existing } = await admin.auth.admin.listUsers();
-    const found = existing?.users?.find((x: any) => (x.email ?? "").toLowerCase() === cleanEmail);
-    if (found) {
-      userId = found.id;
-      existed = true;
-    } else {
-      const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: setupUrl,
-        data: { org_name: orgName, org_kind: kind },
-      });
-      if (invErr || !invited?.user) return json({ error: invErr?.message ?? "invite failed" }, 500);
-      userId = invited.user.id;
-    }
+    const results: any[] = [];
 
-    await admin.from("profiles").upsert({ id: userId!, email: cleanEmail }, { onConflict: "id" });
-
-    if (kind === "agency") {
-      // Grant agency_admin + account_manager, both scoped to this agency.
-      // Also remove any stray rows on OTHER agencies so the user is strictly
-      // scoped to a single agency for these roles.
-      await admin.from("user_roles").delete()
-        .eq("user_id", userId)
-        .in("role", ["agency_admin", "account_manager"])
-        .neq("agency_id", org_id);
-      const { error: roleErr } = await admin
-        .from("user_roles")
-        .upsert(
-          [
-            { user_id: userId, role: "agency_admin", agency_id: org_id },
-            { user_id: userId, role: "account_manager", agency_id: org_id },
-          ],
-          { onConflict: "user_id,role" }
-        );
-      if (roleErr) return json({ error: roleErr.message }, 500);
-    } else {
-      const { error: roleErr } = await admin
-        .from("user_roles")
-        .upsert({ user_id: userId, role: "brand_owner", brand_org_id: org_id }, { onConflict: "user_id,role" });
-      if (roleErr) return json({ error: roleErr.message }, 500);
-    }
-
-    // For existing users: inviteUserByEmail wasn't called, so send a welcome
-    // email with a password-recovery URL pointing at /reset-password so the
-    // user explicitly (re)sets a password for this new org context. This
-    // mirrors the fresh-invite flow and avoids silent magic-link sign-in
-    // into a workspace they didn't know they had access to.
-    let welcomeSent = false;
-    let welcomeError: string | null = null;
-    if (existed) {
-      let signInUrl = setupUrl;
-      try {
-        const { data: linkData } = await admin.auth.admin.generateLink({
-          type: "recovery",
-          email: cleanEmail,
-          options: { redirectTo: setupUrl },
+    for (const cleanEmail of emails) {
+      let userId: string | null = null;
+      let existed = false;
+      const found = existing?.users?.find((x: any) => (x.email ?? "").toLowerCase() === cleanEmail);
+      if (found) {
+        userId = found.id;
+        existed = true;
+      } else {
+        const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
+          redirectTo: setupUrl,
+          data: { org_name: orgName, org_kind: kind },
         });
-        if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
-      } catch (_) { /* fall back to app url */ }
+        if (invErr || !invited?.user) { results.push({ email: cleanEmail, error: invErr?.message ?? "invite failed" }); continue; }
+        userId = invited.user.id;
+      }
 
-      const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": authHeader || `Bearer ${SERVICE_KEY}`,
-          "apikey": SERVICE_KEY,
-        },
-        body: JSON.stringify({
-          templateName: "org-admin-welcome",
-          recipientEmail: cleanEmail,
-          idempotencyKey: `org-admin-welcome-${org_id}-${userId}-${Date.now()}`,
-          templateData: { org_name: orgName, org_kind: kind, sign_in_url: signInUrl, app_url: appUrl },
-        }),
-      });
-      if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;
-      else welcomeSent = true;
+      await admin.from("profiles").upsert({ id: userId!, email: cleanEmail }, { onConflict: "id" });
+
+      if (kind === "agency") {
+        const rolesToGrant = requestedRole ? [requestedRole] : ["agency_admin", "account_manager"];
+        // Only prune stray rows for the default full-admin path
+        if (!requestedRole) {
+          await admin.from("user_roles").delete()
+            .eq("user_id", userId)
+            .in("role", ["agency_admin", "account_manager"])
+            .neq("agency_id", org_id);
+        }
+        const rows = rolesToGrant.map((role) => ({ user_id: userId, role, agency_id: org_id }));
+        const { error: roleErr } = await admin.from("user_roles").upsert(rows, { onConflict: "user_id,role" });
+        if (roleErr) { results.push({ email: cleanEmail, error: roleErr.message }); continue; }
+      } else {
+        const role = requestedRole || "brand_owner";
+        const { error: roleErr } = await admin
+          .from("user_roles")
+          .upsert({ user_id: userId, role, brand_org_id: org_id }, { onConflict: "user_id,role" });
+        if (roleErr) { results.push({ email: cleanEmail, error: roleErr.message }); continue; }
+      // For existing users: inviteUserByEmail wasn't called, so send a welcome
+      // email with a password-recovery link so they explicitly (re)set a password.
+      let welcomeSent = false;
+      let welcomeError: string | null = null;
+      if (existed) {
+        let signInUrl = setupUrl;
+        try {
+          const { data: linkData } = await admin.auth.admin.generateLink({
+            type: "recovery",
+            email: cleanEmail,
+            options: { redirectTo: setupUrl },
+          });
+          if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
+        } catch (_) { /* fall back to app url */ }
+
+        const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": authHeader || `Bearer ${SERVICE_KEY}`,
+            "apikey": SERVICE_KEY,
+          },
+          body: JSON.stringify({
+            templateName: "org-admin-welcome",
+            recipientEmail: cleanEmail,
+            idempotencyKey: `org-admin-welcome-${org_id}-${userId}-${Date.now()}`,
+            templateData: { org_name: orgName, org_kind: kind, sign_in_url: signInUrl, app_url: appUrl },
+          }),
+        });
+        if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;
+        else welcomeSent = true;
+      }
+
+      results.push({ email: cleanEmail, user_id: userId, existed, invited: !existed, welcome_sent: welcomeSent, welcome_error: welcomeError });
     }
 
-    return json({ ok: true, user_id: userId, existed, invited: !existed, welcome_sent: welcomeSent, welcome_error: welcomeError });
+    return json({ ok: true, results });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
