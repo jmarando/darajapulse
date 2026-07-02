@@ -50,6 +50,7 @@ import PortalOverview from "./pages/portal/PortalOverview";
 import PortalCampaign from "./pages/portal/PortalCampaign";
 import PublicStorefront from "./pages/PublicStorefront";
 import PublicInvoice from "./pages/PublicInvoice";
+import PayInvoice from "./pages/PayInvoice";
 import Inventory from "./pages/app/Inventory";
 
 const queryClient = new QueryClient();
