@@ -50,6 +50,7 @@ import PortalOverview from "./pages/portal/PortalOverview";
 import PortalCampaign from "./pages/portal/PortalCampaign";
 import PublicStorefront from "./pages/PublicStorefront";
 import PublicInvoice from "./pages/PublicInvoice";
+import PayInvoice from "./pages/PayInvoice";
 import Inventory from "./pages/app/Inventory";
 
 const queryClient = new QueryClient();
@@ -95,6 +96,7 @@ const App = () => (
             <Route path="/connect/facebook/done" element={<ConnectFacebook />} />
             <Route path="/shop/:agencySlug" element={<PublicStorefront />} />
             <Route path="/invoice/:token" element={<PublicInvoice />} />
+            <Route path="/pay/:token" element={<PayInvoice />} />
             <Route path="/portal" element={<PortalShell />}>
               <Route index element={<PortalOverview />} />
               <Route path="campaigns" element={<PortalOverview />} />
