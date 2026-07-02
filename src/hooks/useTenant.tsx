@@ -14,6 +14,8 @@ export type TenantInfo = {
   primary_color?: string | null;
   support_email?: string | null;
   hide_powered_by?: boolean | null;
+  is_suspended?: boolean | null;
+  suspension_reason?: string | null;
 };
 
 /** Copy variants based on the workspace kind. Use in UI to swap "agency" wording. */

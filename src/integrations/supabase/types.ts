@@ -25,6 +25,7 @@ export type Database = {
           invoice_address: string | null
           is_active: boolean
           is_default: boolean
+          is_suspended: boolean
           kind: Database["public"]["Enums"]["agency_kind"]
           kra_pin: string | null
           legal_name: string | null
@@ -36,6 +37,8 @@ export type Database = {
           slug: string
           subdomain: string | null
           support_email: string | null
+          suspended_at: string | null
+          suspension_reason: string | null
           updated_at: string
         }
         Insert: {
@@ -48,6 +51,7 @@ export type Database = {
           invoice_address?: string | null
           is_active?: boolean
           is_default?: boolean
+          is_suspended?: boolean
           kind?: Database["public"]["Enums"]["agency_kind"]
           kra_pin?: string | null
           legal_name?: string | null
@@ -59,6 +63,8 @@ export type Database = {
           slug: string
           subdomain?: string | null
           support_email?: string | null
+          suspended_at?: string | null
+          suspension_reason?: string | null
           updated_at?: string
         }
         Update: {
@@ -71,6 +77,7 @@ export type Database = {
           invoice_address?: string | null
           is_active?: boolean
           is_default?: boolean
+          is_suspended?: boolean
           kind?: Database["public"]["Enums"]["agency_kind"]
           kra_pin?: string | null
           legal_name?: string | null
@@ -82,6 +89,8 @@ export type Database = {
           slug?: string
           subdomain?: string | null
           support_email?: string | null
+          suspended_at?: string | null
+          suspension_reason?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -172,6 +181,7 @@ export type Database = {
           id: string
           invoice_address: string | null
           is_active: boolean
+          is_suspended: boolean
           kra_pin: string | null
           legal_name: string | null
           logo_url: string | null
@@ -181,6 +191,8 @@ export type Database = {
           subdomain: string | null
           subscription_fee_kes: number
           support_email: string | null
+          suspended_at: string | null
+          suspension_reason: string | null
           updated_at: string
         }
         Insert: {
@@ -191,6 +203,7 @@ export type Database = {
           id?: string
           invoice_address?: string | null
           is_active?: boolean
+          is_suspended?: boolean
           kra_pin?: string | null
           legal_name?: string | null
           logo_url?: string | null
@@ -200,6 +213,8 @@ export type Database = {
           subdomain?: string | null
           subscription_fee_kes?: number
           support_email?: string | null
+          suspended_at?: string | null
+          suspension_reason?: string | null
           updated_at?: string
         }
         Update: {
@@ -210,6 +225,7 @@ export type Database = {
           id?: string
           invoice_address?: string | null
           is_active?: boolean
+          is_suspended?: boolean
           kra_pin?: string | null
           legal_name?: string | null
           logo_url?: string | null
@@ -219,6 +235,8 @@ export type Database = {
           subdomain?: string | null
           subscription_fee_kes?: number
           support_email?: string | null
+          suspended_at?: string | null
+          suspension_reason?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1691,10 +1709,12 @@ export type Database = {
       invoices: {
         Row: {
           amount_kes: number
+          billing_email: string | null
           created_at: string
           created_by: string | null
           due_date: string | null
           id: string
+          invoice_number: string | null
           notes: string | null
           org_id: string
           org_kind: string
@@ -1704,15 +1724,19 @@ export type Database = {
           pesapal_merchant_reference: string | null
           pesapal_order_tracking_id: string | null
           pesapal_redirect_url: string | null
+          sent_at: string | null
           status: string
           updated_at: string
+          view_token: string | null
         }
         Insert: {
           amount_kes: number
+          billing_email?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
           id?: string
+          invoice_number?: string | null
           notes?: string | null
           org_id: string
           org_kind: string
@@ -1722,15 +1746,19 @@ export type Database = {
           pesapal_merchant_reference?: string | null
           pesapal_order_tracking_id?: string | null
           pesapal_redirect_url?: string | null
+          sent_at?: string | null
           status?: string
           updated_at?: string
+          view_token?: string | null
         }
         Update: {
           amount_kes?: number
+          billing_email?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
           id?: string
+          invoice_number?: string | null
           notes?: string | null
           org_id?: string
           org_kind?: string
@@ -1740,8 +1768,10 @@ export type Database = {
           pesapal_merchant_reference?: string | null
           pesapal_order_tracking_id?: string | null
           pesapal_redirect_url?: string | null
+          sent_at?: string | null
           status?: string
           updated_at?: string
+          view_token?: string | null
         }
         Relationships: []
       }
@@ -2335,6 +2365,7 @@ export type Database = {
         Returns: boolean
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      enforce_billing_status: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
@@ -2350,6 +2381,7 @@ export type Database = {
       }
       get_brief_by_token: { Args: { _token: string }; Returns: Json }
       get_contest_by_token: { Args: { _token: string }; Returns: Json }
+      get_invoice_by_token: { Args: { _token: string }; Returns: Json }
       get_profiles_by_ids: {
         Args: { _ids: string[] }
         Returns: {
