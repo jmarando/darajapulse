@@ -556,7 +556,7 @@ function BillingTab() {
               <div key={b.id} className="flex items-center justify-between border rounded-md p-2">
                 <div><div className="font-medium text-sm">{b.name}</div><div className="text-xs text-muted-foreground">{fmtKES(b.subscription_fee_kes ?? 0)} · {b.billing_cycle ?? "quarterly"}</div></div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => manageContacts("brand_org", b)}>Contacts</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setPeopleFor({ kind: "brand_org", org: b })}>People</Button>
                   <Button size="sm" variant="outline" onClick={() => generateInvoice("brand_org", b)}>Generate</Button>
                 </div>
               </div>
