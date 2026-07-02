@@ -26,6 +26,17 @@ const TenantGuard = ({ children }: { children: ReactNode }) => {
 
   if (!user) return <>{children}</>; // let auth flow handle sign-in; guard re-runs after
 
+  // Payment suspension applies to all users (including admins of that org). Super admins pass.
+  if (tenant.is_suspended && !isSuperAdmin) {
+    return (
+      <Blocked
+        title={`${tenant.display_name || tenant.name} is suspended for non-payment`}
+        body={`Your workspace has an invoice more than 14 days overdue. Access is temporarily paused. Please settle the outstanding invoice — access is restored automatically once payment is received. Contact billing@darajapulse.com if you have already paid.`}
+        showSignOut
+      />
+    );
+  }
+
   if (isSuperAdmin) return <>{children}</>;
 
   const allowed =
