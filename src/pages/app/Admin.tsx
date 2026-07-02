@@ -507,6 +507,18 @@ function BillingTab() {
                 <TableCell className="text-xs text-muted-foreground">{inv.due_date ?? "—"}</TableCell>
                 <TableCell><Badge variant={inv.status === "paid" ? "default" : inv.status === "overdue" ? "destructive" : "secondary"}>{inv.status}</Badge></TableCell>
                 <TableCell className="space-x-2">
+                  {inv.view_token && (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => window.open(`/invoice/${inv.view_token}`, "_blank")}>
+                        <ExternalLink className="w-3 h-3 mr-1" />View
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        const url = `${window.location.origin}/invoice/${inv.view_token}`;
+                        navigator.clipboard.writeText(url);
+                        toast({ title: "Invoice link copied", description: url });
+                      }}>Copy link</Button>
+                    </>
+                  )}
                   {inv.status !== "paid" && inv.status !== "void" && (
                     <>
                       {inv.pesapal_redirect_url
