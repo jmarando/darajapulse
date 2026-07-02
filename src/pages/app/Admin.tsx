@@ -620,6 +620,11 @@ function BillingTab() {
                         navigator.clipboard.writeText(url);
                         toast({ title: "Invoice link copied", description: url });
                       }}>Copy link</Button>
+                      <Button size="sm" variant="secondary" onClick={() => sendInvoiceEmail(inv)} disabled={busy === inv.id}>Send</Button>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        const to = prompt("Send this invoice to which email?", "");
+                        if (to) sendInvoiceEmail(inv, to);
+                      }}>Send to…</Button>
                     </>
                   )}
                   {inv.status !== "paid" && inv.status !== "void" && (
