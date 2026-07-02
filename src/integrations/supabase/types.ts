@@ -133,6 +133,42 @@ export type Database = {
           },
         ]
       }
+      billing_contacts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_primary: boolean
+          name: string | null
+          org_id: string
+          org_kind: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_primary?: boolean
+          name?: string | null
+          org_id: string
+          org_kind: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_primary?: boolean
+          name?: string | null
+          org_id?: string
+          org_kind?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       brand_org_agencies: {
         Row: {
           agency_id: string

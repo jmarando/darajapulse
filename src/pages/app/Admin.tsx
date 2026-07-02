@@ -417,6 +417,97 @@ function BillingTab() {
     return m;
   }, [agencies, brandOrgs]);
 
+  const getBillingRecipients = async (kind: OrgKind, orgId: string): Promise<string[]> => {
+    const { data } = await (supabase.from("billing_contacts") as any)
+      .select("email,is_primary")
+      .eq("org_kind", kind).eq("org_id", orgId);
+    const contacts = ((data as any) ?? []) as { email: string; is_primary: boolean }[];
+    if (contacts.length) {
+      const primary = contacts.find((c) => c.is_primary) ?? contacts[0];
+      return [primary.email, ...contacts.filter((c) => c.email !== primary.email).map((c) => c.email)];
+    }
+    // Fallback to org support_email
+    const table = kind === "agency" ? "agencies" : "brand_orgs";
+    const { data: org } = await (supabase.from(table) as any).select("support_email").eq("id", orgId).maybeSingle();
+    return org?.support_email ? [org.support_email] : [];
+  };
+
+  const sendInvoiceEmail = async (inv: Invoice, overrideTo?: string) => {
+    setBusy(inv.id);
+    try {
+      const org = kindOrgLookup(inv);
+      const recipients = overrideTo ? [overrideTo] : await getBillingRecipients(inv.org_kind, inv.org_id);
+      if (!recipients.length) {
+        toast({ title: "No recipient", description: "Add a billing contact or set the org support email.", variant: "destructive" });
+        return;
+      }
+      const invoiceUrl = `${window.location.origin}/invoice/${inv.view_token}`;
+      const results = await Promise.all(recipients.map((email) =>
+        supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "invoice-notification",
+            recipientEmail: email,
+            idempotencyKey: `invoice-${inv.id}-${email}-${Date.now()}`,
+            templateData: {
+              invoice_number: inv.invoice_number,
+              bill_to: org?.legal_name || org?.name || "",
+              amount_kes: inv.amount_kes,
+              due_date: inv.due_date,
+              period_start: inv.period_start,
+              period_end: inv.period_end,
+              invoice_url: invoiceUrl,
+              pay_url: inv.pesapal_redirect_url || null,
+            },
+          },
+        })
+      ));
+      const failed = results.find((r) => r.error);
+      if (failed) toast({ title: "Send failed", description: failed.error?.message, variant: "destructive" });
+      else toast({ title: "Invoice emailed", description: recipients.join(", ") });
+    } finally { setBusy(null); }
+  };
+
+  const kindOrgLookup = (inv: Invoice) => {
+    if (inv.org_kind === "agency") return agencies.find((a: any) => a.id === inv.org_id);
+    return brandOrgs.find((b: any) => b.id === inv.org_id);
+  };
+
+  const manageContacts = async (kind: OrgKind, org: any) => {
+    const { data } = await (supabase.from("billing_contacts") as any)
+      .select("id,name,email,role,is_primary")
+      .eq("org_kind", kind).eq("org_id", org.id).order("is_primary", { ascending: false });
+    const existing = ((data as any) ?? []) as any[];
+    const summary = existing.length
+      ? existing.map((c) => `• ${c.email}${c.name ? ` (${c.name})` : ""}${c.is_primary ? " — primary" : ""}`).join("\n")
+      : "(none)";
+    const action = prompt(
+      `Billing contacts for ${org.name}:\n\n${summary}\n\nType 'add' to add, 'clear' to remove all, or Cancel.`,
+      "add"
+    );
+    if (!action) return;
+    if (action === "clear") {
+      await (supabase.from("billing_contacts") as any).delete().eq("org_kind", kind).eq("org_id", org.id);
+      toast({ title: "Billing contacts cleared" });
+      return;
+    }
+    if (action === "add") {
+      const email = prompt("Email address? (e.g. finance@example.com)");
+      if (!email) return;
+      const name = prompt("Contact name? (optional)", "") || null;
+      const role = prompt("Role? (e.g. Finance)", "Finance") || null;
+      const isPrimary = existing.length === 0 || confirm("Make this the primary billing contact?");
+      if (isPrimary) {
+        await (supabase.from("billing_contacts") as any)
+          .update({ is_primary: false }).eq("org_kind", kind).eq("org_id", org.id);
+      }
+      const { error } = await (supabase.from("billing_contacts") as any).insert({
+        org_kind: kind, org_id: org.id, email, name, role, is_primary: isPrimary,
+      });
+      if (error) toast({ title: "Failed", description: error.message, variant: "destructive" });
+      else toast({ title: "Billing contact added", description: email });
+    }
+  };
+
   const generateInvoice = async (kind: OrgKind, org: any) => {
     const fee = kind === "agency" ? org.monthly_fee_kes : org.subscription_fee_kes;
     const cycle = org.billing_cycle ?? "monthly";
@@ -427,13 +518,19 @@ function BillingTab() {
     else if (cycle === "quarterly") end.setMonth(end.getMonth() + 3);
     else end.setFullYear(end.getFullYear() + 1);
     const due = new Date(start); due.setDate(due.getDate() + 14);
-    const { error } = await (supabase.from("invoices") as any).insert({
+    const { data: inserted, error } = await (supabase.from("invoices") as any).insert({
       org_kind: kind, org_id: org.id, amount_kes: fee,
       period_start: start.toISOString().slice(0, 10), period_end: end.toISOString().slice(0, 10),
       due_date: due.toISOString().slice(0, 10), status: "sent",
-    });
+    }).select("*").single();
     if (error) return toast({ title: "Failed", description: error.message, variant: "destructive" });
-    toast({ title: "Invoice generated" }); load();
+    toast({ title: "Invoice generated" });
+    await load();
+    // Auto-send email
+    if (inserted) {
+      const shouldSend = confirm(`Send invoice ${inserted.invoice_number ?? ""} by email now?`);
+      if (shouldSend) await sendInvoiceEmail(inserted);
+    }
   };
 
   const createPesapalOrder = async (inv: Invoice) => {
@@ -477,7 +574,10 @@ function BillingTab() {
             {agencies.map((a) => (
               <div key={a.id} className="flex items-center justify-between border rounded-md p-2">
                 <div><div className="font-medium text-sm">{a.name}</div><div className="text-xs text-muted-foreground">{fmtKES(a.monthly_fee_kes ?? 0)} · {a.billing_cycle ?? "monthly"}</div></div>
-                <Button size="sm" variant="outline" onClick={() => generateInvoice("agency", a)}>Generate</Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => manageContacts("agency", a)}>Contacts</Button>
+                  <Button size="sm" variant="outline" onClick={() => generateInvoice("agency", a)}>Generate</Button>
+                </div>
               </div>
             ))}
             {agencies.length === 0 && <p className="text-sm text-muted-foreground">No agencies.</p>}
@@ -488,7 +588,10 @@ function BillingTab() {
             {brandOrgs.map((b) => (
               <div key={b.id} className="flex items-center justify-between border rounded-md p-2">
                 <div><div className="font-medium text-sm">{b.name}</div><div className="text-xs text-muted-foreground">{fmtKES(b.subscription_fee_kes ?? 0)} · {b.billing_cycle ?? "quarterly"}</div></div>
-                <Button size="sm" variant="outline" onClick={() => generateInvoice("brand_org", b)}>Generate</Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => manageContacts("brand_org", b)}>Contacts</Button>
+                  <Button size="sm" variant="outline" onClick={() => generateInvoice("brand_org", b)}>Generate</Button>
+                </div>
               </div>
             ))}
             {brandOrgs.length === 0 && <p className="text-sm text-muted-foreground">No brand orgs.</p>}
@@ -517,6 +620,11 @@ function BillingTab() {
                         navigator.clipboard.writeText(url);
                         toast({ title: "Invoice link copied", description: url });
                       }}>Copy link</Button>
+                      <Button size="sm" variant="secondary" onClick={() => sendInvoiceEmail(inv)} disabled={busy === inv.id}>Send</Button>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        const to = prompt("Send this invoice to which email?", "");
+                        if (to) sendInvoiceEmail(inv, to);
+                      }}>Send to…</Button>
                     </>
                   )}
                   {inv.status !== "paid" && inv.status !== "void" && (
