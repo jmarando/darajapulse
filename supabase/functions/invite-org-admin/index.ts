@@ -92,6 +92,8 @@ Deno.serve(async (req) => {
           .from("user_roles")
           .upsert({ user_id: userId, role, brand_org_id: org_id }, { onConflict: "user_id,role" });
         if (roleErr) { results.push({ email: cleanEmail, error: roleErr.message }); continue; }
+      }
+
       // For existing users: inviteUserByEmail wasn't called, so send a welcome
       // email with a password-recovery link so they explicitly (re)set a password.
       let welcomeSent = false;
