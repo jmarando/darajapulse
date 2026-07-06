@@ -52,6 +52,7 @@ import PublicStorefront from "./pages/PublicStorefront";
 import PublicInvoice from "./pages/PublicInvoice";
 import PayInvoice from "./pages/PayInvoice";
 import Inventory from "./pages/app/Inventory";
+import OAuthConsent from "./pages/OAuthConsent";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ const App = () => (
         <AuthProvider><TenantProvider>
           <Routes>
             <Route path="/" element={<LandingDashboard />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/landing" element={<LandingPicker />} />
