@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,16 +10,24 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import logo from "@/assets/logo-pulse-mark.png";
 
+const safeNext = (raw: string | null): string | null => {
+  if (!raw) return null;
+  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+  return raw;
+};
+
 const Auth = () => {
   const { user, loading, isAgency, isClient } = useAuth();
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  const nextParam = safeNext(params.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"signin" | "forgot">("signin");
 
-  const dest = isClient && !isAgency ? "/portal" : "/app";
+  const dest = nextParam ?? (isClient && !isAgency ? "/portal" : "/app");
   if (!loading && user) return <Navigate to={dest} replace />;
 
   const signIn = async (e: React.FormEvent) => {
@@ -28,7 +36,7 @@ const Auth = () => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) return toast.error(error.message);
-    nav("/app");
+    nav(dest);
   };
 
 
@@ -46,10 +54,13 @@ const Auth = () => {
 
   const google = async () => {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: `${window.location.origin}/app` });
+    const redirect_uri = nextParam
+      ? `${window.location.origin}${nextParam}`
+      : `${window.location.origin}/app`;
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
     if (result.error) { setBusy(false); return toast.error("Google sign-in failed"); }
     if (result.redirected) return;
-    nav("/app");
+    nav(dest);
   };
 
   return (
