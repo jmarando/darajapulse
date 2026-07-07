@@ -13,6 +13,16 @@ import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
 
 const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, tv: Tv, radio: Radio, web: Globe };
+const PLATFORM_BRAND: Record<string, { bg: string; fg: string }> = {
+  instagram: { bg: "linear-gradient(135deg, hsl(330,80%,55%), hsl(20,90%,55%) 55%, hsl(45,95%,55%))", fg: "#fff" },
+  tiktok:    { bg: "linear-gradient(135deg, #010101 0%, #25F4EE 50%, #FE2C55 100%)", fg: "#fff" },
+  youtube:   { bg: "linear-gradient(135deg, hsl(0,85%,45%), hsl(0,85%,55%))", fg: "#fff" },
+  twitter:   { bg: "linear-gradient(135deg, #000, #1a1a1a)", fg: "#fff" },
+  facebook:  { bg: "linear-gradient(135deg, hsl(220,85%,45%), hsl(220,85%,55%))", fg: "#fff" },
+  tv:        { bg: "linear-gradient(135deg, hsl(260,50%,35%), hsl(280,60%,45%))", fg: "#fff" },
+  radio:     { bg: "linear-gradient(135deg, hsl(190,70%,40%), hsl(210,70%,50%))", fg: "#fff" },
+  web:       { bg: "linear-gradient(135deg, hsl(200,20%,25%), hsl(215,25%,40%))", fg: "#fff" },
+};
 const KIND_LABEL: Record<string, string> = { owned_account: "Owned channel", influencer: "Signed creator", ad_slot: "Ad slot", bundle: "Bundle" };
 
 const fmtCompact = (n: number) => {
