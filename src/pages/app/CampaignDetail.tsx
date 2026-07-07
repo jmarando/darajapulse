@@ -1813,6 +1813,7 @@ const CampaignDetail = () => {
                   <div className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
                   <button type="button" onClick={() => setPreviewPost(p)} className="relative block text-left">
                     <PostThumb
+                      postId={p.id}
                       url={p.post_url}
                       platform={p.platform}
                       thumbnailUrl={p.thumbnail_url}
