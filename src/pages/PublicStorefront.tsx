@@ -98,7 +98,7 @@ export default function PublicStorefront() {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border bg-card">
         <div className="max-w-6xl mx-auto px-6 py-6 flex items-center gap-4">
-          {agency.logo_url && <img src={agency.logo_url} alt={agency.display_name || agency.name} className="h-12 w-12 rounded-lg object-cover border border-border" />}
+          {agency.logo_url && <img src={agency.logo_url} alt={agency.display_name || agency.name} className="h-12 w-auto max-w-[200px] rounded-lg object-contain" />}
           <div className="flex-1 min-w-0">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Media kit · Book now</div>
             <h1 className="font-display text-2xl font-semibold truncate">{agency.display_name || agency.name}</h1>
