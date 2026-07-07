@@ -13,6 +13,16 @@ import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
 
 const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, tv: Tv, radio: Radio, web: Globe };
+const PLATFORM_BRAND: Record<string, { bg: string; fg: string }> = {
+  instagram: { bg: "linear-gradient(135deg, hsl(330,80%,55%), hsl(20,90%,55%) 55%, hsl(45,95%,55%))", fg: "#fff" },
+  tiktok:    { bg: "linear-gradient(135deg, #010101 0%, #25F4EE 50%, #FE2C55 100%)", fg: "#fff" },
+  youtube:   { bg: "linear-gradient(135deg, hsl(0,85%,45%), hsl(0,85%,55%))", fg: "#fff" },
+  twitter:   { bg: "linear-gradient(135deg, #000, #1a1a1a)", fg: "#fff" },
+  facebook:  { bg: "linear-gradient(135deg, hsl(220,85%,45%), hsl(220,85%,55%))", fg: "#fff" },
+  tv:        { bg: "linear-gradient(135deg, hsl(260,50%,35%), hsl(280,60%,45%))", fg: "#fff" },
+  radio:     { bg: "linear-gradient(135deg, hsl(190,70%,40%), hsl(210,70%,50%))", fg: "#fff" },
+  web:       { bg: "linear-gradient(135deg, hsl(200,20%,25%), hsl(215,25%,40%))", fg: "#fff" },
+};
 const KIND_LABEL: Record<string, string> = { owned_account: "Owned channel", influencer: "Signed creator", ad_slot: "Ad slot", bundle: "Bundle" };
 
 const fmtCompact = (n: number) => {
@@ -126,8 +136,24 @@ export default function PublicStorefront() {
                         <img src={i.cover_url} alt={i.title} className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="aspect-video rounded-md bg-gradient-to-br from-secondary to-secondary/30 border border-border mb-4 flex items-center justify-center">
-                        <PIcon className="w-8 h-8 text-muted-foreground" />
+                      <div
+                        className="aspect-video rounded-md border border-border mb-4 relative overflow-hidden flex items-center justify-center"
+                        style={{ background: (PLATFORM_BRAND[i.platform] || PLATFORM_BRAND.web).bg }}
+                      >
+                        <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6), transparent 60%)" }} />
+                        <PIcon
+                          className="w-14 h-14 relative drop-shadow-lg"
+                          style={{ color: (PLATFORM_BRAND[i.platform] || PLATFORM_BRAND.web).fg }}
+                          strokeWidth={1.75}
+                        />
+                        {i.handle && (
+                          <div
+                            className="absolute bottom-2 left-2 right-2 text-[11px] font-medium tracking-tight truncate px-2 py-1 rounded backdrop-blur-sm"
+                            style={{ color: (PLATFORM_BRAND[i.platform] || PLATFORM_BRAND.web).fg, background: "rgba(0,0,0,0.25)" }}
+                          >
+                            {i.handle}
+                          </div>
+                        )}
                       </div>
                     )}
                     <div className="flex items-start gap-2">
