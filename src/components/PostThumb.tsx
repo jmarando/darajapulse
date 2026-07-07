@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Play, Instagram, Youtube, Facebook, Twitter, Music2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type Props = {
   url: string;
@@ -6,6 +8,7 @@ type Props = {
   thumbnailUrl?: string | null;
   caption?: string | null;
   handle?: string | null;
+  postId?: string | null;
 };
 
 function detectPlatform(url: string, hint?: string | null): string {
@@ -43,13 +46,33 @@ function decodeEntities(s: string): string {
     .replace(/&#39;/g, "'");
 }
 
-export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle }: Props) => {
+export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle, postId }: Props) => {
   const p = detectPlatform(url, platform);
-  let img = thumbnailUrl ? decodeEntities(thumbnailUrl) : null;
+  const initial = thumbnailUrl ? decodeEntities(thumbnailUrl) : null;
+  const [resolved, setResolved] = useState<string | null>(initial);
+  let img = resolved;
   if (!img && p === "youtube") {
     const id = getYouTubeId(url);
     if (id) img = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
   }
+
+  // Lazy server-side og:image resolution for posts missing a thumbnail.
+  useEffect(() => {
+    if (resolved || !url) return;
+    if (p === "youtube") return; // handled above
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("resolve-post-thumbnail", {
+          body: { post_id: postId ?? undefined, url },
+        });
+        if (!cancelled && data?.thumbnail_url) setResolved(decodeEntities(data.thumbnail_url));
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, postId]);
+
 
   return (
     <a
@@ -64,14 +87,13 @@ export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle }: Prop
           alt={caption || handle || "post"}
           loading="lazy"
           referrerPolicy="no-referrer"
-          crossOrigin="anonymous"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           onError={(e) => {
             const el = e.currentTarget as HTMLImageElement;
-            if (!el.dataset.retried) {
-              el.dataset.retried = "1";
-              el.removeAttribute("crossorigin");
-              el.src = img!;
+            // Fallback: route through an image proxy that adds CORS/referrer handling.
+            if (!el.dataset.proxied) {
+              el.dataset.proxied = "1";
+              el.src = `https://images.weserv.nl/?url=${encodeURIComponent(img!.replace(/^https?:\/\//, ""))}`;
             } else {
               el.style.display = "none";
             }

@@ -542,7 +542,7 @@ const PublicReport = () => {
                   return (
                     <a key={label} href={item!.p.post_url || "#"} target="_blank" rel="noreferrer" className="group rounded-lg border border-border overflow-hidden hover:border-accent/50 transition-colors bg-card">
                       <div className="aspect-[4/5] bg-secondary overflow-hidden flex items-center justify-center">
-                        <PostThumb url={item!.p.post_url} platform={item!.p.platform} thumbnailUrl={item!.p.thumbnail_url} caption={item!.p.caption} handle={item!.p.influencers?.handle} />
+                        <PostThumb postId={item!.p.id} url={item!.p.post_url} platform={item!.p.platform} thumbnailUrl={item!.p.thumbnail_url} caption={item!.p.caption} handle={item!.p.influencers?.handle} />
                       </div>
                       <div className="p-3">
                         <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-accent">
@@ -1173,7 +1173,7 @@ const PublicReport = () => {
                     <div key={p.id} className="rounded-md border border-border overflow-hidden hover:border-accent/50 transition-colors bg-card flex flex-col">
                       {p.post_url ? (
                         <a href={p.post_url} target="_blank" rel="noreferrer" className="block aspect-[4/5] bg-secondary overflow-hidden">
-                          <PostThumb url={p.post_url} platform={p.platform} thumbnailUrl={(p as any).thumbnail_url} caption={(p as any).caption} handle={p.influencers?.handle || p.influencers?.full_name} />
+                          <PostThumb postId={p.id} url={p.post_url} platform={p.platform} thumbnailUrl={(p as any).thumbnail_url} caption={(p as any).caption} handle={p.influencers?.handle || p.influencers?.full_name} />
                         </a>
                       ) : (
                         <div className="aspect-[4/5] bg-secondary flex items-center justify-center text-xs text-muted-foreground">No link</div>

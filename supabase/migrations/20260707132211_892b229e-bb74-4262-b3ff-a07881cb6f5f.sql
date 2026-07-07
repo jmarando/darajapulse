@@ -1,0 +1,1 @@
+UPDATE public.agencies SET logo_url='https://ucxlveehobmeywkiynpy.supabase.co/storage/v1/object/public/client-logos/pakakumi-logo.png', updated_at=now() WHERE id='c5bca915-bd9d-4f5a-9939-60a8cf985940';
