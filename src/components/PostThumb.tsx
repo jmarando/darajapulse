@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Play, Instagram, Youtube, Facebook, Twitter, Music2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type Props = {
   url: string;
@@ -6,6 +8,7 @@ type Props = {
   thumbnailUrl?: string | null;
   caption?: string | null;
   handle?: string | null;
+  postId?: string | null;
 };
 
 function detectPlatform(url: string, hint?: string | null): string {
