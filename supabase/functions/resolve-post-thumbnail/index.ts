@@ -147,8 +147,18 @@ Deno.serve(async (req) => {
     });
   }
 
-  const html = await fetchHtml(url);
-  const thumb = html ? extractImage(html) : null;
+  // Try platform-native oEmbed first (works even when og:image is blocked).
+  const plat = platformFor(url);
+  let thumb: string | null = null;
+  if (plat === "facebook") thumb = await fbOEmbed(url);
+  else if (plat === "tiktok") thumb = await tiktokOEmbed(url);
+  else if (plat === "instagram") thumb = await igOEmbed(url);
+
+  // Fallback to og:image scrape.
+  if (!thumb) {
+    const html = await fetchHtml(url);
+    thumb = html ? extractImage(html) : null;
+  }
 
   if (thumb && postId) {
     await (supabase.from("posts") as any)
