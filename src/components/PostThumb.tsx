@@ -64,14 +64,13 @@ export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle }: Prop
           alt={caption || handle || "post"}
           loading="lazy"
           referrerPolicy="no-referrer"
-          crossOrigin="anonymous"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           onError={(e) => {
             const el = e.currentTarget as HTMLImageElement;
-            if (!el.dataset.retried) {
-              el.dataset.retried = "1";
-              el.removeAttribute("crossorigin");
-              el.src = img!;
+            // Fallback: route through an image proxy that adds CORS/referrer handling.
+            if (!el.dataset.proxied) {
+              el.dataset.proxied = "1";
+              el.src = `https://images.weserv.nl/?url=${encodeURIComponent(img!.replace(/^https?:\/\//, ""))}`;
             } else {
               el.style.display = "none";
             }
