@@ -136,8 +136,24 @@ export default function PublicStorefront() {
                         <img src={i.cover_url} alt={i.title} className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="aspect-video rounded-md bg-gradient-to-br from-secondary to-secondary/30 border border-border mb-4 flex items-center justify-center">
-                        <PIcon className="w-8 h-8 text-muted-foreground" />
+                      <div
+                        className="aspect-video rounded-md border border-border mb-4 relative overflow-hidden flex items-center justify-center"
+                        style={{ background: (PLATFORM_BRAND[i.platform] || PLATFORM_BRAND.web).bg }}
+                      >
+                        <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6), transparent 60%)" }} />
+                        <PIcon
+                          className="w-14 h-14 relative drop-shadow-lg"
+                          style={{ color: (PLATFORM_BRAND[i.platform] || PLATFORM_BRAND.web).fg }}
+                          strokeWidth={1.75}
+                        />
+                        {i.handle && (
+                          <div
+                            className="absolute bottom-2 left-2 right-2 text-[11px] font-medium tracking-tight truncate px-2 py-1 rounded backdrop-blur-sm"
+                            style={{ color: (PLATFORM_BRAND[i.platform] || PLATFORM_BRAND.web).fg, background: "rgba(0,0,0,0.25)" }}
+                          >
+                            {i.handle}
+                          </div>
+                        )}
                       </div>
                     )}
                     <div className="flex items-start gap-2">
