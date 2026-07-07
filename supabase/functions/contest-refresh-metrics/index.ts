@@ -303,8 +303,10 @@ Deno.serve(async (req) => {
     const wait: boolean = body.wait ?? false;
     // retry_invalid: include rows previously flagged invalid (run on a slower cadence)
     const retryInvalid: boolean = body.retry_invalid ?? false;
+    // force: bypass tiered-polling age filter (manual "refresh now" button, contest-close sweep)
+    const force: boolean = body.force ?? false;
 
-    const entries = await fetchRefreshEntries(sb, contest_id, retryInvalid, onlyEmpty);
+    const entries = await fetchRefreshEntries(sb, contest_id, retryInvalid, onlyEmpty, force);
 
     const run = async () => {
       let updated = 0, failed = 0, invalid = 0;
