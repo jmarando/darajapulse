@@ -51,3 +51,6 @@ verify_jwt = true
 
 [functions.run-report-schedules]
 verify_jwt = false
+
+[functions.resolve-post-thumbnail]
+verify_jwt = false
