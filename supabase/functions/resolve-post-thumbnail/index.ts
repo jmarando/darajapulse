@@ -11,9 +11,66 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const META_APP_ID = Deno.env.get("META_APP_ID") ?? "";
+const META_APP_SECRET = Deno.env.get("META_APP_SECRET") ?? "";
 
+// Facebook / most social CDNs 403 or return a login wall to a generic bot UA.
+// A real desktop UA gets through their public og:image path far more often.
 const UA =
-  "Mozilla/5.0 (compatible; DarajaPulseBot/1.0; +https://darajapulse.com)";
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
+// Facebook Graph oEmbed — works for public FB posts/reels/videos using an
+// app access token (APP_ID|APP_SECRET). Returns { thumbnail_url } for videos
+// and reels, and often for photo posts too.
+async function fbOEmbed(url: string): Promise<string | null> {
+  if (!META_APP_ID || !META_APP_SECRET) return null;
+  const token = `${META_APP_ID}|${META_APP_SECRET}`;
+  const endpoints = [
+    "https://graph.facebook.com/v20.0/oembed_video",
+    "https://graph.facebook.com/v20.0/oembed_post",
+    "https://graph.facebook.com/v20.0/oembed_page",
+  ];
+  for (const ep of endpoints) {
+    try {
+      const r = await fetch(`${ep}?url=${encodeURIComponent(url)}&access_token=${token}`);
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (j?.thumbnail_url) return j.thumbnail_url as string;
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
+// TikTok has a public, unauthenticated oEmbed endpoint that always returns
+// thumbnail_url for any public video URL.
+async function tiktokOEmbed(url: string): Promise<string | null> {
+  try {
+    const r = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j?.thumbnail_url ?? null;
+  } catch { return null; }
+}
+
+// Instagram Graph oEmbed (requires same META_APP_ID|SECRET).
+async function igOEmbed(url: string): Promise<string | null> {
+  if (!META_APP_ID || !META_APP_SECRET) return null;
+  const token = `${META_APP_ID}|${META_APP_SECRET}`;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v20.0/instagram_oembed?url=${encodeURIComponent(url)}&access_token=${token}`);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j?.thumbnail_url ?? null;
+  } catch { return null; }
+}
+
+function platformFor(url: string): "facebook" | "tiktok" | "instagram" | "other" {
+  const u = url.toLowerCase();
+  if (u.includes("facebook.com") || u.includes("fb.watch") || u.includes("fb.com")) return "facebook";
+  if (u.includes("tiktok.com")) return "tiktok";
+  if (u.includes("instagram.com")) return "instagram";
+  return "other";
+}
 
 function extractImage(html: string): string | null {
   const pick = (re: RegExp) => {
@@ -90,8 +147,18 @@ Deno.serve(async (req) => {
     });
   }
 
-  const html = await fetchHtml(url);
-  const thumb = html ? extractImage(html) : null;
+  // Try platform-native oEmbed first (works even when og:image is blocked).
+  const plat = platformFor(url);
+  let thumb: string | null = null;
+  if (plat === "facebook") thumb = await fbOEmbed(url);
+  else if (plat === "tiktok") thumb = await tiktokOEmbed(url);
+  else if (plat === "instagram") thumb = await igOEmbed(url);
+
+  // Fallback to og:image scrape.
+  if (!thumb) {
+    const html = await fetchHtml(url);
+    thumb = html ? extractImage(html) : null;
+  }
 
   if (thumb && postId) {
     await (supabase.from("posts") as any)
