@@ -233,12 +233,34 @@ async function scrape(platform: string, url: string) {
 // deno-lint-ignore no-explicit-any
 declare const EdgeRuntime: any;
 
-async function fetchRefreshEntries(sb: any, contest_id: string, retryInvalid: boolean, onlyEmpty: boolean) {
+// Tiered polling: post age buckets → min minutes since last_polled_at before we re-fetch.
+// Counters are MAX-merged, so stale reads never regress numbers. Big wins on >48h posts.
+const POLL_TIERS: Array<{ maxAgeHours: number; minIntervalMin: number }> = [
+  { maxAgeHours: 2,   minIntervalMin: 0   }, // brand new: always poll
+  { maxAgeHours: 24,  minIntervalMin: 30  }, // day-old: every 30m
+  { maxAgeHours: 72,  minIntervalMin: 180 }, // 1–3d: every 3h (current default)
+  { maxAgeHours: 168, minIntervalMin: 720 }, // 3–7d: every 12h
+  { maxAgeHours: Infinity, minIntervalMin: 2880 }, // >7d: every 48h
+];
+
+function shouldPollByAge(row: { posted_at?: string | null; created_at?: string | null; last_polled_at?: string | null }): boolean {
+  const now = Date.now();
+  const ageAnchor = row.posted_at ? Date.parse(row.posted_at)
+                 : row.created_at ? Date.parse(row.created_at)
+                 : now;
+  const ageHours = Math.max(0, (now - ageAnchor) / 3_600_000);
+  const tier = POLL_TIERS.find(t => ageHours <= t.maxAgeHours) ?? POLL_TIERS[POLL_TIERS.length - 1];
+  if (!row.last_polled_at) return true;
+  const sinceMin = (now - Date.parse(row.last_polled_at)) / 60_000;
+  return sinceMin >= tier.minIntervalMin;
+}
+
+async function fetchRefreshEntries(sb: any, contest_id: string, retryInvalid: boolean, onlyEmpty: boolean, force: boolean) {
   const rows: any[] = [];
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
     let q = sb.from("contest_entries")
-      .select("id, platform, post_url, views, likes, comments, shares, status")
+      .select("id, platform, post_url, views, likes, comments, shares, status, posted_at, created_at, last_polled_at")
       .eq("contest_id", contest_id)
       .not("post_url", "is", null)
       .order("id", { ascending: true })
@@ -250,7 +272,8 @@ async function fetchRefreshEntries(sb: any, contest_id: string, retryInvalid: bo
     rows.push(...(data ?? []));
     if (!data || data.length < pageSize) break;
   }
-  return rows;
+  if (force || onlyEmpty) return rows;
+  return rows.filter(shouldPollByAge);
 }
 
 async function fetchRescueRows(sb: any, contest_id: string) {
