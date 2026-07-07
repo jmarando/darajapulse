@@ -1,0 +1,1 @@
+update public.agencies set logo_url='https://ucxlveehobmeywkiynpy.supabase.co/storage/v1/object/public/client-logos/mediamax-logo.png' where id='94a18a0b-5e45-4e6b-a387-e350b78a5045';
