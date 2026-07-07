@@ -1462,6 +1462,13 @@ export type Database = {
           notes: string | null
           phone_mpesa: string | null
           primary_platform: Database["public"]["Enums"]["platform"] | null
+          referral_code: string | null
+          referral_currency: string
+          referral_deposits_amount: number
+          referral_deposits_count: number
+          referral_registrations: number
+          referral_updated_at: string | null
+          referral_url: string | null
           region: string | null
         }
         Insert: {
@@ -1487,6 +1494,13 @@ export type Database = {
           notes?: string | null
           phone_mpesa?: string | null
           primary_platform?: Database["public"]["Enums"]["platform"] | null
+          referral_code?: string | null
+          referral_currency?: string
+          referral_deposits_amount?: number
+          referral_deposits_count?: number
+          referral_registrations?: number
+          referral_updated_at?: string | null
+          referral_url?: string | null
           region?: string | null
         }
         Update: {
@@ -1512,6 +1526,13 @@ export type Database = {
           notes?: string | null
           phone_mpesa?: string | null
           primary_platform?: Database["public"]["Enums"]["platform"] | null
+          referral_code?: string | null
+          referral_currency?: string
+          referral_deposits_amount?: number
+          referral_deposits_count?: number
+          referral_registrations?: number
+          referral_updated_at?: string | null
+          referral_url?: string | null
           region?: string | null
         }
         Relationships: [
