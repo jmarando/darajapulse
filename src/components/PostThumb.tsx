@@ -46,13 +46,33 @@ function decodeEntities(s: string): string {
     .replace(/&#39;/g, "'");
 }
 
-export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle }: Props) => {
+export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle, postId }: Props) => {
   const p = detectPlatform(url, platform);
-  let img = thumbnailUrl ? decodeEntities(thumbnailUrl) : null;
+  const initial = thumbnailUrl ? decodeEntities(thumbnailUrl) : null;
+  const [resolved, setResolved] = useState<string | null>(initial);
+  let img = resolved;
   if (!img && p === "youtube") {
     const id = getYouTubeId(url);
     if (id) img = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
   }
+
+  // Lazy server-side og:image resolution for posts missing a thumbnail.
+  useEffect(() => {
+    if (resolved || !url) return;
+    if (p === "youtube") return; // handled above
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.functions.invoke("resolve-post-thumbnail", {
+          body: { post_id: postId ?? undefined, url },
+        });
+        if (!cancelled && data?.thumbnail_url) setResolved(decodeEntities(data.thumbnail_url));
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, postId]);
+
 
   return (
     <a
