@@ -157,6 +157,7 @@ Deno.serve(async (req) => {
   let body: any = {};
   try { body = await req.json(); } catch { /* allow empty */ }
   const influencerIds: string[] | null = body.influencer_ids ?? (body.influencer_id ? [body.influencer_id] : null);
+  const agencyId: string | null = body.agency_id ?? null;
   // For cron, allow capping the batch to avoid burning credits.
   const limit: number = Number(body.limit ?? 100);
   // Skip rows refreshed within the last N hours unless force=true.
@@ -164,8 +165,9 @@ Deno.serve(async (req) => {
   const force: boolean = !!body.force;
 
   // Load target influencers
-  let q = (supabase.from("influencers") as any).select("id, handle, primary_platform, last_metrics_sync");
+  let q = (supabase.from("influencers") as any).select("id, handle, primary_platform, last_metrics_sync, agency_id");
   if (influencerIds) q = q.in("id", influencerIds);
+  if (agencyId) q = q.eq("agency_id", agencyId);
   const { data: infRows } = await q;
   const targets = (infRows ?? []).filter((r: any) => {
     if (force || influencerIds) return true;
