@@ -273,16 +273,38 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const { campaign_id, post_id } = body as { campaign_id?: string; post_id?: string };
-    let q = supabase.from("posts").select("id, post_url, platform, thumbnail_url, caption, status");
+    const { campaign_id, post_id, stale, max } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number };
+    let q = supabase.from("posts").select("id, post_url, platform, thumbnail_url, caption, status, created_at");
     if (post_id) q = q.eq("id", post_id);
     else if (campaign_id) q = q.eq("campaign_id", campaign_id);
-    const { data: posts, error } = await q;
+    const { data: postsAll, error } = await q;
     if (error) throw error;
+    let posts = postsAll ?? [];
+
+    // stale mode: only posts with NO metric row OR most-recent metric older than 6h,
+    // skip posts we know can't be auto-fetched (Facebook feed) after 3 tries.
+    if (stale && posts.length) {
+      const ids = posts.map((p: any) => p.id);
+      const { data: metricAgg } = await supabase
+        .from("post_metrics")
+        .select("post_id, captured_at")
+        .in("post_id", ids)
+        .order("captured_at", { ascending: false });
+      const latest = new Map<string, string>();
+      for (const m of (metricAgg ?? []) as any[]) if (!latest.has(m.post_id)) latest.set(m.post_id, m.captured_at);
+      const sixHoursAgo = Date.now() - 6 * 3600_000;
+      posts = posts.filter((p: any) => {
+        const last = latest.get(p.id);
+        if (!last) return true;
+        return new Date(last).getTime() < sixHoursAgo;
+      });
+      if (max && posts.length > max) posts = posts.slice(0, max);
+    }
+
     const results: any[] = [];
     const chunks = 3;
-    for (let i = 0; i < (posts ?? []).length; i += chunks) {
-      const batch = (posts ?? []).slice(i, i + chunks);
+    for (let i = 0; i < posts.length; i += chunks) {
+      const batch = posts.slice(i, i + chunks);
       const r = await Promise.all(batch.map(processPost));
       results.push(...r);
     }
