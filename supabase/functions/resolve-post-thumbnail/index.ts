@@ -318,7 +318,7 @@ Deno.serve(async (req) => {
       const image = await imageResponse(resolved.thumb, supabase, postId);
       if (image) return image;
     }
-    return new Response(null, { status: 204, headers: { ...corsHeaders, "Cache-Control": "no-store" } });
+    return new Response("thumbnail unavailable", { status: 404, headers: { ...corsHeaders, "Cache-Control": "no-store" } });
   }
 
   return json({ ok: !!resolved.thumb, thumbnail_url: resolved.thumb, cached: resolved.cached });

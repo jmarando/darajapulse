@@ -132,6 +132,9 @@ export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle, postId
           loading="lazy"
           referrerPolicy="no-referrer"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+          onLoad={(e) => {
+            if (backendImage && e.currentTarget.naturalWidth === 0) setBackendFailed(true);
+          }}
           onError={(e) => {
             const el = e.currentTarget as HTMLImageElement;
             // Signed social CDN previews expire. Ask the backend for a fresh URL before trying a proxy.
