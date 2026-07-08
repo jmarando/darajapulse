@@ -234,22 +234,49 @@ async function resolveThumbnail(supabase: ReturnType<typeof createClient>, postI
   return { url, thumb, cached: false };
 }
 
-async function cachedImageResponse(supabase: ReturnType<typeof createClient>, postId: string | null) {
-  if (!postId) return null;
+function storagePathFromThumbnailUrl(src?: string | null): string | null {
+  if (!src) return null;
   try {
-    const { data } = await supabase.storage.from(THUMB_BUCKET).download(`${postId}`);
-    if (!data) return null;
-    return new Response(data.stream(), {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": data.type || "image/jpeg",
-        "Cache-Control": "public, max-age=31536000, immutable",
-      },
-    });
+    const parsed = new URL(decode(src));
+    const marker = `/storage/v1/object/public/${THUMB_BUCKET}/`;
+    const signedMarker = `/storage/v1/object/sign/${THUMB_BUCKET}/`;
+    const pathname = decodeURIComponent(parsed.pathname);
+    const markerIndex = pathname.indexOf(marker);
+    if (markerIndex >= 0) return pathname.slice(markerIndex + marker.length);
+    const signedMarkerIndex = pathname.indexOf(signedMarker);
+    if (signedMarkerIndex >= 0) return pathname.slice(signedMarkerIndex + signedMarker.length);
+  } catch { /* not a storage URL */ }
+  return null;
+}
+
+async function cachedImageResponse(supabase: ReturnType<typeof createClient>, postId: string | null, thumbnailUrl?: string | null) {
+  const candidates = [
+    storagePathFromThumbnailUrl(thumbnailUrl),
+    postId,
+    postId ? `${postId}.png` : null,
+    postId ? `manual/${postId}.png` : null,
+  ].filter((path, index, all): path is string => !!path && all.indexOf(path) === index);
+
+  if (candidates.length === 0) return null;
+
+  try {
+    for (const path of candidates) {
+      const { data } = await supabase.storage.from(THUMB_BUCKET).download(path);
+      if (!data) continue;
+      return new Response(data.stream(), {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": data.type || "image/jpeg",
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
+      });
+    }
   } catch {
     return null;
   }
+
+  return null;
 }
 
 async function imageResponse(src: string, supabase: ReturnType<typeof createClient>, postId: string | null) {
@@ -270,6 +297,7 @@ async function imageResponse(src: string, supabase: ReturnType<typeof createClie
       });
       if (!res.ok) continue;
       const contentType = res.headers.get("Content-Type") || "image/jpeg";
+      if (!contentType.toLowerCase().startsWith("image/")) continue;
       const bytes = new Uint8Array(await res.arrayBuffer());
       if (!bytes.byteLength) continue;
       if (postId) {
@@ -312,7 +340,7 @@ Deno.serve(async (req) => {
   }
 
   if (wantsImage) {
-    const cached = await cachedImageResponse(supabase, postId);
+    const cached = await cachedImageResponse(supabase, postId, resolved.thumb);
     if (cached) return cached;
     if (resolved.thumb) {
       const image = await imageResponse(resolved.thumb, supabase, postId);
