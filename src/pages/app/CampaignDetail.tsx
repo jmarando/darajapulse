@@ -284,9 +284,24 @@ const CampaignDetail = () => {
 
   const addPost = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from("posts").insert({ ...post, campaign_id: id, status: "live", posted_at: new Date().toISOString() });
+    const { data: inserted, error } = await supabase
+      .from("posts")
+      .insert({ ...post, campaign_id: id, status: "live", posted_at: new Date().toISOString() })
+      .select("id")
+      .single();
     if (error) return toast.error(error.message);
-    toast.success("Post added"); setPostOpen(false); setPost({ influencer_id: "", platform: "tiktok", post_url: "", caption: "" }); load();
+    toast.success("Post added — fetching metrics…"); setPostOpen(false); setPost({ influencer_id: "", platform: "tiktok", post_url: "", caption: "" }); load();
+    // Kick off metric fetch immediately so no post sits without stats
+    if (inserted?.id) {
+      supabase.functions.invoke("fetch-public-metrics", { body: { post_id: inserted.id } })
+        .then(({ data }) => {
+          const r = data?.results?.[0];
+          if (r?.ok) toast.success("Metrics fetched");
+          else if (r?.error) toast.message("Auto-fetch couldn't reach this post — enter manually", { description: r.error });
+          load();
+        })
+        .catch(() => { /* silent — cron will retry */ });
+    }
   };
 
   const deletePost = async (postRow: any) => {
