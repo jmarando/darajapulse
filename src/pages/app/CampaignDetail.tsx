@@ -1053,7 +1053,7 @@ const CampaignDetail = () => {
                 return (
                   <a key={label} href={item!.p.post_url || "#"} target="_blank" rel="noreferrer" className="group rounded-lg border border-border overflow-hidden hover:border-accent/50 transition-colors bg-card">
                     <div className="aspect-[4/5] bg-secondary overflow-hidden flex items-center justify-center">
-                      <PostThumb postId={item!.p.id} url={item!.p.post_url} platform={item!.p.platform} thumbnailUrl={item!.p.thumbnail_url} caption={item!.p.caption} handle={item!.p.influencers?.handle} />
+                      <PostThumb postId={item!.p.id} url={item!.p.post_url} platform={item!.p.platform} thumbnailUrl={item!.p.thumbnail_url} caption={item!.p.caption} handle={item!.p.influencers?.handle} asLink={false} />
                     </div>
                     <div className="p-3">
                       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-accent">
@@ -1819,6 +1819,7 @@ const CampaignDetail = () => {
                       thumbnailUrl={p.thumbnail_url}
                       caption={p.caption}
                       handle={p.influencers?.handle || p.influencers?.full_name}
+                      asLink={false}
                     />
                   </button>
                   <div className="relative px-3.5 py-2.5 space-y-1.5 bg-gradient-to-b from-card to-secondary/20">
