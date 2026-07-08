@@ -236,7 +236,7 @@ async function scrape(platform: string, url: string) {
   if (isTikTok) return await scrapeTikTokHtml(url);
   if (isYouTube) return await scrapeYouTubeHtml(url);
   if (isInsta) throw new Error("Instagram fetch failed — check Ensemble Data token / plan");
-  if (isFacebook) throw new Error("Facebook fetch failed — check Ensemble Data token / plan");
+  if (isFacebook) throw new Error("Facebook public metrics aren't available via API — enter manually or connect the page");
   throw new Error(`No scraper for platform: ${platform}`);
 }
 
