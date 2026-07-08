@@ -77,13 +77,23 @@ function isExpiredSignedThumbnail(src?: string | null): boolean {
 
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
+function thumbnailCacheKey(src?: string | null): string {
+  if (!src) return "empty";
+  try {
+    const parsed = new URL(decodeEntities(src));
+    return parsed.pathname.split("/").pop() || parsed.pathname;
+  } catch {
+    return src.slice(-48);
+  }
+}
+
 export const PostThumb = ({ url, platform, thumbnailUrl, caption, handle, postId, asLink = true }: Props) => {
   const p = detectPlatform(url, platform);
   const initial = thumbnailUrl && !isExpiredSignedThumbnail(thumbnailUrl) ? decodeEntities(thumbnailUrl) : null;
   const [resolved, setResolved] = useState<string | null>(initial);
   const [backendFailed, setBackendFailed] = useState(false);
   const backendImage = postId && p !== "youtube" && !backendFailed
-    ? `${FUNCTIONS_URL}/resolve-post-thumbnail?image=1&post_id=${encodeURIComponent(postId)}`
+    ? `${FUNCTIONS_URL}/resolve-post-thumbnail?image=1&post_id=${encodeURIComponent(postId)}&v=${encodeURIComponent(thumbnailCacheKey(resolved || thumbnailUrl))}`
     : null;
   let img = backendImage || resolved;
   if (!img && p === "youtube") {
