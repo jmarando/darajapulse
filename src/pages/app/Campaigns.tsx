@@ -301,11 +301,11 @@ const Campaigns = () => {
                     </>
                   ) : (
                     <>
-                      <Stat label="Views" value={fmtNum(perf[r.id]?.views ?? 0)} />
+                      <Stat label="Views" value={perfLoaded ? fmtNum(perf[r.id]?.views ?? 0) : "—"} />
                       <Divider />
-                      <Stat label="Engagement" value={`${(perf[r.id]?.er ?? 0).toFixed(1)}`} suffix="%" />
+                      <Stat label="Engagement" value={perfLoaded ? `${(perf[r.id]?.er ?? 0).toFixed(1)}` : "—"} suffix={perfLoaded ? "%" : ""} />
                       <Divider />
-                      <Stat label="Posts" value={String(perf[r.id]?.posts ?? 0)} />
+                      <Stat label="Posts" value={perfLoaded ? String(perf[r.id]?.posts ?? 0) : "—"} />
                     </>
                   )}
                 </div>
