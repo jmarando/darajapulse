@@ -14,39 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      _contest_dedup_keepers: {
-        Row: {
-          any_winner: boolean
-          cross_posts: Json
-          keeper_id: string
-        }
-        Insert: {
-          any_winner?: boolean
-          cross_posts?: Json
-          keeper_id: string
-        }
-        Update: {
-          any_winner?: boolean
-          cross_posts?: Json
-          keeper_id?: string
-        }
-        Relationships: []
-      }
-      _contest_dedup_map: {
-        Row: {
-          keeper_id: string
-          loser_id: string
-        }
-        Insert: {
-          keeper_id: string
-          loser_id: string
-        }
-        Update: {
-          keeper_id?: string
-          loser_id?: string
-        }
-        Relationships: []
-      }
       agencies: {
         Row: {
           billing_cycle: string
@@ -2415,14 +2382,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      _contest_apply_dedup: {
-        Args: never
-        Returns: {
-          keepers_updated: number
-          losers_deleted: number
-          winners_redirected: number
-        }[]
-      }
       agency_staff_on_campaign: {
         Args: { _campaign_id: string; _user_id: string }
         Returns: boolean
