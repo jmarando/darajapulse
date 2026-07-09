@@ -54,6 +54,7 @@ const Overview = () => {
   const [firstName, setFirstName] = useState<string>("");
   const [s, setS] = useState({ clients: 0, campaigns: 0, influencers: 0, payouts: 0, live: 0, posts: 0, briefs: 0, contests: 0 });
   const [totals, setTotals] = useState({ views: 0, likes: 0, comments: 0, shares: 0, reach: 0 });
+  const [loaded, setLoaded] = useState(false);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [topCampaign, setTopCampaign] = useState<any>(null);
   const [topCreator, setTopCreator] = useState<any>(null);
