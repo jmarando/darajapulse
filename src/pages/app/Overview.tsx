@@ -192,11 +192,11 @@ const Overview = () => {
             </TableHeader>
             <TableBody>
               {[
-                [["Clients", s.clients, "/app/clients"], ["Views", fmt(totals.views)]],
-                [["Campaigns", `${s.campaigns} (${s.live} live)`, "/app/campaigns"], ["Reach", fmt(totals.reach)]],
-                [["Influencers", s.influencers, "/app/influencers"], ["Likes", fmt(totals.likes)]],
-                [["Content items", s.briefs, "/app/content"], ["Comments", fmt(totals.comments)]],
-                [["Posts tracked", s.posts, "/app/content"], ["Engagement", `${er.toFixed(2)}%`]],
+                [["Clients", s.clients, "/app/clients"], ["Views", loaded ? fmt(totals.views) : "—"]],
+                [["Campaigns", `${s.campaigns} (${s.live} live)`, "/app/campaigns"], ["Reach", loaded ? fmt(totals.reach) : "—"]],
+                [["Influencers", s.influencers, "/app/influencers"], ["Likes", loaded ? fmt(totals.likes) : "—"]],
+                [["Content items", s.briefs, "/app/content"], ["Comments", loaded ? fmt(totals.comments) : "—"]],
+                [["Posts tracked", s.posts, "/app/content"], ["Engagement", loaded ? `${er.toFixed(2)}%` : "—"]],
                 [["Contests", s.contests], ["", ""]],
               ].map((row: any, i) => (
                 <TableRow key={i}>
