@@ -128,6 +128,7 @@ const Overview = () => {
       });
       const topCmp = Object.values(camp).sort((a, b) => b.views - a.views)[0];
       if (topCmp) setTopCampaign(topCmp);
+      setLoaded(true);
     })();
   }, []);
 
