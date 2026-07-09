@@ -747,14 +747,14 @@ const CampaignDetail = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border rounded-lg overflow-hidden mt-6 border border-border">
           {(isContestOnly
             ? [
-                { l: "Views", v: fmt(totals.views), icon: Eye, sub: `${contestEntries.length} entr${contestEntries.length === 1 ? "y" : "ies"}` },
-                { l: "Engagement", v: `${totals.er.toFixed(1)}%`, icon: BarChart3, sub: `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` },
+                { l: "Views", v: metricsLoaded ? fmt(totals.views) : "—", icon: Eye, sub: `${contestEntries.length} entr${contestEntries.length === 1 ? "y" : "ies"}` },
+                { l: "Engagement", v: metricsLoaded ? `${totals.er.toFixed(1)}%` : "—", icon: BarChart3, sub: metricsLoaded ? `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` : "loading…" },
                 { l: "Entries", v: fmt(contestEntries.length), icon: Trophy, sub: "contest submissions" },
-                { l: "Top engagement", v: fmt(totals.likes + totals.comments + totals.shares + totals.saves), icon: Heart, sub: "likes + comments + shares" },
+                { l: "Top engagement", v: metricsLoaded ? fmt(totals.likes + totals.comments + totals.shares + totals.saves) : "—", icon: Heart, sub: "likes + comments + shares" },
               ]
             : [
-                { l: "Views", v: fmt(totals.views), icon: Eye, sub: `${posts.length} post${posts.length === 1 ? "" : "s"}` },
-                { l: "Engagement", v: `${totals.er.toFixed(1)}%`, icon: BarChart3, sub: `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` },
+                { l: "Views", v: metricsLoaded ? fmt(totals.views) : "—", icon: Eye, sub: `${posts.length} post${posts.length === 1 ? "" : "s"}` },
+                { l: "Engagement", v: metricsLoaded ? `${totals.er.toFixed(1)}%` : "—", icon: BarChart3, sub: metricsLoaded ? `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` : "loading…" },
                 { l: "Creators", v: `${rosterTotals.confirmed}/${ci.length}`, icon: Users, sub: "confirmed" },
                 { l: "Fees committed", v: rosterTotals.fees > 0 ? fmtKes(rosterTotals.fees) : "—", icon: Wallet, sub: `${rosterTotals.deliv} deliverable${rosterTotals.deliv === 1 ? "" : "s"}` },
               ]
@@ -767,6 +767,8 @@ const CampaignDetail = () => {
               <div className="font-display text-2xl mt-2">{s.v}</div>
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{s.sub}</div>
             </div>
+          ))}
+        </div>
           ))}
         </div>
       </div>
