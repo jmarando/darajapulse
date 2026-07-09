@@ -81,8 +81,10 @@ const Campaigns = () => {
         };
       }
       setPerf(out);
+      setPerfLoaded(true);
     } else {
       setPerf({});
+      setPerfLoaded(true);
     }
 
     // Contest aggregates per campaign
