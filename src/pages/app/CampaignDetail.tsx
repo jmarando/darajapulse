@@ -184,6 +184,7 @@ const CampaignDetail = () => {
       const { data: ce } = await supabase.from("contest_entries").select("views,likes,comments,shares,saves").in("contest_id", contestIds);
       setContestEntries(ce ?? []);
     } else setContestEntries([]);
+    setMetricsLoaded(true);
   };
   useEffect(() => { load(); }, [id]);
 
