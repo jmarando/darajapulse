@@ -126,6 +126,7 @@ const CampaignDetail = () => {
   };
 
   const load = async () => {
+    setMetricsLoaded(false);
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug, logo_url), brief_templates:brief_template_id(*)").eq("id", id).single();
     setC(c1);
     setLearnings(c1?.learnings ?? "");
