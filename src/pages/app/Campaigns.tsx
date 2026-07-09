@@ -46,6 +46,7 @@ const Divider = () => <div className="h-9 w-px bg-background/15" />;
 const Campaigns = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [perf, setPerf] = useState<Record<string, { views: number; er: number; posts: number }>>({});
+  const [perfLoaded, setPerfLoaded] = useState(false);
   const [contestPerf, setContestPerf] = useState<Record<string, ContestPerf>>({});
   const [clients, setClients] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
