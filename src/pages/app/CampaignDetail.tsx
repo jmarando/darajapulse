@@ -76,6 +76,7 @@ const CampaignDetail = () => {
   const [ci, setCi] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
+  const [metricsLoaded, setMetricsLoaded] = useState(false);
   const [contestEntries, setContestEntries] = useState<any[]>([]);
   const [link, setLink] = useState<any>(null);
   const [planLink, setPlanLink] = useState<any>(null);
@@ -125,6 +126,7 @@ const CampaignDetail = () => {
   };
 
   const load = async () => {
+    setMetricsLoaded(false);
     const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug, logo_url), brief_templates:brief_template_id(*)").eq("id", id).single();
     setC(c1);
     setLearnings(c1?.learnings ?? "");
@@ -182,6 +184,7 @@ const CampaignDetail = () => {
       const { data: ce } = await supabase.from("contest_entries").select("views,likes,comments,shares,saves").in("contest_id", contestIds);
       setContestEntries(ce ?? []);
     } else setContestEntries([]);
+    setMetricsLoaded(true);
   };
   useEffect(() => { load(); }, [id]);
 
@@ -744,14 +747,14 @@ const CampaignDetail = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border rounded-lg overflow-hidden mt-6 border border-border">
           {(isContestOnly
             ? [
-                { l: "Views", v: fmt(totals.views), icon: Eye, sub: `${contestEntries.length} entr${contestEntries.length === 1 ? "y" : "ies"}` },
-                { l: "Engagement", v: `${totals.er.toFixed(1)}%`, icon: BarChart3, sub: `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` },
+                { l: "Views", v: metricsLoaded ? fmt(totals.views) : "—", icon: Eye, sub: `${contestEntries.length} entr${contestEntries.length === 1 ? "y" : "ies"}` },
+                { l: "Engagement", v: metricsLoaded ? `${totals.er.toFixed(1)}%` : "—", icon: BarChart3, sub: metricsLoaded ? `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` : "loading…" },
                 { l: "Entries", v: fmt(contestEntries.length), icon: Trophy, sub: "contest submissions" },
-                { l: "Top engagement", v: fmt(totals.likes + totals.comments + totals.shares + totals.saves), icon: Heart, sub: "likes + comments + shares" },
+                { l: "Top engagement", v: metricsLoaded ? fmt(totals.likes + totals.comments + totals.shares + totals.saves) : "—", icon: Heart, sub: "likes + comments + shares" },
               ]
             : [
-                { l: "Views", v: fmt(totals.views), icon: Eye, sub: `${posts.length} post${posts.length === 1 ? "" : "s"}` },
-                { l: "Engagement", v: `${totals.er.toFixed(1)}%`, icon: BarChart3, sub: `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` },
+                { l: "Views", v: metricsLoaded ? fmt(totals.views) : "—", icon: Eye, sub: `${posts.length} post${posts.length === 1 ? "" : "s"}` },
+                { l: "Engagement", v: metricsLoaded ? `${totals.er.toFixed(1)}%` : "—", icon: BarChart3, sub: metricsLoaded ? `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` : "loading…" },
                 { l: "Creators", v: `${rosterTotals.confirmed}/${ci.length}`, icon: Users, sub: "confirmed" },
                 { l: "Fees committed", v: rosterTotals.fees > 0 ? fmtKes(rosterTotals.fees) : "—", icon: Wallet, sub: `${rosterTotals.deliv} deliverable${rosterTotals.deliv === 1 ? "" : "s"}` },
               ]
@@ -767,6 +770,7 @@ const CampaignDetail = () => {
           ))}
         </div>
       </div>
+
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -863,14 +867,15 @@ const CampaignDetail = () => {
 
       {/* Performance band */}
       {(() => {
+        const dash = "—";
         const tiles = [
-          { key: "views", label: "Views", value: fmt(totals.views), icon: Eye, raw: totals.views, available: true },
-          { key: "likes", label: "Likes", value: fmt(totals.likes), icon: Heart, raw: totals.likes, available: true },
-          { key: "comments", label: "Comments", value: fmt(totals.comments), icon: MessageCircle, raw: totals.comments, available: true },
-          { key: "engagement", label: "Engagement", value: `${totals.er.toFixed(1)}%`, icon: BarChart3, raw: totals.er, available: true },
-          { key: "shares", label: "Shares", value: fmt(totals.shares), icon: Share2, raw: totals.shares, available: totals.shares > 0 },
-          { key: "saves", label: "Saves", value: fmt(totals.saves), icon: Bookmark, raw: totals.saves, available: totals.saves > 0 },
-          { key: "reach", label: "Reach", value: fmt(totals.reach), icon: Radio, raw: totals.reach, available: totals.reach > 0 },
+          { key: "views", label: "Views", value: metricsLoaded ? fmt(totals.views) : dash, icon: Eye, raw: totals.views, available: metricsLoaded },
+          { key: "likes", label: "Likes", value: metricsLoaded ? fmt(totals.likes) : dash, icon: Heart, raw: totals.likes, available: metricsLoaded },
+          { key: "comments", label: "Comments", value: metricsLoaded ? fmt(totals.comments) : dash, icon: MessageCircle, raw: totals.comments, available: metricsLoaded },
+          { key: "engagement", label: "Engagement", value: metricsLoaded ? `${totals.er.toFixed(1)}%` : dash, icon: BarChart3, raw: totals.er, available: metricsLoaded },
+          { key: "shares", label: "Shares", value: metricsLoaded ? fmt(totals.shares) : dash, icon: Share2, raw: totals.shares, available: metricsLoaded && totals.shares > 0 },
+          { key: "saves", label: "Saves", value: metricsLoaded ? fmt(totals.saves) : dash, icon: Bookmark, raw: totals.saves, available: metricsLoaded && totals.saves > 0 },
+          { key: "reach", label: "Reach", value: metricsLoaded ? fmt(totals.reach) : dash, icon: Radio, raw: totals.reach, available: metricsLoaded && totals.reach > 0 },
         ] as const;
         const hasUnavailable = tiles.some(t => !t.available);
         return (

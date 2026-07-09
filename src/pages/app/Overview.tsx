@@ -54,6 +54,7 @@ const Overview = () => {
   const [firstName, setFirstName] = useState<string>("");
   const [s, setS] = useState({ clients: 0, campaigns: 0, influencers: 0, payouts: 0, live: 0, posts: 0, briefs: 0, contests: 0 });
   const [totals, setTotals] = useState({ views: 0, likes: 0, comments: 0, shares: 0, reach: 0 });
+  const [loaded, setLoaded] = useState(false);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [topCampaign, setTopCampaign] = useState<any>(null);
   const [topCreator, setTopCreator] = useState<any>(null);
@@ -127,6 +128,7 @@ const Overview = () => {
       });
       const topCmp = Object.values(camp).sort((a, b) => b.views - a.views)[0];
       if (topCmp) setTopCampaign(topCmp);
+      setLoaded(true);
     })();
   }, []);
 
@@ -190,11 +192,11 @@ const Overview = () => {
             </TableHeader>
             <TableBody>
               {[
-                [["Clients", s.clients, "/app/clients"], ["Views", fmt(totals.views)]],
-                [["Campaigns", `${s.campaigns} (${s.live} live)`, "/app/campaigns"], ["Reach", fmt(totals.reach)]],
-                [["Influencers", s.influencers, "/app/influencers"], ["Likes", fmt(totals.likes)]],
-                [["Content items", s.briefs, "/app/content"], ["Comments", fmt(totals.comments)]],
-                [["Posts tracked", s.posts, "/app/content"], ["Engagement", `${er.toFixed(2)}%`]],
+                [["Clients", s.clients, "/app/clients"], ["Views", loaded ? fmt(totals.views) : "—"]],
+                [["Campaigns", `${s.campaigns} (${s.live} live)`, "/app/campaigns"], ["Reach", loaded ? fmt(totals.reach) : "—"]],
+                [["Influencers", s.influencers, "/app/influencers"], ["Likes", loaded ? fmt(totals.likes) : "—"]],
+                [["Content items", s.briefs, "/app/content"], ["Comments", loaded ? fmt(totals.comments) : "—"]],
+                [["Posts tracked", s.posts, "/app/content"], ["Engagement", loaded ? `${er.toFixed(2)}%` : "—"]],
                 [["Contests", s.contests], ["", ""]],
               ].map((row: any, i) => (
                 <TableRow key={i}>
@@ -233,15 +235,15 @@ const Overview = () => {
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance to date</div>
               <h2 className="font-display text-2xl mt-1">Across all live campaigns</h2>
             </div>
-            <Badge variant="secondary" className="text-sm">{er.toFixed(2)}% engagement</Badge>
+            <Badge variant="secondary" className="text-sm">{loaded ? `${er.toFixed(2)}% engagement` : "loading…"}</Badge>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
-              { i: Eye, l: "Views", v: fmt(totals.views) },
-              { i: TrendingUp, l: "Reach", v: fmt(totals.reach) },
-              { i: Heart, l: "Likes", v: fmt(totals.likes) },
-              { i: MessageCircle, l: "Comments", v: fmt(totals.comments) },
-              { i: Share2, l: "Shares", v: fmt(totals.shares) },
+              { i: Eye, l: "Views", v: loaded ? fmt(totals.views) : "—" },
+              { i: TrendingUp, l: "Reach", v: loaded ? fmt(totals.reach) : "—" },
+              { i: Heart, l: "Likes", v: loaded ? fmt(totals.likes) : "—" },
+              { i: MessageCircle, l: "Comments", v: loaded ? fmt(totals.comments) : "—" },
+              { i: Share2, l: "Shares", v: loaded ? fmt(totals.shares) : "—" },
             ].map(({ i: I, l, v }) => (
               <div key={l} className="p-4 rounded-xl bg-secondary/60">
                 <I className="w-4 h-4 text-muted-foreground mb-2" />

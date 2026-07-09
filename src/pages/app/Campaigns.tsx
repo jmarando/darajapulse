@@ -46,6 +46,7 @@ const Divider = () => <div className="h-9 w-px bg-background/15" />;
 const Campaigns = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [perf, setPerf] = useState<Record<string, { views: number; er: number; posts: number }>>({});
+  const [perfLoaded, setPerfLoaded] = useState(false);
   const [contestPerf, setContestPerf] = useState<Record<string, ContestPerf>>({});
   const [clients, setClients] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
@@ -80,8 +81,10 @@ const Campaigns = () => {
         };
       }
       setPerf(out);
+      setPerfLoaded(true);
     } else {
       setPerf({});
+      setPerfLoaded(true);
     }
 
     // Contest aggregates per campaign
@@ -298,11 +301,11 @@ const Campaigns = () => {
                     </>
                   ) : (
                     <>
-                      <Stat label="Views" value={fmtNum(perf[r.id]?.views ?? 0)} />
+                      <Stat label="Views" value={perfLoaded ? fmtNum(perf[r.id]?.views ?? 0) : "—"} />
                       <Divider />
-                      <Stat label="Engagement" value={`${(perf[r.id]?.er ?? 0).toFixed(1)}`} suffix="%" />
+                      <Stat label="Engagement" value={perfLoaded ? `${(perf[r.id]?.er ?? 0).toFixed(1)}` : "—"} suffix={perfLoaded ? "%" : ""} />
                       <Divider />
-                      <Stat label="Posts" value={String(perf[r.id]?.posts ?? 0)} />
+                      <Stat label="Posts" value={perfLoaded ? String(perf[r.id]?.posts ?? 0) : "—"} />
                     </>
                   )}
                 </div>
