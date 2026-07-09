@@ -235,15 +235,15 @@ const Overview = () => {
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance to date</div>
               <h2 className="font-display text-2xl mt-1">Across all live campaigns</h2>
             </div>
-            <Badge variant="secondary" className="text-sm">{er.toFixed(2)}% engagement</Badge>
+            <Badge variant="secondary" className="text-sm">{loaded ? `${er.toFixed(2)}% engagement` : "loading…"}</Badge>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
-              { i: Eye, l: "Views", v: fmt(totals.views) },
-              { i: TrendingUp, l: "Reach", v: fmt(totals.reach) },
-              { i: Heart, l: "Likes", v: fmt(totals.likes) },
-              { i: MessageCircle, l: "Comments", v: fmt(totals.comments) },
-              { i: Share2, l: "Shares", v: fmt(totals.shares) },
+              { i: Eye, l: "Views", v: loaded ? fmt(totals.views) : "—" },
+              { i: TrendingUp, l: "Reach", v: loaded ? fmt(totals.reach) : "—" },
+              { i: Heart, l: "Likes", v: loaded ? fmt(totals.likes) : "—" },
+              { i: MessageCircle, l: "Comments", v: loaded ? fmt(totals.comments) : "—" },
+              { i: Share2, l: "Shares", v: loaded ? fmt(totals.shares) : "—" },
             ].map(({ i: I, l, v }) => (
               <div key={l} className="p-4 rounded-xl bg-secondary/60">
                 <I className="w-4 h-4 text-muted-foreground mb-2" />
