@@ -769,9 +769,8 @@ const CampaignDetail = () => {
             </div>
           ))}
         </div>
-          ))}
-        </div>
       </div>
+
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
