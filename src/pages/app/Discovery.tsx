@@ -338,9 +338,19 @@ const Discovery = () => {
       </div>
 
       <Tabs defaultValue="creators" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="creators"><Sparkles className="w-3.5 h-3.5 mr-1.5" />Creators</TabsTrigger>
-          <TabsTrigger value="shows"><Tv className="w-3.5 h-3.5 mr-1.5" />Shows &amp; programmes</TabsTrigger>
+        <TabsList className="mb-8 h-auto p-1.5 bg-muted/60 rounded-2xl gap-1 w-full sm:w-auto inline-flex">
+          <TabsTrigger
+            value="creators"
+            className="px-6 py-3 rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground text-muted-foreground font-display text-base"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />Creators
+          </TabsTrigger>
+          <TabsTrigger
+            value="shows"
+            className="px-6 py-3 rounded-xl data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-lg text-muted-foreground font-display text-base"
+          >
+            <Tv className="w-4 h-4 mr-2" />Shows &amp; podcasts
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="shows"><ShowsTab /></TabsContent>

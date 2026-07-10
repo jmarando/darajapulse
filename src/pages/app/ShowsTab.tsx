@@ -104,9 +104,9 @@ export default function ShowsTab() {
   }, [rows, q, kindFilter, stationFilter, nicheFilter]);
 
   const runSeed = async () => {
-    if (!confirm("Fetch Mediamax Group talent, Mediamax shows, and top Kenyan broadcaster shows? This runs in the background for several minutes.")) return;
+    if (!confirm("Fetch popular Kenyan TV shows, radio programmes and podcasts (Citizen, NTV, KTN, KBC, K24, Kiss, Classic, Financially Incorrect, Mic Cheque, Iko Nini and more)? Runs in the background for several minutes.")) return;
     setSeeding(true);
-    const t = toast.loading("Starting Mediamax + shows seed…");
+    const t = toast.loading("Starting KE shows & podcasts seed…");
     try {
       const { data, error } = await supabase.functions.invoke("discovery-seed-shows", { body: {} });
       if (error) throw error;
@@ -129,7 +129,7 @@ export default function ShowsTab() {
         </div>
         <Button onClick={runSeed} disabled={seeding} variant="outline">
           {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-          {rows.length ? "Top up shows" : "Seed Mediamax + KE shows"}
+          {rows.length ? "Top up shows" : "Seed KE shows & podcasts"}
         </Button>
       </div>
 
@@ -171,7 +171,7 @@ export default function ShowsTab() {
         <Card className="p-16 text-center">
           <Tv className="w-10 h-10 mx-auto text-muted-foreground" />
           <h3 className="font-display text-2xl mt-4">No shows yet</h3>
-          <p className="text-muted-foreground mt-2 text-sm">Click <strong>Seed Mediamax + KE shows</strong> to fetch programmes across Kenyan broadcasters.</p>
+          <p className="text-muted-foreground mt-2 text-sm">Click <strong>Seed KE shows &amp; podcasts</strong> to fetch TV, radio and podcast programmes across Kenya — from Citizen and NTV to Financially Incorrect and The Mic Cheque.</p>
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

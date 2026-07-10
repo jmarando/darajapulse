@@ -30,10 +30,25 @@ const MEDIAMAX_STATIONS = [
 
 // Other major KE broadcasters (shows-only pass, no auto-storefront)
 const OTHER_BROADCASTERS = [
-  { group: "Royal Media Services", stations: ["Citizen TV", "Radio Citizen", "Ramogi FM", "Inooro TV", "Inooro FM", "Musyi FM", "Mulembe FM", "Chamgei FM"] },
-  { group: "Radio Africa Group", stations: ["Kiss FM", "Classic 105", "Radio Jambo", "Kiss TV", "The Star"] },
-  { group: "Standard Group", stations: ["KTN Home", "KTN News", "Radio Maisha", "Spice FM", "Berur FM"] },
+  { group: "Royal Media Services", stations: ["Citizen TV", "Radio Citizen", "Ramogi FM", "Inooro TV", "Inooro FM", "Musyi FM", "Mulembe FM", "Chamgei FM", "Egesa FM", "Wimwaro FM", "Sulwe FM", "Bahari FM", "Hot 96"] },
+  { group: "Radio Africa Group", stations: ["Kiss FM", "Classic 105", "Radio Jambo", "Kiss TV", "The Star", "X FM", "Relax FM"] },
+  { group: "Standard Group", stations: ["KTN Home", "KTN News", "Radio Maisha", "Spice FM", "Berur FM", "Vybez Radio"] },
   { group: "Nation Media Group", stations: ["NTV Kenya", "QFM", "Nation FM"] },
+  { group: "KBC", stations: ["KBC Channel 1", "KBC English Service", "Idhaa ya Taifa", "Coro FM", "Pwani FM", "Mwago FM", "Iftin FM", "Kitwek FM"] },
+  { group: "Capital Group", stations: ["Capital FM", "Capital FM Kids"] },
+  { group: "Home Boyz Media", stations: ["HBR (Homeboyz Radio)"] },
+  { group: "Trace Media", stations: ["Trace Mziki", "Trace Gospel"] },
+  { group: "Independent / Digital TV", stations: ["Switch TV", "Ebru TV", "TV47", "TBN Family Media", "GBS TV", "Family TV", "Sayare TV"] },
+];
+
+// Popular Kenyan podcasts (independent + branded)
+const KE_PODCASTS = [
+  "Financially Incorrect", "The Mic Cheque Podcast", "Iko Nini Podcast", "Cleaning The Airwaves (CTA) Podcast",
+  "Sandwich Podcast", "Mantalk Ke", "The Wicked Edition", "Legally Clueless", "Nipe Story",
+  "The Messy Inbetween", "Something New Podcast", "Kaka Empire Podcast", "The Sandwich Podcast",
+  "Business Redefined Podcast", "Africa Business Stories", "Kenya Diaspora Podcast",
+  "Kula Kwa Ganji", "MC Jessy Show", "The Presenter Ali Podcast", "Zeddy Nation Podcast",
+  "Better Than Yesterday Podcast", "The Chicken Coop with Dr. King'ori", "Engineer Your Sound",
 ];
 
 type Creator = {
@@ -335,7 +350,7 @@ async function runMediamaxSeed() {
     for (const st of g.stations) {
       try {
         // Best-guess kind from name
-        const kind = /tv|ntv|ktn|k24|inooro tv|kiss tv/i.test(st) ? "tv" : "radio";
+        const kind = /tv|ntv|ktn|k24|inooro tv|kiss tv|switch|ebru|tv47|tbn|family tv|gbs|sayare|channel 1/i.test(st) ? "tv" : "radio";
         const shows = await askShows(g.group, st, kind);
         for (const s of shows) {
           const id = await upsertShow(sb, s, null);
@@ -344,6 +359,30 @@ async function runMediamaxSeed() {
       } catch (e) { console.error("other shows err", st, e); }
     }
   }
+
+  console.log("[seed-shows] Named podcasts pass");
+  for (const name of KE_PODCASTS) {
+    try {
+      const shows = await askShows("Independent Kenyan Podcast", name, "podcast");
+      for (const s of shows) {
+        // Force the show name/kind from our curated list
+        const forced: Show = { ...s, name: s.name || name, kind: "podcast", station: s.station || name };
+        const id = await upsertShow(sb, forced, null);
+        if (id) { showsInserted++; await addShowContacts(sb, id, forced); }
+      }
+    } catch (e) { console.error("podcast pass err", name, e); }
+  }
+
+  console.log("[seed-shows] Discover more KE podcasts pass");
+  try {
+    const extra = await ask(`List up to 30 additional popular Kenyan podcasts (independent or branded) with real, sizeable audiences. Return { "shows": [ ... ] } with the same schema as before (kind must be "podcast"). Include hosts, main platform, handles, description, reach_estimate, audience_demo. Skip anything you already know is on this list: ${KE_PODCASTS.join(", ")}. Only real, verifiable podcasts.`);
+    const list: Show[] = Array.isArray(extra?.shows) ? extra.shows : [];
+    for (const s of list) {
+      const forced: Show = { ...s, kind: "podcast", station: s.station || s.name };
+      const id = await upsertShow(sb, forced, null);
+      if (id) { showsInserted++; await addShowContacts(sb, id, forced); }
+    }
+  } catch (e) { console.error("extra podcasts err", e); }
 
   console.log(`[seed-shows] DONE creators=${creatorsInserted} shows=${showsInserted} inv=${inventoryAdded}`);
 }
@@ -356,7 +395,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       status: "started",
-      message: "Fetching Mediamax talent, Mediamax shows, and top Kenyan broadcaster shows in the background. Refresh Discovery → Shows in a few minutes.",
+      message: "Fetching Kenyan TV, radio and podcast shows (including popular independents like Financially Incorrect) plus Mediamax talent in the background. Refresh Discovery → Shows in a few minutes.",
     }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("seed-shows fatal", e);
