@@ -129,7 +129,7 @@ export default function ShowsTab() {
         </div>
         <Button onClick={runSeed} disabled={seeding} variant="outline">
           {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-          {rows.length ? "Top up shows" : "Seed Mediamax + KE shows"}
+          {rows.length ? "Top up shows" : "Seed KE shows & podcasts"}
         </Button>
       </div>
 
