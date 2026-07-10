@@ -44,6 +44,7 @@ Return strictly a JSON array. Each item must have:
 - bio (string, max 140 chars)
 - public_email (string or empty — only if widely listed in their bio/linktree)
 - public_phone (string or empty — Kenyan format if publicly listed)
+- audience_demo (object: { age_bands: {"18-24": %, "25-34": %, "35-44": %, "45+": %}, gender: {"female": %, "male": %}, top_cities: ["Nairobi","Mombasa",...], estimated: true })
 - confidence (0..1 — how sure you are this creator exists and matches the niche)
 Only include real, well-known creators. If you are unsure, omit. Return ONLY the JSON array, no prose.`;
 
