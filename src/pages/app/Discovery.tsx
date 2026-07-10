@@ -565,16 +565,7 @@ const Discovery = () => {
                   </div>
                 </div>
 
-                {/* KPI strip */}
-                <div className="mx-5 mb-5 rounded-2xl bg-foreground text-background p-6 flex items-center justify-between shadow-lg mt-auto">
-                  <Stat label="Total Reach" value={fmtCompact(p.follower_total)} />
-                  <Divider />
-                  <Stat label="Avg Eng" value={p.engagement_avg.toFixed(1)} suffix="%" />
-                  <Divider />
-                  <Stat label="Profiles" value={String(p.profiles.length)} />
-                </div>
-
-                {/* Niches + contacts + actions */}
+                {/* Niches + contacts */}
                 <div className="px-7 pb-5 flex flex-col gap-3">
                   {p.niches.length > 0 && (
                     <div className="flex flex-wrap gap-1">
@@ -607,6 +598,19 @@ const Discovery = () => {
                       {contacts.length > 3 && <span className="text-[10px] text-muted-foreground self-center">+{contacts.length - 3}</span>}
                     </div>
                   )}
+                </div>
+
+                {/* KPI strip — pinned to bottom for consistent alignment across cards */}
+                <div className="mx-5 mb-4 rounded-2xl bg-foreground text-background p-6 flex items-center justify-between shadow-lg mt-auto">
+                  <Stat label="Total Reach" value={fmtCompact(p.follower_total)} />
+                  <Divider />
+                  <Stat label="Avg Eng" value={p.engagement_avg.toFixed(1)} suffix="%" />
+                  <Divider />
+                  <Stat label="Profiles" value={String(p.profiles.length)} />
+                </div>
+
+                {/* Actions */}
+                <div className="px-7 pb-5">
                   <div className="flex gap-1.5">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(p.primary)}>
                       Details {contacts.length > 0 && <span className="ml-1 text-[10px] text-muted-foreground">({contacts.length})</span>}
