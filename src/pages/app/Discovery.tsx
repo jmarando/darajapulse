@@ -690,6 +690,9 @@ const Discovery = () => {
           )}
         </SheetContent>
       </Sheet>
+
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
