@@ -18,6 +18,9 @@ const NICHES = [
   "news and politics", "automotive", "hair", "skincare", "wedding",
   "hustle and SME", "agribusiness", "education", "real estate", "motherhood",
   "nightlife and events",
+  // New niches
+  "media personalities", "journalism", "radio hosts", "TV hosts",
+  "podcast hosts", "activism and civic tech",
 ];
 const PLATFORMS = ["instagram", "tiktok", "youtube", "twitter", "facebook"];
 
