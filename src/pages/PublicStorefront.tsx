@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Instagram, Music2, Youtube, Twitter, Facebook, Tv, Radio, Globe, Sparkles, Check, ShoppingCart, X } from "lucide-react";
+import { Instagram, Music2, Youtube, Twitter, Facebook, Tv, Radio, Globe, Sparkles, Check, ShoppingCart, X, Users, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
 
@@ -33,6 +33,31 @@ const fmtCompact = (n: number) => {
   return n.toLocaleString();
 };
 
+const AGE_BANDS = ["18-24", "25-34", "35-44", "45+"];
+
+// Pull the dominant age band from an audience_demo blob
+const topAgeBand = (demo: any): { band: string; pct: number } | null => {
+  const bands = demo?.age_bands;
+  if (!bands || typeof bands !== "object") return null;
+  let best: { band: string; pct: number } | null = null;
+  for (const [b, v] of Object.entries(bands)) {
+    const pct = Number(v);
+    if (!Number.isFinite(pct)) continue;
+    if (!best || pct > best.pct) best = { band: b, pct };
+  }
+  return best;
+};
+
+const genderLean = (demo: any): { label: string; pct: number } | null => {
+  const g = demo?.gender;
+  if (!g) return null;
+  const f = Number(g.female) || 0;
+  const m = Number(g.male) || 0;
+  if (!f && !m) return null;
+  if (f >= m) return { label: `${Math.round(f)}% female`, pct: f };
+  return { label: `${Math.round(m)}% male`, pct: m };
+};
+
 export default function PublicStorefront() {
   const { agencySlug } = useParams();
   const [agency, setAgency] = useState<any>(null);
@@ -42,6 +67,19 @@ export default function PublicStorefront() {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ contact_name: "", contact_email: "", contact_phone: "", company: "", budget_kes: "", target_start: "", target_end: "", message: "" });
+
+  // Filters
+  const [q, setQ] = useState("");
+  const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [kindFilter, setKindFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [minFollowers, setMinFollowers] = useState<string>("");
+  const [maxFollowers, setMaxFollowers] = useState<string>("");
+  const [minER, setMinER] = useState<string>("");
+  const [ageBands, setAgeBands] = useState<string[]>([]);
+  const [genderPref, setGenderPref] = useState<"any" | "female" | "male">("any");
+  const [cityFilter, setCityFilter] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -54,14 +92,71 @@ export default function PublicStorefront() {
     })();
   }, [agencySlug]);
 
+  const platforms = useMemo(() => Array.from(new Set(items.map(i => i.platform).filter(Boolean))), [items]);
+  const kinds = useMemo(() => Array.from(new Set(items.map(i => i.kind).filter(Boolean))), [items]);
+  const categories = useMemo(() => Array.from(new Set(items.flatMap((i: any) => i.tags || []))).sort(), [items]);
+
   const toggle = (id: string) => setCart(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
   const cartItems = useMemo(() => items.filter(i => cart.includes(i.id)), [items, cart]);
+
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    const minF = Number(minFollowers) || 0;
+    const maxF = Number(maxFollowers) || Infinity;
+    const minE = Number(minER) || 0;
+    const city = cityFilter.trim().toLowerCase();
+    return items.filter(i => {
+      if (term) {
+        const hay = [i.title, i.subtitle, i.description, i.handle, ...(i.tags || [])].join(" ").toLowerCase();
+        if (!hay.includes(term)) return false;
+      }
+      if (platformFilter !== "all" && i.platform !== platformFilter) return false;
+      if (kindFilter !== "all" && i.kind !== kindFilter) return false;
+      if (categoryFilter !== "all" && !(i.tags || []).includes(categoryFilter)) return false;
+      const fc = Number(i.follower_count) || 0;
+      if (fc < minF) return false;
+      if (fc > maxF) return false;
+      const er = Number(i.engagement_rate) || 0;
+      if (er < minE) return false;
+      if (ageBands.length) {
+        const bands = i.audience_demo?.age_bands || {};
+        // require at least one selected band to have ≥25%
+        const ok = ageBands.some(b => Number(bands[b]) >= 25);
+        if (!ok) return false;
+      }
+      if (genderPref !== "any") {
+        const g = i.audience_demo?.gender;
+        if (!g) return false;
+        const target = Number(g[genderPref]) || 0;
+        if (target < 55) return false;
+      }
+      if (city) {
+        const cities = (i.audience_demo?.top_cities || []).map((c: string) => (c || "").toLowerCase());
+        if (!cities.some((c: string) => c.includes(city))) return false;
+      }
+      return true;
+    });
+  }, [items, q, platformFilter, kindFilter, categoryFilter, minFollowers, maxFollowers, minER, ageBands, genderPref, cityFilter]);
+
   const groups = useMemo(() => {
     const order = ["owned_account", "influencer", "ad_slot", "bundle"];
     const out: Record<string, any[]> = {};
-    items.forEach(i => { (out[i.kind] = out[i.kind] || []).push(i); });
+    filtered.forEach(i => { (out[i.kind] = out[i.kind] || []).push(i); });
     return order.filter(k => out[k]?.length).map(k => ({ kind: k, items: out[k] }));
-  }, [items]);
+  }, [filtered]);
+
+  const activeFilters = [
+    platformFilter !== "all", kindFilter !== "all", categoryFilter !== "all",
+    !!minFollowers, !!maxFollowers, !!minER,
+    ageBands.length > 0, genderPref !== "any", !!cityFilter.trim(),
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setQ("");
+    setPlatformFilter("all"); setKindFilter("all"); setCategoryFilter("all");
+    setMinFollowers(""); setMaxFollowers(""); setMinER("");
+    setAgeBands([]); setGenderPref("any"); setCityFilter("");
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,16 +203,91 @@ export default function PublicStorefront() {
       </header>
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
-        <section className="mb-10">
+        <section className="mb-8">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Our inventory</div>
           <h2 className="font-display text-4xl mt-1">Pick what fits your brief.</h2>
-          <p className="text-muted-foreground mt-2 max-w-2xl">Browse our owned channels, signed creators and ad slots. Add the units you'd like to book — we'll quote within 24 hours.</p>
+          <p className="text-muted-foreground mt-2 max-w-2xl">Browse our owned channels, signed creators and ad slots. Filter by audience, add units you'd like to book — we'll quote within 24 hours.</p>
         </section>
+
+        {/* Filter bar */}
+        <div className="mb-6 space-y-3">
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative flex-1 min-w-[220px] max-w-md">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+              <Input className="pl-9" placeholder="Search title, handle, tag…" value={q} onChange={e => setQ(e.target.value)} />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setShowFilters(v => !v)}>
+              <SlidersHorizontal className="w-4 h-4 mr-1.5" />
+              Filters {activeFilters > 0 && <Badge variant="secondary" className="ml-1.5 h-5">{activeFilters}</Badge>}
+            </Button>
+            {activeFilters > 0 && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>}
+            <div className="ml-auto text-xs text-muted-foreground">{filtered.length} of {items.length}</div>
+          </div>
+
+          {/* Platform + kind pills — always visible */}
+          <div className="flex flex-wrap gap-1.5">
+            <Button size="sm" variant={platformFilter === "all" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setPlatformFilter("all")}>All platforms</Button>
+            {platforms.map(p => {
+              const Icon = PLATFORM_ICON[p] || Globe;
+              return <Button key={p} size="sm" variant={platformFilter === p ? "default" : "outline"} className="h-7 text-xs capitalize" onClick={() => setPlatformFilter(p)}><Icon className="w-3 h-3 mr-1" />{p}</Button>;
+            })}
+            <div className="w-px h-6 bg-border mx-1" />
+            <Button size="sm" variant={kindFilter === "all" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setKindFilter("all")}>All types</Button>
+            {kinds.map(k => (
+              <Button key={k} size="sm" variant={kindFilter === k ? "default" : "outline"} className="h-7 text-xs" onClick={() => setKindFilter(k)}>{KIND_LABEL[k] || k}</Button>
+            ))}
+          </div>
+
+          {showFilters && (
+            <Card className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3 bg-secondary/30">
+              <div>
+                <Label className="text-xs">Category</Label>
+                <select className="mt-1 w-full h-9 rounded-md border bg-background px-2 text-sm" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+                  <option value="all">All categories</option>
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">Followers</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input placeholder="Min" type="number" value={minFollowers} onChange={e => setMinFollowers(e.target.value)} className="h-9" />
+                  <Input placeholder="Max" type="number" value={maxFollowers} onChange={e => setMaxFollowers(e.target.value)} className="h-9" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Min engagement %</Label>
+                <Input placeholder="e.g. 2" type="number" step="0.1" value={minER} onChange={e => setMinER(e.target.value)} className="h-9 mt-1" />
+              </div>
+              <div className="md:col-span-2">
+                <Label className="text-xs">Audience age bands (≥25% of audience)</Label>
+                <div className="flex gap-1.5 mt-1 flex-wrap">
+                  {AGE_BANDS.map(b => {
+                    const on = ageBands.includes(b);
+                    return <Button key={b} size="sm" variant={on ? "default" : "outline"} className="h-7 text-xs"
+                      onClick={() => setAgeBands(v => on ? v.filter(x => x !== b) : [...v, b])}>{b}</Button>;
+                  })}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Audience gender lean</Label>
+                <div className="flex gap-1.5 mt-1">
+                  {(["any", "female", "male"] as const).map(g => (
+                    <Button key={g} size="sm" variant={genderPref === g ? "default" : "outline"} className="h-7 text-xs capitalize" onClick={() => setGenderPref(g)}>{g}</Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Top city</Label>
+                <Input placeholder="e.g. Mombasa" value={cityFilter} onChange={e => setCityFilter(e.target.value)} className="h-9 mt-1" />
+              </div>
+            </Card>
+          )}
+        </div>
 
         {groups.length === 0 ? (
           <Card className="p-16 text-center text-muted-foreground">
             <Sparkles className="w-10 h-10 mx-auto opacity-50" />
-            <p className="mt-3">Inventory is being prepared. Check back soon.</p>
+            <p className="mt-3">{items.length === 0 ? "Inventory is being prepared. Check back soon." : "No items match those filters."}</p>
           </Card>
         ) : groups.map(group => (
           <section key={group.kind} className="mb-10">
@@ -129,6 +299,11 @@ export default function PublicStorefront() {
               {group.items.map((i: any) => {
                 const PIcon = PLATFORM_ICON[i.platform] || Globe;
                 const inCart = cart.includes(i.id);
+                const age = topAgeBand(i.audience_demo);
+                const gender = genderLean(i.audience_demo);
+                const topCity = i.audience_demo?.top_cities?.[0];
+                const hasDemo = !!(age || gender || topCity);
+                const estimated = i.demo_source === "ai_estimated";
                 return (
                   <Card key={i.id} className={`p-5 flex flex-col transition-all ${inCart ? "border-accent ring-1 ring-accent" : "hover:border-accent/40"}`}>
                     {i.cover_url ? (
@@ -173,6 +348,22 @@ export default function PublicStorefront() {
                         <div className="p-2 text-center">
                           <div className="font-display text-base">{Number(i.engagement_rate || 0).toFixed(1)}%</div>
                           <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Engagement</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {hasDemo && (
+                      <div className="mt-3 rounded-md border border-dashed border-border/60 bg-secondary/20 p-2">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest text-muted-foreground">
+                            <Users className="w-2.5 h-2.5" /> Audience
+                          </div>
+                          {estimated && <span className="text-[8px] uppercase tracking-wider text-muted-foreground/70">estimated</span>}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {age && <Badge variant="secondary" className="text-[10px]">{age.band} · {Math.round(age.pct)}%</Badge>}
+                          {gender && <Badge variant="secondary" className="text-[10px]">{gender.label}</Badge>}
+                          {topCity && <Badge variant="secondary" className="text-[10px]">{topCity}</Badge>}
                         </div>
                       </div>
                     )}
