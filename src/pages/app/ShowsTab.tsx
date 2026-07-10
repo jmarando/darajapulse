@@ -171,7 +171,7 @@ export default function ShowsTab() {
         <Card className="p-16 text-center">
           <Tv className="w-10 h-10 mx-auto text-muted-foreground" />
           <h3 className="font-display text-2xl mt-4">No shows yet</h3>
-          <p className="text-muted-foreground mt-2 text-sm">Click <strong>Seed Mediamax + KE shows</strong> to fetch programmes across Kenyan broadcasters.</p>
+          <p className="text-muted-foreground mt-2 text-sm">Click <strong>Seed KE shows &amp; podcasts</strong> to fetch TV, radio and podcast programmes across Kenya — from Citizen and NTV to Financially Incorrect and The Mic Cheque.</p>
         </Card>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
