@@ -337,6 +337,16 @@ const Discovery = () => {
         </div>
       </div>
 
+      <Tabs defaultValue="creators" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="creators"><Sparkles className="w-3.5 h-3.5 mr-1.5" />Creators</TabsTrigger>
+          <TabsTrigger value="shows"><Tv className="w-3.5 h-3.5 mr-1.5" />Shows &amp; programmes</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="shows"><ShowsTab /></TabsContent>
+
+        <TabsContent value="creators">
+
       {/* Matchmaker */}
       <Card className="p-5 mb-6 border-accent/40">
         <div className="flex items-center gap-2 mb-3"><Wand2 className="w-4 h-4 text-accent" /><h2 className="font-display text-lg">Match creators to a brief</h2></div>
