@@ -51,6 +51,28 @@ const KE_PODCASTS = [
   "Better Than Yesterday Podcast", "The Chicken Coop with Dr. King'ori", "Engineer Your Sound",
 ];
 
+// Kenyan digital-only publications / blogs / online media brands
+const KE_DIGITAL_PUBS = [
+  { name: "Kenya Wall Street", group: "Digital publications", niche: ["business", "finance", "markets"] },
+  { name: "Business Daily", group: "Nation Media Group", niche: ["business", "finance"] },
+  { name: "Techweez", group: "Digital publications", niche: ["technology", "gadgets"] },
+  { name: "Techmoran", group: "Digital publications", niche: ["technology", "startups"] },
+  { name: "Pulse Live Kenya", group: "Digital publications", niche: ["entertainment", "lifestyle", "news"] },
+  { name: "Tuko", group: "Digital publications", niche: ["news", "entertainment"] },
+  { name: "Kenyans.co.ke", group: "Digital publications", niche: ["news", "politics"] },
+  { name: "Nairobi Wire", group: "Digital publications", niche: ["news", "lifestyle"] },
+  { name: "Nairobi News", group: "Nation Media Group", niche: ["news", "city"] },
+  { name: "Ghafla Kenya", group: "Digital publications", niche: ["entertainment", "celebrity"] },
+  { name: "Mpasho", group: "Radio Africa Group", niche: ["entertainment", "celebrity"] },
+  { name: "Sports Brief", group: "Digital publications", niche: ["sports"] },
+  { name: "The Elephant", group: "Digital publications", niche: ["politics", "long-form", "analysis"] },
+  { name: "Business Today", group: "Digital publications", niche: ["business"] },
+  { name: "Bizna Kenya", group: "Digital publications", niche: ["business", "sme"] },
+  { name: "Citizen Digital", group: "Royal Media Services", niche: ["news"] },
+  { name: "Nation.Africa", group: "Nation Media Group", niche: ["news"] },
+  { name: "Standard Digital", group: "Standard Group", niche: ["news"] },
+];
+
 type Creator = {
   full_name: string; handle?: string; platform?: string; profile_url?: string;
   follower_estimate?: number; engagement_estimate?: number;
@@ -141,6 +163,29 @@ Return strict JSON: { "shows": [ ... ] }. Each item:
 Only real shows. Omit if unsure.`;
   const out = await ask(prompt);
   return Array.isArray(out?.shows) ? out.shows : [];
+}
+
+async function askDigitalProperty(name: string, group: string, seedNiche: string[]): Promise<Show | null> {
+  const prompt = `Return real, verifiable public info for the Kenyan digital publication "${name}"${group !== "Digital publications" ? ` (part of ${group})` : ""}. Strict JSON: { "show": { ... } }. Fields:
+- name: "${name}"
+- kind: "digital"
+- station: "${name}"
+- host_names: [] (editors-in-chief or founders if widely known, else empty)
+- airtime: "" (leave empty for digital publishers)
+- platforms (string[], subset of: instagram, tiktok, youtube, facebook, twitter)
+- handles (object with instagram/tiktok/youtube/facebook/twitter/website keys, values are handles/URLs, no @)
+- niche (string[], start from ${JSON.stringify(seedNiche)} and refine)
+- city (string, usually "Nairobi")
+- description (string, max 200 chars, what they cover and their audience)
+- reach_estimate (integer, monthly unique visitors or total social followers)
+- audience_demo (object: { age_bands, gender, top_cities, estimated: true })
+- public_email (editorial or advertising email if publicly listed, else "")
+- public_phone ("")
+- whatsapp ("")
+- confidence (0..1)
+Only return real, verifiable info. If you are unsure the publication exists, return { "show": null }.`;
+  const out = await ask(prompt);
+  return out?.show || null;
 }
 
 async function upsertCreator(sb: any, c: Creator, station: string, works_for: string[]): Promise<string | null> {
@@ -384,6 +429,17 @@ async function runMediamaxSeed() {
     }
   } catch (e) { console.error("extra podcasts err", e); }
 
+  console.log("[seed-shows] Digital publications pass");
+  for (const pub of KE_DIGITAL_PUBS) {
+    try {
+      const s = await askDigitalProperty(pub.name, pub.group, pub.niche);
+      if (!s) continue;
+      const forced: Show = { ...s, name: pub.name, kind: "digital", station: pub.name, niche: Array.from(new Set([...(s.niche || []), ...pub.niche])) };
+      const id = await upsertShow(sb, forced, null);
+      if (id) { showsInserted++; await addShowContacts(sb, id, forced); }
+    } catch (e) { console.error("digital pub err", pub.name, e); }
+  }
+
   console.log(`[seed-shows] DONE creators=${creatorsInserted} shows=${showsInserted} inv=${inventoryAdded}`);
 }
 
@@ -395,7 +451,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       status: "started",
-      message: "Fetching Kenyan TV, radio and podcast shows (including popular independents like Financially Incorrect) plus Mediamax talent in the background. Refresh Discovery → Shows in a few minutes.",
+      message: "Fetching Kenyan media properties — TV, radio, podcasts and digital publishers like Kenya Wall Street and Techweez — grouped by media house. Refresh Discovery → Media houses in a few minutes.",
     }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("seed-shows fatal", e);

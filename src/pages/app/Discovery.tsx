@@ -349,7 +349,7 @@ const Discovery = () => {
             value="shows"
             className="px-6 py-3 rounded-xl data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-lg text-muted-foreground font-display text-base"
           >
-            <Tv className="w-4 h-4 mr-2" />Shows &amp; podcasts
+            <Tv className="w-4 h-4 mr-2" />Media houses
           </TabsTrigger>
         </TabsList>
 
