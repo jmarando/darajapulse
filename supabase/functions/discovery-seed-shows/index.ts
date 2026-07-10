@@ -429,6 +429,17 @@ async function runMediamaxSeed() {
     }
   } catch (e) { console.error("extra podcasts err", e); }
 
+  console.log("[seed-shows] Digital publications pass");
+  for (const pub of KE_DIGITAL_PUBS) {
+    try {
+      const s = await askDigitalProperty(pub.name, pub.group, pub.niche);
+      if (!s) continue;
+      const forced: Show = { ...s, name: pub.name, kind: "digital", station: pub.name, niche: Array.from(new Set([...(s.niche || []), ...pub.niche])) };
+      const id = await upsertShow(sb, forced, null);
+      if (id) { showsInserted++; await addShowContacts(sb, id, forced); }
+    } catch (e) { console.error("digital pub err", pub.name, e); }
+  }
+
   console.log(`[seed-shows] DONE creators=${creatorsInserted} shows=${showsInserted} inv=${inventoryAdded}`);
 }
 
@@ -440,7 +451,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       status: "started",
-      message: "Fetching Kenyan TV, radio and podcast shows (including popular independents like Financially Incorrect) plus Mediamax talent in the background. Refresh Discovery → Shows in a few minutes.",
+      message: "Fetching Kenyan media properties — TV, radio, podcasts and digital publishers like Kenya Wall Street and Techweez — grouped by media house. Refresh Discovery → Media houses in a few minutes.",
     }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("seed-shows fatal", e);
