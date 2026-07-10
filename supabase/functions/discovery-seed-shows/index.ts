@@ -395,7 +395,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       status: "started",
-      message: "Fetching Mediamax talent, Mediamax shows, and top Kenyan broadcaster shows in the background. Refresh Discovery → Shows in a few minutes.",
+      message: "Fetching Kenyan TV, radio and podcast shows (including popular independents like Financially Incorrect) plus Mediamax talent in the background. Refresh Discovery → Shows in a few minutes.",
     }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("seed-shows fatal", e);
