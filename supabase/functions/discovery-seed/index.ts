@@ -28,6 +28,7 @@ type Creator = {
   full_name: string; handle: string; profile_url?: string;
   follower_estimate?: number; engagement_estimate?: number;
   city?: string; bio?: string; public_email?: string; public_phone?: string;
+  audience_demo?: any;
   confidence?: number;
 };
 
