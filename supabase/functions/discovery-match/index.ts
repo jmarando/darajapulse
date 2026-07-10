@@ -41,15 +41,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    const prompt = `You are an influencer matchmaker. Given a brief and a list of candidate creators, return the top 15 best matches.
+    const prompt = `You are an influencer matchmaker. Given a brief and a list of candidate creators, pick ONLY the ones that genuinely fit the brief's niche/goal. It is better to return 3 great matches than 15 mediocre ones. NEVER invent creators or reference names not in the CANDIDATES list.
 
 BRIEF:
 ${JSON.stringify(brief, null, 2)}
 
 CANDIDATES (id, handle, platform, niche, followers, city, bio):
-${candidates.map((c, i) => `${i + 1}. id=${c.id} | @${c.handle} on ${c.platform} | niche=${(c.niche || []).join(",")} | followers=${c.follower_count} | city=${c.city || "-"} | bio=${(c.bio || "").slice(0, 100)}`).join("\n")}
+${candidates.map((c, i) => `${i + 1}. id=${c.id} | name=${c.full_name || "-"} | @${c.handle} on ${c.platform} | niche=${(c.niche || []).join(",")} | followers=${c.follower_count} | city=${c.city || "-"} | bio=${(c.bio || "").slice(0, 100)}`).join("\n")}
 
-Return STRICT JSON: {"matches":[{"creator_id":"uuid","score":0-100,"reason":"one sentence","angle":"short content angle"}]} ordered by score desc.`;
+Rules:
+- Only include a creator if their niche/bio clearly matches the brief. Skip anyone off-topic (e.g. do NOT include a political/news creator for a food brief).
+- The "reason" MUST reference the creator by their exact @handle or name from the list above — never a different creator's name.
+- Score reflects fit: 80+ excellent, 60-79 good, 40-59 weak (omit anything below 40).
+- Return up to 15, but fewer is fine.
+
+Return STRICT JSON: {"matches":[{"creator_id":"uuid","score":0-100,"reason":"one sentence referencing the creator's actual handle","angle":"short content angle"}]} ordered by score desc.`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
