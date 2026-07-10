@@ -51,6 +51,28 @@ const KE_PODCASTS = [
   "Better Than Yesterday Podcast", "The Chicken Coop with Dr. King'ori", "Engineer Your Sound",
 ];
 
+// Kenyan digital-only publications / blogs / online media brands
+const KE_DIGITAL_PUBS = [
+  { name: "Kenya Wall Street", group: "Digital publications", niche: ["business", "finance", "markets"] },
+  { name: "Business Daily", group: "Nation Media Group", niche: ["business", "finance"] },
+  { name: "Techweez", group: "Digital publications", niche: ["technology", "gadgets"] },
+  { name: "Techmoran", group: "Digital publications", niche: ["technology", "startups"] },
+  { name: "Pulse Live Kenya", group: "Digital publications", niche: ["entertainment", "lifestyle", "news"] },
+  { name: "Tuko", group: "Digital publications", niche: ["news", "entertainment"] },
+  { name: "Kenyans.co.ke", group: "Digital publications", niche: ["news", "politics"] },
+  { name: "Nairobi Wire", group: "Digital publications", niche: ["news", "lifestyle"] },
+  { name: "Nairobi News", group: "Nation Media Group", niche: ["news", "city"] },
+  { name: "Ghafla Kenya", group: "Digital publications", niche: ["entertainment", "celebrity"] },
+  { name: "Mpasho", group: "Radio Africa Group", niche: ["entertainment", "celebrity"] },
+  { name: "Sports Brief", group: "Digital publications", niche: ["sports"] },
+  { name: "The Elephant", group: "Digital publications", niche: ["politics", "long-form", "analysis"] },
+  { name: "Business Today", group: "Digital publications", niche: ["business"] },
+  { name: "Bizna Kenya", group: "Digital publications", niche: ["business", "sme"] },
+  { name: "Citizen Digital", group: "Royal Media Services", niche: ["news"] },
+  { name: "Nation.Africa", group: "Nation Media Group", niche: ["news"] },
+  { name: "Standard Digital", group: "Standard Group", niche: ["news"] },
+];
+
 type Creator = {
   full_name: string; handle?: string; platform?: string; profile_url?: string;
   follower_estimate?: number; engagement_estimate?: number;
