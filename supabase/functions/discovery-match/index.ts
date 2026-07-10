@@ -79,7 +79,27 @@ Return STRICT JSON: {"matches":[{"creator_id":"uuid","score":0-100,"reason":"one
     const txt = data?.choices?.[0]?.message?.content ?? "{}";
     let parsed: any = {};
     try { parsed = JSON.parse(txt); } catch { parsed = { matches: [] }; }
-    const matches = Array.isArray(parsed.matches) ? parsed.matches : [];
+    const rawMatches = Array.isArray(parsed.matches) ? parsed.matches : [];
+    // Sanitize: keep only matches whose creator_id is in our candidate set, drop weak scores,
+    // and rewrite any reason that mentions a creator name/handle not belonging to this candidate.
+    const byId = new Map(candidates.map(c => [c.id, c]));
+    const allHandles = candidates.map(c => (c.handle || "").toLowerCase()).filter(Boolean);
+    const allNames = candidates.map(c => (c.full_name || "").toLowerCase()).filter(Boolean);
+    const matches = rawMatches
+      .filter((m: any) => m && byId.has(m.creator_id) && Number(m.score) >= 40)
+      .map((m: any) => {
+        const c = byId.get(m.creator_id)!;
+        const reason: string = String(m.reason || "");
+        const lower = reason.toLowerCase();
+        const ownHandle = (c.handle || "").toLowerCase();
+        const ownName = (c.full_name || "").toLowerCase();
+        // If the reason mentions someone else's handle/name, discard it — AI hallucinated.
+        const mentionsOther = [...allHandles, ...allNames].some(h => h && h !== ownHandle && h !== ownName && lower.includes(h));
+        return {
+          ...m,
+          reason: mentionsOther ? `Fits the brief on niche and audience (@${c.handle}).` : reason,
+        };
+      });
 
     // Save search
     const authHeader = req.headers.get("Authorization");
