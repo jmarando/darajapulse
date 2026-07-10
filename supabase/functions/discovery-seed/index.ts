@@ -18,6 +18,9 @@ const NICHES = [
   "news and politics", "automotive", "hair", "skincare", "wedding",
   "hustle and SME", "agribusiness", "education", "real estate", "motherhood",
   "nightlife and events",
+  // New niches
+  "media personalities", "journalism", "radio hosts", "TV hosts",
+  "podcast hosts", "activism and civic tech",
 ];
 const PLATFORMS = ["instagram", "tiktok", "youtube", "twitter", "facebook"];
 
@@ -25,6 +28,7 @@ type Creator = {
   full_name: string; handle: string; profile_url?: string;
   follower_estimate?: number; engagement_estimate?: number;
   city?: string; bio?: string; public_email?: string; public_phone?: string;
+  audience_demo?: any;
   confidence?: number;
 };
 
@@ -40,6 +44,7 @@ Return strictly a JSON array. Each item must have:
 - bio (string, max 140 chars)
 - public_email (string or empty — only if widely listed in their bio/linktree)
 - public_phone (string or empty — Kenyan format if publicly listed)
+- audience_demo (object: { age_bands: {"18-24": %, "25-34": %, "35-44": %, "45+": %}, gender: {"female": %, "male": %}, top_cities: ["Nairobi","Mombasa",...], estimated: true })
 - confidence (0..1 — how sure you are this creator exists and matches the niche)
 Only include real, well-known creators. If you are unsure, omit. Return ONLY the JSON array, no prose.`;
 
@@ -105,19 +110,25 @@ async function runSeed(platforms: string[], niches: string[], concurrency: numbe
             bio: c.bio || null,
             source: "ai_seed",
             ai_confidence: Math.max(0, Math.min(1, Number(c.confidence) || 0.5)),
+            audience_demo: c.audience_demo || null,
+            demo_source: c.audience_demo ? "ai_estimated" : null,
           }));
 
         let ins = 0, upd = 0;
         for (const row of rows) {
           const { data: existing } = await supabase
             .from("discovery_creators")
-            .select("id, niche, verified_at, ai_confidence")
+            .select("id, niche, verified_at, ai_confidence, audience_demo")
             .eq("platform", row.platform).eq("handle", row.handle).maybeSingle();
           if (existing) {
             const mergedNiche = Array.from(new Set([...(existing.niche || []), j.niche]));
             const patch: any = { niche: mergedNiche };
             if (!existing.verified_at) {
               patch.ai_confidence = Math.max(Number(existing.ai_confidence) || 0, row.ai_confidence);
+            }
+            if (!existing.audience_demo && row.audience_demo) {
+              patch.audience_demo = row.audience_demo;
+              patch.demo_source = "ai_estimated";
             }
             await supabase.from("discovery_creators").update(patch).eq("id", existing.id);
             upd++;

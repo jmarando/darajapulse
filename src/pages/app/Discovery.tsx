@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck, Phone, Mail, MessageCircle } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck, Phone, Mail, MessageCircle, Tv } from "lucide-react";
 import { toast } from "sonner";
+import ShowsTab from "./ShowsTab";
 
 const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, whatsapp: MessageCircle };
 const PLATFORMS = ["instagram", "tiktok", "youtube", "twitter", "facebook"];
@@ -334,6 +336,16 @@ const Discovery = () => {
           </Button>
         </div>
       </div>
+
+      <Tabs defaultValue="creators" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="creators"><Sparkles className="w-3.5 h-3.5 mr-1.5" />Creators</TabsTrigger>
+          <TabsTrigger value="shows"><Tv className="w-3.5 h-3.5 mr-1.5" />Shows &amp; programmes</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="shows"><ShowsTab /></TabsContent>
+
+        <TabsContent value="creators">
 
       {/* Matchmaker */}
       <Card className="p-5 mb-6 border-accent/40">
@@ -678,6 +690,9 @@ const Discovery = () => {
           )}
         </SheetContent>
       </Sheet>
+
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

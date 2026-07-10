@@ -1201,10 +1201,12 @@ export type Database = {
       discovery_creators: {
         Row: {
           ai_confidence: number | null
+          audience_demo: Json | null
           avatar_url: string | null
           bio: string | null
           city: string | null
           created_at: string
+          demo_source: string | null
           engagement_rate: number | null
           follower_count: number | null
           full_name: string
@@ -1215,16 +1217,20 @@ export type Database = {
           platform: string
           profile_url: string | null
           region: string | null
+          shows: string[] | null
           source: string
           updated_at: string
           verified_at: string | null
+          works_for: string[] | null
         }
         Insert: {
           ai_confidence?: number | null
+          audience_demo?: Json | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
           created_at?: string
+          demo_source?: string | null
           engagement_rate?: number | null
           follower_count?: number | null
           full_name: string
@@ -1235,16 +1241,20 @@ export type Database = {
           platform: string
           profile_url?: string | null
           region?: string | null
+          shows?: string[] | null
           source?: string
           updated_at?: string
           verified_at?: string | null
+          works_for?: string[] | null
         }
         Update: {
           ai_confidence?: number | null
+          audience_demo?: Json | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
           created_at?: string
+          demo_source?: string | null
           engagement_rate?: number | null
           follower_count?: number | null
           full_name?: string
@@ -1255,9 +1265,11 @@ export type Database = {
           platform?: string
           profile_url?: string | null
           region?: string | null
+          shows?: string[] | null
           source?: string
           updated_at?: string
           verified_at?: string | null
+          works_for?: string[] | null
         }
         Relationships: []
       }
@@ -1691,6 +1703,7 @@ export type Database = {
           cover_url: string | null
           created_at: string
           deliverable_type: string | null
+          demo_source: string | null
           description: string | null
           engagement_rate: number | null
           follower_count: number | null
@@ -1714,6 +1727,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           deliverable_type?: string | null
+          demo_source?: string | null
           description?: string | null
           engagement_rate?: number | null
           follower_count?: number | null
@@ -1737,6 +1751,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           deliverable_type?: string | null
+          demo_source?: string | null
           description?: string | null
           engagement_rate?: number | null
           follower_count?: number | null
@@ -2247,6 +2262,136 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      show_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          is_public: boolean
+          kind: string
+          label: string | null
+          show_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          kind: string
+          label?: string | null
+          show_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_public?: boolean
+          kind?: string
+          label?: string | null
+          show_id?: string
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "show_contacts_show_id_fkey"
+            columns: ["show_id"]
+            isOneToOne: false
+            referencedRelation: "shows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shows: {
+        Row: {
+          agency_id: string | null
+          ai_confidence: number | null
+          airtime: string | null
+          city: string | null
+          created_at: string
+          days_on_air: string[] | null
+          demographics: Json | null
+          description: string | null
+          handles: Json | null
+          host_creator_ids: string[] | null
+          host_names: string[] | null
+          id: string
+          kind: string
+          logo_url: string | null
+          name: string
+          niche: string[] | null
+          notes: string | null
+          platforms: string[] | null
+          reach_estimate: number | null
+          region: string | null
+          slug: string | null
+          source: string | null
+          station: string | null
+          updated_at: string
+          verified_at: string | null
+        }
+        Insert: {
+          agency_id?: string | null
+          ai_confidence?: number | null
+          airtime?: string | null
+          city?: string | null
+          created_at?: string
+          days_on_air?: string[] | null
+          demographics?: Json | null
+          description?: string | null
+          handles?: Json | null
+          host_creator_ids?: string[] | null
+          host_names?: string[] | null
+          id?: string
+          kind?: string
+          logo_url?: string | null
+          name: string
+          niche?: string[] | null
+          notes?: string | null
+          platforms?: string[] | null
+          reach_estimate?: number | null
+          region?: string | null
+          slug?: string | null
+          source?: string | null
+          station?: string | null
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Update: {
+          agency_id?: string | null
+          ai_confidence?: number | null
+          airtime?: string | null
+          city?: string | null
+          created_at?: string
+          days_on_air?: string[] | null
+          demographics?: Json | null
+          description?: string | null
+          handles?: Json | null
+          host_creator_ids?: string[] | null
+          host_names?: string[] | null
+          id?: string
+          kind?: string
+          logo_url?: string | null
+          name?: string
+          niche?: string[] | null
+          notes?: string | null
+          platforms?: string[] | null
+          reach_estimate?: number | null
+          region?: string | null
+          slug?: string | null
+          source?: string | null
+          station?: string | null
+          updated_at?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shows_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppressed_emails: {
         Row: {
