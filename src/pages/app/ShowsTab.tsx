@@ -104,9 +104,9 @@ export default function ShowsTab() {
   }, [rows, q, kindFilter, stationFilter, nicheFilter]);
 
   const runSeed = async () => {
-    if (!confirm("Fetch Mediamax Group talent, Mediamax shows, and top Kenyan broadcaster shows? This runs in the background for several minutes.")) return;
+    if (!confirm("Fetch popular Kenyan TV shows, radio programmes and podcasts (Citizen, NTV, KTN, KBC, K24, Kiss, Classic, Financially Incorrect, Mic Cheque, Iko Nini and more)? Runs in the background for several minutes.")) return;
     setSeeding(true);
-    const t = toast.loading("Starting Mediamax + shows seed…");
+    const t = toast.loading("Starting KE shows & podcasts seed…");
     try {
       const { data, error } = await supabase.functions.invoke("discovery-seed-shows", { body: {} });
       if (error) throw error;
