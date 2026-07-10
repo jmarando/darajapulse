@@ -110,19 +110,25 @@ async function runSeed(platforms: string[], niches: string[], concurrency: numbe
             bio: c.bio || null,
             source: "ai_seed",
             ai_confidence: Math.max(0, Math.min(1, Number(c.confidence) || 0.5)),
+            audience_demo: c.audience_demo || null,
+            demo_source: c.audience_demo ? "ai_estimated" : null,
           }));
 
         let ins = 0, upd = 0;
         for (const row of rows) {
           const { data: existing } = await supabase
             .from("discovery_creators")
-            .select("id, niche, verified_at, ai_confidence")
+            .select("id, niche, verified_at, ai_confidence, audience_demo")
             .eq("platform", row.platform).eq("handle", row.handle).maybeSingle();
           if (existing) {
             const mergedNiche = Array.from(new Set([...(existing.niche || []), j.niche]));
             const patch: any = { niche: mergedNiche };
             if (!existing.verified_at) {
               patch.ai_confidence = Math.max(Number(existing.ai_confidence) || 0, row.ai_confidence);
+            }
+            if (!existing.audience_demo && row.audience_demo) {
+              patch.audience_demo = row.audience_demo;
+              patch.demo_source = "ai_estimated";
             }
             await supabase.from("discovery_creators").update(patch).eq("id", existing.id);
             upd++;
