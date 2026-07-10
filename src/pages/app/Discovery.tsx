@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck, Phone, Mail, MessageCircle } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck, Phone, Mail, MessageCircle, Tv } from "lucide-react";
 import { toast } from "sonner";
+import ShowsTab from "./ShowsTab";
 
 const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, whatsapp: MessageCircle };
 const PLATFORMS = ["instagram", "tiktok", "youtube", "twitter", "facebook"];
