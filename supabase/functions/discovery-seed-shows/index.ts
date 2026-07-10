@@ -30,10 +30,25 @@ const MEDIAMAX_STATIONS = [
 
 // Other major KE broadcasters (shows-only pass, no auto-storefront)
 const OTHER_BROADCASTERS = [
-  { group: "Royal Media Services", stations: ["Citizen TV", "Radio Citizen", "Ramogi FM", "Inooro TV", "Inooro FM", "Musyi FM", "Mulembe FM", "Chamgei FM"] },
-  { group: "Radio Africa Group", stations: ["Kiss FM", "Classic 105", "Radio Jambo", "Kiss TV", "The Star"] },
-  { group: "Standard Group", stations: ["KTN Home", "KTN News", "Radio Maisha", "Spice FM", "Berur FM"] },
+  { group: "Royal Media Services", stations: ["Citizen TV", "Radio Citizen", "Ramogi FM", "Inooro TV", "Inooro FM", "Musyi FM", "Mulembe FM", "Chamgei FM", "Egesa FM", "Wimwaro FM", "Sulwe FM", "Bahari FM", "Hot 96"] },
+  { group: "Radio Africa Group", stations: ["Kiss FM", "Classic 105", "Radio Jambo", "Kiss TV", "The Star", "X FM", "Relax FM"] },
+  { group: "Standard Group", stations: ["KTN Home", "KTN News", "Radio Maisha", "Spice FM", "Berur FM", "Vybez Radio"] },
   { group: "Nation Media Group", stations: ["NTV Kenya", "QFM", "Nation FM"] },
+  { group: "KBC", stations: ["KBC Channel 1", "KBC English Service", "Idhaa ya Taifa", "Coro FM", "Pwani FM", "Mwago FM", "Iftin FM", "Kitwek FM"] },
+  { group: "Capital Group", stations: ["Capital FM", "Capital FM Kids"] },
+  { group: "Home Boyz Media", stations: ["HBR (Homeboyz Radio)"] },
+  { group: "Trace Media", stations: ["Trace Mziki", "Trace Gospel"] },
+  { group: "Independent / Digital TV", stations: ["Switch TV", "Ebru TV", "TV47", "TBN Family Media", "GBS TV", "Family TV", "Sayare TV"] },
+];
+
+// Popular Kenyan podcasts (independent + branded)
+const KE_PODCASTS = [
+  "Financially Incorrect", "The Mic Cheque Podcast", "Iko Nini Podcast", "Cleaning The Airwaves (CTA) Podcast",
+  "Sandwich Podcast", "Mantalk Ke", "The Wicked Edition", "Legally Clueless", "Nipe Story",
+  "The Messy Inbetween", "Something New Podcast", "Kaka Empire Podcast", "The Sandwich Podcast",
+  "Business Redefined Podcast", "Africa Business Stories", "Kenya Diaspora Podcast",
+  "Kula Kwa Ganji", "MC Jessy Show", "The Presenter Ali Podcast", "Zeddy Nation Podcast",
+  "Better Than Yesterday Podcast", "The Chicken Coop with Dr. King'ori", "Engineer Your Sound",
 ];
 
 type Creator = {
