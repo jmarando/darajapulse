@@ -165,6 +165,29 @@ Only real shows. Omit if unsure.`;
   return Array.isArray(out?.shows) ? out.shows : [];
 }
 
+async function askDigitalProperty(name: string, group: string, seedNiche: string[]): Promise<Show | null> {
+  const prompt = `Return real, verifiable public info for the Kenyan digital publication "${name}"${group !== "Digital publications" ? ` (part of ${group})` : ""}. Strict JSON: { "show": { ... } }. Fields:
+- name: "${name}"
+- kind: "digital"
+- station: "${name}"
+- host_names: [] (editors-in-chief or founders if widely known, else empty)
+- airtime: "" (leave empty for digital publishers)
+- platforms (string[], subset of: instagram, tiktok, youtube, facebook, twitter)
+- handles (object with instagram/tiktok/youtube/facebook/twitter/website keys, values are handles/URLs, no @)
+- niche (string[], start from ${JSON.stringify(seedNiche)} and refine)
+- city (string, usually "Nairobi")
+- description (string, max 200 chars, what they cover and their audience)
+- reach_estimate (integer, monthly unique visitors or total social followers)
+- audience_demo (object: { age_bands, gender, top_cities, estimated: true })
+- public_email (editorial or advertising email if publicly listed, else "")
+- public_phone ("")
+- whatsapp ("")
+- confidence (0..1)
+Only return real, verifiable info. If you are unsure the publication exists, return { "show": null }.`;
+  const out = await ask(prompt);
+  return out?.show || null;
+}
+
 async function upsertCreator(sb: any, c: Creator, station: string, works_for: string[]): Promise<string | null> {
   const handle = cleanHandle(c.handle);
   if (!c.full_name || !c.platform) return null;
