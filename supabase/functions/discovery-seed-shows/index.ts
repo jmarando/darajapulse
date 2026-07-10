@@ -350,7 +350,7 @@ async function runMediamaxSeed() {
     for (const st of g.stations) {
       try {
         // Best-guess kind from name
-        const kind = /tv|ntv|ktn|k24|inooro tv|kiss tv/i.test(st) ? "tv" : "radio";
+        const kind = /tv|ntv|ktn|k24|inooro tv|kiss tv|switch|ebru|tv47|tbn|family tv|gbs|sayare|channel 1/i.test(st) ? "tv" : "radio";
         const shows = await askShows(g.group, st, kind);
         for (const s of shows) {
           const id = await upsertShow(sb, s, null);
@@ -359,6 +359,30 @@ async function runMediamaxSeed() {
       } catch (e) { console.error("other shows err", st, e); }
     }
   }
+
+  console.log("[seed-shows] Named podcasts pass");
+  for (const name of KE_PODCASTS) {
+    try {
+      const shows = await askShows("Independent Kenyan Podcast", name, "podcast");
+      for (const s of shows) {
+        // Force the show name/kind from our curated list
+        const forced: Show = { ...s, name: s.name || name, kind: "podcast", station: s.station || name };
+        const id = await upsertShow(sb, forced, null);
+        if (id) { showsInserted++; await addShowContacts(sb, id, forced); }
+      }
+    } catch (e) { console.error("podcast pass err", name, e); }
+  }
+
+  console.log("[seed-shows] Discover more KE podcasts pass");
+  try {
+    const extra = await ask(`List up to 30 additional popular Kenyan podcasts (independent or branded) with real, sizeable audiences. Return { "shows": [ ... ] } with the same schema as before (kind must be "podcast"). Include hosts, main platform, handles, description, reach_estimate, audience_demo. Skip anything you already know is on this list: ${KE_PODCASTS.join(", ")}. Only real, verifiable podcasts.`);
+    const list: Show[] = Array.isArray(extra?.shows) ? extra.shows : [];
+    for (const s of list) {
+      const forced: Show = { ...s, kind: "podcast", station: s.station || s.name };
+      const id = await upsertShow(sb, forced, null);
+      if (id) { showsInserted++; await addShowContacts(sb, id, forced); }
+    }
+  } catch (e) { console.error("extra podcasts err", e); }
 
   console.log(`[seed-shows] DONE creators=${creatorsInserted} shows=${showsInserted} inv=${inventoryAdded}`);
 }
