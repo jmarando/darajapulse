@@ -702,6 +702,42 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     [entries, officialWinnerRowIds]
   );
 
+  // Overall contest totals — mirrors PublicContestReport so numbers match exactly.
+  // Excludes paid creator roster; includes announced winners; deduped by canonical post URL.
+  const overallTotals = useMemo(() => {
+    const visible = entries.filter(e => !isCreator(e));
+    let views = 0, likes = 0, comments = 0, shares = 0, posts = 0;
+    const seen = new Set<string>();
+    const consume = (p: any) => {
+      views += Number(p?.views || 0);
+      likes += Number(p?.likes || 0);
+      comments += Number(p?.comments || 0);
+      shares += Number(p?.shares || 0);
+      posts += 1;
+    };
+    for (const row of visible) {
+      const cands = [row, ...(Array.isArray((row as any).cross_posts) ? (row as any).cross_posts : [])];
+      let countedSelf = false;
+      for (const p of cands) {
+        const url = canonicalPostUrl(p?.post_url);
+        if (url) {
+          if (seen.has(url)) continue;
+          seen.add(url);
+          consume(p);
+          if (p === row) countedSelf = true;
+        } else if (p === row && !countedSelf) {
+          if (Number(p?.views || 0) || Number(p?.likes || 0) || Number(p?.comments || 0) || Number(p?.shares || 0)) {
+            consume(p);
+            countedSelf = true;
+          }
+        }
+      }
+    }
+    const contestants = groupEntriesByContestant(visible).length;
+    return { contestants, posts, views, likes, comments, shares, eng: likes + comments + shares };
+  }, [entries, creatorHandles]);
+
+
   // Compute which rows belong to (a) announced winners (incl. fuzzy-matched siblings)
   // and (b) the top-10 contestants. We use these to make sure each contestant
   // appears in exactly one place: winners card, top-10 cards, OR the table below.
@@ -965,8 +1001,43 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
             );
           })()}
 
+          {active && isDetailView && (() => {
+            const fmtN = (n: number) => {
+              if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+              if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+              return n.toLocaleString();
+            };
+            const announcedCount = officialWinners.length || entries.filter(isAnnouncedWinner).length;
+            const stillRunning = Math.max(0, overallTotals.contestants - announcedCount);
+            const kpis = [
+              { label: "Contestants", value: fmtN(overallTotals.contestants), icon: Users },
+              { label: "Entries", value: fmtN(overallTotals.posts), icon: Trophy },
+              { label: "Views", value: fmtN(overallTotals.views), icon: Eye },
+              { label: "Engagement", value: fmtN(overallTotals.eng), icon: Heart },
+              { label: "Shares", value: fmtN(overallTotals.shares), icon: Share2 },
+            ];
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-2 border border-border">
+                  {kpis.map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="bg-card p-4">
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Icon className="w-3 h-3" /> {label}
+                      </div>
+                      <div className="font-display text-2xl mt-1 tabular-nums">{value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[11px] text-muted-foreground mb-6">
+                  Totals cover every contestant since the contest started, including the {announcedCount} announced winner{announcedCount === 1 ? "" : "s"} now removed from the running ({fmtN(stillRunning)} still competing).
+                </div>
+              </>
+            );
+          })()}
+
           {active && (
             <>
+
 
               <div className="flex items-center justify-end gap-2 mb-4">
                 <Dialog open={entryOpen} onOpenChange={setEntryOpen}>

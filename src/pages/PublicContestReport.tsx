@@ -263,6 +263,12 @@ const PublicContestReport = () => {
     return groups.map(summarizeContestant).sort((a, b) => (b.score || 0) - (a.score || 0));
   }, [leaderboardEntries]);
 
+  // Overall contestant count across the entire contest — includes announced winners.
+  const overallContestants = useMemo(
+    () => groupEntriesByContestant(visibleEntries).length,
+    [visibleEntries],
+  );
+
   // Announced winners — driven by the durable contest_winners table so manual
   // winner sentinel rows cannot disappear when registration rows are refreshed.
   const winners = useMemo(() => {
@@ -384,10 +390,10 @@ const PublicContestReport = () => {
           </Badge>
         </div>
 
-        {/* KPI band */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
+        {/* KPI band — overall totals across the entire contest (including announced winners) */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-2 border border-border">
           {[
-            { label: "Contestants", value: fmt(contestants.length), icon: Users },
+            { label: "Contestants", value: fmt(overallContestants), icon: Users },
             { label: "Entries", value: fmt(totalPosts), icon: Trophy },
             { label: "Views", value: fmt(totals.views), icon: Eye },
             { label: "Engagement", value: fmt(totals.eng), icon: Heart },
@@ -403,6 +409,9 @@ const PublicContestReport = () => {
               </div>
             );
           })}
+        </div>
+        <div className="text-[11px] text-muted-foreground mb-6">
+          Totals cover every contestant since the contest started, including the {winners.length} announced winner{winners.length === 1 ? "" : "s"} now removed from the running ({fmt(contestants.length)} still competing).
         </div>
 
         {/* Announced winners — grouped by week/round */}
