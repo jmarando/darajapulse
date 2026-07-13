@@ -1001,8 +1001,43 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
             );
           })()}
 
+          {active && isDetailView && (() => {
+            const fmtN = (n: number) => {
+              if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+              if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+              return n.toLocaleString();
+            };
+            const announcedCount = officialWinners.length || entries.filter(isAnnouncedWinner).length;
+            const stillRunning = Math.max(0, overallTotals.contestants - announcedCount);
+            const kpis = [
+              { label: "Contestants", value: fmtN(overallTotals.contestants), icon: Users },
+              { label: "Entries", value: fmtN(overallTotals.posts), icon: Trophy },
+              { label: "Views", value: fmtN(overallTotals.views), icon: Eye },
+              { label: "Engagement", value: fmtN(overallTotals.eng), icon: Heart },
+              { label: "Shares", value: fmtN(overallTotals.shares), icon: Share2 },
+            ];
+            return (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-border rounded-lg overflow-hidden mb-2 border border-border">
+                  {kpis.map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="bg-card p-4">
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <Icon className="w-3 h-3" /> {label}
+                      </div>
+                      <div className="font-display text-2xl mt-1 tabular-nums">{value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[11px] text-muted-foreground mb-6">
+                  Totals cover every contestant since the contest started, including the {announcedCount} announced winner{announcedCount === 1 ? "" : "s"} now removed from the running ({fmtN(stillRunning)} still competing).
+                </div>
+              </>
+            );
+          })()}
+
           {active && (
             <>
+
 
               <div className="flex items-center justify-end gap-2 mb-4">
                 <Dialog open={entryOpen} onOpenChange={setEntryOpen}>
