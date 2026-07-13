@@ -70,6 +70,7 @@ const ContestsList = () => {
       const out: Record<string, { entries: number; contestants: number; views: number }> = {};
       for (const [cid, rows] of byContest) {
         const postUrls = new Set<string>();
+        const seenUrls = new Set<string>();
         let views = 0;
         const parent = new Map<number, number>();
         const find = (i: number): number => { while (parent.get(i) !== i) { parent.set(i, parent.get(parent.get(i)!)!); i = parent.get(i)!; } return i; };
@@ -77,9 +78,22 @@ const ContestsList = () => {
         rows.forEach((_, i) => parent.set(i, i));
         const idToIdx = new Map<string, number>();
         rows.forEach((e: any, i: number) => {
-          views += Number(e.views || 0);
-          const posts: any[] = [{ post_url: e.post_url }, ...(Array.isArray(e.cross_posts) ? (e.cross_posts as any[]) : [])];
-          for (const p of posts) { const k = canonicalPostUrl(p?.post_url); if (k) postUrls.add(k); }
+          // Dedupe views by canonical post URL across registration + scraper rows
+          // and cross_posts. Matches PublicContestReport + in-app overallTotals.
+          const candidates: any[] = [e, ...(Array.isArray(e.cross_posts) ? (e.cross_posts as any[]) : [])];
+          let countedSelf = false;
+          for (const p of candidates) {
+            const k = canonicalPostUrl(p?.post_url);
+            if (k) {
+              postUrls.add(k);
+              if (seenUrls.has(k)) continue;
+              seenUrls.add(k);
+              views += Number(p?.views || 0);
+              if (p === e) countedSelf = true;
+            } else if (p === e && !countedSelf) {
+              if (Number(e.views || 0)) { views += Number(e.views || 0); countedSelf = true; }
+            }
+          }
           const ids2: string[] = [];
           for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) { const c = cleanH(h); if (c) ids2.push(`h:${c}`); }
           const em = norm(e.submitter_email); if (em) ids2.push(`e:${em}`);
