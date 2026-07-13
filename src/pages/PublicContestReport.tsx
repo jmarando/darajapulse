@@ -312,45 +312,42 @@ const PublicContestReport = () => {
   // agree. Announced winners are still counted here — their posts are real
   // contest activity even though they've been moved out of the running.
   const { totals, platformRows, totalPosts } = useMemo(() => {
-    let views = 0, likes = 0, comments = 0, shares = 0, postCount = 0;
-    const map = new Map<string, { posts: number; views: number; eng: number }>();
-    const seenUrls = new Set<string>();
-    const consume = (p: any, plat: string) => {
-      const v = Number(p?.views || 0);
-      const l = Number(p?.likes || 0);
-      const c = Number(p?.comments || 0);
-      const s = Number(p?.shares || 0);
-      views += v; likes += l; comments += c; shares += s;
-      postCount += 1;
-      const cur = map.get(plat) ?? { posts: 0, views: 0, eng: 0 };
-      cur.posts += 1; cur.views += v; cur.eng += l + c + s;
-      map.set(plat, cur);
-    };
+    // Collect every candidate post (rows + cross_posts), keyed by canonical URL,
+    // and keep the highest-metrics version for each URL. This prevents a
+    // registration row with views=0 from shadowing the scraper row that later
+    // captured the real numbers for the same post.
+    const byUrl = new Map<string, { views: number; likes: number; comments: number; shares: number; platform: string }>();
+    const noUrl: any[] = [];
+    const score = (p: any) => Number(p?.views || 0) + Number(p?.likes || 0) + Number(p?.comments || 0) + Number(p?.shares || 0);
     for (const row of visibleEntries) {
       const candidates = [row, ...(Array.isArray((row as any).cross_posts) ? (row as any).cross_posts : [])];
-      let countedRowItself = false;
+      let hasUrl = false;
       for (const post of candidates) {
         const url = canonicalPostUrl(post?.post_url);
         const plat = String(post?.platform || row.platform || "other").toLowerCase();
         if (url) {
-          if (seenUrls.has(url)) continue;
-          seenUrls.add(url);
-          consume(post, plat);
-          if (post === row) countedRowItself = true;
-        } else if (post === row && !countedRowItself) {
-          // Row with no post_url yet (registration-only) — count its stats
-          // once so manually-entered metrics still land in the KPIs.
-          if (Number(post?.views || 0) || Number(post?.likes || 0) || Number(post?.comments || 0) || Number(post?.shares || 0)) {
-            consume(post, plat);
-            countedRowItself = true;
-          }
+          hasUrl = true;
+          const cur = byUrl.get(url);
+          const cand = { views: Number(post?.views || 0), likes: Number(post?.likes || 0), comments: Number(post?.comments || 0), shares: Number(post?.shares || 0), platform: plat };
+          if (!cur || score(cand) > score(cur)) byUrl.set(url, cand);
         }
       }
+      if (!hasUrl && score(row) > 0) noUrl.push({ views: Number(row.views || 0), likes: Number(row.likes || 0), comments: Number(row.comments || 0), shares: Number(row.shares || 0), platform: String(row.platform || "other").toLowerCase() });
     }
+    let views = 0, likes = 0, comments = 0, shares = 0;
+    const map = new Map<string, { posts: number; views: number; eng: number }>();
+    const consume = (p: any) => {
+      views += p.views; likes += p.likes; comments += p.comments; shares += p.shares;
+      const cur = map.get(p.platform) ?? { posts: 0, views: 0, eng: 0 };
+      cur.posts += 1; cur.views += p.views; cur.eng += p.likes + p.comments + p.shares;
+      map.set(p.platform, cur);
+    };
+    for (const p of byUrl.values()) consume(p);
+    for (const p of noUrl) consume(p);
     return {
       totals: { views, likes, comments, shares, eng: likes + comments + shares },
       platformRows: Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views),
-      totalPosts: postCount,
+      totalPosts: byUrl.size + noUrl.length,
     };
   }, [visibleEntries]);
 

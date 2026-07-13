@@ -706,32 +706,28 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   // Excludes paid creator roster; includes announced winners; deduped by canonical post URL.
   const overallTotals = useMemo(() => {
     const visible = entries.filter(e => !isCreator(e));
-    let views = 0, likes = 0, comments = 0, shares = 0, posts = 0;
-    const seen = new Set<string>();
-    const consume = (p: any) => {
-      views += Number(p?.views || 0);
-      likes += Number(p?.likes || 0);
-      comments += Number(p?.comments || 0);
-      shares += Number(p?.shares || 0);
-      posts += 1;
-    };
+    // Keep the MAX-metrics version per canonical URL so a stale registration
+    // row (views=0) can't shadow the scraper row that later captured the real
+    // numbers. Matches PublicContestReport + ContestsList.
+    const byUrl = new Map<string, { views: number; likes: number; comments: number; shares: number }>();
+    const noUrl: any[] = [];
+    const score = (p: any) => Number(p?.views || 0) + Number(p?.likes || 0) + Number(p?.comments || 0) + Number(p?.shares || 0);
     for (const row of visible) {
       const cands = [row, ...(Array.isArray((row as any).cross_posts) ? (row as any).cross_posts : [])];
-      let countedSelf = false;
+      let hasUrl = false;
       for (const p of cands) {
         const url = canonicalPostUrl(p?.post_url);
-        if (url) {
-          if (seen.has(url)) continue;
-          seen.add(url);
-          consume(p);
-          if (p === row) countedSelf = true;
-        } else if (p === row && !countedSelf) {
-          if (Number(p?.views || 0) || Number(p?.likes || 0) || Number(p?.comments || 0) || Number(p?.shares || 0)) {
-            consume(p);
-            countedSelf = true;
-          }
-        }
+        if (!url) continue;
+        hasUrl = true;
+        const cand = { views: Number(p?.views || 0), likes: Number(p?.likes || 0), comments: Number(p?.comments || 0), shares: Number(p?.shares || 0) };
+        const cur = byUrl.get(url);
+        if (!cur || score(cand) > score(cur)) byUrl.set(url, cand);
       }
+      if (!hasUrl && score(row) > 0) noUrl.push({ views: Number(row.views || 0), likes: Number(row.likes || 0), comments: Number(row.comments || 0), shares: Number(row.shares || 0) });
+    }
+    let views = 0, likes = 0, comments = 0, shares = 0, posts = 0;
+    for (const p of [...byUrl.values(), ...noUrl]) {
+      views += p.views; likes += p.likes; comments += p.comments; shares += p.shares; posts += 1;
     }
     const contestants = groupEntriesByContestant(visible).length;
     return { contestants, posts, views, likes, comments, shares, eng: likes + comments + shares };

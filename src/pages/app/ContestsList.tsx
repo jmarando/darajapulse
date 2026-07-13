@@ -70,16 +70,28 @@ const ContestsList = () => {
       const out: Record<string, { entries: number; contestants: number; views: number }> = {};
       for (const [cid, rows] of byContest) {
         const postUrls = new Set<string>();
-        let views = 0;
+        // MAX per canonical URL so a stale registration row (views=0) can't
+        // hide the scraper row that later captured the real numbers.
+        const byUrl = new Map<string, number>();
+        const noUrl: number[] = [];
         const parent = new Map<number, number>();
         const find = (i: number): number => { while (parent.get(i) !== i) { parent.set(i, parent.get(parent.get(i)!)!); i = parent.get(i)!; } return i; };
         const union = (a: number, b: number) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
         rows.forEach((_, i) => parent.set(i, i));
         const idToIdx = new Map<string, number>();
         rows.forEach((e: any, i: number) => {
-          views += Number(e.views || 0);
-          const posts: any[] = [{ post_url: e.post_url }, ...(Array.isArray(e.cross_posts) ? (e.cross_posts as any[]) : [])];
-          for (const p of posts) { const k = canonicalPostUrl(p?.post_url); if (k) postUrls.add(k); }
+          const candidates: any[] = [e, ...(Array.isArray(e.cross_posts) ? (e.cross_posts as any[]) : [])];
+          let hasUrl = false;
+          for (const p of candidates) {
+            const k = canonicalPostUrl(p?.post_url);
+            if (!k) continue;
+            hasUrl = true;
+            postUrls.add(k);
+            const v = Number(p?.views || 0);
+            const cur = byUrl.get(k) ?? 0;
+            if (v > cur) byUrl.set(k, v);
+          }
+          if (!hasUrl && Number(e.views || 0) > 0) noUrl.push(Number(e.views || 0));
           const ids2: string[] = [];
           for (const h of [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle]) { const c = cleanH(h); if (c) ids2.push(`h:${c}`); }
           const em = norm(e.submitter_email); if (em) ids2.push(`e:${em}`);
@@ -91,6 +103,7 @@ const ContestsList = () => {
             else idToIdx.set(id, i);
           }
         });
+        const views = Array.from(byUrl.values()).reduce((s, v) => s + v, 0) + noUrl.reduce((s, v) => s + v, 0);
         const roots = new Set<number>();
         rows.forEach((_, i) => roots.add(find(i)));
         out[cid] = { entries: postUrls.size, contestants: roots.size, views };
