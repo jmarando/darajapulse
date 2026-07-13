@@ -263,6 +263,12 @@ const PublicContestReport = () => {
     return groups.map(summarizeContestant).sort((a, b) => (b.score || 0) - (a.score || 0));
   }, [leaderboardEntries]);
 
+  // Overall contestant count across the entire contest — includes announced winners.
+  const overallContestants = useMemo(
+    () => groupEntriesByContestant(visibleEntries).length,
+    [visibleEntries],
+  );
+
   // Announced winners — driven by the durable contest_winners table so manual
   // winner sentinel rows cannot disappear when registration rows are refreshed.
   const winners = useMemo(() => {
