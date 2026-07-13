@@ -129,7 +129,7 @@ const ContestsList = () => {
         const views = Array.from(byUrl.values()).reduce((s, v) => s + v, 0) + noUrl.reduce((s, v) => s + v, 0);
         const roots = new Set<number>();
         rows.forEach((_, i) => roots.add(find(i)));
-        out[cid] = { entries: postUrls.size, contestants: roots.size, views };
+        out[cid] = { entries: postUrls.size + noUrl.length, contestants: roots.size, views };
       }
       setStats(out);
     }
