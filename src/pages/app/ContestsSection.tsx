@@ -702,6 +702,42 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     [entries, officialWinnerRowIds]
   );
 
+  // Overall contest totals — mirrors PublicContestReport so numbers match exactly.
+  // Excludes paid creator roster; includes announced winners; deduped by canonical post URL.
+  const overallTotals = useMemo(() => {
+    const visible = entries.filter(e => !isCreator(e));
+    let views = 0, likes = 0, comments = 0, shares = 0, posts = 0;
+    const seen = new Set<string>();
+    const consume = (p: any) => {
+      views += Number(p?.views || 0);
+      likes += Number(p?.likes || 0);
+      comments += Number(p?.comments || 0);
+      shares += Number(p?.shares || 0);
+      posts += 1;
+    };
+    for (const row of visible) {
+      const cands = [row, ...(Array.isArray((row as any).cross_posts) ? (row as any).cross_posts : [])];
+      let countedSelf = false;
+      for (const p of cands) {
+        const url = canonicalPostUrl(p?.post_url);
+        if (url) {
+          if (seen.has(url)) continue;
+          seen.add(url);
+          consume(p);
+          if (p === row) countedSelf = true;
+        } else if (p === row && !countedSelf) {
+          if (Number(p?.views || 0) || Number(p?.likes || 0) || Number(p?.comments || 0) || Number(p?.shares || 0)) {
+            consume(p);
+            countedSelf = true;
+          }
+        }
+      }
+    }
+    const contestants = groupEntriesByContestant(visible).length;
+    return { contestants, posts, views, likes, comments, shares, eng: likes + comments + shares };
+  }, [entries, creatorHandles]);
+
+
   // Compute which rows belong to (a) announced winners (incl. fuzzy-matched siblings)
   // and (b) the top-10 contestants. We use these to make sure each contestant
   // appears in exactly one place: winners card, top-10 cards, OR the table below.
