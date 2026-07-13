@@ -239,7 +239,13 @@ Deno.serve(async (req) => {
             if (payload[key] == null) delete payload[key];
           }
         }
-        if (target && r.post_url && targetUrl !== urlKey) Object.assign(payload, { views: 0, likes: 0, comments: 0, shares: 0, score: 0, cross_posts: [] });
+        // Do NOT reset metrics when the URL changes — the previous peak is real
+        // engagement earned on the earlier link and should be preserved. The
+        // metrics-refresh job will merge with MAX() against the new URL's stats.
+        if (target && r.post_url && targetUrl !== urlKey) {
+          const prevUrls: string[] = Array.isArray(target.cross_posts) ? target.cross_posts : [];
+          if (targetUrl && !prevUrls.includes(targetUrl)) payload.cross_posts = [...prevUrls, targetUrl];
+        }
         const { error } = target
           ? await sb.from("contest_entries").update(payload).eq("id", target.id)
           : await sb.from("contest_entries").insert(payload);
