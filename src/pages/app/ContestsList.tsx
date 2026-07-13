@@ -44,25 +44,48 @@ const ContestsList = () => {
       .order("created_at", { ascending: false });
     setRows(data ?? []);
     const ids = (data ?? []).map((c) => c.id);
+    const campaignIds = Array.from(new Set((data ?? []).map((c: any) => c.campaign_id).filter(Boolean))) as string[];
     if (ids.length) {
-      const [{ data: es }, { data: inf }] = await Promise.all([
+      const [{ data: es }, { data: inf }, { data: excl }, { data: ci }] = await Promise.all([
         supabase.from("contest_entries").select("contest_id, handle, instagram_handle, tiktok_handle, facebook_handle, submitter_email, full_name, submitter_name, phone, external_registration_id, post_url, cross_posts, views, status"),
         supabase.from("influencers").select("handle, alt_handles"),
+        (supabase as any).from("contest_excluded_handles").select("contest_id, handle").in("contest_id", ids),
+        campaignIds.length
+          ? supabase.from("campaign_influencers").select("campaign_id, influencers(handle)").in("campaign_id", campaignIds)
+          : Promise.resolve({ data: [] as any[] }),
       ]);
-      // Agency roster handles — excluded from contestant counts (matches public report).
-      const creatorHandles = new Set<string>();
+      // Agency roster handles — always excluded.
+      const rosterHandles = new Set<string>();
       for (const r of inf ?? []) {
-        const h = cleanH((r as any).handle); if (h) creatorHandles.add(h);
+        const h = cleanH((r as any).handle); if (h) rosterHandles.add(h);
         for (const a of ((r as any).alt_handles ?? [])) {
-          const c = cleanH(a); if (c) creatorHandles.add(c);
+          const c = cleanH(a); if (c) rosterHandles.add(c);
         }
       }
-      // Group by contest, then union-find contestants (matches public report logic).
+      // Per-contest exclusion sets (roster + campaign-paid creators + contest_excluded_handles).
+      const contestExcl = new Map<string, Set<string>>();
+      for (const cid of ids) contestExcl.set(cid, new Set(rosterHandles));
+      const campaignToContests = new Map<string, string[]>();
+      for (const c of (data ?? []) as any[]) {
+        if (!c.campaign_id) continue;
+        if (!campaignToContests.has(c.campaign_id)) campaignToContests.set(c.campaign_id, []);
+        campaignToContests.get(c.campaign_id)!.push(c.id);
+      }
+      for (const row of (ci ?? []) as any[]) {
+        const h = cleanH(row.influencers?.handle); if (!h) continue;
+        for (const cid of (campaignToContests.get(row.campaign_id) ?? [])) contestExcl.get(cid)?.add(h);
+      }
+      for (const row of (excl ?? []) as any[]) {
+        const h = cleanH(row.handle); if (!h) continue;
+        contestExcl.get(row.contest_id)?.add(h);
+      }
+      // Group by contest, then union-find contestants (matches public report + detail view).
       const byContest = new Map<string, any[]>();
       for (const e of es ?? []) {
         if (!ids.includes(e.contest_id)) continue;
         const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean) as string[];
-        if (hs.some((h) => creatorHandles.has(h))) continue; // paid creator
+        const excludedSet = contestExcl.get(e.contest_id) ?? rosterHandles;
+        if (hs.some((h) => excludedSet.has(h))) continue; // paid / excluded
         if (!byContest.has(e.contest_id)) byContest.set(e.contest_id, []);
         byContest.get(e.contest_id)!.push(e);
       }
@@ -106,7 +129,7 @@ const ContestsList = () => {
         const views = Array.from(byUrl.values()).reduce((s, v) => s + v, 0) + noUrl.reduce((s, v) => s + v, 0);
         const roots = new Set<number>();
         rows.forEach((_, i) => roots.add(find(i)));
-        out[cid] = { entries: postUrls.size, contestants: roots.size, views };
+        out[cid] = { entries: postUrls.size + noUrl.length, contestants: roots.size, views };
       }
       setStats(out);
     }
