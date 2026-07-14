@@ -796,18 +796,54 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   const exportCsv = () => {
     if (!active || !entries.length) return toast.error("No entries to export");
     const headers = ["round","rank","handle","submitter_name","submitter_email","platform","post_url","views","likes","comments","shares","score","status","posted_at","created_at"];
-    const ranked = byRound.flatMap(([round, rows]) =>
-      rows.sort((a, b) => b.score - a.score).map((e, i) => ({ ...e, _round: round, _rank: i + 1 }))
-    );
+    // One row per canonical post URL with MAX metrics — matches the KPI totals
+    // exactly (excludes paid-creator roster, includes winners, dedupes stale
+    // registration rows against later scraper rows on the same URL).
+    const visible = entries.filter(e => !isCreator(e));
+    type Rec = { url: string; row: any; post: any; score: number };
+    const byUrl = new Map<string, Rec>();
+    const noUrl: Rec[] = [];
+    for (const row of visible) {
+      const cands = [row, ...(Array.isArray((row as any).cross_posts) ? (row as any).cross_posts : [])];
+      let hasUrl = false;
+      for (const p of cands) {
+        const url = canonicalPostUrl(p?.post_url);
+        if (!url) continue;
+        hasUrl = true;
+        const s = scoreOf(p);
+        const cur = byUrl.get(url);
+        if (!cur || s > cur.score) byUrl.set(url, { url, row, post: p, score: s });
+      }
+      if (!hasUrl && scoreOf(row) > 0) noUrl.push({ url: "", row, post: row, score: scoreOf(row) });
+    }
+    const all = [...byUrl.values(), ...noUrl];
+    // Rank by round then score (desc)
+    const roundOf = (r: Rec) => Number(r.row.round_number || 1);
+    const grouped = new Map<number, Rec[]>();
+    for (const r of all) {
+      const k = roundOf(r);
+      if (!grouped.has(k)) grouped.set(k, []);
+      grouped.get(k)!.push(r);
+    }
+    const ranked: Array<Rec & { _round: number; _rank: number }> = [];
+    for (const [round, list] of Array.from(grouped.entries()).sort((a, b) => a[0] - b[0])) {
+      list.sort((a, b) => b.score - a.score);
+      list.forEach((r, i) => ranked.push({ ...r, _round: round, _rank: i + 1 }));
+    }
     const esc = (v: any) => {
       const s = v == null ? "" : String(v);
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const rows = ranked.map(e => [
-      e._round, e._rank, e.handle, e.submitter_name, e.submitter_email, e.platform, e.post_url,
-      e.views ?? 0, e.likes ?? 0, e.comments ?? 0, e.shares ?? 0, Math.round(e.score ?? 0),
-      e.status, e.posted_at ?? "", e.created_at ?? "",
-    ].map(esc).join(","));
+    const rows = ranked.map(r => {
+      const e = r.row; const p = r.post;
+      return [
+        r._round, r._rank, e.handle, e.submitter_name || e.full_name, e.submitter_email,
+        p.platform ?? e.platform, p.post_url ?? e.post_url,
+        Number(p.views ?? 0), Number(p.likes ?? 0), Number(p.comments ?? 0), Number(p.shares ?? 0),
+        Math.round(r.score),
+        e.status, e.posted_at ?? "", e.created_at ?? "",
+      ].map(esc).join(",");
+    });
     const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
