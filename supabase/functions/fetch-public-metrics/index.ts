@@ -268,7 +268,7 @@ async function processPost(p: any) {
   if (!p.post_url) return { id: p.id, ok: false, error: "no_url" };
   try {
     const scraped = await scrape(p.platform, p.post_url);
-    const { thumb, caption } = scraped;
+    const { thumb, caption, postedAt } = scraped as any;
     const stats = normalizeStats(scraped.stats);
     const hasMetricSignal = [stats.views, stats.likes, stats.comments, stats.shares, stats.saves, stats.reach, stats.impressions].some((v) => Number(v || 0) > 0);
     if (!hasMetricSignal) return { id: p.id, ok: false, error: "no_public_metrics" };
@@ -286,6 +286,8 @@ async function processPost(p: any) {
     if (thumb && !p.thumbnail_url) upd.thumbnail_url = thumb;
     if (caption && !p.caption) upd.caption = caption;
     if (p.status === "drafted") upd.status = "live";
+    // Always trust the platform-reported publish date over any manually-stamped value
+    if (postedAt) upd.posted_at = postedAt;
     if (Object.keys(upd).length) await supabase.from("posts").update(upd).eq("id", p.id);
     return { id: p.id, ok: true, stats };
   } catch (e) {
