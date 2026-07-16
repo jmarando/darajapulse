@@ -105,6 +105,23 @@ function ytVideoId(url: string): string | null {
     ?? null;
 }
 
+// Coerce a variety of timestamp shapes (unix seconds/ms, ISO string) to ISO string.
+function toIso(v: any): string | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number" && Number.isFinite(v)) {
+    const ms = v > 1e12 ? v : v * 1000;
+    const d = new Date(ms);
+    return isNaN(+d) ? null : d.toISOString();
+  }
+  if (typeof v === "string") {
+    // numeric string?
+    if (/^\d{9,13}$/.test(v)) return toIso(Number(v));
+    const d = new Date(v);
+    return isNaN(+d) ? null : d.toISOString();
+  }
+  return null;
+}
+
 // --- TikTok via Ensemble ---
 async function edTikTok(url: string) {
   const j = await ed("/tt/post/info", { url });
@@ -124,6 +141,7 @@ async function edTikTok(url: string) {
     },
     thumb: typeof cover === "string" ? cover : cover?.url_list?.[0] ?? null,
     caption: desc,
+    postedAt: toIso(item?.create_time ?? item?.createTime ?? item?.created_at ?? data?.create_time),
   };
 }
 
@@ -144,6 +162,7 @@ async function edInstagram(url: string) {
     },
     thumb: item?.display_url ?? item?.thumbnail_url ?? item?.image_versions2?.candidates?.[0]?.url ?? null,
     caption: item?.edge_media_to_caption?.edges?.[0]?.node?.text ?? item?.caption?.text ?? item?.caption ?? null,
+    postedAt: toIso(item?.taken_at_timestamp ?? item?.taken_at ?? item?.device_timestamp ?? item?.created_at),
   };
 }
 
@@ -162,6 +181,7 @@ async function edYouTube(url: string) {
     },
     thumb: v?.thumbnail?.thumbnails?.slice(-1)?.[0]?.url ?? data?.thumbnail ?? null,
     caption: v?.title ?? data?.title ?? null,
+    postedAt: toIso(v?.publishDate ?? v?.publish_date ?? v?.uploadDate ?? v?.upload_date ?? data?.publishedAt ?? data?.published_at ?? data?.uploadDate),
   };
 }
 
@@ -178,6 +198,7 @@ async function edFacebook(url: string) {
     },
     thumb: data?.thumbnail_url ?? data?.image ?? null,
     caption: data?.message ?? data?.description ?? data?.caption ?? null,
+    postedAt: toIso(data?.created_time ?? data?.creation_time ?? data?.timestamp ?? data?.taken_at ?? data?.publish_time),
   };
 }
 
