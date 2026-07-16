@@ -215,6 +215,7 @@ async function scrapeTikTokHtml(url: string) {
     stats: { views: item.stats.playCount, likes: item.stats.diggCount, comments: item.stats.commentCount, shares: item.stats.shareCount, saves: item.stats.collectCount },
     thumb: item?.video?.cover ?? null,
     caption: item?.desc ?? null,
+    postedAt: toIso(item?.createTime ?? item?.create_time),
   };
 }
 
@@ -225,10 +226,12 @@ async function scrapeYouTubeHtml(url: string) {
   const likesM = html.match(/"defaultText":\{"accessibility":\{"accessibilityData":\{"label":"([\d,]+)\s+likes/i);
   const titleM = html.match(/<meta\s+name="title"\s+content="([^"]+)"/i);
   const thumbM = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i);
+  const dateM = html.match(/"publishDate":"([^"]+)"/) || html.match(/"uploadDate":"([^"]+)"/) || html.match(/<meta\s+itemprop="datePublished"\s+content="([^"]+)"/i);
   return {
     stats: { views: parseInt(viewsM[1], 10), likes: likesM ? parseShortcount(likesM[1]) ?? 0 : 0, comments: 0 },
     thumb: thumbM?.[1] ?? null,
     caption: titleM?.[1] ?? null,
+    postedAt: toIso(dateM?.[1] ?? null),
   };
 }
 
