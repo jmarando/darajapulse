@@ -1836,7 +1836,19 @@ const CampaignDetail = () => {
           </div>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {posts.filter(p => !creatorFilter || p.influencer_id === creatorFilter).map(p => {
+            {(() => {
+              const now = new Date();
+              let cutoff: number | null = null;
+              if (periodFilter === "week") { const d = new Date(now); d.setDate(d.getDate() - 7); cutoff = +d; }
+              else if (periodFilter === "month") { const d = new Date(now); d.setMonth(d.getMonth() - 1); cutoff = +d; }
+              else if (periodFilter === "quarter") { const d = new Date(now); d.setMonth(d.getMonth() - 3); cutoff = +d; }
+              else if (periodFilter === "year") { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); cutoff = +d; }
+              return posts.filter(p => !creatorFilter || p.influencer_id === creatorFilter)
+                .filter(p => {
+                  if (cutoff == null) return true;
+                  const t = p.posted_at ? +new Date(p.posted_at) : null;
+                  return t != null && t >= cutoff;
+                }).map(p => {
               const m = latestByPost.get(p.id);
               const postedAt = p.posted_at ? new Date(p.posted_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
               return (
