@@ -100,6 +100,7 @@ const CampaignDetail = () => {
   const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement">("views");
   const [previewPost, setPreviewPost] = useState<any>(null);
   const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
+  const [periodFilter, setPeriodFilter] = useState<"all" | "week" | "month" | "quarter" | "year">("all");
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
   const [briefExpanded, setBriefExpanded] = useState(false);
   const [inventory, setInventory] = useState<any[]>([]);
