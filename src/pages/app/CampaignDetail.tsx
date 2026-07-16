@@ -100,6 +100,7 @@ const CampaignDetail = () => {
   const [metric, setMetric] = useState<"views"|"reach"|"likes"|"comments"|"shares"|"saves"|"engagement">("views");
   const [previewPost, setPreviewPost] = useState<any>(null);
   const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
+  const [periodFilter, setPeriodFilter] = useState<"all" | "week" | "month" | "quarter" | "year">("all");
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
   const [briefExpanded, setBriefExpanded] = useState(false);
   const [inventory, setInventory] = useState<any[]>([]);
@@ -289,7 +290,7 @@ const CampaignDetail = () => {
     e.preventDefault();
     const { data: inserted, error } = await supabase
       .from("posts")
-      .insert({ ...post, campaign_id: id, status: "live", posted_at: new Date().toISOString() })
+      .insert({ ...post, campaign_id: id, status: "live" })
       .select("id")
       .single();
     if (error) return toast.error(error.message);
@@ -1792,7 +1793,17 @@ const CampaignDetail = () => {
               );
             })()}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <Select value={periodFilter} onValueChange={(v: any) => setPeriodFilter(v)}>
+              <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All time</SelectItem>
+                <SelectItem value="week">This week</SelectItem>
+                <SelectItem value="month">This month</SelectItem>
+                <SelectItem value="quarter">This quarter</SelectItem>
+                <SelectItem value="year">This year</SelectItem>
+              </SelectContent>
+            </Select>
             <Button variant="outline" size="sm" onClick={autoFetchAll}><Sparkles className="w-3 h-3 mr-1" /> Auto-fetch all</Button>
             <Dialog open={postOpen} onOpenChange={setPostOpen}>
               <DialogTrigger asChild><Button size="sm" className="bg-primary" disabled={ci.length === 0}><Plus className="w-3 h-3 mr-1" /> Add post</Button></DialogTrigger>
@@ -1825,7 +1836,19 @@ const CampaignDetail = () => {
           </div>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {posts.filter(p => !creatorFilter || p.influencer_id === creatorFilter).map(p => {
+            {(() => {
+              const now = new Date();
+              let cutoff: number | null = null;
+              if (periodFilter === "week") { const d = new Date(now); d.setDate(d.getDate() - 7); cutoff = +d; }
+              else if (periodFilter === "month") { const d = new Date(now); d.setMonth(d.getMonth() - 1); cutoff = +d; }
+              else if (periodFilter === "quarter") { const d = new Date(now); d.setMonth(d.getMonth() - 3); cutoff = +d; }
+              else if (periodFilter === "year") { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); cutoff = +d; }
+              return posts.filter(p => !creatorFilter || p.influencer_id === creatorFilter)
+                .filter(p => {
+                  if (cutoff == null) return true;
+                  const t = p.posted_at ? +new Date(p.posted_at) : null;
+                  return t != null && t >= cutoff;
+                }).map(p => {
               const m = latestByPost.get(p.id);
               const postedAt = p.posted_at ? new Date(p.posted_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
               return (
@@ -1873,7 +1896,8 @@ const CampaignDetail = () => {
                   />
                 </li>
               );
-            })}
+            });
+            })()}
           </ul>
         )}
       </Card>

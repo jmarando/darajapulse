@@ -105,6 +105,23 @@ function ytVideoId(url: string): string | null {
     ?? null;
 }
 
+// Coerce a variety of timestamp shapes (unix seconds/ms, ISO string) to ISO string.
+function toIso(v: any): string | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number" && Number.isFinite(v)) {
+    const ms = v > 1e12 ? v : v * 1000;
+    const d = new Date(ms);
+    return isNaN(+d) ? null : d.toISOString();
+  }
+  if (typeof v === "string") {
+    // numeric string?
+    if (/^\d{9,13}$/.test(v)) return toIso(Number(v));
+    const d = new Date(v);
+    return isNaN(+d) ? null : d.toISOString();
+  }
+  return null;
+}
+
 // --- TikTok via Ensemble ---
 async function edTikTok(url: string) {
   const j = await ed("/tt/post/info", { url });
@@ -124,6 +141,7 @@ async function edTikTok(url: string) {
     },
     thumb: typeof cover === "string" ? cover : cover?.url_list?.[0] ?? null,
     caption: desc,
+    postedAt: toIso(item?.create_time ?? item?.createTime ?? item?.created_at ?? data?.create_time),
   };
 }
 
@@ -144,6 +162,7 @@ async function edInstagram(url: string) {
     },
     thumb: item?.display_url ?? item?.thumbnail_url ?? item?.image_versions2?.candidates?.[0]?.url ?? null,
     caption: item?.edge_media_to_caption?.edges?.[0]?.node?.text ?? item?.caption?.text ?? item?.caption ?? null,
+    postedAt: toIso(item?.taken_at_timestamp ?? item?.taken_at ?? item?.device_timestamp ?? item?.created_at),
   };
 }
 
@@ -162,6 +181,7 @@ async function edYouTube(url: string) {
     },
     thumb: v?.thumbnail?.thumbnails?.slice(-1)?.[0]?.url ?? data?.thumbnail ?? null,
     caption: v?.title ?? data?.title ?? null,
+    postedAt: toIso(v?.publishDate ?? v?.publish_date ?? v?.uploadDate ?? v?.upload_date ?? data?.publishedAt ?? data?.published_at ?? data?.uploadDate),
   };
 }
 
@@ -178,6 +198,7 @@ async function edFacebook(url: string) {
     },
     thumb: data?.thumbnail_url ?? data?.image ?? null,
     caption: data?.message ?? data?.description ?? data?.caption ?? null,
+    postedAt: toIso(data?.created_time ?? data?.creation_time ?? data?.timestamp ?? data?.taken_at ?? data?.publish_time),
   };
 }
 
@@ -194,6 +215,7 @@ async function scrapeTikTokHtml(url: string) {
     stats: { views: item.stats.playCount, likes: item.stats.diggCount, comments: item.stats.commentCount, shares: item.stats.shareCount, saves: item.stats.collectCount },
     thumb: item?.video?.cover ?? null,
     caption: item?.desc ?? null,
+    postedAt: toIso(item?.createTime ?? item?.create_time),
   };
 }
 
@@ -204,10 +226,12 @@ async function scrapeYouTubeHtml(url: string) {
   const likesM = html.match(/"defaultText":\{"accessibility":\{"accessibilityData":\{"label":"([\d,]+)\s+likes/i);
   const titleM = html.match(/<meta\s+name="title"\s+content="([^"]+)"/i);
   const thumbM = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i);
+  const dateM = html.match(/"publishDate":"([^"]+)"/) || html.match(/"uploadDate":"([^"]+)"/) || html.match(/<meta\s+itemprop="datePublished"\s+content="([^"]+)"/i);
   return {
     stats: { views: parseInt(viewsM[1], 10), likes: likesM ? parseShortcount(likesM[1]) ?? 0 : 0, comments: 0 },
     thumb: thumbM?.[1] ?? null,
     caption: titleM?.[1] ?? null,
+    postedAt: toIso(dateM?.[1] ?? null),
   };
 }
 
@@ -244,7 +268,7 @@ async function processPost(p: any) {
   if (!p.post_url) return { id: p.id, ok: false, error: "no_url" };
   try {
     const scraped = await scrape(p.platform, p.post_url);
-    const { thumb, caption } = scraped;
+    const { thumb, caption, postedAt } = scraped as any;
     const stats = normalizeStats(scraped.stats);
     const hasMetricSignal = [stats.views, stats.likes, stats.comments, stats.shares, stats.saves, stats.reach, stats.impressions].some((v) => Number(v || 0) > 0);
     if (!hasMetricSignal) return { id: p.id, ok: false, error: "no_public_metrics" };
@@ -262,6 +286,8 @@ async function processPost(p: any) {
     if (thumb && !p.thumbnail_url) upd.thumbnail_url = thumb;
     if (caption && !p.caption) upd.caption = caption;
     if (p.status === "drafted") upd.status = "live";
+    // Always trust the platform-reported publish date over any manually-stamped value
+    if (postedAt) upd.posted_at = postedAt;
     if (Object.keys(upd).length) await supabase.from("posts").update(upd).eq("id", p.id);
     return { id: p.id, ok: true, stats };
   } catch (e) {
