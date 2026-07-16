@@ -1896,7 +1896,8 @@ const CampaignDetail = () => {
                   />
                 </li>
               );
-            })}
+            });
+            })()}
           </ul>
         )}
       </Card>
