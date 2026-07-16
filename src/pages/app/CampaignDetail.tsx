@@ -289,7 +289,7 @@ const CampaignDetail = () => {
     e.preventDefault();
     const { data: inserted, error } = await supabase
       .from("posts")
-      .insert({ ...post, campaign_id: id, status: "live", posted_at: new Date().toISOString() })
+      .insert({ ...post, campaign_id: id, status: "live" })
       .select("id")
       .single();
     if (error) return toast.error(error.message);
