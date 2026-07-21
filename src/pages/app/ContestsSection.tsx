@@ -1220,6 +1220,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
               {/* Contestants grouped view */}
               {(() => {
+                const today = new Date();
+                const isClosed = active.is_active === false || today > new Date(active.end_date);
+                if (isClosed) return null;
                 const nonCreatorRows = entriesForRound.filter(e => !isCreator(e) && !winnerRelatedRowIds.has(e.id));
                 const grouped = groupEntriesByContestant(nonCreatorRows);
                 const contestants = grouped.map(rows => {
