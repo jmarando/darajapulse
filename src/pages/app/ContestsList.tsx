@@ -79,13 +79,12 @@ const ContestsList = () => {
         const h = cleanH(row.handle); if (!h) continue;
         contestExcl.get(row.contest_id)?.add(h);
       }
-      // Group by contest, then union-find contestants (matches public report + detail view).
+      // Group by contest. Include ALL entries (roster / paid creators too) so
+      // headline totals reflect true all-time reach and match the in-app
+      // overview + public report. Contestants count still excludes paid roster.
       const byContest = new Map<string, any[]>();
       for (const e of es ?? []) {
         if (!ids.includes(e.contest_id)) continue;
-        const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean) as string[];
-        const excludedSet = contestExcl.get(e.contest_id) ?? rosterHandles;
-        if (hs.some((h) => excludedSet.has(h))) continue; // paid / excluded
         if (!byContest.has(e.contest_id)) byContest.set(e.contest_id, []);
         byContest.get(e.contest_id)!.push(e);
       }
@@ -127,8 +126,14 @@ const ContestsList = () => {
           }
         });
         const views = Array.from(byUrl.values()).reduce((s, v) => s + v, 0) + noUrl.reduce((s, v) => s + v, 0);
+        // Contestants excludes paid roster / campaign creators / manual exclusions.
+        const excludedSet = contestExcl.get(cid) ?? rosterHandles;
         const roots = new Set<number>();
-        rows.forEach((_, i) => roots.add(find(i)));
+        rows.forEach((e: any, i: number) => {
+          const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean) as string[];
+          if (hs.some((h) => excludedSet.has(h))) return;
+          roots.add(find(i));
+        });
         out[cid] = { entries: postUrls.size + noUrl.length, contestants: roots.size, views };
       }
       setStats(out);

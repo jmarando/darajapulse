@@ -703,16 +703,16 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
   );
 
   // Overall contest totals — mirrors PublicContestReport so numbers match exactly.
-  // Excludes paid creator roster; includes announced winners; deduped by canonical post URL.
+  // Includes ALL entries (roster/paid creators + announced winners) so the
+  // headline reflects cumulative all-time reach. Deduped by canonical post URL.
   const overallTotals = useMemo(() => {
-    const visible = entries.filter(e => !isCreator(e));
     // Keep the MAX-metrics version per canonical URL so a stale registration
     // row (views=0) can't shadow the scraper row that later captured the real
     // numbers. Matches PublicContestReport + ContestsList.
     const byUrl = new Map<string, { views: number; likes: number; comments: number; shares: number }>();
     const noUrl: any[] = [];
     const score = (p: any) => Number(p?.views || 0) + Number(p?.likes || 0) + Number(p?.comments || 0) + Number(p?.shares || 0);
-    for (const row of visible) {
+    for (const row of entries) {
       const cands = [row, ...(Array.isArray((row as any).cross_posts) ? (row as any).cross_posts : [])];
       let hasUrl = false;
       for (const p of cands) {
@@ -729,7 +729,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
     for (const p of [...byUrl.values(), ...noUrl]) {
       views += p.views; likes += p.likes; comments += p.comments; shares += p.shares; posts += 1;
     }
-    const contestants = groupEntriesByContestant(visible).length;
+    const contestants = groupEntriesByContestant(entries.filter(e => !isCreator(e))).length;
     return { contestants, posts, views, likes, comments, shares, eng: likes + comments + shares };
   }, [entries, creatorHandles]);
 
