@@ -964,7 +964,8 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
               .map((s: string) => s.trim())
               .filter(Boolean);
             const today = new Date();
-            const isLive = today >= new Date(active.start_date) && today <= new Date(active.end_date);
+            const isLive = today >= new Date(active.start_date) && today <= new Date(active.end_date) && active.is_active !== false;
+            const isClosed = active.is_active === false || today > new Date(active.end_date);
             return (
               <div className={`rounded-lg ${isDetailView ? "" : "border border-border bg-card"} overflow-hidden mb-4`}>
                 {/* Hero strip — hidden in detail view (page header already shows name/hashtag/badge) */}
