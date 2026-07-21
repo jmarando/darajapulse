@@ -1042,6 +1042,8 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
             };
             const announcedCount = officialWinners.length || entries.filter(isAnnouncedWinner).length;
             const stillRunning = Math.max(0, overallTotals.contestants - announcedCount);
+            const today = new Date();
+            const isClosed = active.is_active === false || today > new Date(active.end_date);
             const kpis = [
               { label: "Contestants", value: fmtN(overallTotals.contestants), icon: Users },
               { label: "Entries", value: fmtN(overallTotals.posts), icon: Trophy },
