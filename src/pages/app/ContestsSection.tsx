@@ -964,7 +964,8 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
               .map((s: string) => s.trim())
               .filter(Boolean);
             const today = new Date();
-            const isLive = today >= new Date(active.start_date) && today <= new Date(active.end_date);
+            const isLive = today >= new Date(active.start_date) && today <= new Date(active.end_date) && active.is_active !== false;
+            const isClosed = active.is_active === false || today > new Date(active.end_date);
             return (
               <div className={`rounded-lg ${isDetailView ? "" : "border border-border bg-card"} overflow-hidden mb-4`}>
                 {/* Hero strip — hidden in detail view (page header already shows name/hashtag/badge) */}
@@ -973,7 +974,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-display text-xl truncate">{active.name}</h3>
-                        <Badge variant={isLive ? "default" : "outline"} className={`text-[10px] ${isLive ? "bg-success text-success-foreground hover:bg-success" : ""}`}>{isLive ? "Live" : "Scheduled"}</Badge>
+                        <Badge variant={isLive ? "default" : "outline"} className={`text-[10px] ${isLive ? "bg-success text-success-foreground hover:bg-success" : ""}`}>{isLive ? "Live" : isClosed ? "Closed" : "Scheduled"}</Badge>
                       </div>
                       <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-secondary/60 border border-border font-mono break-all">
                         <Trophy className="w-3 h-3 shrink-0 text-highlight" />
@@ -1041,6 +1042,8 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
             };
             const announcedCount = officialWinners.length || entries.filter(isAnnouncedWinner).length;
             const stillRunning = Math.max(0, overallTotals.contestants - announcedCount);
+            const today = new Date();
+            const isClosed = active.is_active === false || today > new Date(active.end_date);
             const kpis = [
               { label: "Contestants", value: fmtN(overallTotals.contestants), icon: Users },
               { label: "Entries", value: fmtN(overallTotals.posts), icon: Trophy },
@@ -1061,7 +1064,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                   ))}
                 </div>
                 <div className="text-[11px] text-muted-foreground mb-6">
-                  Totals cover every contestant since the contest started, including the {announcedCount} announced winner{announcedCount === 1 ? "" : "s"} now removed from the running ({fmtN(stillRunning)} still competing).
+                  {isClosed
+                    ? <>Contest closed. Totals cover every contestant since the contest started, including the {announcedCount} announced winner{announcedCount === 1 ? "" : "s"}.</>
+                    : <>Totals cover every contestant since the contest started, including the {announcedCount} announced winner{announcedCount === 1 ? "" : "s"} now removed from the running ({fmtN(stillRunning)} still competing).</>}
                 </div>
               </>
             );
@@ -1215,6 +1220,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
 
               {/* Contestants grouped view */}
               {(() => {
+                const today = new Date();
+                const isClosed = active.is_active === false || today > new Date(active.end_date);
+                if (isClosed) return null;
                 const nonCreatorRows = entriesForRound.filter(e => !isCreator(e) && !winnerRelatedRowIds.has(e.id));
                 const grouped = groupEntriesByContestant(nonCreatorRows);
                 const contestants = grouped.map(rows => {
