@@ -306,6 +306,12 @@ Deno.serve(async (req) => {
     // force: bypass tiered-polling age filter (manual "refresh now" button, contest-close sweep)
     const force: boolean = body.force ?? false;
 
+    // Skip inactive contests unless force=true (allows a manual final sweep).
+    const { data: contestRow } = await sb.from("contests").select("is_active").eq("id", contest_id).maybeSingle();
+    if (contestRow && contestRow.is_active === false && !force) {
+      return new Response(JSON.stringify({ skipped: "contest inactive", contest_id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const entries = await fetchRefreshEntries(sb, contest_id, retryInvalid, onlyEmpty, force);
 
     const run = async () => {
