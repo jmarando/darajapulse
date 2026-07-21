@@ -352,7 +352,7 @@ const PublicContestReport = () => {
       platformRows: Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views),
       totalPosts: byUrl.size + noUrl.length,
     };
-  }, [visibleEntries]);
+  }, [entries]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (notFound || !contest) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Contest report not found or no longer active.</div>;
