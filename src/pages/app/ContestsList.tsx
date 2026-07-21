@@ -126,8 +126,14 @@ const ContestsList = () => {
           }
         });
         const views = Array.from(byUrl.values()).reduce((s, v) => s + v, 0) + noUrl.reduce((s, v) => s + v, 0);
+        // Contestants excludes paid roster / campaign creators / manual exclusions.
+        const excludedSet = contestExcl.get(cid) ?? rosterHandles;
         const roots = new Set<number>();
-        rows.forEach((_, i) => roots.add(find(i)));
+        rows.forEach((e: any, i: number) => {
+          const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean) as string[];
+          if (hs.some((h) => excludedSet.has(h))) return;
+          roots.add(find(i));
+        });
         out[cid] = { entries: postUrls.size + noUrl.length, contestants: roots.size, views };
       }
       setStats(out);
