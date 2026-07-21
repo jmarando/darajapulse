@@ -974,7 +974,7 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-display text-xl truncate">{active.name}</h3>
-                        <Badge variant={isLive ? "default" : "outline"} className={`text-[10px] ${isLive ? "bg-success text-success-foreground hover:bg-success" : ""}`}>{isLive ? "Live" : "Scheduled"}</Badge>
+                        <Badge variant={isLive ? "default" : "outline"} className={`text-[10px] ${isLive ? "bg-success text-success-foreground hover:bg-success" : ""}`}>{isLive ? "Live" : isClosed ? "Closed" : "Scheduled"}</Badge>
                       </div>
                       <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-secondary/60 border border-border font-mono break-all">
                         <Trophy className="w-3 h-3 shrink-0 text-highlight" />
