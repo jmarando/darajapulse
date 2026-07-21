@@ -1062,7 +1062,9 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
                   ))}
                 </div>
                 <div className="text-[11px] text-muted-foreground mb-6">
-                  Totals cover every contestant since the contest started, including the {announcedCount} announced winner{announcedCount === 1 ? "" : "s"} now removed from the running ({fmtN(stillRunning)} still competing).
+                  {isClosed
+                    ? <>Contest closed. Totals cover every contestant since the contest started, including the {announcedCount} announced winner{announcedCount === 1 ? "" : "s"}.</>
+                    : <>Totals cover every contestant since the contest started, including the {announcedCount} announced winner{announcedCount === 1 ? "" : "s"} now removed from the running ({fmtN(stillRunning)} still competing).</>}
                 </div>
               </>
             );
