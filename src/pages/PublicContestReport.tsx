@@ -319,7 +319,10 @@ const PublicContestReport = () => {
     const byUrl = new Map<string, { views: number; likes: number; comments: number; shares: number; platform: string }>();
     const noUrl: any[] = [];
     const score = (p: any) => Number(p?.views || 0) + Number(p?.likes || 0) + Number(p?.comments || 0) + Number(p?.shares || 0);
-    for (const row of visibleEntries) {
+    // Overall totals reflect ALL-TIME activity for the contest — we intentionally
+    // do NOT filter out roster / paid creators here so the headline view count
+    // matches the true cumulative reach across every registered post.
+    for (const row of entries) {
       const candidates = [row, ...(Array.isArray((row as any).cross_posts) ? (row as any).cross_posts : [])];
       let hasUrl = false;
       for (const post of candidates) {
