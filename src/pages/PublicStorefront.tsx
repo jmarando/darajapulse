@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Instagram, Music2, Youtube, Twitter, Facebook, Tv, Radio, Globe, Sparkles, Check, ShoppingCart, X, Users, Search, SlidersHorizontal } from "lucide-react";
+import { Instagram, Music2, Youtube, Twitter, Facebook, Tv, Radio, Globe, Sparkles, Check, ShoppingCart, X, Users, Search, SlidersHorizontal, Wand2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
 
@@ -80,6 +80,41 @@ export default function PublicStorefront() {
   const [genderPref, setGenderPref] = useState<"any" | "female" | "male">("any");
   const [cityFilter, setCityFilter] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
+
+  // AI match-to-brief
+  const [matchOpen, setMatchOpen] = useState(false);
+  const [matchBrief, setMatchBrief] = useState("");
+  const [matching, setMatching] = useState(false);
+  const [matches, setMatches] = useState<any[] | null>(null);
+
+  const runMatch = async () => {
+    if (!matchBrief.trim() || matchBrief.trim().length < 20) {
+      toast.error("Add a bit more detail so we can match well");
+      return;
+    }
+    setMatching(true);
+    setMatches(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("storefront-match", {
+        body: { agency_slug: agencySlug, brief: { brief: matchBrief } },
+      });
+      if (error) throw error;
+      const list = (data as any)?.matches ?? [];
+      setMatches(list);
+      if (!list.length) toast.info("No strong matches — try a broader brief");
+    } catch (e: any) {
+      toast.error(e?.message || "Match failed");
+    } finally {
+      setMatching(false);
+    }
+  };
+
+  const addAllMatchesToCart = () => {
+    if (!matches?.length) return;
+    setCart(c => Array.from(new Set([...c, ...matches!.map(m => m.item_id)])));
+    toast.success(`${matches.length} added to your request`);
+    setMatchOpen(false);
+  };
 
   useEffect(() => {
     (async () => {
@@ -205,9 +240,17 @@ export default function PublicStorefront() {
       <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
         <section className="mb-8">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Our inventory</div>
-          <h2 className="font-display text-4xl mt-1">Pick what fits your brief.</h2>
-          <p className="text-muted-foreground mt-2 max-w-2xl">Browse our owned channels, signed creators and ad slots. Filter by audience, add units you'd like to book — we'll quote within 24 hours.</p>
+          <div className="flex flex-wrap items-end justify-between gap-4 mt-1">
+            <div>
+              <h2 className="font-display text-4xl">Pick what fits your brief.</h2>
+              <p className="text-muted-foreground mt-2 max-w-2xl">Browse our owned channels, signed creators and ad slots. Filter by audience, or paste your brief and let our AI shortlist the best fits — we'll quote within 24 hours.</p>
+            </div>
+            <Button onClick={() => setMatchOpen(true)} size="lg" style={{ background: accent }} className="text-white shadow-sm">
+              <Wand2 className="w-4 h-4 mr-2" /> Match to my brief
+            </Button>
+          </div>
         </section>
+
 
         {/* Filter bar */}
         <div className="mb-6 space-y-3">
@@ -435,7 +478,82 @@ export default function PublicStorefront() {
         </DialogContent>
       </Dialog>
 
+      {/* AI Match dialog */}
+      <Dialog open={matchOpen} onOpenChange={(v) => { setMatchOpen(v); if (!v) { setMatches(null); } }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl flex items-center gap-2">
+              <Wand2 className="w-5 h-5" style={{ color: accent }} /> Match creators to your brief
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs">Paste your brief — brand, product, audience, goal, tone</Label>
+              <Textarea
+                rows={5}
+                value={matchBrief}
+                onChange={e => setMatchBrief(e.target.value)}
+                placeholder="e.g. Launching a new Royco cooking sauce for busy young mums 25-40 in Nairobi & Mombasa. Need warm, funny food-focused creators who can shoot recipe reels in Sheng / Swahili."
+                className="mt-1"
+              />
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-muted-foreground">Our AI reads your brief against every active card and picks only the ones that genuinely fit.</p>
+                <Button onClick={runMatch} disabled={matching} style={{ background: accent }} className="text-white">
+                  {matching ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching…</> : <><Sparkles className="w-4 h-4 mr-2" /> Find matches</>}
+                </Button>
+              </div>
+            </div>
+
+            {matches && matches.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">{matches.length} match{matches.length === 1 ? "" : "es"}</div>
+                  <Button size="sm" variant="outline" onClick={addAllMatchesToCart}>
+                    <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Add all to request
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {matches.map((m: any) => {
+                    const it = m.item || {};
+                    const PIcon = PLATFORM_ICON[it.platform] || Globe;
+                    const inCart = cart.includes(m.item_id);
+                    return (
+                      <Card key={m.item_id} className={`p-3 flex items-start gap-3 ${inCart ? "border-accent ring-1 ring-accent" : ""}`}>
+                        <div className="w-10 h-10 rounded-md flex items-center justify-center shrink-0 text-white" style={{ background: (PLATFORM_BRAND[it.platform] || PLATFORM_BRAND.web).bg }}>
+                          <PIcon className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm truncate">{it.title}</span>
+                            {it.handle && <span className="text-xs text-muted-foreground truncate">· @{it.handle}</span>}
+                            <Badge variant="secondary" className="text-[10px]">{fmtCompact(Number(it.follower_count || 0))} on {it.platform}</Badge>
+                            <Badge variant="outline" className="text-[10px]" style={{ borderColor: accent, color: accent }}>{m.score}/100</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{m.reason}</p>
+                          {m.angle && <p className="text-xs italic mt-0.5 text-foreground/70">💡 {m.angle}</p>}
+                        </div>
+                        <Button size="sm" variant={inCart ? "default" : "outline"} onClick={() => toggle(m.item_id)} style={inCart ? { background: accent } : undefined}>
+                          {inCart ? <Check className="w-3.5 h-3.5" /> : "Add"}
+                        </Button>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {matches && matches.length === 0 && (
+              <Card className="p-6 text-center text-muted-foreground text-sm">
+                No strong matches found. Try broadening the brief or removing very specific constraints.
+              </Card>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <PublicFooter />
+
     </div>
   );
 }

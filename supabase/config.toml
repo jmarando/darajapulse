@@ -54,3 +54,6 @@ verify_jwt = false
 
 [functions.resolve-post-thumbnail]
 verify_jwt = false
+
+[functions.storefront-match]
+verify_jwt = false
