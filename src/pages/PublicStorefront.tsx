@@ -336,7 +336,7 @@ export default function PublicStorefront() {
         {groups.length === 0 ? (
           <Card className="p-16 text-center text-muted-foreground">
             <Sparkles className="w-10 h-10 mx-auto opacity-50" />
-            <p className="mt-3">{items.length === 0 ? "Inventory is being prepared. Check back soon." : "No items match those filters."}</p>
+            <p className="mt-3">{items.length === 0 ? "No active inventory is published for this storefront yet. Contact the team to add items." : "No items match those filters."}</p>
           </Card>
         ) : groups.map(group => (
           <section key={group.kind} className="mb-10">
