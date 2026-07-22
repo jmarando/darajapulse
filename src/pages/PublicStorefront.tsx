@@ -122,11 +122,16 @@ export default function PublicStorefront() {
       const { data, error } = await supabase.rpc("get_public_storefront", { _agency_slug: agencySlug });
       if (error) toast.error(error.message);
       const payload: any = data ?? {};
-      setAgency(payload.agency ?? null);
+      const loadedAgency = payload.agency ?? null;
+      setAgency(loadedAgency);
       setItems(payload.items ?? []);
       setLoading(false);
+      // Normalize URL to the agency's canonical slug casing
+      if (loadedAgency?.slug && loadedAgency.slug !== agencySlug) {
+        navigate(`/shop/${loadedAgency.slug}`, { replace: true });
+      }
     })();
-  }, [agencySlug]);
+  }, [agencySlug, navigate]);
 
   const platforms = useMemo(() => Array.from(new Set(items.map(i => i.platform).filter(Boolean))), [items]);
   const kinds = useMemo(() => Array.from(new Set(items.map(i => i.kind).filter(Boolean))), [items]);
