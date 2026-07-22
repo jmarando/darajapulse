@@ -60,6 +60,7 @@ const genderLean = (demo: any): { label: string; pct: number } | null => {
 
 export default function PublicStorefront() {
   const { agencySlug } = useParams();
+  const navigate = useNavigate();
   const [agency, setAgency] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
