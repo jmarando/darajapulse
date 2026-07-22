@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/publicClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,7 @@ const genderLean = (demo: any): { label: string; pct: number } | null => {
 
 export default function PublicStorefront() {
   const { agencySlug } = useParams();
+  const navigate = useNavigate();
   const [agency, setAgency] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,11 +122,16 @@ export default function PublicStorefront() {
       const { data, error } = await supabase.rpc("get_public_storefront", { _agency_slug: agencySlug });
       if (error) toast.error(error.message);
       const payload: any = data ?? {};
-      setAgency(payload.agency ?? null);
+      const loadedAgency = payload.agency ?? null;
+      setAgency(loadedAgency);
       setItems(payload.items ?? []);
       setLoading(false);
+      // Normalize URL to the agency's canonical slug casing
+      if (loadedAgency?.slug && loadedAgency.slug !== agencySlug) {
+        navigate(`/shop/${loadedAgency.slug}`, { replace: true });
+      }
     })();
-  }, [agencySlug]);
+  }, [agencySlug, navigate]);
 
   const platforms = useMemo(() => Array.from(new Set(items.map(i => i.platform).filter(Boolean))), [items]);
   const kinds = useMemo(() => Array.from(new Set(items.map(i => i.kind).filter(Boolean))), [items]);
@@ -330,7 +336,7 @@ export default function PublicStorefront() {
         {groups.length === 0 ? (
           <Card className="p-16 text-center text-muted-foreground">
             <Sparkles className="w-10 h-10 mx-auto opacity-50" />
-            <p className="mt-3">{items.length === 0 ? "Inventory is being prepared. Check back soon." : "No items match those filters."}</p>
+            <p className="mt-3">{items.length === 0 ? "No active inventory is published for this storefront yet. Contact the team to add items." : "No items match those filters."}</p>
           </Card>
         ) : groups.map(group => (
           <section key={group.kind} className="mb-10">
