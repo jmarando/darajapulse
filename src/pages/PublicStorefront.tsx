@@ -478,7 +478,82 @@ export default function PublicStorefront() {
         </DialogContent>
       </Dialog>
 
+      {/* AI Match dialog */}
+      <Dialog open={matchOpen} onOpenChange={(v) => { setMatchOpen(v); if (!v) { setMatches(null); } }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-2xl flex items-center gap-2">
+              <Wand2 className="w-5 h-5" style={{ color: accent }} /> Match creators to your brief
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs">Paste your brief — brand, product, audience, goal, tone</Label>
+              <Textarea
+                rows={5}
+                value={matchBrief}
+                onChange={e => setMatchBrief(e.target.value)}
+                placeholder="e.g. Launching a new Royco cooking sauce for busy young mums 25-40 in Nairobi & Mombasa. Need warm, funny food-focused creators who can shoot recipe reels in Sheng / Swahili."
+                className="mt-1"
+              />
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-muted-foreground">Our AI reads your brief against every active card and picks only the ones that genuinely fit.</p>
+                <Button onClick={runMatch} disabled={matching} style={{ background: accent }} className="text-white">
+                  {matching ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching…</> : <><Sparkles className="w-4 h-4 mr-2" /> Find matches</>}
+                </Button>
+              </div>
+            </div>
+
+            {matches && matches.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">{matches.length} match{matches.length === 1 ? "" : "es"}</div>
+                  <Button size="sm" variant="outline" onClick={addAllMatchesToCart}>
+                    <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Add all to request
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {matches.map((m: any) => {
+                    const it = m.item || {};
+                    const PIcon = PLATFORM_ICON[it.platform] || Globe;
+                    const inCart = cart.includes(m.item_id);
+                    return (
+                      <Card key={m.item_id} className={`p-3 flex items-start gap-3 ${inCart ? "border-accent ring-1 ring-accent" : ""}`}>
+                        <div className="w-10 h-10 rounded-md flex items-center justify-center shrink-0 text-white" style={{ background: (PLATFORM_BRAND[it.platform] || PLATFORM_BRAND.web).bg }}>
+                          <PIcon className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm truncate">{it.title}</span>
+                            {it.handle && <span className="text-xs text-muted-foreground truncate">· @{it.handle}</span>}
+                            <Badge variant="secondary" className="text-[10px]">{fmtCompact(Number(it.follower_count || 0))} on {it.platform}</Badge>
+                            <Badge variant="outline" className="text-[10px]" style={{ borderColor: accent, color: accent }}>{m.score}/100</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">{m.reason}</p>
+                          {m.angle && <p className="text-xs italic mt-0.5 text-foreground/70">💡 {m.angle}</p>}
+                        </div>
+                        <Button size="sm" variant={inCart ? "default" : "outline"} onClick={() => toggle(m.item_id)} style={inCart ? { background: accent } : undefined}>
+                          {inCart ? <Check className="w-3.5 h-3.5" /> : "Add"}
+                        </Button>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {matches && matches.length === 0 && (
+              <Card className="p-6 text-center text-muted-foreground text-sm">
+                No strong matches found. Try broadening the brief or removing very specific constraints.
+              </Card>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <PublicFooter />
+
     </div>
   );
 }
