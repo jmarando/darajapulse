@@ -81,6 +81,41 @@ export default function PublicStorefront() {
   const [cityFilter, setCityFilter] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
 
+  // AI match-to-brief
+  const [matchOpen, setMatchOpen] = useState(false);
+  const [matchBrief, setMatchBrief] = useState("");
+  const [matching, setMatching] = useState(false);
+  const [matches, setMatches] = useState<any[] | null>(null);
+
+  const runMatch = async () => {
+    if (!matchBrief.trim() || matchBrief.trim().length < 20) {
+      toast.error("Add a bit more detail so we can match well");
+      return;
+    }
+    setMatching(true);
+    setMatches(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("storefront-match", {
+        body: { agency_slug: agencySlug, brief: { brief: matchBrief } },
+      });
+      if (error) throw error;
+      const list = (data as any)?.matches ?? [];
+      setMatches(list);
+      if (!list.length) toast.info("No strong matches — try a broader brief");
+    } catch (e: any) {
+      toast.error(e?.message || "Match failed");
+    } finally {
+      setMatching(false);
+    }
+  };
+
+  const addAllMatchesToCart = () => {
+    if (!matches?.length) return;
+    setCart(c => Array.from(new Set([...c, ...matches!.map(m => m.item_id)])));
+    toast.success(`${matches.length} added to your request`);
+    setMatchOpen(false);
+  };
+
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase.rpc("get_public_storefront", { _agency_slug: agencySlug });
