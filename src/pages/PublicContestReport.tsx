@@ -177,25 +177,19 @@ const PublicContestReport = () => {
       setClient((data as any).client);
       setCampaign((data as any).campaign);
       const cid = (data as any).id;
-      const [es, { data: winners }, { data: inf }, { data: excl }] = await Promise.all([
-        fetchAllContestEntries(cid),
+      const [es, { data: winners }, { data: filterHandles }] = await Promise.all([
+        fetchAllContestEntries(token),
         supabase.from("contest_winners").select("*").eq("contest_id", cid).order("round_number", { ascending: true }).order("placement_rank", { ascending: true }),
-        supabase.from("influencers").select("handle, alt_handles"),
-        (supabase as any).from("contest_excluded_handles").select("handle").eq("contest_id", cid),
+        (supabase as any).rpc("get_contest_filter_handles", { _token: token }),
       ]);
       setEntries(es ?? []);
       setOfficialWinners(winners ?? []);
       const s = new Set<string>();
-      for (const r of inf ?? []) {
-        const h = cleanH((r as any).handle);
+      for (const r of (filterHandles as any[]) ?? []) {
+        const h = cleanH(typeof r === "string" ? r : (r as any).handle);
         if (h) s.add(h);
-        for (const a of ((r as any).alt_handles ?? [])) {
-          const c = cleanH(a); if (c) s.add(c);
-        }
       }
-      for (const r of excl ?? []) {
-        const h = cleanH((r as any).handle); if (h) s.add(h);
-      }
+
       setCreatorHandles(s);
       setLoading(false);
     })();
