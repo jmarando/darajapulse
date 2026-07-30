@@ -97,21 +97,20 @@ const winnerMatchesRow = (winner: any, row: any) => {
   return false;
 };
 
-const fetchAllContestEntries = async (contestId: string) => {
+const fetchAllContestEntries = async (token: string) => {
   const rows: any[] = [];
   const pageSize = 1000;
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase.from("contest_entries")
-      .select("*")
-      .eq("contest_id", contestId)
-      .order("id", { ascending: true })
-      .range(from, from + pageSize - 1);
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await (supabase as any).rpc("get_contest_entries_by_token", {
+      _token: token, _offset: offset, _limit: pageSize,
+    });
     if (error) throw error;
-    rows.push(...(data ?? []));
-    if (!data || data.length < pageSize) break;
+    rows.push(...((data as any[]) ?? []));
+    if (!data || (data as any[]).length < pageSize) break;
   }
   return rows;
 };
+
 
 const summarizeContestant = (rows: any[]) => {
   const reg = rows.find(r => r.source === "registration" || r.source === "csv_import" || r.source === "external_feed") || rows[0];
@@ -178,25 +177,19 @@ const PublicContestReport = () => {
       setClient((data as any).client);
       setCampaign((data as any).campaign);
       const cid = (data as any).id;
-      const [es, { data: winners }, { data: inf }, { data: excl }] = await Promise.all([
-        fetchAllContestEntries(cid),
+      const [es, { data: winners }, { data: filterHandles }] = await Promise.all([
+        fetchAllContestEntries(token),
         supabase.from("contest_winners").select("*").eq("contest_id", cid).order("round_number", { ascending: true }).order("placement_rank", { ascending: true }),
-        supabase.from("influencers").select("handle, alt_handles"),
-        (supabase as any).from("contest_excluded_handles").select("handle").eq("contest_id", cid),
+        (supabase as any).rpc("get_contest_filter_handles", { _token: token }),
       ]);
       setEntries(es ?? []);
       setOfficialWinners(winners ?? []);
       const s = new Set<string>();
-      for (const r of inf ?? []) {
-        const h = cleanH((r as any).handle);
+      for (const r of (filterHandles as any[]) ?? []) {
+        const h = cleanH(typeof r === "string" ? r : (r as any).handle);
         if (h) s.add(h);
-        for (const a of ((r as any).alt_handles ?? [])) {
-          const c = cleanH(a); if (c) s.add(c);
-        }
       }
-      for (const r of excl ?? []) {
-        const h = cleanH((r as any).handle); if (h) s.add(h);
-      }
+
       setCreatorHandles(s);
       setLoading(false);
     })();

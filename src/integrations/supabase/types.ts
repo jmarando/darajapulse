@@ -2583,6 +2583,42 @@ export type Database = {
       }
       get_brief_by_token: { Args: { _token: string }; Returns: Json }
       get_contest_by_token: { Args: { _token: string }; Returns: Json }
+      get_contest_entries_by_token: {
+        Args: { _limit?: number; _offset?: number; _token: string }
+        Returns: {
+          caption: string
+          comments: number
+          contest_id: string
+          created_at: string
+          cross_posts: Json
+          facebook_handle: string
+          full_name: string
+          handle: string
+          id: string
+          instagram_handle: string
+          likes: number
+          metadata: Json
+          platform: string
+          post_url: string
+          posted_at: string
+          round_number: number
+          saves: number
+          score: number
+          shares: number
+          source: string
+          status: string
+          submitter_name: string
+          thumbnail_url: string
+          tiktok_handle: string
+          views: number
+        }[]
+      }
+      get_contest_filter_handles: {
+        Args: { _token: string }
+        Returns: {
+          handle: string
+        }[]
+      }
       get_invoice_by_token: { Args: { _token: string }; Returns: Json }
       get_profiles_by_ids: {
         Args: { _ids: string[] }
