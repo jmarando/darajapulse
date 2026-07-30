@@ -18,10 +18,47 @@ const NICHES = [
   "news and politics", "automotive", "hair", "skincare", "wedding",
   "hustle and SME", "agribusiness", "education", "real estate", "motherhood",
   "nightlife and events",
-  // New niches
   "media personalities", "journalism", "radio hosts", "TV hosts",
   "podcast hosts", "activism and civic tech",
+  // Broadcast & media depth
+  "TV news anchors", "sports journalists and commentators", "business and markets journalists",
+  "investigative journalists", "breakfast show hosts", "vernacular radio presenters",
+  "Swahili language broadcasters", "talk show hosts", "sports radio presenters",
+  // Entertainment
+  "musicians and recording artists", "gengetone and hip hop artists",
+  "afro pop and RnB artists", "benga and vernacular musicians", "DJs and selectors",
+  "actors and thespians", "film and TV producers", "dancers and choreographers",
+  "stand up comedians", "skit makers and meme pages", "voice over artists",
+  "models and pageant winners", "reality TV personalities",
+  // Sport
+  "footballers and football pundits", "athletics and marathon runners",
+  "rugby players and fans", "boxing and MMA", "motorsport and rally",
+  "basketball and volleyball", "esports players",
+  // Knowledge & professional
+  "doctors and health educators", "lawyers and legal commentators",
+  "personal finance and investing", "crypto and web3", "career and jobs",
+  "science and engineering", "architecture and interior design",
+  "photographers and videographers", "authors and book reviewers",
+  "history and heritage storytellers", "mental health advocates",
+  // Faith & community
+  "preachers and church leaders", "gospel worship leaders", "muslim scholars and speakers",
+  // Lifestyle & culture
+  "matatu and street culture", "sheng and youth culture", "pets and animals",
+  "wildlife and conservation", "environment and climate", "home and DIY",
+  "kids and family content", "relationships and dating", "luxury and cars",
+  "fashion designers and stylists", "makeup artists", "barbers and grooming",
+  "weight loss and wellness", "vegan and healthy eating", "street food and nyama choma",
+  "farming and livestock", "logistics and transport", "manufacturing and industry",
+  // Geography & diaspora
+  "Mombasa and coast creators", "Kisumu and lake region creators",
+  "Eldoret and Rift Valley creators", "Nakuru creators", "Central Kenya creators",
+  "Northern Kenya creators", "Kenyan diaspora creators",
+  // Commercial
+  "brand ambassadors and endorsers", "corporate leaders and CEOs",
+  "startup founders and tech builders", "NGO and development sector voices",
+  "county government and public officials",
 ];
+
 const PLATFORMS = ["instagram", "tiktok", "youtube", "twitter", "facebook"];
 
 type Creator = {
@@ -33,7 +70,8 @@ type Creator = {
 };
 
 async function askGemini(niche: string, platform: string): Promise<Creator[]> {
-  const prompt = `List up to 15 well-known KENYAN ${platform} creators in the "${niche}" niche.
+  const prompt = `List up to 25 well-known KENYAN ${platform} creators, personalities or public figures in the "${niche}" niche.
+Include veteran/legacy media names (e.g. long-serving TV anchors and radio hosts) as well as newer creators — do not skip household names just because they are "traditional media".
 Return strictly a JSON array. Each item must have:
 - full_name (string)
 - handle (string, no @)
