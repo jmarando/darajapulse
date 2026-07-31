@@ -203,7 +203,77 @@ async function edFacebook(url: string) {
   };
 }
 
+// ----- Apify fallback (Instagram / Facebook / TikTok) -----
+const APIFY = Deno.env.get("APIFY_API_TOKEN") ?? "";
+const APIFY_ACTORS: Record<string, string> = {
+  instagram: "apify~instagram-scraper",
+  facebook: "apify~facebook-posts-scraper",
+  tiktok: "clockworks~tiktok-scraper",
+};
+
+async function runApifyActor(actor: string, input: any): Promise<any[]> {
+  if (!APIFY) throw new Error("APIFY_API_TOKEN not configured");
+  const r = await fetch(
+    `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY}&timeout=180`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) },
+  );
+  const text = await r.text();
+  if (!r.ok) throw new Error(`Apify ${actor} ${r.status}: ${text.slice(0, 200)}`);
+  try { return JSON.parse(text); } catch { throw new Error(`Apify non-JSON: ${text.slice(0, 200)}`); }
+}
+
+async function apifyFetch(kind: "instagram" | "facebook" | "tiktok", url: string) {
+  const actor = APIFY_ACTORS[kind];
+  const input = kind === "instagram"
+    ? { directUrls: [url], resultsType: "posts", resultsLimit: 1, addParentData: false }
+    : kind === "facebook"
+      ? { startUrls: [{ url }], resultsLimit: 1 }
+      : { postURLs: [url], resultsPerPage: 1, shouldDownloadVideos: false, shouldDownloadCovers: false };
+  const items = await runApifyActor(actor, input);
+  const item = items?.[0];
+  if (!item) throw new Error(`Apify ${kind}: no items returned`);
+  if (kind === "instagram") {
+    return {
+      stats: {
+        views: item?.videoPlayCount ?? item?.videoViewCount ?? item?.playCount,
+        likes: item?.likesCount ?? item?.likes,
+        comments: item?.commentsCount ?? item?.comments,
+        shares: item?.reshareCount,
+      },
+      thumb: item?.displayUrl ?? item?.thumbnailUrl ?? null,
+      caption: typeof item?.caption === "string" ? item.caption : null,
+      postedAt: toIso(item?.timestamp ?? item?.takenAtTimestamp),
+    };
+  }
+  if (kind === "facebook") {
+    return {
+      stats: {
+        views: item?.viewsCount ?? item?.videoViewCount ?? item?.playCount,
+        likes: item?.likesCount ?? item?.reactionsCount ?? item?.likes,
+        comments: item?.commentsCount ?? item?.comments,
+        shares: item?.sharesCount ?? item?.shares,
+      },
+      thumb: item?.thumbnailUrl ?? item?.previewImage ?? null,
+      caption: item?.text ?? item?.message ?? null,
+      postedAt: toIso(item?.time ?? item?.timestamp ?? item?.date),
+    };
+  }
+  return {
+    stats: {
+      views: item?.playCount ?? item?.viewCount,
+      likes: item?.diggCount ?? item?.likeCount,
+      comments: item?.commentCount,
+      shares: item?.shareCount,
+      saves: item?.collectCount,
+    },
+    thumb: item?.videoMeta?.coverUrl ?? item?.covers?.[0] ?? null,
+    caption: item?.text ?? item?.desc ?? null,
+    postedAt: toIso(item?.createTimeISO ?? item?.createTime),
+  };
+}
+
 // ----- HTML fallbacks (TikTok / YouTube only) -----
+
 async function scrapeTikTokHtml(url: string) {
   const html = await fetchHtml(url);
   const m = html.match(/<script[^>]+id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([\s\S]*?)<\/script>/);
@@ -258,9 +328,16 @@ async function scrape(platform: string, url: string) {
   }
 
   // Fallbacks
+  if (APIFY && (isInsta || isFacebook || isTikTok)) {
+    try {
+      return await apifyFetch(isInsta ? "instagram" : isFacebook ? "facebook" : "tiktok", url);
+    } catch (e) {
+      console.error(`Apify failed for ${platform}:`, (e as Error).message);
+    }
+  }
   if (isTikTok) return await scrapeTikTokHtml(url);
   if (isYouTube) return await scrapeYouTubeHtml(url);
-  if (isInsta) throw new Error("Instagram fetch failed — check Ensemble Data token / plan");
+  if (isInsta) throw new Error("Instagram fetch failed — Ensemble plan expired and Apify fallback returned nothing");
   if (isFacebook) throw new Error("Facebook public metrics aren't available via API — enter manually or connect the page");
   throw new Error(`No scraper for platform: ${platform}`);
 }
