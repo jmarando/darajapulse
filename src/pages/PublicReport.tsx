@@ -14,6 +14,7 @@ import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
 
 import { fetchAllPostMetrics, peakMetricSnapshot, buildWindowMetricsByPost, withMetricFallbacks } from "@/lib/metrics";
+import { buildAudience } from "@/lib/audience";
 import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 
 type PostWithMetrics = any;
