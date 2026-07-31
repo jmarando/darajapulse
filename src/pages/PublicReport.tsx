@@ -857,40 +857,20 @@ const PublicReport = () => {
 
         {/* Audience */}
         {influencers.length > 0 && (() => {
-          const totalFollowers = influencers.reduce((a, x) => a + Number(x.influencers?.follower_count || 0), 0);
-          const weightedKE = totalFollowers > 0
-            ? influencers.reduce((a, x) => a + Number(x.influencers?.follower_count || 0) * Number(x.influencers?.audience_kenya_pct || 0), 0) / totalFollowers
-            : 0;
-          const diaspora = 100 - weightedKE;
-          const langs = new Set<string>();
-          influencers.forEach(x => (x.influencers?.languages || []).forEach((l: string) => langs.add(l)));
-
-          const weight = (key: string, sub: string) => {
-            if (totalFollowers === 0) return 0;
-            let acc = 0;
-            influencers.forEach(x => {
-              const f = Number(x.influencers?.follower_count || 0);
-              const v = Number(x.influencers?.[key]?.[sub] || 0);
-              acc += f * v;
-            });
-            return acc / totalFollowers;
-          };
-          const ages = ["13-17","18-24","25-34","35-44","45-54","55+"].map(b => ({ bucket: b, pct: weight("audience_age_breakdown", b) }));
-          const genders = ["female","male","other"].map(g => ({ gender: g, pct: weight("audience_gender_breakdown", g) }));
-          const cityMap = new Map<string, number>();
-          influencers.forEach(x => {
-            const f = Number(x.influencers?.follower_count || 0);
-            const list = (x.influencers?.audience_top_cities || []) as Array<{city:string; pct:number}>;
-            list.forEach(({ city, pct }) => {
-              cityMap.set(city, (cityMap.get(city) || 0) + (totalFollowers > 0 ? (f * Number(pct||0)) / totalFollowers : 0));
-            });
-          });
-          const cities = Array.from(cityMap.entries()).map(([city, pct]) => ({ city, pct })).sort((a,b)=>b.pct-a.pct).slice(0,6);
+          const audience = buildAudience(influencers.map((x: any) => x.influencers).filter(Boolean));
+          const { totalFollowers, weightedKE, diaspora, langs, ages, genders, cities } = audience;
 
           return (
             <Card className="p-6 mb-6">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audience</div>
-              <h2 className="font-display text-2xl mt-1 mb-4">Who we reached</h2>
+              <div className="flex flex-wrap items-center gap-2 mt-1 mb-4">
+                <h2 className="font-display text-2xl">Who we reached</h2>
+                <Badge variant="outline" className="text-[10px]">Estimated</Badge>
+                <span className="text-xs text-muted-foreground">
+                  {audience.creatorsWithData} of {audience.creatorCount} creators with audience data
+                  {audience.zeroFollowerCount > 0 && ` · ${audience.zeroFollowerCount} without follower counts weighted at the roster average`}
+                </span>
+              </div>
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="md:col-span-2">
                   <div className="flex justify-between items-baseline text-sm mb-1.5">
