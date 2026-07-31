@@ -1361,7 +1361,14 @@ const CampaignDetail = () => {
 
         <Card className="p-6 mb-6">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audience</div>
-          <h2 className="font-display text-2xl mt-1 mb-4">Who we reached</h2>
+          <div className="flex flex-wrap items-center gap-2 mt-1 mb-4">
+            <h2 className="font-display text-2xl">Who we reached</h2>
+            <Badge variant="outline" className="text-[10px]">Estimated</Badge>
+            <span className="text-xs text-muted-foreground">
+              {audience.creatorsWithData} of {audience.creatorCount} creators with audience data
+              {audience.zeroFollowerCount > 0 && ` · ${audience.zeroFollowerCount} without follower counts weighted at the roster average`}
+            </span>
+          </div>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-2">
               <div className="flex justify-between items-baseline text-sm mb-1.5">
