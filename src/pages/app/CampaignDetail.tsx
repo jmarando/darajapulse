@@ -479,41 +479,11 @@ const CampaignDetail = () => {
   }, [posts, latestByPost, ci]);
 
   // Audience demographics (mirrors public report)
-  const audience = useMemo(() => {
-    const totalFollowers = ci.reduce((a, x) => a + Number(x.influencers?.follower_count || 0), 0);
-    const weightedKE = totalFollowers > 0
-      ? ci.reduce((a, x) => a + Number(x.influencers?.follower_count || 0) * Number(x.influencers?.audience_kenya_pct || 0), 0) / totalFollowers
-      : 0;
-    const langs = new Set<string>();
-    ci.forEach(x => (x.influencers?.languages || []).forEach((l: string) => langs.add(l)));
+  const audience = useMemo(
+    () => buildAudience(ci.map((x: any) => x.influencers).filter(Boolean)),
+    [ci],
+  );
 
-    // Weighted age/gender/cities by follower count
-    const weight = (key: string, sub: string) => {
-      if (totalFollowers === 0) return 0;
-      let acc = 0;
-      ci.forEach(x => {
-        const f = Number(x.influencers?.follower_count || 0);
-        const v = Number(x.influencers?.[key]?.[sub] || 0);
-        acc += f * v;
-      });
-      return acc / totalFollowers;
-    };
-    const ageBuckets = ["13-17","18-24","25-34","35-44","45-54","55+"];
-    const ages = ageBuckets.map(b => ({ bucket: b, pct: weight("audience_age_breakdown", b) }));
-    const genders = ["female","male","other"].map(g => ({ gender: g, pct: weight("audience_gender_breakdown", g) }));
-
-    const cityMap = new Map<string, number>();
-    ci.forEach(x => {
-      const f = Number(x.influencers?.follower_count || 0);
-      const list = (x.influencers?.audience_top_cities || []) as Array<{city:string; pct:number}>;
-      list.forEach(({ city, pct }) => {
-        cityMap.set(city, (cityMap.get(city) || 0) + (totalFollowers > 0 ? (f * Number(pct||0)) / totalFollowers : 0));
-      });
-    });
-    const cities = Array.from(cityMap.entries()).map(([city, pct]) => ({ city, pct })).sort((a,b)=>b.pct-a.pct).slice(0,6);
-
-    return { totalFollowers, weightedKE, diaspora: 100 - weightedKE, langs, ages, genders, cities };
-  }, [ci]);
 
   // Per-influencer aggregated metrics
   const byInfluencer = useMemo(() => {
