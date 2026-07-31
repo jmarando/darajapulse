@@ -66,6 +66,7 @@ import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
+import { buildAudience } from "@/lib/audience";
 
 
 const CampaignDetail = () => {
