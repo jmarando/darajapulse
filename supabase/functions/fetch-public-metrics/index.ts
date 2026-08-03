@@ -251,8 +251,9 @@ async function apifyFacebook(url: string) {
   if (isPhoto) {
     attempts.push(["apify~facebook-photos-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
   }
-  attempts.push(["danek~facebook-posts-fast", { startUrls: [{ url }], resultsLimit: 1 }]);
-  attempts.push(["xtracto~facebook-post-detail", { postUrls: [url] }]);
+  attempts.push(["danek~facebook-posts-fast", { direct_urls: [url], max_posts: 1 }]);
+  attempts.push(["xtracto~facebook-post-detail", { posts: [url] }]);
+
   attempts.push(["apify~facebook-posts-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
 
 
