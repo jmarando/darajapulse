@@ -222,16 +222,67 @@ async function runApifyActor(actor: string, input: any): Promise<any[]> {
   try { return JSON.parse(text); } catch { throw new Error(`Apify non-JSON: ${text.slice(0, 200)}`); }
 }
 
+function mapFacebookItem(item: any) {
+  return {
+    stats: {
+      views: item?.viewsCount ?? item?.videoViewCount ?? item?.playCount ?? item?.videoPlayCount,
+      likes: item?.likesCount ?? item?.reactionsCount ?? item?.likes ?? item?.reactions?.like,
+      comments: item?.commentsCount ?? item?.comments,
+      shares: item?.sharesCount ?? item?.shares,
+    },
+    thumb: item?.thumbnailUrl ?? item?.previewImage ?? item?.imageUrl ?? item?.image ?? null,
+    caption: item?.text ?? item?.message ?? item?.description ?? null,
+    postedAt: toIso(item?.time ?? item?.timestamp ?? item?.date ?? item?.publishedTime),
+  };
+}
+
+const hasSignal = (s: any) =>
+  [s?.views, s?.likes, s?.comments, s?.shares, s?.saves].some((v) => Number(v || 0) > 0);
+
+// Facebook permalinks come in several shapes (feed posts, /photo?fbid=, /reel/).
+// A single actor can't handle all of them, so try the specialised ones in order.
+async function apifyFacebook(url: string) {
+  const isReel = /\/reel\/|\/videos?\/|fb\.watch/i.test(url);
+  const isPhoto = /\/photo/i.test(url);
+  const attempts: Array<[string, any]> = [];
+  if (isReel) {
+    attempts.push(["apify~facebook-reels-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
+  }
+  if (isPhoto) {
+    attempts.push(["apify~facebook-photos-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
+  }
+  
+  attempts.push(["xtracto~facebook-post-detail", { posts: [url] }]);
+
+  attempts.push(["apify~facebook-posts-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
+
+
+  let lastErr: unknown = null;
+  for (const [actor, input] of attempts) {
+    try {
+      const items = await runApifyActor(actor, input);
+      const item = items?.[0];
+      if (!item) continue;
+      const mapped = mapFacebookItem(item);
+      if (hasSignal(mapped.stats)) return mapped;
+    } catch (e) {
+      lastErr = e;
+      console.error(`Apify facebook actor ${actor} failed:`, (e as Error).message);
+    }
+  }
+  throw new Error(`Apify facebook: no usable data${lastErr ? ` (${(lastErr as Error).message})` : ""}`);
+}
+
 async function apifyFetch(kind: "instagram" | "facebook" | "tiktok", url: string) {
+  if (kind === "facebook") return await apifyFacebook(url);
   const actor = APIFY_ACTORS[kind];
   const input = kind === "instagram"
     ? { directUrls: [url], resultsType: "posts", resultsLimit: 1, addParentData: false }
-    : kind === "facebook"
-      ? { startUrls: [{ url }], resultsLimit: 1 }
-      : { postURLs: [url], resultsPerPage: 1, shouldDownloadVideos: false, shouldDownloadCovers: false };
+    : { postURLs: [url], resultsPerPage: 1, shouldDownloadVideos: false, shouldDownloadCovers: false };
   const items = await runApifyActor(actor, input);
   const item = items?.[0];
   if (!item) throw new Error(`Apify ${kind}: no items returned`);
+
   if (kind === "instagram") {
     return {
       stats: {
