@@ -247,12 +247,14 @@ async function apifyFacebook(url: string) {
   const attempts: Array<[string, any]> = [];
   if (isReel) {
     attempts.push(["apify~facebook-reels-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
-    attempts.push(["apify~facebook-video-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
   }
   if (isPhoto) {
     attempts.push(["apify~facebook-photos-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
   }
+  attempts.push(["danek~facebook-posts-fast", { startUrls: [{ url }], resultsLimit: 1 }]);
+  attempts.push(["xtracto~facebook-post-detail", { postUrls: [url] }]);
   attempts.push(["apify~facebook-posts-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
+
 
   let lastErr: unknown = null;
   for (const [actor, input] of attempts) {
