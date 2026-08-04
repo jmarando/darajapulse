@@ -1760,6 +1760,15 @@ const CampaignDetail = () => {
         )}
       </Card>
 
+      <EditCreatorDialog
+        influencerId={editCreatorId}
+        open={!!editCreatorId}
+        onOpenChange={(v) => { if (!v) setEditCreatorId(null); }}
+        onSaved={load}
+      />
+
+
+
       {/* Posts grid (merged from old Content tab) */}
       <Card id="posts-section" className="p-5 mb-6">
         <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
