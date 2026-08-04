@@ -64,6 +64,7 @@ import EmailReportsSection from "./EmailReportsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
+import { EditCreatorDialog } from "@/components/EditCreatorDialog";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
 import { buildAudience } from "@/lib/audience";
@@ -95,6 +96,7 @@ const CampaignDetail = () => {
   const [editFee, setEditFee] = useState<string>("");
   const [editBreakdown, setEditBreakdown] = useState<Breakdown>({});
   const [selectedCi, setSelectedCi] = useState<any>(null);
+  const [editCreatorId, setEditCreatorId] = useState<string | null>(null);
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
   const [generatingLearnings, setGeneratingLearnings] = useState(false);
@@ -1738,6 +1740,9 @@ const CampaignDetail = () => {
                               <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); const norm = normalizeBreakdown(x.deliverables_breakdown, x.influencers?.primary_platform || "tiktok"); setEditBreakdown(Object.keys(norm).length ? norm : { [x.influencers?.primary_platform || "tiktok"]: { video: Number(x.deliverables_count) || 1 } }); }}>
                                 <Pencil className="w-4 h-4 mr-2" /> Edit fee & posts
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setEditCreatorId(x.influencer_id)}>
+                                <Users className="w-4 h-4 mr-2" /> Edit creator profile & handles
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => removeCi(x)} className="text-destructive focus:text-destructive">
                                 <Trash2 className="w-4 h-4 mr-2" /> Remove from campaign
@@ -1754,6 +1759,15 @@ const CampaignDetail = () => {
           </div>
         )}
       </Card>
+
+      <EditCreatorDialog
+        influencerId={editCreatorId}
+        open={!!editCreatorId}
+        onOpenChange={(v) => { if (!v) setEditCreatorId(null); }}
+        onSaved={load}
+      />
+
+
 
       {/* Posts grid (merged from old Content tab) */}
       <Card id="posts-section" className="p-5 mb-6">
