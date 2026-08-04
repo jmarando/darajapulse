@@ -23,6 +23,8 @@ import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
 import { PostMetricsEditor } from "@/components/PostMetricsEditor";
 import { PlatformPicker } from "@/components/PlatformPicker";
+import { StoriesSection } from "@/pages/app/StoriesSection";
+
 // ContestsSection moved to top-level /app/contests
 const LinkedContestsCard = ({ campaignId }: { campaignId: string }) => {
   const [rows, setRows] = useState<any[]>([]);
