@@ -1659,7 +1659,26 @@ const CampaignDetail = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3 capitalize text-muted-foreground">{x.influencers?.primary_platform}</td>
+                      <td className="px-3 py-3 text-muted-foreground">
+                        {(() => {
+                          const list: string[] = [];
+                          const prim = x.influencers?.primary_platform;
+                          if (prim) list.push(String(prim).toLowerCase());
+                          for (const raw of (x.influencers?.alt_handles ?? [])) {
+                            const s = String(raw);
+                            const plat = s.includes(":") ? s.split(":")[0].trim().toLowerCase() : "";
+                            if (plat && !list.includes(plat)) list.push(plat);
+                          }
+                          if (list.length === 0) return "—";
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {list.map(p => (
+                                <span key={p} className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[10px] capitalize leading-none">{p}</span>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="px-3 py-3">
                         <span className="inline-flex items-center gap-1.5">
                           <span className={`w-1.5 h-1.5 rounded-full ${statusDot[x.status] ?? "bg-muted-foreground/40"}`} />
