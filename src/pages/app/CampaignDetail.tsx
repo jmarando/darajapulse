@@ -291,9 +291,12 @@ const CampaignDetail = () => {
 
   const addPost = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload: any = { ...post, campaign_id: id, status: "live" };
+    if (!payload.influencer_id) payload.influencer_id = null;
+    if (!payload.caption) payload.caption = null;
     const { data: inserted, error } = await supabase
       .from("posts")
-      .insert({ ...post, campaign_id: id, status: "live" })
+      .insert(payload)
       .select("id")
       .single();
     if (error) return toast.error(error.message);
