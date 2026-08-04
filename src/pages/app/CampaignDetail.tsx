@@ -23,6 +23,8 @@ import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
 import { PostMetricsEditor } from "@/components/PostMetricsEditor";
 import { PlatformPicker } from "@/components/PlatformPicker";
+import { StoriesSection } from "@/pages/app/StoriesSection";
+
 // ContestsSection moved to top-level /app/contests
 const LinkedContestsCard = ({ campaignId }: { campaignId: string }) => {
   const [rows, setRows] = useState<any[]>([]);
@@ -1924,6 +1926,15 @@ const CampaignDetail = () => {
         </div>
         <a href={`/app/content?campaign=${id}`} className="text-sm text-accent hover:underline">Open in Content module →</a>
       </Card>
+
+      <StoriesSection
+        campaignId={id!}
+        roster={ci}
+        posts={posts}
+        startDate={c?.start_date}
+        endDate={c?.end_date}
+      />
+
 
         </TabsContent>
 

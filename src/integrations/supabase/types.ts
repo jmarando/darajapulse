@@ -2393,6 +2393,99 @@ export type Database = {
           },
         ]
       }
+      stories: {
+        Row: {
+          campaign_id: string
+          caption: string | null
+          created_at: string
+          created_by: string | null
+          exits: number | null
+          expires_at: string | null
+          external_id: string | null
+          id: string
+          impressions: number | null
+          influencer_id: string
+          link_clicks: number | null
+          media_url: string | null
+          notes: string | null
+          permalink: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          posted_at: string
+          reach: number | null
+          replies: number | null
+          source: string
+          taps_back: number | null
+          taps_forward: number | null
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          campaign_id: string
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          exits?: number | null
+          expires_at?: string | null
+          external_id?: string | null
+          id?: string
+          impressions?: number | null
+          influencer_id: string
+          link_clicks?: number | null
+          media_url?: string | null
+          notes?: string | null
+          permalink?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
+          posted_at?: string
+          reach?: number | null
+          replies?: number | null
+          source?: string
+          taps_back?: number | null
+          taps_forward?: number | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          campaign_id?: string
+          caption?: string | null
+          created_at?: string
+          created_by?: string | null
+          exits?: number | null
+          expires_at?: string | null
+          external_id?: string | null
+          id?: string
+          impressions?: number | null
+          influencer_id?: string
+          link_clicks?: number | null
+          media_url?: string | null
+          notes?: string | null
+          permalink?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
+          posted_at?: string
+          reach?: number | null
+          replies?: number | null
+          source?: string
+          taps_back?: number | null
+          taps_forward?: number | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stories_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stories_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppressed_emails: {
         Row: {
           created_at: string
