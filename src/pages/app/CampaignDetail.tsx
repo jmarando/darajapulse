@@ -1925,6 +1925,15 @@ const CampaignDetail = () => {
         <a href={`/app/content?campaign=${id}`} className="text-sm text-accent hover:underline">Open in Content module →</a>
       </Card>
 
+      <StoriesSection
+        campaignId={id!}
+        roster={ci}
+        posts={posts}
+        startDate={c?.start_date}
+        endDate={c?.end_date}
+      />
+
+
         </TabsContent>
 
         <TabsContent value="contests" className="space-y-6 mt-0">
