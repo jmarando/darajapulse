@@ -95,6 +95,7 @@ const CampaignDetail = () => {
   const [editFee, setEditFee] = useState<string>("");
   const [editBreakdown, setEditBreakdown] = useState<Breakdown>({});
   const [selectedCi, setSelectedCi] = useState<any>(null);
+  const [editCreatorId, setEditCreatorId] = useState<string | null>(null);
   const [learnings, setLearnings] = useState<string>("");
   const [savingLearnings, setSavingLearnings] = useState(false);
   const [generatingLearnings, setGeneratingLearnings] = useState(false);
