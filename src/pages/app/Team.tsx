@@ -168,7 +168,11 @@ const Team = () => {
                 <div>
                   <div className="font-medium">{m.full_name || m.email || m.user_id.slice(0, 8)}</div>
                   <div className="text-xs text-muted-foreground">{m.email}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{accessStatus(m).hint}</div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={accessStatus(m).variant}>{accessStatus(m).label}</Badge>
+
                 <div className="flex items-center gap-2">
                   {m.title && m.title !== "agency_admin" && !m.roles.includes(m.title) && (
                     <Badge variant="outline">{titleLabel(m.title)}</Badge>
