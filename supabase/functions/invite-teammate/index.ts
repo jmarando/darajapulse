@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           templateName: "workspace-access",
           recipientEmail: cleanEmail,
-          idempotencyKey: `teammate-welcome-${callerAgencyId ?? "na"}-${userId}-${Date.now()}`,
+          idempotencyKey: `teammate-access-${callerAgencyId ?? "na"}-${userId}-${newRole}`,
           templateData: { org_name: orgName, access_label: newRole === "agency_admin" ? "agency admin" : "account manager", sign_in_url: `${CANONICAL_APP_ORIGIN}/auth` },
         }),
       });

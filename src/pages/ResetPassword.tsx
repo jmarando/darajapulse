@@ -27,7 +27,7 @@ const ResetPassword = () => {
       const params = url.searchParams;
 
       // 1. Surface expired / already-used links before inspecting any existing session.
-      const hashErr = hash.get("error_description") || hash.get("error");
+      const hashErr = hash.get("error_description") || hash.get("error") || params.get("error_description") || params.get("error");
       if (hashErr) { setFailed(decodeURIComponent(hashErr.replace(/\+/g, " "))); return; }
 
       // 2. Redeem the link before trusting a browser session that may belong to
