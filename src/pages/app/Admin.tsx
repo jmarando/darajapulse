@@ -127,7 +127,7 @@ function AgenciesTab() {
     const shouldInvite = (isNew || emailChanged) && orgId && payload.support_email;
     if (shouldInvite) {
       const { error: invErr } = await supabase.functions.invoke("invite-org-admin", {
-        body: { kind: "agency", org_id: orgId, email: payload.support_email },
+        body: { kind: "agency", org_id: orgId, email: payload.support_email, role: "agency_admin" },
       });
       if (invErr) toast({ title: "Saved, but invite failed", description: invErr.message, variant: "destructive" });
       else toast({ title: "Saved", description: `Welcome email sent to ${payload.support_email}` });
@@ -238,7 +238,7 @@ function BrandOrgsTab() {
     const shouldInvite = (isNew || emailChanged) && orgId && b.support_email;
     if (shouldInvite) {
       const { error: invErr } = await supabase.functions.invoke("invite-org-admin", {
-        body: { kind: "brand_org", org_id: orgId, email: b.support_email },
+        body: { kind: "brand_org", org_id: orgId, email: b.support_email, role: "brand_owner" },
       });
       if (invErr) toast({ title: "Saved, but invite failed", description: invErr.message, variant: "destructive" });
       else toast({ title: "Saved", description: `Welcome email sent to ${b.support_email}` });
