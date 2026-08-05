@@ -17,7 +17,21 @@ type Member = {
   full_name: string | null;
   title: string | null;
   roles: string[];
+  invited_at?: string | null;
+  confirmed_at?: string | null;
+  last_sign_in_at?: string | null;
 };
+
+const fmtDate = (v?: string | null) =>
+  v ? new Date(v).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "";
+
+const accessStatus = (m: Member) => {
+  if (m.last_sign_in_at) return { label: "Active", variant: "default" as const, hint: `Last sign-in ${fmtDate(m.last_sign_in_at)}` };
+  if (m.confirmed_at) return { label: "Accepted", variant: "secondary" as const, hint: `Accepted ${fmtDate(m.confirmed_at)}` };
+  if (m.invited_at) return { label: "Invite sent", variant: "outline" as const, hint: `Invited ${fmtDate(m.invited_at)}` };
+  return { label: "Pending", variant: "outline" as const, hint: "Has not signed in yet" };
+};
+
 
 const Team = () => {
   const { roles: myRoles, user } = useAuth();
