@@ -256,13 +256,29 @@ function mapFacebookItem(item: any) {
 const hasSignal = (s: any) =>
   [s?.views, s?.likes, s?.comments, s?.shares, s?.saves].some((v) => Number(v || 0) > 0);
 
+// Facebook play counts are not exposed by the post/reel scrapers; a dedicated
+// actor resolves reel/watch URLs to their exact play count.
+async function apifyFacebookPlayCount(url: string): Promise<number | undefined> {
+  try {
+    const items = await runApifyActor(
+      "social_developer~facebook-playcount-scraper",
+      { startUrls: [{ url }], maxConcurrency: 1, maxRetriesPerUrl: 3 },
+    );
+    const n = Number(items?.[0]?.play_count);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  } catch (e) {
+    console.error("Apify facebook playcount failed:", (e as Error).message);
+    return undefined;
+  }
+}
+
 // Facebook permalinks come in several shapes (feed posts, /photo?fbid=, /reel/).
 // A single actor can't handle all of them, so try the specialised ones in order.
 async function apifyFacebook(url: string) {
-  const isReel = /\/reel\/|\/videos?\/|fb\.watch/i.test(url);
+  const isVideo = /\/reel\/|\/videos?\/|fb\.watch|watch\/?\?v=/i.test(url);
   const isPhoto = /\/photo/i.test(url);
   const attempts: Array<[string, any]> = [];
-  if (isReel) {
+  if (isVideo) {
     // posts-scraper reliably returns reaction/comment data for /reel/ URLs;
     // the dedicated reels actor often replies "Empty or private data".
     attempts.push(["apify~facebook-posts-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
@@ -276,7 +292,8 @@ async function apifyFacebook(url: string) {
 
   attempts.push(["apify~facebook-posts-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
 
-
+  // Play count runs in parallel with the engagement scrapers for video URLs.
+  const playCountPromise = isVideo ? apifyFacebookPlayCount(url) : Promise.resolve(undefined);
 
   let lastErr: unknown = null;
   for (const [actor, input] of attempts) {
@@ -285,14 +302,25 @@ async function apifyFacebook(url: string) {
       const item = items?.[0];
       if (!item) continue;
       const mapped = mapFacebookItem(item);
-      if (hasSignal(mapped.stats)) return mapped;
+      if (hasSignal(mapped.stats)) {
+        const plays = await playCountPromise;
+        if (plays && !Number(mapped.stats.views || 0)) mapped.stats.views = plays;
+        return mapped;
+      }
     } catch (e) {
       lastErr = e;
       console.error(`Apify facebook actor ${actor} failed:`, (e as Error).message);
     }
   }
+
+  // Engagement scrapers all failed — still return views if we got a play count.
+  const plays = await playCountPromise;
+  if (plays) {
+    return { stats: { views: plays }, thumb: null, caption: null, postedAt: null };
+  }
   throw new Error(`Apify facebook: no usable data${lastErr ? ` (${(lastErr as Error).message})` : ""}`);
 }
+
 
 async function apifyFetch(kind: "instagram" | "facebook" | "tiktok", url: string) {
   if (kind === "facebook") return await apifyFacebook(url);
