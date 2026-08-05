@@ -82,7 +82,12 @@ const ResetPassword = () => {
           <h1 className="font-display text-3xl font-semibold">Set a new password</h1>
         </div>
         <Card className="p-6 shadow-elegant">
-          {!ready ? (
+          {failed ? (
+            <div className="space-y-4">
+              <p className="text-sm text-destructive">{failed}</p>
+              <Button variant="outline" className="w-full" onClick={() => nav("/auth")}>Back to sign in</Button>
+            </div>
+          ) : !ready ? (
             <p className="text-sm text-muted-foreground">Validating reset link…</p>
           ) : (
             <form onSubmit={submit} className="space-y-4">
@@ -90,6 +95,7 @@ const ResetPassword = () => {
               <Button type="submit" className="w-full bg-primary" disabled={busy}>{busy ? "…" : "Update password"}</Button>
             </form>
           )}
+
         </Card>
       </div>
     </div>
