@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { safeAppUrl, setupUrlFrom } from "../_shared/app-url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,8 +47,8 @@ Deno.serve(async (req) => {
       if (kind === "brand_org" && !validBrandRoles.has(requestedRole)) return json({ error: "invalid role for brand_org" }, 400);
     }
 
-    const appUrl = redirect_to || "https://darajapulse.com/app";
-    const setupUrl = appUrl.replace(/\/app\/?$/, "/reset-password");
+    const appUrl = safeAppUrl(redirect_to);
+    const setupUrl = setupUrlFrom(appUrl);
 
     const table = kind === "agency" ? "agencies" : "brand_orgs";
     const { data: org } = await admin.from(table).select("name").eq("id", org_id).maybeSingle();
