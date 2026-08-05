@@ -69,11 +69,25 @@ const Team = () => {
     });
     const ids = Array.from(byUser.keys());
     if (ids.length === 0) { setMembers([]); setLoading(false); return; }
-    const { data: profs } = await (supabase as any).rpc("get_profiles_by_ids", { _ids: ids });
+    const [{ data: profs }, { data: statuses }] = await Promise.all([
+      (supabase as any).rpc("get_profiles_by_ids", { _ids: ids }),
+      (supabase as any).rpc("get_user_access_status", { _ids: ids }),
+    ]);
     const list: Member[] = ids.map((id) => {
       const p = (profs ?? []).find((x: any) => x.id === id);
-      return { user_id: id, email: p?.email ?? null, full_name: p?.full_name ?? null, title: (p as any)?.title ?? null, roles: byUser.get(id) ?? [] };
+      const s = (statuses ?? []).find((x: any) => x.id === id);
+      return {
+        user_id: id,
+        email: p?.email ?? null,
+        full_name: p?.full_name ?? null,
+        title: (p as any)?.title ?? null,
+        roles: byUser.get(id) ?? [],
+        invited_at: s?.invited_at ?? null,
+        confirmed_at: s?.confirmed_at ?? null,
+        last_sign_in_at: s?.last_sign_in_at ?? null,
+      };
     });
+
     list.sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
     setMembers(list);
     setLoading(false);
