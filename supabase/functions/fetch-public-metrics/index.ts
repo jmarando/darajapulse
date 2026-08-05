@@ -454,7 +454,7 @@ async function scrape(platform: string, url: string) {
   if (isTikTok) return await scrapeTikTokHtml(url);
   if (isYouTube) return await scrapeYouTubeHtml(url);
   if (isInsta) throw new Error("Instagram fetch failed — Ensemble plan expired and Apify fallback returned nothing");
-  if (isFacebook) throw new Error("Facebook public metrics aren't available via API — enter manually or connect the page");
+  if (isFacebook) throw new Error("Facebook scrapers returned no data for this URL — it may be private/age-restricted. Enter metrics manually or connect the Page.");
   throw new Error(`No scraper for platform: ${platform}`);
 }
 
