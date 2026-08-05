@@ -224,6 +224,9 @@ async function runApifyActor(actor: string, input: any): Promise<any[]> {
 
 function mapFacebookItem(item: any) {
   const sfv = item?.short_form_video_context ?? {};
+  // Photo/feed permalinks come back in FB's GraphQL shape instead of the flat one.
+  const fb = item?.feedback ?? item?.creation_story?.feedback ?? item?.container_story?.feedback ?? {};
+  const story = item?.container_story ?? item?.creation_story ?? {};
   const numish = (v: any) => {
     if (v === null || v === undefined) return undefined;
     const n = typeof v === "number" ? v : parseInt(String(v).replace(/[,_]/g, ""), 10);
@@ -233,24 +236,37 @@ function mapFacebookItem(item: any) {
     stats: {
       views: numish(
         item?.viewsCount ?? item?.videoViewCount ?? item?.playCount ?? item?.videoPlayCount ??
-        item?.video_view_count ?? sfv?.video?.play_count ?? sfv?.playback_video?.play_count,
+        item?.video_view_count ?? sfv?.video?.play_count ?? sfv?.playback_video?.play_count ??
+        fb?.video_view_count ?? fb?.video_post_view_count,
       ),
       likes: numish(
         item?.likesCount ?? item?.reactionsCount ?? item?.likes ?? item?.reactions?.like ??
-        item?.unified_reactors?.count ?? item?.likers?.count,
+        item?.unified_reactors?.count ?? item?.likers?.count ??
+        fb?.reactors?.count ?? fb?.unified_reactors?.count ?? fb?.top_reactions?.edges?.[0]?.reaction_count,
       ),
-      comments: numish(item?.commentsCount ?? item?.comments ?? item?.total_comment_count),
-      shares: numish(item?.sharesCount ?? item?.shares ?? item?.share_count_reduced ?? item?.share_count?.count),
+      comments: numish(
+        item?.commentsCount ?? item?.comments ?? item?.total_comment_count ??
+        fb?.total_comment_count ?? fb?.comment_rendering_instance?.comments?.total_count ??
+        fb?.comments?.total_count,
+      ),
+      shares: numish(
+        item?.sharesCount ?? item?.shares ?? item?.share_count_reduced ?? item?.share_count?.count ??
+        fb?.share_count?.count ?? fb?.reshare_count,
+      ),
     },
-    thumb: item?.thumbnailUrl ?? item?.previewImage ?? item?.imageUrl ?? item?.image ??
+    thumb: item?.thumbnailUrl ?? item?.previewImage ?? item?.imageUrl ??
+      (typeof item?.image === "string" ? item.image : item?.image?.uri) ??
       sfv?.video?.first_frame_thumbnail ?? sfv?.playback_video?.preferred_thumbnail?.image?.uri ?? null,
     caption: (typeof item?.text === "string" ? item.text : null) ?? item?.message?.text ??
-      (typeof item?.message === "string" ? item.message : null) ?? item?.description ?? null,
+      (typeof item?.message === "string" ? item.message : null) ??
+      story?.message?.text ?? item?.description ?? null,
     postedAt: toIso(
-      item?.time ?? item?.timestamp ?? item?.date ?? item?.publishedTime ?? item?.creation_time,
+      item?.time ?? item?.timestamp ?? item?.date ?? item?.publishedTime ?? item?.creation_time ??
+      item?.created_time ?? story?.creation_time,
     ),
   };
 }
+
 
 
 const hasSignal = (s: any) =>
@@ -438,7 +454,7 @@ async function scrape(platform: string, url: string) {
   if (isTikTok) return await scrapeTikTokHtml(url);
   if (isYouTube) return await scrapeYouTubeHtml(url);
   if (isInsta) throw new Error("Instagram fetch failed — Ensemble plan expired and Apify fallback returned nothing");
-  if (isFacebook) throw new Error("Facebook public metrics aren't available via API — enter manually or connect the page");
+  if (isFacebook) throw new Error("Facebook scrapers returned no data for this URL — it may be private/age-restricted. Enter metrics manually or connect the Page.");
   throw new Error(`No scraper for platform: ${platform}`);
 }
 
