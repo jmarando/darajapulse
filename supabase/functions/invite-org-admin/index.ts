@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { safeAppUrl, setupUrlFrom } from "../_shared/app-url.ts";
+import { CANONICAL_APP_ORIGIN, setupUrlFrom } from "../_shared/app-url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { kind, org_id, redirect_to } = body;
+    const { kind, org_id } = body;
     // Accept single email or list; also accept explicit role
     const rawEmails: string[] = Array.isArray(body.emails)
       ? body.emails
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
       if (kind === "brand_org" && !validBrandRoles.has(requestedRole)) return json({ error: "invalid role for brand_org" }, 400);
     }
 
-    const appUrl = safeAppUrl(redirect_to);
+    const appUrl = `${CANONICAL_APP_ORIGIN}/app`;
     const setupUrl = setupUrlFrom(appUrl);
 
     const table = kind === "agency" ? "agencies" : "brand_orgs";
@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
       } else {
         const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
           redirectTo: setupUrl,
-          data: { org_name: orgName, org_kind: kind },
+          data: { org_name: orgName, access_label: requestedRole || (kind === "agency" ? "agency admin" : "brand owner") },
         });
         if (invErr || !invited?.user) { results.push({ email: cleanEmail, error: invErr?.message ?? "invite failed" }); continue; }
         userId = invited.user.id;
@@ -95,21 +95,10 @@ Deno.serve(async (req) => {
         if (roleErr) { results.push({ email: cleanEmail, error: roleErr.message }); continue; }
       }
 
-      // For existing users: inviteUserByEmail wasn't called, so send a welcome
-      // email with a password-recovery link so they explicitly (re)set a password.
+      // Existing users keep their current password and receive a normal sign-in link.
       let welcomeSent = false;
       let welcomeError: string | null = null;
       if (existed) {
-        let signInUrl = setupUrl;
-        try {
-          const { data: linkData } = await admin.auth.admin.generateLink({
-            type: "recovery",
-            email: cleanEmail,
-            options: { redirectTo: setupUrl },
-          });
-          if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
-        } catch (_) { /* fall back to app url */ }
-
         const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
           method: "POST",
           headers: {
@@ -118,10 +107,10 @@ Deno.serve(async (req) => {
             "apikey": SERVICE_KEY,
           },
           body: JSON.stringify({
-            templateName: "org-admin-welcome",
+            templateName: "workspace-access",
             recipientEmail: cleanEmail,
-            idempotencyKey: `org-admin-welcome-${org_id}-${userId}-${Date.now()}`,
-            templateData: { org_name: orgName, org_kind: kind, sign_in_url: signInUrl, app_url: appUrl },
+            idempotencyKey: `workspace-access-${org_id}-${userId}-${requestedRole || kind}`,
+            templateData: { org_name: orgName, access_label: requestedRole || (kind === "agency" ? "agency admin" : "brand owner"), sign_in_url: `${CANONICAL_APP_ORIGIN}/auth` },
           }),
         });
         if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;

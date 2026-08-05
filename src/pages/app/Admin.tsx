@@ -127,7 +127,7 @@ function AgenciesTab() {
     const shouldInvite = (isNew || emailChanged) && orgId && payload.support_email;
     if (shouldInvite) {
       const { error: invErr } = await supabase.functions.invoke("invite-org-admin", {
-        body: { kind: "agency", org_id: orgId, email: payload.support_email, redirect_to: `${window.location.origin}/app` },
+        body: { kind: "agency", org_id: orgId, email: payload.support_email, role: "agency_admin" },
       });
       if (invErr) toast({ title: "Saved, but invite failed", description: invErr.message, variant: "destructive" });
       else toast({ title: "Saved", description: `Welcome email sent to ${payload.support_email}` });
@@ -238,7 +238,7 @@ function BrandOrgsTab() {
     const shouldInvite = (isNew || emailChanged) && orgId && b.support_email;
     if (shouldInvite) {
       const { error: invErr } = await supabase.functions.invoke("invite-org-admin", {
-        body: { kind: "brand_org", org_id: orgId, email: b.support_email, redirect_to: `${window.location.origin}/app` },
+        body: { kind: "brand_org", org_id: orgId, email: b.support_email, role: "brand_owner" },
       });
       if (invErr) toast({ title: "Saved, but invite failed", description: invErr.message, variant: "destructive" });
       else toast({ title: "Saved", description: `Welcome email sent to ${b.support_email}` });
@@ -694,7 +694,7 @@ function PeopleDialog({ kind, org, onClose }: { kind: OrgKind; org: any; onClose
     if (!list.length) return toast({ title: "Enter at least one valid email", variant: "destructive" });
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("invite-org-admin", {
-      body: { kind, org_id: org.id, emails: list, role, redirect_to: `${window.location.origin}/app` },
+      body: { kind, org_id: org.id, emails: list, role },
     });
     setBusy(false);
     if (error) return toast({ title: "Invite failed", description: error.message, variant: "destructive" });

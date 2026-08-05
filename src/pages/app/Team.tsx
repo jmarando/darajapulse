@@ -82,7 +82,7 @@ const Team = () => {
     const permission = role === "agency_admin" ? "agency_admin" : "account_manager";
     const title = role;
     const { data, error } = await supabase.functions.invoke("invite-teammate", {
-      body: { email, role: permission, title, redirect_to: `${window.location.origin}/app` },
+      body: { email, role: permission, title },
     });
     setBusy(false);
     if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Invite failed");

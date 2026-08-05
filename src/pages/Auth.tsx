@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import logo from "@/assets/logo-pulse-mark.png";
+import { authRedirectUrl } from "@/lib/appUrl";
 
 const safeNext = (raw: string | null): string | null => {
   if (!raw) return null;
@@ -44,7 +45,7 @@ const Auth = () => {
     e.preventDefault();
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: authRedirectUrl("/reset-password"),
     });
     setBusy(false);
     if (error) return toast.error(error.message);
@@ -55,8 +56,8 @@ const Auth = () => {
   const google = async () => {
     setBusy(true);
     const redirect_uri = nextParam
-      ? `${window.location.origin}${nextParam}`
-      : `${window.location.origin}/app`;
+      ? `https://darajapulse.com${nextParam}`
+      : "https://darajapulse.com/app";
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
     if (result.error) { setBusy(false); return toast.error("Google sign-in failed"); }
     if (result.redirected) return;

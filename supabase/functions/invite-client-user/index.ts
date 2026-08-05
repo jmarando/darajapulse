@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { safeAppUrl, setupUrlFrom } from "../_shared/app-url.ts";
+import { CANONICAL_APP_ORIGIN, safeAppUrl, setupUrlFrom } from "../_shared/app-url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,11 +26,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { client_id, email, redirect_to, campaign_ids } = await req.json();
+    const { client_id, email, campaign_ids } = await req.json();
     if (!client_id || !email) return new Response(JSON.stringify({ error: "client_id and email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const campaignIds: string[] = Array.isArray(campaign_ids) ? campaign_ids.filter((x) => typeof x === "string") : [];
 
     const cleanEmail = String(email).trim().toLowerCase();
+    const setupUrl = setupUrlFrom(safeAppUrl(null, "/portal"));
 
     // Find or invite the auth user
     let userId: string | null = null;
@@ -40,7 +41,8 @@ Deno.serve(async (req) => {
       userId = found.id;
     } else {
       const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: setupUrlFrom(safeAppUrl(redirect_to, "/portal")),
+        redirectTo: setupUrl,
+        data: { access_label: "client workspace member" },
       });
       if (invErr || !invited?.user) {
         return new Response(JSON.stringify({ error: invErr?.message ?? "invite failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -74,7 +76,34 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, user_id: userId, existed: !!found, scoped_campaigns: campaignIds.length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    let accessEmailSent = false;
+    let accessEmailError: string | null = null;
+    if (found) {
+      const { data: client } = await admin.from("clients").select("name").eq("id", client_id).maybeSingle();
+      const clientName = client?.name || "your client workspace";
+      const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader || `Bearer ${SERVICE_KEY}`,
+          "apikey": SERVICE_KEY,
+        },
+        body: JSON.stringify({
+          templateName: "workspace-access",
+          recipientEmail: cleanEmail,
+          idempotencyKey: `client-access-${client_id}-${userId}`,
+          templateData: {
+            org_name: clientName,
+            access_label: "client workspace member",
+            sign_in_url: `${CANONICAL_APP_ORIGIN}/auth?next=%2Fportal`,
+          },
+        }),
+      });
+      if (mailRes.ok) accessEmailSent = true;
+      else accessEmailError = `${mailRes.status}: ${await mailRes.text()}`;
+    }
+
+    return new Response(JSON.stringify({ ok: true, user_id: userId, existed: !!found, scoped_campaigns: campaignIds.length, access_email_sent: accessEmailSent, access_email_error: accessEmailError }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }

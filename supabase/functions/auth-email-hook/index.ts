@@ -46,7 +46,7 @@ const FROM_DOMAIN = "darajapulse.com" // Domain shown in From address (may be ro
 // The sample email uses a fixed placeholder (RFC 6761 .test TLD) so the Go backend
 // can always find-and-replace it with the actual recipient when sending test emails,
 // even if the project's domain has changed since the template was scaffolded.
-const SAMPLE_PROJECT_URL = "https://darajapulse.lovable.app"
+const SAMPLE_PROJECT_URL = "https://darajapulse.com"
 const SAMPLE_EMAIL = "user@example.test"
 const SAMPLE_DATA: Record<string, object> = {
   signup: {
@@ -78,6 +78,22 @@ const SAMPLE_DATA: Record<string, object> = {
   reauthentication: {
     token: '123456',
   },
+}
+
+function canonicalConfirmationUrl(rawUrl: string, emailType: string): string {
+  try {
+    const url = new URL(rawUrl)
+    const destination = emailType === 'invite' || emailType === 'recovery'
+      ? 'https://darajapulse.com/reset-password'
+      : 'https://darajapulse.com/auth'
+
+    for (const key of ['redirect_to', 'redirectTo']) {
+      if (url.searchParams.has(key)) url.searchParams.set(key, destination)
+    }
+    return url.toString()
+  } catch {
+    return rawUrl
+  }
 }
 
 // Preview endpoint handler - returns rendered HTML without sending email
@@ -223,7 +239,7 @@ async function handleWebhook(req: Request): Promise<Response> {
     siteName: SITE_NAME,
     siteUrl: `https://${ROOT_DOMAIN}`,
     recipient: payload.data.email,
-    confirmationUrl: payload.data.url,
+    confirmationUrl: canonicalConfirmationUrl(payload.data.url, emailType),
     token: payload.data.token,
     email: payload.data.email,
     oldEmail: payload.data.old_email,

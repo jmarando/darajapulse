@@ -84,7 +84,7 @@ const Clients = () => {
       // Auto-invite the contact email if requested
       if (autoInvite && form.primary_contact_email) {
         const { data, error: invErr } = await supabase.functions.invoke("invite-client-user", {
-          body: { client_id: inserted.id, email: form.primary_contact_email, redirect_to: `${window.location.origin}/portal` },
+          body: { client_id: inserted.id, email: form.primary_contact_email },
         });
         if (invErr || (data as any)?.error) {
           toast.warning("Client added, but invite failed: " + ((data as any)?.error ?? invErr?.message));
@@ -139,7 +139,6 @@ const Clients = () => {
       body: {
         client_id: memberClient.id,
         email: inviteEmail,
-        redirect_to: `${window.location.origin}/portal`,
         campaign_ids: inviteScope === "specific" ? inviteCampaignIds : [],
       },
     });

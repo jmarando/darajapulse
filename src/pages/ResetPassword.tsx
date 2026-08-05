@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,15 +26,12 @@ const ResetPassword = () => {
       const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
       const params = url.searchParams;
 
-      // 1. Already signed in / hash tokens picked up by the SDK
-      const { data: s0 } = await supabase.auth.getSession();
-      if (s0.session) { setReady(true); return; }
-
-      // 2. Hash error (expired / already used link)
-      const hashErr = hash.get("error_description") || hash.get("error");
+      // 1. Surface expired / already-used links before inspecting any existing session.
+      const hashErr = hash.get("error_description") || hash.get("error") || params.get("error_description") || params.get("error");
       if (hashErr) { setFailed(decodeURIComponent(hashErr.replace(/\+/g, " "))); return; }
 
-      // 3. PKCE code flow (?code=...)
+      // 2. Redeem the link before trusting a browser session that may belong to
+      // another person already signed in on this device.
       const code = params.get("code");
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -42,9 +40,11 @@ const ResetPassword = () => {
         return;
       }
 
-      // 4. Token hash flow (?token_hash=...&type=invite|recovery|signup)
+      // 3. Token hash flow (?token_hash=...&type=invite|recovery|signup)
       const tokenHash = params.get("token_hash") || params.get("token");
-      const type = (params.get("type") || "invite") as any;
+      const rawType = params.get("type") || "invite";
+      const allowedTypes: EmailOtpType[] = ["invite", "recovery", "signup", "magiclink", "email_change", "email"];
+      const type: EmailOtpType = allowedTypes.includes(rawType as EmailOtpType) ? rawType as EmailOtpType : "invite";
       if (tokenHash) {
         const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
         if (error) { setFailed(error.message); return; }
@@ -52,7 +52,7 @@ const ResetPassword = () => {
         return;
       }
 
-      // 5. Give the SDK a moment for hash-based sessions, then fail clearly
+      // 4. Hash tokens may be consumed automatically by the SDK.
       setTimeout(async () => {
         const { data } = await supabase.auth.getSession();
         if (data.session) setReady(true);
@@ -70,8 +70,16 @@ const ResetPassword = () => {
     const { error } = await supabase.auth.updateUser({ password });
     setBusy(false);
     if (error) return toast.error(error.message);
+    const { data: roleRows } = await supabase
+      .from("user_roles")
+      .select("role")
+      .in("role", ["agency_admin", "account_manager", "super_admin", "client_user"]);
+    const roles = new Set((roleRows ?? []).map((row) => row.role));
+    const destination = roles.has("client_user") && !roles.has("agency_admin") && !roles.has("account_manager") && !roles.has("super_admin")
+      ? "/portal"
+      : "/app";
     toast.success("Password updated. You're signed in.");
-    nav("/app");
+    nav(destination);
   };
 
   return (
