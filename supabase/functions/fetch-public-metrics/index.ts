@@ -223,18 +223,35 @@ async function runApifyActor(actor: string, input: any): Promise<any[]> {
 }
 
 function mapFacebookItem(item: any) {
+  const sfv = item?.short_form_video_context ?? {};
+  const numish = (v: any) => {
+    if (v === null || v === undefined) return undefined;
+    const n = typeof v === "number" ? v : parseInt(String(v).replace(/[,_]/g, ""), 10);
+    return Number.isFinite(n) ? n : undefined;
+  };
   return {
     stats: {
-      views: item?.viewsCount ?? item?.videoViewCount ?? item?.playCount ?? item?.videoPlayCount,
-      likes: item?.likesCount ?? item?.reactionsCount ?? item?.likes ?? item?.reactions?.like,
-      comments: item?.commentsCount ?? item?.comments,
-      shares: item?.sharesCount ?? item?.shares,
+      views: numish(
+        item?.viewsCount ?? item?.videoViewCount ?? item?.playCount ?? item?.videoPlayCount ??
+        item?.video_view_count ?? sfv?.video?.play_count ?? sfv?.playback_video?.play_count,
+      ),
+      likes: numish(
+        item?.likesCount ?? item?.reactionsCount ?? item?.likes ?? item?.reactions?.like ??
+        item?.unified_reactors?.count ?? item?.likers?.count,
+      ),
+      comments: numish(item?.commentsCount ?? item?.comments ?? item?.total_comment_count),
+      shares: numish(item?.sharesCount ?? item?.shares ?? item?.share_count_reduced ?? item?.share_count?.count),
     },
-    thumb: item?.thumbnailUrl ?? item?.previewImage ?? item?.imageUrl ?? item?.image ?? null,
-    caption: item?.text ?? item?.message ?? item?.description ?? null,
-    postedAt: toIso(item?.time ?? item?.timestamp ?? item?.date ?? item?.publishedTime),
+    thumb: item?.thumbnailUrl ?? item?.previewImage ?? item?.imageUrl ?? item?.image ??
+      sfv?.video?.first_frame_thumbnail ?? sfv?.playback_video?.preferred_thumbnail?.image?.uri ?? null,
+    caption: (typeof item?.text === "string" ? item.text : null) ?? item?.message?.text ??
+      (typeof item?.message === "string" ? item.message : null) ?? item?.description ?? null,
+    postedAt: toIso(
+      item?.time ?? item?.timestamp ?? item?.date ?? item?.publishedTime ?? item?.creation_time,
+    ),
   };
 }
+
 
 const hasSignal = (s: any) =>
   [s?.views, s?.likes, s?.comments, s?.shares, s?.saves].some((v) => Number(v || 0) > 0);
@@ -246,15 +263,19 @@ async function apifyFacebook(url: string) {
   const isPhoto = /\/photo/i.test(url);
   const attempts: Array<[string, any]> = [];
   if (isReel) {
+    // posts-scraper reliably returns reaction/comment data for /reel/ URLs;
+    // the dedicated reels actor often replies "Empty or private data".
+    attempts.push(["apify~facebook-posts-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
     attempts.push(["apify~facebook-reels-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
   }
   if (isPhoto) {
     attempts.push(["apify~facebook-photos-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
   }
-  
+
   attempts.push(["xtracto~facebook-post-detail", { posts: [url] }]);
 
   attempts.push(["apify~facebook-posts-scraper", { startUrls: [{ url }], resultsLimit: 1 }]);
+
 
 
   let lastErr: unknown = null;
