@@ -26,11 +26,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { client_id, email, redirect_to, campaign_ids } = await req.json();
+    const { client_id, email, campaign_ids } = await req.json();
     if (!client_id || !email) return new Response(JSON.stringify({ error: "client_id and email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const campaignIds: string[] = Array.isArray(campaign_ids) ? campaign_ids.filter((x) => typeof x === "string") : [];
 
     const cleanEmail = String(email).trim().toLowerCase();
+    const setupUrl = setupUrlFrom(safeAppUrl(null, "/portal"));
 
     // Find or invite the auth user
     let userId: string | null = null;
@@ -40,7 +41,8 @@ Deno.serve(async (req) => {
       userId = found.id;
     } else {
       const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: setupUrlFrom(safeAppUrl(redirect_to, "/portal")),
+        redirectTo: setupUrl,
+        data: { access_label: "client workspace member" },
       });
       if (invErr || !invited?.user) {
         return new Response(JSON.stringify({ error: invErr?.message ?? "invite failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

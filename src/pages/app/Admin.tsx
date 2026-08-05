@@ -694,7 +694,7 @@ function PeopleDialog({ kind, org, onClose }: { kind: OrgKind; org: any; onClose
     if (!list.length) return toast({ title: "Enter at least one valid email", variant: "destructive" });
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("invite-org-admin", {
-      body: { kind, org_id: org.id, emails: list, role, redirect_to: `${window.location.origin}/app` },
+      body: { kind, org_id: org.id, emails: list, role },
     });
     setBusy(false);
     if (error) return toast({ title: "Invite failed", description: error.message, variant: "destructive" });

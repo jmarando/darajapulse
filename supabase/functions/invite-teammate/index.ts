@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { safeAppUrl, setupUrlFrom } from "../_shared/app-url.ts";
+import { CANONICAL_APP_ORIGIN, setupUrlFrom } from "../_shared/app-url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,13 +29,13 @@ Deno.serve(async (req) => {
     }
     const callerAgencyId: string | null = (roles ?? []).find((r: any) => r.agency_id)?.agency_id ?? null;
 
-    const { email, role, title, redirect_to } = await req.json();
+    const { email, role, title } = await req.json();
     const cleanEmail = String(email ?? "").trim().toLowerCase();
     const newRole: Role = role === "agency_admin" ? "agency_admin" : "account_manager";
     const cleanTitle = typeof title === "string" && title.length ? title : null;
     if (!cleanEmail) return new Response(JSON.stringify({ error: "email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const appUrl = safeAppUrl(redirect_to);
+    const appUrl = `${CANONICAL_APP_ORIGIN}/app`;
     const setupUrl = setupUrlFrom(appUrl);
 
     let userId: string | null = null;
@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
     } else {
       const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
         redirectTo: setupUrl,
+        data: { access_label: newRole === "agency_admin" ? "agency admin" : "account manager" },
       });
       if (invErr || !invited?.user) {
         return new Response(JSON.stringify({ error: invErr?.message ?? "invite failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -60,21 +61,10 @@ Deno.serve(async (req) => {
       await admin.from("user_roles").update({ agency_id: callerAgencyId }).eq("user_id", userId).eq("role", newRole).is("agency_id", null);
     }
 
-    // For existing users, inviteUserByEmail wasn't called → send a recovery link
-    // so they can (re)set a password and learn about their new workspace access.
+    // Existing users keep their current password and receive a normal sign-in link.
     let welcomeSent = false;
     let welcomeError: string | null = null;
     if (found) {
-      let signInUrl = setupUrl;
-      try {
-        const { data: linkData } = await admin.auth.admin.generateLink({
-          type: "recovery",
-          email: cleanEmail,
-          options: { redirectTo: setupUrl },
-        });
-        if (linkData?.properties?.action_link) signInUrl = linkData.properties.action_link;
-      } catch (_) { /* fall back */ }
-
       // Resolve caller's agency name for the welcome email
       let orgName = "your team";
       if (callerAgencyId) {
@@ -90,10 +80,10 @@ Deno.serve(async (req) => {
           "apikey": SERVICE_KEY,
         },
         body: JSON.stringify({
-          templateName: "org-admin-welcome",
+          templateName: "workspace-access",
           recipientEmail: cleanEmail,
           idempotencyKey: `teammate-welcome-${callerAgencyId ?? "na"}-${userId}-${Date.now()}`,
-          templateData: { org_name: orgName, org_kind: "agency", sign_in_url: signInUrl, app_url: appUrl },
+          templateData: { org_name: orgName, access_label: newRole === "agency_admin" ? "agency admin" : "account manager", sign_in_url: `${CANONICAL_APP_ORIGIN}/auth` },
         }),
       });
       if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;

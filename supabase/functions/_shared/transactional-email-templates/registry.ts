@@ -12,7 +12,7 @@ export interface TemplateEntry {
 import { template as contestDailySummary } from './contest-daily-summary.tsx'
 import { template as campaignWeeklyReport } from './campaign-weekly-report.tsx'
 import { template as contestDrawClosed } from './contest-draw-closed.tsx'
-import { template as orgAdminWelcome } from './org-admin-welcome.tsx'
+import { template as workspaceAccess } from './workspace-access.tsx'
 import { template as demoRequest } from './demo-request.tsx'
 import { template as invoiceNotification } from './invoice-notification.tsx'
 import { template as pakakumiOnboarding } from './pakakumi-onboarding.tsx'
@@ -21,7 +21,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'contest-daily-summary': contestDailySummary,
   'campaign-weekly-report': campaignWeeklyReport,
   'contest-draw-closed': contestDrawClosed,
-  'org-admin-welcome': orgAdminWelcome,
+  'workspace-access': workspaceAccess,
   'demo-request': demoRequest,
   'invoice-notification': invoiceNotification,
   'pakakumi-onboarding': pakakumiOnboarding,
