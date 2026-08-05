@@ -17,7 +17,21 @@ type Member = {
   full_name: string | null;
   title: string | null;
   roles: string[];
+  invited_at?: string | null;
+  confirmed_at?: string | null;
+  last_sign_in_at?: string | null;
 };
+
+const fmtDate = (v?: string | null) =>
+  v ? new Date(v).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "";
+
+const accessStatus = (m: Member) => {
+  if (m.last_sign_in_at) return { label: "Active", variant: "default" as const, hint: `Last sign-in ${fmtDate(m.last_sign_in_at)}` };
+  if (m.confirmed_at) return { label: "Accepted", variant: "secondary" as const, hint: `Accepted ${fmtDate(m.confirmed_at)}` };
+  if (m.invited_at) return { label: "Invite sent", variant: "outline" as const, hint: `Invited ${fmtDate(m.invited_at)}` };
+  return { label: "Pending", variant: "outline" as const, hint: "Has not signed in yet" };
+};
+
 
 const Team = () => {
   const { roles: myRoles, user } = useAuth();
@@ -55,11 +69,25 @@ const Team = () => {
     });
     const ids = Array.from(byUser.keys());
     if (ids.length === 0) { setMembers([]); setLoading(false); return; }
-    const { data: profs } = await (supabase as any).rpc("get_profiles_by_ids", { _ids: ids });
+    const [{ data: profs }, { data: statuses }] = await Promise.all([
+      (supabase as any).rpc("get_profiles_by_ids", { _ids: ids }),
+      (supabase as any).rpc("get_user_access_status", { _ids: ids }),
+    ]);
     const list: Member[] = ids.map((id) => {
       const p = (profs ?? []).find((x: any) => x.id === id);
-      return { user_id: id, email: p?.email ?? null, full_name: p?.full_name ?? null, title: (p as any)?.title ?? null, roles: byUser.get(id) ?? [] };
+      const s = (statuses ?? []).find((x: any) => x.id === id);
+      return {
+        user_id: id,
+        email: p?.email ?? null,
+        full_name: p?.full_name ?? null,
+        title: (p as any)?.title ?? null,
+        roles: byUser.get(id) ?? [],
+        invited_at: s?.invited_at ?? null,
+        confirmed_at: s?.confirmed_at ?? null,
+        last_sign_in_at: s?.last_sign_in_at ?? null,
+      };
     });
+
     list.sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
     setMembers(list);
     setLoading(false);
@@ -140,8 +168,10 @@ const Team = () => {
                 <div>
                   <div className="font-medium">{m.full_name || m.email || m.user_id.slice(0, 8)}</div>
                   <div className="text-xs text-muted-foreground">{m.email}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{accessStatus(m).hint}</div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Badge variant={accessStatus(m).variant}>{accessStatus(m).label}</Badge>
                   {m.title && m.title !== "agency_admin" && !m.roles.includes(m.title) && (
                     <Badge variant="outline">{titleLabel(m.title)}</Badge>
                   )}
