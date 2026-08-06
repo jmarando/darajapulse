@@ -191,7 +191,7 @@ const PublicContestSubmit = () => {
               Before we can accept post links for this campaign, please read and sign the creator agreement on your
               brief page. It takes under a minute — then come straight back here.
             </p>
-            <a href={`/brief/${creatorToken}`}>
+            <a href={`/b/${creatorToken}`}>
               <Button size="lg" className="mt-5 h-12 bg-accent text-accent-foreground hover:bg-accent/90">
                 Open my brief & sign
               </Button>
