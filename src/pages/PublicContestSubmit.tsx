@@ -50,6 +50,18 @@ const PublicContestSubmit = () => {
     })();
   }, [creatorToken]);
 
+  // Draft-approval gate — creators must get an MP4 signed off before posting.
+  const loadDrafts = async () => {
+    if (!creatorToken) return;
+    const { data } = await supabase.rpc("get_creator_draft_state" as any, { _brief_token: creatorToken });
+    setDraftState(data ?? null);
+  };
+  useEffect(() => { loadDrafts(); /* eslint-disable-next-line */ }, [creatorToken]);
+
+  const draftsRequired = !!draftState?.required;
+  const draftApproved = !!draftState?.approved_available;
+  const drafts = (draftState?.drafts ?? []) as any[];
+
   // Contract gate — a campaign with an agreement can't accept posts until it's signed.
   const contractBlocked = !!(brief as any)?.contract_required && !(brief as any)?.contract_signed;
 
