@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sparkles, CheckCircle2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Sparkles, CheckCircle2, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 
 /** Work out the platform straight from the pasted link so creators don't have to pick. */
@@ -19,13 +20,19 @@ const detectPlatform = (url: string): string => {
   return "";
 };
 
+const clean = (s?: string | null) => (s || "").trim().replace(/^@+/, "");
+
 const PublicContestSubmit = () => {
   const { token } = useParams();
   const [params] = useSearchParams();
+  // `k` is the creator's personal brief token — when present the form knows who is posting.
+  const creatorToken = params.get("k");
   const [contest, setContest] = useState<any>(null);
+  const [brief, setBrief] = useState<any>(null);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [again, setAgain] = useState(0);
+  const [confirmed, setConfirmed] = useState(false);
   const [form, setForm] = useState({ post_url: "", submitter_email: params.get("e") ?? "", handle: params.get("h") ?? "" });
 
   useEffect(() => {
@@ -35,21 +42,39 @@ const PublicContestSubmit = () => {
     })();
   }, [token]);
 
+  useEffect(() => {
+    if (!creatorToken) return;
+    (async () => {
+      const { data } = await supabase.rpc("get_brief_by_token", { _token: creatorToken });
+      if (data) setBrief(data);
+    })();
+  }, [creatorToken]);
+
   // Campaigns without a prize are collaborations, not contests — copy adapts.
   const isCollab = useMemo(() => !contest?.prize, [contest]);
   const platform = detectPlatform(form.post_url);
+
+  const creator = brief?.influencer ?? null;
+  const creatorHandles: Array<{ platform: string; handle: string }> = useMemo(() => {
+    if (!creator) return [];
+    const out: Array<{ platform: string; handle: string }> = [];
+    if (clean(creator.handle)) out.push({ platform: String(creator.primary_platform || "").toLowerCase(), handle: clean(creator.handle) });
+    return out;
+  }, [creator]);
+  const target = Number(brief?.deliverables_count || 0);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.post_url) return toast.error("Paste your post link");
     if (!platform) return toast.error("That doesn't look like a TikTok, Instagram, Facebook, YouTube or X link");
+    if (creator && !confirmed) return toast.error("Please confirm the post meets the brief");
     setLoading(true);
     const { error } = await supabase.rpc("submit_contest_entry", {
       _token: token!,
       _platform: platform,
       _post_url: form.post_url,
-      _handle: form.handle,
-      _submitter_name: "",
+      _handle: creator ? clean(creator.handle) : form.handle,
+      _submitter_name: creator ? creator.full_name ?? "" : "",
       _submitter_email: form.submitter_email,
     });
     setLoading(false);
@@ -64,7 +89,9 @@ const PublicContestSubmit = () => {
       <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-background to-secondary">
         <Card className="p-10 max-w-md text-center">
           <CheckCircle2 className="w-14 h-14 text-success mx-auto mb-4" />
-          <h1 className="font-display text-3xl mb-2">Post received</h1>
+          <h1 className="font-display text-3xl mb-2">
+            {creator ? `Thanks, ${String(creator.full_name || "").split(" ")[0]}` : "Post received"}
+          </h1>
           <p className="text-muted-foreground">
             {isCollab
               ? "It's now tracked against your deliverables. Come back and submit each new post as it goes live."
@@ -75,6 +102,7 @@ const PublicContestSubmit = () => {
             className="mt-6"
             onClick={() => {
               setForm({ ...form, post_url: "" });
+              setConfirmed(false);
               setSubmitted(false);
               setAgain(again + 1);
             }}
@@ -113,6 +141,37 @@ const PublicContestSubmit = () => {
             </p>
           )}
         </div>
+
+        {/* Personalised header — the creator is already identified by their link. */}
+        {creator && (
+          <Card className="p-4 mb-4 flex items-center gap-3">
+            <div className="w-11 h-11 shrink-0 rounded-full bg-secondary flex items-center justify-center font-display text-lg uppercase">
+              {String(creator.full_name || "?")[0]}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium truncate">{creator.full_name}</span>
+                <BadgeCheck className="w-3.5 h-3.5 text-success shrink-0" />
+              </div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {creatorHandles.map((h) => (
+                  <span key={h.platform + h.handle} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] leading-none">
+                    <span className="capitalize text-muted-foreground">{h.platform || "handle"}</span>
+                    <span className="font-mono">@{h.handle}</span>
+                  </span>
+                ))}
+                {creatorHandles.length === 0 && <span className="text-xs text-muted-foreground">Handle on file</span>}
+              </div>
+            </div>
+            {target > 0 && (
+              <div className="text-right shrink-0">
+                <div className="font-display text-xl leading-none">{target}</div>
+                <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Posts due</div>
+              </div>
+            )}
+          </Card>
+        )}
+
         <Card className="p-5 sm:p-6">
           <form onSubmit={submit} className="space-y-5">
             <div>
@@ -134,31 +193,45 @@ const PublicContestSubmit = () => {
                 )}
               </p>
             </div>
-            <div>
-              <Label className="text-sm">Email you registered with *</Label>
-              <Input
-                required
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={form.submitter_email}
-                onChange={(e) => setForm({ ...form, submitter_email: e.target.value })}
-                placeholder="you@email.com"
-                className="h-12 text-base mt-1.5"
-              />
-              <p className="text-xs text-muted-foreground mt-1.5">We use this to match the post to your profile — nothing else needed.</p>
-            </div>
-            <div>
-              <Label className="text-sm">Handle used <span className="text-muted-foreground font-normal">(only if it's new to us)</span></Label>
-              <Input
-                value={form.handle}
-                onChange={(e) => setForm({ ...form, handle: e.target.value })}
-                placeholder="@yourhandle"
-                autoCapitalize="none"
-                autoCorrect="off"
-                className="h-12 text-base mt-1.5"
-              />
-            </div>
+
+            {creator ? (
+              <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
+                <Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(v === true)} className="mt-0.5" />
+                <span className="text-sm leading-snug">
+                  This post is live and follows the brief — includes{" "}
+                  <span className="font-mono font-medium">{contest.hashtag}</span> and the required brand mentions.
+                </span>
+              </label>
+            ) : (
+              <>
+                <div>
+                  <Label className="text-sm">Email you registered with *</Label>
+                  <Input
+                    required
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={form.submitter_email}
+                    onChange={(e) => setForm({ ...form, submitter_email: e.target.value })}
+                    placeholder="you@email.com"
+                    className="h-12 text-base mt-1.5"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1.5">We use this to match the post to your profile — nothing else needed.</p>
+                </div>
+                <div>
+                  <Label className="text-sm">Handle used <span className="text-muted-foreground font-normal">(only if it's new to us)</span></Label>
+                  <Input
+                    value={form.handle}
+                    onChange={(e) => setForm({ ...form, handle: e.target.value })}
+                    placeholder="@yourhandle"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    className="h-12 text-base mt-1.5"
+                  />
+                </div>
+              </>
+            )}
+
             <Button type="submit" disabled={loading} size="lg" className="w-full h-12 text-base bg-primary">
               {loading ? "Submitting…" : "Submit post"}
             </Button>

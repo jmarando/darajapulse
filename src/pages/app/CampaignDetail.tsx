@@ -83,6 +83,8 @@ const CampaignDetail = () => {
   const [metrics, setMetrics] = useState<any[]>([]);
   const [metricsLoaded, setMetricsLoaded] = useState(false);
   const [contestEntries, setContestEntries] = useState<any[]>([]);
+  const [submissionToken, setSubmissionToken] = useState<string | null>(null);
+
   const [link, setLink] = useState<any>(null);
   const [planLink, setPlanLink] = useState<any>(null);
   const [postOpen, setPostOpen] = useState(false);
@@ -185,12 +187,14 @@ const CampaignDetail = () => {
     setLink(l);
     const { data: pl } = await supabase.from("plan_links").select("*").eq("campaign_id", id).maybeSingle();
     setPlanLink(pl);
-    const { data: contests } = await supabase.from("contests").select("id").eq("campaign_id", id);
+    const { data: contests } = await supabase.from("contests").select("id, submission_token, created_at").eq("campaign_id", id).order("created_at", { ascending: true });
     const contestIds = (contests ?? []).map((x: any) => x.id);
+    setSubmissionToken((contests ?? [])[0]?.submission_token ?? null);
     if (contestIds.length) {
       const { data: ce } = await supabase.from("contest_entries").select("views,likes,comments,shares,saves").in("contest_id", contestIds);
       setContestEntries(ce ?? []);
     } else setContestEntries([]);
+
     setMetricsLoaded(true);
   };
   useEffect(() => { load(); }, [id]);
@@ -1644,6 +1648,9 @@ const CampaignDetail = () => {
               <tbody>
                 {ci.map(x => {
                   const briefUrl = `${window.location.origin}${slugPath}/brief/${x.brief_token}`;
+                  // Personal submission link: the form pre-fills this creator's name, handle and platform.
+                  const submitUrl = submissionToken ? `${window.location.origin}/c/${submissionToken}?k=${x.brief_token}` : null;
+
                   const statusDot: Record<string,string> = {
                     invited: "bg-muted-foreground/40",
                     negotiating: "bg-highlight",
@@ -1755,6 +1762,12 @@ const CampaignDetail = () => {
                                 <Copy className="w-4 h-4 mr-2" /> Copy brief link
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild><a href={briefUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4 mr-2" /> Preview brief</a></DropdownMenuItem>
+                              {submitUrl && (
+                                <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(submitUrl); toast.success("Personal submission link copied"); }}>
+                                  <Copy className="w-4 h-4 mr-2" /> Copy submission link
+                                </DropdownMenuItem>
+                              )}
+
                               <DropdownMenuSeparator />
                               <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Set status</DropdownMenuLabel>
                               {[
