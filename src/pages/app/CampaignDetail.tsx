@@ -24,6 +24,7 @@ import { PostThumb } from "@/components/PostThumb";
 import { PostMetricsEditor } from "@/components/PostMetricsEditor";
 import { PlatformPicker } from "@/components/PlatformPicker";
 import { StoriesSection } from "@/pages/app/StoriesSection";
+import { BroadcastCreatorsDialog } from "@/components/BroadcastCreatorsDialog";
 
 // ContestsSection moved to top-level /app/contests
 const LinkedContestsCard = ({ campaignId }: { campaignId: string }) => {
@@ -1619,6 +1620,7 @@ const CampaignDetail = () => {
               )}
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {ci.length === 0 ? (
