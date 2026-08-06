@@ -806,6 +806,12 @@ const CampaignDetail = () => {
             Contests
           </TabsTrigger>
           <TabsTrigger
+            value="drafts"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Video approvals
+          </TabsTrigger>
+          <TabsTrigger
             value="submissions"
             className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
           >
