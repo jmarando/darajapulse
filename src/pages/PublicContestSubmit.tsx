@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Sparkles, CheckCircle2, BadgeCheck, FileSignature } from "lucide-react";
+import { Sparkles, CheckCircle2, BadgeCheck, FileSignature, FileVideo } from "lucide-react";
+import CreatorDraftStep from "@/components/CreatorDraftStep";
 import { toast } from "sonner";
 
 /** Work out the platform straight from the pasted link so creators don't have to pick. */
@@ -29,6 +30,8 @@ const PublicContestSubmit = () => {
   const creatorToken = params.get("k");
   const [contest, setContest] = useState<any>(null);
   const [brief, setBrief] = useState<any>(null);
+  const [draftState, setDraftState] = useState<any>(null);
+  const [step, setStep] = useState<1 | 2>(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [again, setAgain] = useState(0);
@@ -49,6 +52,20 @@ const PublicContestSubmit = () => {
       if (data) setBrief(data);
     })();
   }, [creatorToken]);
+
+  // Draft-approval gate — creators must get an MP4 signed off before posting.
+  const loadDrafts = async () => {
+    if (!creatorToken) return;
+    const { data } = await supabase.rpc("get_creator_draft_state" as any, { _brief_token: creatorToken });
+    setDraftState(data ?? null);
+  };
+  useEffect(() => { loadDrafts(); /* eslint-disable-next-line */ }, [creatorToken]);
+
+  const draftsRequired = !!draftState?.required;
+  const draftApproved = !!draftState?.approved_available;
+  const drafts = (draftState?.drafts ?? []) as any[];
+  // Land the creator on the step that's actually actionable.
+  useEffect(() => { if (draftApproved) setStep(2); }, [draftApproved]);
 
   // Contract gate — a campaign with an agreement can't accept posts until it's signed.
   const contractBlocked = !!(brief as any)?.contract_required && !(brief as any)?.contract_signed;
@@ -198,7 +215,39 @@ const PublicContestSubmit = () => {
             </a>
           </Card>
         ) : (
+        <>
+        {creatorToken && draftsRequired && (
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {([[1, "1 · Upload video"], [2, "2 · Share live link"]] as const).map(([s, label]) => (
+              <button
+                key={s}
+                onClick={() => setStep(s as 1 | 2)}
+                className={`h-11 rounded-md border text-sm transition-colors ${
+                  step === s ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {creatorToken && draftsRequired && step === 1 ? (
+          <CreatorDraftStep briefToken={creatorToken} drafts={drafts as any} onUploaded={loadDrafts} />
+        ) : creatorToken && draftsRequired && !draftApproved ? (
+          <Card className="p-6 text-center border-accent/40 bg-accent/5">
+            <FileVideo className="w-10 h-10 text-accent mx-auto mb-3" />
+            <h2 className="font-display text-2xl">Get your video approved first</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              {drafts.length
+                ? "Your video is with the team. As soon as it's approved you can post it and come back here to share the live link."
+                : "Upload your MP4 in step 1. Once the team approves it, post it and drop the live link here."}
+            </p>
+            <Button size="lg" className="mt-5 h-12" onClick={() => setStep(1)}>Go to step 1</Button>
+          </Card>
+        ) : (
         <Card className="p-5 sm:p-6">
+
 
           <form onSubmit={submit} className="space-y-5">
             <div>
@@ -264,6 +313,8 @@ const PublicContestSubmit = () => {
             </Button>
           </form>
         </Card>
+        )}
+        </>
         )}
 
       </div>

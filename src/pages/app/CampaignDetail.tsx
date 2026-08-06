@@ -65,6 +65,7 @@ const LinkedContestsCard = ({ campaignId }: { campaignId: string }) => {
 };
 import EmailReportsSection from "./EmailReportsSection";
 import SubmissionsSection from "./SubmissionsSection";
+import DraftsPanel from "@/components/DraftsPanel";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
@@ -804,6 +805,12 @@ const CampaignDetail = () => {
             className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
           >
             Contests
+          </TabsTrigger>
+          <TabsTrigger
+            value="drafts"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Video approvals
           </TabsTrigger>
           <TabsTrigger
             value="submissions"
@@ -2077,6 +2084,10 @@ const CampaignDetail = () => {
 
         <TabsContent value="contests" className="space-y-6 mt-0">
           <LinkedContestsCard campaignId={id!} />
+        </TabsContent>
+
+        <TabsContent value="drafts" className="space-y-6 mt-0">
+          <DraftsPanel campaignId={id!} />
         </TabsContent>
 
         <TabsContent value="submissions" className="space-y-6 mt-0">

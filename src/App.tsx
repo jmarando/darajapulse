@@ -32,6 +32,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import PublicBrief from "./pages/PublicBrief";
 import PublicContestSubmit from "./pages/PublicContestSubmit";
+import PublicDraftReview from "./pages/PublicDraftReview";
 import ConnectTikTok from "./pages/ConnectTikTok";
 import ConnectInstagram from "./pages/ConnectInstagram";
 import ConnectYouTube from "./pages/ConnectYouTube";
@@ -84,6 +85,7 @@ const App = () => (
             <Route path="/b/:token" element={<PublicBrief />} />
             <Route path="/c/:token" element={<PublicContestSubmit />} />
             <Route path="/m/:token" element={<PublicModeration />} />
+            <Route path="/d/:token" element={<PublicDraftReview />} />
             <Route path="/:clientSlug/:campaignSlug/report/:token" element={<PublicReport />} />
             <Route path="/:clientSlug/:campaignSlug/brief/:token" element={<PublicBrief />} />
             <Route path="/connect/tiktok/:influencerId" element={<ConnectTikTok />} />
