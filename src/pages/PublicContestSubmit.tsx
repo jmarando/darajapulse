@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Sparkles, CheckCircle2, BadgeCheck } from "lucide-react";
+import { Sparkles, CheckCircle2, BadgeCheck, FileSignature } from "lucide-react";
 import { toast } from "sonner";
 
 /** Work out the platform straight from the pasted link so creators don't have to pick. */
@@ -49,6 +49,10 @@ const PublicContestSubmit = () => {
       if (data) setBrief(data);
     })();
   }, [creatorToken]);
+
+  // Contract gate — a campaign with an agreement can't accept posts until it's signed.
+  const contractBlocked = !!(brief as any)?.contract_required && !(brief as any)?.contract_signed;
+
 
   // Campaigns without a prize are collaborations, not contests — copy adapts.
   const isCollab = useMemo(() => !contest?.prize, [contest]);
@@ -179,7 +183,23 @@ const PublicContestSubmit = () => {
           </Card>
         )}
 
+        {contractBlocked ? (
+          <Card className="p-6 text-center border-accent/40 bg-accent/5">
+            <FileSignature className="w-10 h-10 text-accent mx-auto mb-3" />
+            <h2 className="font-display text-2xl">Sign your agreement first</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Before we can accept post links for this campaign, please read and sign the creator agreement on your
+              brief page. It takes under a minute — then come straight back here.
+            </p>
+            <a href={`/b/${creatorToken}`}>
+              <Button size="lg" className="mt-5 h-12 bg-accent text-accent-foreground hover:bg-accent/90">
+                Open my brief & sign
+              </Button>
+            </a>
+          </Card>
+        ) : (
         <Card className="p-5 sm:p-6">
+
           <form onSubmit={submit} className="space-y-5">
             <div>
               <Label className="text-sm">Post link *</Label>
@@ -244,6 +264,8 @@ const PublicContestSubmit = () => {
             </Button>
           </form>
         </Card>
+        )}
+
       </div>
     </div>
   );

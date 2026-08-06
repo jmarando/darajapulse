@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles, Trash2, Calendar as CalendarIcon, Flame, Clock, Gauge, Coins, PieChart as PieIcon } from "lucide-react";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles, Trash2, Calendar as CalendarIcon, Flame, Clock, Gauge, Coins, PieChart as PieIcon, FileSignature } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -80,6 +80,8 @@ const CampaignDetail = () => {
   const [c, setC] = useState<any>(null);
   const [rosterAll, setRosterAll] = useState<any[]>([]);
   const [ci, setCi] = useState<any[]>([]);
+  const [signedCi, setSignedCi] = useState<Set<string>>(new Set());
+
   const [posts, setPosts] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [metricsLoaded, setMetricsLoaded] = useState(false);
@@ -162,6 +164,9 @@ const CampaignDetail = () => {
     }
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
     setCi(ciAll ?? []);
+    const { data: sigs } = await supabase.from("contract_signatures").select("campaign_influencer_id").eq("campaign_id", id);
+    setSignedCi(new Set((sigs ?? []).map((s: any) => s.campaign_influencer_id)));
+
     const { data: r } = await supabase.from("influencers").select("*");
     setRosterAll(r ?? []);
     if (c1?.agency_id) {
@@ -1667,6 +1672,8 @@ const CampaignDetail = () => {
                   <th className="text-left font-medium px-5 py-3">Creator</th>
                   <th className="text-left font-medium px-3 py-3">Platform</th>
                   <th className="text-left font-medium px-3 py-3">Status</th>
+                  <th className="text-left font-medium px-3 py-3">Contract</th>
+
                   <th className="text-right font-medium px-3 py-3">Fee (KES)</th>
                   <th className="text-right font-medium px-3 py-3">Delivered / Target</th>
                   <th className="text-right font-medium px-5 py-3">Actions</th>
@@ -1734,6 +1741,14 @@ const CampaignDetail = () => {
                           {statusLabel[x.status] ?? x.status}
                         </span>
                       </td>
+                      <td className="px-3 py-3">
+                        {signedCi.has(x.id) ? (
+                          <span className="inline-flex items-center gap-1 text-success text-xs"><FileSignature className="w-3.5 h-3.5" /> Signed</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Not signed</span>
+                        )}
+                      </td>
+
                       <td className="px-3 py-3 text-right tabular-nums">
                         {isEditing ? (
                           <Input className="h-8 text-sm text-right" type="number" value={editFee} onChange={e => setEditFee(e.target.value)} />
