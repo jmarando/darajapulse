@@ -65,6 +65,7 @@ const LinkedContestsCard = ({ campaignId }: { campaignId: string }) => {
 };
 import EmailReportsSection from "./EmailReportsSection";
 import SubmissionsSection from "./SubmissionsSection";
+import DraftsPanel from "@/components/DraftsPanel";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
