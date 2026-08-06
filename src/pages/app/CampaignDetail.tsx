@@ -1974,10 +1974,12 @@ const CampaignDetail = () => {
                   />
                 </li>
               );
-            });
-            })()}
-          </ul>
-        )}
+            })}
+              </ul>
+            </>
+          );
+        })()}
+
       </Card>
 
       <Card className="p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
