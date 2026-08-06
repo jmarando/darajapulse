@@ -293,11 +293,11 @@ const Campaigns = () => {
                 <div className="mx-5 mb-5 rounded-2xl bg-foreground text-background p-6 flex items-center justify-between shadow-lg mt-auto">
                   {hasContest ? (
                     <>
-                      <Stat label="Contestants" value={fmtNum(cp.contestants)} />
+                      <Stat label="Creators" value={fmtNum(cp.contestants)} />
                       <Divider />
-                      <Stat label="Entries" value={fmtNum(cp.entries)} />
+                      <Stat label="Posts" value={fmtNum(Math.max(cp.entries ?? 0, perf[r.id]?.posts ?? 0))} />
                       <Divider />
-                      <Stat label="Views" value={fmtNum(cp.views)} />
+                      <Stat label="Views" value={fmtNum(Math.max(cp.views ?? 0, perf[r.id]?.views ?? 0))} />
                     </>
                   ) : (
                     <>
