@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, ExternalLink, Copy, Inbox, RefreshCw } from "lucide-react";
+import { Download, ExternalLink, Copy, Inbox, RefreshCw, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 type Entry = {
@@ -37,18 +38,38 @@ export const SubmissionsSection = ({
   onRefresh?: () => void;
 }) => {
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const counts = useMemo(() => ({
+    pending: entries.filter((e) => (e.status || "pending") === "pending").length,
+    approved: entries.filter((e) => e.status === "approved").length,
+    rejected: entries.filter((e) => e.status === "rejected").length,
+    all: entries.length,
+  }), [entries]);
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const list = [...entries].sort(
+    let list = [...entries].sort(
       (a, b) => +new Date(b.created_at || 0) - +new Date(a.created_at || 0),
     );
+    if (tab !== "all") list = list.filter((e) => (e.status || "pending") === tab);
     if (!needle) return list;
     return list.filter((e) =>
       [e.full_name, e.submitter_name, e.handle, e.platform, e.post_url, e.submitter_email]
         .some((f) => String(f || "").toLowerCase().includes(needle)),
     );
-  }, [entries, q]);
+  }, [entries, q, tab]);
+
+  const review = async (id: string, decision: "approved" | "rejected") => {
+    setBusy(id);
+    const { error } = await supabase.rpc("review_contest_entry" as any, { _entry_id: id, _decision: decision });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(decision === "approved" ? "Approved — post added to the campaign" : "Submission declined");
+    onRefresh?.();
+  };
+
 
   const publicUrl = submissionToken ? `${window.location.origin}/c/${submissionToken}` : null;
 
@@ -120,7 +141,23 @@ export const SubmissionsSection = ({
       </Card>
 
       <Card className="p-0 overflow-hidden">
-        <div className="p-4 flex items-center gap-3 border-b border-border">
+        <div className="p-4 flex flex-wrap items-center gap-3 border-b border-border">
+          <div className="flex gap-1 rounded-md border border-border p-1">
+            {([
+              ["pending", "Pending review"],
+              ["approved", "Approved"],
+              ["rejected", "Declined"],
+              ["all", "All"],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`px-3 h-7 rounded text-xs transition-colors ${tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+              >
+                {label} ({counts[key]})
+              </button>
+            ))}
+          </div>
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search creator, handle or link…" className="max-w-sm h-9" />
           <span className="text-xs text-muted-foreground">{rows.length} submission{rows.length === 1 ? "" : "s"}</span>
         </div>
@@ -128,7 +165,11 @@ export const SubmissionsSection = ({
         {rows.length === 0 ? (
           <div className="p-10 text-center text-muted-foreground">
             <Inbox className="w-6 h-6 mx-auto mb-2 opacity-60" />
-            <div className="text-sm">No submissions yet. Share the link above or send briefs — entries appear here the moment a creator posts.</div>
+            <div className="text-sm">
+              {tab === "pending"
+                ? "Nothing waiting for review right now."
+                : "No submissions yet. Share the link above or send briefs — entries appear here the moment a creator posts."}
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -141,6 +182,7 @@ export const SubmissionsSection = ({
                   <th className="text-right font-medium px-4 py-2">Views</th>
                   <th className="text-left font-medium px-4 py-2">Submitted</th>
                   <th className="text-left font-medium px-4 py-2">Status</th>
+                  <th className="text-right font-medium px-4 py-2">Review</th>
                 </tr>
               </thead>
               <tbody>
@@ -163,7 +205,26 @@ export const SubmissionsSection = ({
                       {e.created_at ? new Date(e.created_at).toLocaleDateString() : "—"}
                     </td>
                     <td className="px-4 py-2">
-                      <Badge variant="outline" className="capitalize text-[10px]">{e.status || "received"}</Badge>
+                      <Badge
+                        variant="outline"
+                        className={`capitalize text-[10px] ${e.status === "approved" ? "border-success/40 text-success" : e.status === "rejected" ? "border-destructive/40 text-destructive" : ""}`}
+                      >
+                        {e.status === "rejected" ? "declined" : e.status || "pending"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex justify-end gap-1.5">
+                        {e.status !== "approved" && (
+                          <Button size="sm" className="h-7" disabled={busy === e.id} onClick={() => review(e.id, "approved")}>
+                            <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                          </Button>
+                        )}
+                        {e.status !== "rejected" && (
+                          <Button size="sm" variant="outline" className="h-7" disabled={busy === e.id} onClick={() => review(e.id, "rejected")}>
+                            <X className="w-3.5 h-3.5 mr-1" /> Decline
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
