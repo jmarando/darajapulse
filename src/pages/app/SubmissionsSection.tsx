@@ -38,18 +38,38 @@ export const SubmissionsSection = ({
   onRefresh?: () => void;
 }) => {
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "all">("pending");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const counts = useMemo(() => ({
+    pending: entries.filter((e) => (e.status || "pending") === "pending").length,
+    approved: entries.filter((e) => e.status === "approved").length,
+    rejected: entries.filter((e) => e.status === "rejected").length,
+    all: entries.length,
+  }), [entries]);
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const list = [...entries].sort(
+    let list = [...entries].sort(
       (a, b) => +new Date(b.created_at || 0) - +new Date(a.created_at || 0),
     );
+    if (tab !== "all") list = list.filter((e) => (e.status || "pending") === tab);
     if (!needle) return list;
     return list.filter((e) =>
       [e.full_name, e.submitter_name, e.handle, e.platform, e.post_url, e.submitter_email]
         .some((f) => String(f || "").toLowerCase().includes(needle)),
     );
-  }, [entries, q]);
+  }, [entries, q, tab]);
+
+  const review = async (id: string, decision: "approved" | "rejected") => {
+    setBusy(id);
+    const { error } = await supabase.rpc("review_contest_entry" as any, { _entry_id: id, _decision: decision });
+    setBusy(null);
+    if (error) return toast.error(error.message);
+    toast.success(decision === "approved" ? "Approved — post added to the campaign" : "Submission declined");
+    onRefresh?.();
+  };
+
 
   const publicUrl = submissionToken ? `${window.location.origin}/c/${submissionToken}` : null;
 
