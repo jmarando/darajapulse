@@ -1648,6 +1648,9 @@ const CampaignDetail = () => {
               <tbody>
                 {ci.map(x => {
                   const briefUrl = `${window.location.origin}${slugPath}/brief/${x.brief_token}`;
+                  // Personal submission link: the form pre-fills this creator's name, handle and platform.
+                  const submitUrl = submissionToken ? `${window.location.origin}/c/${submissionToken}?k=${x.brief_token}` : null;
+
                   const statusDot: Record<string,string> = {
                     invited: "bg-muted-foreground/40",
                     negotiating: "bg-highlight",
