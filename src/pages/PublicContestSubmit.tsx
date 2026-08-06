@@ -64,6 +64,8 @@ const PublicContestSubmit = () => {
   const draftsRequired = !!draftState?.required;
   const draftApproved = !!draftState?.approved_available;
   const drafts = (draftState?.drafts ?? []) as any[];
+  // Land the creator on the step that's actually actionable.
+  useEffect(() => { if (draftApproved) setStep(2); }, [draftApproved]);
 
   // Contract gate — a campaign with an agreement can't accept posts until it's signed.
   const contractBlocked = !!(brief as any)?.contract_required && !(brief as any)?.contract_signed;
