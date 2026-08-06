@@ -784,6 +784,13 @@ const CampaignDetail = () => {
             Contests
           </TabsTrigger>
           <TabsTrigger
+            value="submissions"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Submissions
+            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary">{contestEntries.length}</span>
+          </TabsTrigger>
+          <TabsTrigger
             value="emails"
             className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
           >
