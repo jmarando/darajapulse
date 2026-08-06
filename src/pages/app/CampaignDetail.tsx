@@ -1762,6 +1762,12 @@ const CampaignDetail = () => {
                                 <Copy className="w-4 h-4 mr-2" /> Copy brief link
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild><a href={briefUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4 mr-2" /> Preview brief</a></DropdownMenuItem>
+                              {submitUrl && (
+                                <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(submitUrl); toast.success("Personal submission link copied"); }}>
+                                  <Copy className="w-4 h-4 mr-2" /> Copy submission link
+                                </DropdownMenuItem>
+                              )}
+
                               <DropdownMenuSeparator />
                               <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Set status</DropdownMenuLabel>
                               {[
