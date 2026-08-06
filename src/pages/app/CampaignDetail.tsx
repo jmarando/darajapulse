@@ -1912,21 +1912,75 @@ const CampaignDetail = () => {
             <p className="text-sm text-muted-foreground">No posts captured yet.</p>
             <p className="text-xs text-muted-foreground mt-1">Add the first live post or refresh TikTok metrics.</p>
           </div>
-        ) : (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {(() => {
-              const now = new Date();
-              let cutoff: number | null = null;
-              if (periodFilter === "week") { const d = new Date(now); d.setDate(d.getDate() - 7); cutoff = +d; }
-              else if (periodFilter === "month") { const d = new Date(now); d.setMonth(d.getMonth() - 1); cutoff = +d; }
-              else if (periodFilter === "quarter") { const d = new Date(now); d.setMonth(d.getMonth() - 3); cutoff = +d; }
-              else if (periodFilter === "year") { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); cutoff = +d; }
-              return posts.filter(p => !creatorFilter || p.influencer_id === creatorFilter)
-                .filter(p => {
-                  if (cutoff == null) return true;
-                  const t = p.posted_at ? +new Date(p.posted_at) : null;
-                  return t != null && t >= cutoff;
-                }).map(p => {
+        ) : (() => {
+          const now = new Date();
+          let cutoff: number | null = null;
+          let until: number | null = null;
+          let periodLabel = "All time";
+          if (periodFilter.startsWith("m:")) {
+            const [y, mo] = periodFilter.slice(2).split("-").map(Number);
+            cutoff = +new Date(y, mo - 1, 1);
+            until = +new Date(y, mo, 1) - 1;
+            periodLabel = new Date(y, mo - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+          } else if (periodFilter === "week") { const d = new Date(now); d.setDate(d.getDate() - 7); cutoff = +d; periodLabel = "This week"; }
+          else if (periodFilter === "month") { const d = new Date(now); d.setMonth(d.getMonth() - 1); cutoff = +d; periodLabel = "This month"; }
+          else if (periodFilter === "quarter") { const d = new Date(now); d.setMonth(d.getMonth() - 3); cutoff = +d; periodLabel = "This quarter"; }
+          else if (periodFilter === "year") { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); cutoff = +d; periodLabel = "This year"; }
+
+          const viewsOf = (p: any) => Number(latestByPost.get(p.id)?.views || 0);
+          const engOf = (p: any) => {
+            const m: any = latestByPost.get(p.id) || {};
+            return Number(m.likes || 0) + Number(m.comments || 0) + Number(m.shares || 0) + Number(m.saves || 0);
+          };
+          const list = posts
+            .filter(p => !creatorFilter || p.influencer_id === creatorFilter)
+            .filter(p => {
+              if (cutoff == null) return true;
+              const t = p.posted_at ? +new Date(p.posted_at) : null;
+              if (t == null || t < cutoff) return false;
+              return until == null || t <= until;
+            })
+            .sort((a, b) => {
+              if (postSort === "recent") return +new Date(b.posted_at || 0) - +new Date(a.posted_at || 0);
+              if (postSort === "engagement") return engOf(b) - engOf(a);
+              return viewsOf(b) - viewsOf(a);
+            });
+
+          // Leaderboard of creators for the selected window (used to pick the monthly winner)
+          const byCreator = new Map<string, { name: string; handle?: string; views: number; posts: number }>();
+          for (const p of list) {
+            const key = p.influencer_id || p.id;
+            const cur = byCreator.get(key) ?? { name: p.influencers?.full_name || "—", handle: p.influencers?.handle, views: 0, posts: 0 };
+            cur.views += viewsOf(p);
+            cur.posts += 1;
+            byCreator.set(key, cur);
+          }
+          const leaders = [...byCreator.values()].sort((a, b) => b.views - a.views).slice(0, 3);
+
+          return (
+            <>
+              {leaders.length > 0 && (
+                <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Top creator · {periodLabel}</div>
+                  <div className="mt-1 flex flex-wrap items-end gap-x-6 gap-y-2">
+                    <div>
+                      <div className="font-display text-2xl leading-tight">{leaders[0].name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {leaders[0].handle ? `@${String(leaders[0].handle).replace(/^@/, "")} · ` : ""}
+                        {fmt(leaders[0].views)} views across {leaders[0].posts} post{leaders[0].posts === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                    {leaders.slice(1).map((l, i) => (
+                      <div key={l.name + i} className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">#{i + 2} {l.name}</span> · {fmt(l.views)} views
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {list.map((p, idx) => {
+
               const m = latestByPost.get(p.id);
               const postedAt = p.posted_at ? new Date(p.posted_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : null;
               return (
