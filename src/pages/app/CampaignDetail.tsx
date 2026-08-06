@@ -2085,6 +2085,10 @@ const CampaignDetail = () => {
           <LinkedContestsCard campaignId={id!} />
         </TabsContent>
 
+        <TabsContent value="drafts" className="space-y-6 mt-0">
+          <DraftsPanel campaignId={id!} />
+        </TabsContent>
+
         <TabsContent value="submissions" className="space-y-6 mt-0">
           <SubmissionsSection
             entries={contestEntries}
