@@ -50,6 +50,10 @@ const PublicContestSubmit = () => {
     })();
   }, [creatorToken]);
 
+  // Contract gate — a campaign with an agreement can't accept posts until it's signed.
+  const contractBlocked = !!(brief as any)?.contract_required && !(brief as any)?.contract_signed;
+
+
   // Campaigns without a prize are collaborations, not contests — copy adapts.
   const isCollab = useMemo(() => !contest?.prize, [contest]);
   const platform = detectPlatform(form.post_url);
