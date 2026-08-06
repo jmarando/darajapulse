@@ -137,6 +137,37 @@ const ContractSign = ({
     onSigned?.();
   };
 
+  /** Print just the agreement — not the surrounding brief page. */
+  const printContract = () => {
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const w = window.open("", "_blank", "width=820,height=900");
+    if (!w) return toast.error("Allow pop-ups to print your copy");
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8" />
+<title>${esc(c.title || "Creator agreement")}</title>
+<style>
+  @page { margin: 20mm; }
+  body { font-family: -apple-system, Segoe UI, Helvetica, Arial, sans-serif; color:#111827; line-height:1.55; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .meta { font-size:12px; color:#6b7280; margin-bottom:20px; }
+  pre { white-space:pre-wrap; font-family:inherit; font-size:12.5px; margin:0; }
+  .sig { margin-top:28px; border-top:1px solid #e5e7eb; padding-top:16px; font-size:12.5px; }
+  .sig img { height:64px; display:block; margin:8px 0; }
+</style></head><body>
+<h1>${esc(c.title || "Creator agreement")}</h1>
+<div class="meta">Signed by ${esc(c.signer_name || "")}${
+      c.signed_at ? ` on ${esc(new Date(c.signed_at).toLocaleString())}` : ""
+    }</div>
+<pre>${esc(c.text || "")}</pre>
+<div class="sig"><strong>Signature</strong>${
+      c.signature_data_url ? `<img src="${c.signature_data_url}" alt="Signature" />` : ""
+    }<div>${esc(c.signer_name || "")}</div></div>
+</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
+  };
+
   if (c.signed) {
     return (
       <Card className="p-6 mt-6 border-success/40 bg-success/5">
