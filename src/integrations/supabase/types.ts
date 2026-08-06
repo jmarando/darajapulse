@@ -2763,6 +2763,7 @@ export type Database = {
       slugify: { Args: { _s: string }; Returns: string }
       submit_contest_entry: {
         Args: {
+          _brief_token?: string
           _handle: string
           _platform: string
           _post_url: string
@@ -2770,7 +2771,7 @@ export type Database = {
           _submitter_name: string
           _token: string
         }
-        Returns: string
+        Returns: Json
       }
       update_brief_status: {
         Args: { _status: string; _token: string }

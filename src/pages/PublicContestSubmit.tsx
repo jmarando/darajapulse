@@ -69,16 +69,23 @@ const PublicContestSubmit = () => {
     if (!platform) return toast.error("That doesn't look like a TikTok, Instagram, Facebook, YouTube or X link");
     if (creator && !confirmed) return toast.error("Please confirm the post meets the brief");
     setLoading(true);
-    const { error } = await supabase.rpc("submit_contest_entry", {
+    const { data, error } = await supabase.rpc("submit_contest_entry", {
       _token: token!,
       _platform: platform,
       _post_url: form.post_url,
       _handle: creator ? clean(creator.handle) : form.handle,
       _submitter_name: creator ? creator.full_name ?? "" : "",
       _submitter_email: form.submitter_email,
+      _brief_token: creatorToken,
     });
     setLoading(false);
     if (error) return toast.error(error.message);
+    // Identified creators get their post registered on the campaign — kick off
+    // the metrics pull immediately so the roster updates without waiting for cron.
+    const postId = (data as any)?.post_id;
+    if (postId) {
+      supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } }).catch(() => {});
+    }
     setSubmitted(true);
   };
 
