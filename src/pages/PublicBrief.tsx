@@ -239,9 +239,12 @@ const PublicBrief = () => {
           </Card>
         )}
 
+        {/* Contract — must be signed before any post can be submitted */}
+        <ContractSign token={String(b.brief_token || token)} creatorName={b.influencer?.full_name} onSigned={load} />
+
         {/* Personal submission link — how the creator sends us their post */}
         {b.submission_token && (
-          <Card className="p-6 mt-6 border-accent/40 bg-accent/5">
+          <Card className={`p-6 mt-6 border-accent/40 bg-accent/5 ${b.contract_required && !b.contract_signed ? "opacity-60" : ""}`}>
             <div className="text-[10px] uppercase tracking-widest text-accent">After you post</div>
             <h3 className="font-display text-xl mt-1">Send us your post link</h3>
             <p className="text-sm text-muted-foreground mt-2">
@@ -250,27 +253,36 @@ const PublicBrief = () => {
               engagement for the brand, and how your work counts towards your {b.deliverables_count} deliverable
               {b.deliverables_count === 1 ? "" : "s"}. Submit one link per post, right after publishing.
             </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <a href={`/c/${b.submission_token}?k=${b.brief_token || token}`} target="_blank" rel="noreferrer">
-                <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
-                  <Send className="w-4 h-4 mr-2" /> Submit a post link
-                </Button>
-              </a>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  navigator.clipboard.writeText(`${window.location.origin}/c/${b.submission_token}?k=${b.brief_token || token}`);
-                  toast.success("Your submission link is copied — save it for later");
-                }}
-              >
-                <Copy className="w-4 h-4 mr-2" /> Copy my link
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-3 break-all">
-              Bookmark it: {window.location.origin}/c/{b.submission_token}?k={b.brief_token || token}
-            </p>
+            {b.contract_required && !b.contract_signed ? (
+              <p className="text-sm text-accent mt-4 font-medium">
+                Sign the agreement above to unlock your submission link.
+              </p>
+            ) : (
+              <>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <a href={`/c/${b.submission_token}?k=${b.brief_token || token}`} target="_blank" rel="noreferrer">
+                    <Button className="bg-accent text-accent-foreground hover:bg-accent/90">
+                      <Send className="w-4 h-4 mr-2" /> Submit a post link
+                    </Button>
+                  </a>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/c/${b.submission_token}?k=${b.brief_token || token}`);
+                      toast.success("Your submission link is copied — save it for later");
+                    }}
+                  >
+                    <Copy className="w-4 h-4 mr-2" /> Copy my link
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 break-all">
+                  Bookmark it: {window.location.origin}/c/{b.submission_token}?k={b.brief_token || token}
+                </p>
+              </>
+            )}
           </Card>
         )}
+
 
         {/* Status indicator on page (sticky bar handles primary CTAs) */}
         <div className="mt-8 flex items-center gap-3 flex-wrap">
