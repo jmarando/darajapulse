@@ -212,7 +212,39 @@ const PublicContestSubmit = () => {
             </a>
           </Card>
         ) : (
+        <>
+        {creatorToken && draftsRequired && (
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {([[1, "1 · Upload video"], [2, "2 · Share live link"]] as const).map(([s, label]) => (
+              <button
+                key={s}
+                onClick={() => setStep(s as 1 | 2)}
+                className={`h-11 rounded-md border text-sm transition-colors ${
+                  step === s ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {creatorToken && draftsRequired && step === 1 ? (
+          <CreatorDraftStep briefToken={creatorToken} drafts={drafts as any} onUploaded={loadDrafts} />
+        ) : creatorToken && draftsRequired && !draftApproved ? (
+          <Card className="p-6 text-center border-accent/40 bg-accent/5">
+            <FileVideo className="w-10 h-10 text-accent mx-auto mb-3" />
+            <h2 className="font-display text-2xl">Get your video approved first</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              {drafts.length
+                ? "Your video is with the team. As soon as it's approved you can post it and come back here to share the live link."
+                : "Upload your MP4 in step 1. Once the team approves it, post it and drop the live link here."}
+            </p>
+            <Button size="lg" className="mt-5 h-12" onClick={() => setStep(1)}>Go to step 1</Button>
+          </Card>
+        ) : (
         <Card className="p-5 sm:p-6">
+
 
           <form onSubmit={submit} className="space-y-5">
             <div>
