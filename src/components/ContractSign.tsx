@@ -188,7 +188,7 @@ const ContractSign = ({
         <ScrollArea className="h-56 mt-4 rounded-md border border-border bg-card p-4">
           <pre className="text-xs whitespace-pre-wrap font-sans leading-relaxed">{c.text}</pre>
         </ScrollArea>
-        <Button variant="outline" size="sm" className="mt-3" onClick={() => window.print()}>
+        <Button variant="outline" size="sm" className="mt-3" onClick={printContract}>
           <Printer className="w-3.5 h-3.5 mr-1.5" /> Print / save a copy
         </Button>
       </Card>
