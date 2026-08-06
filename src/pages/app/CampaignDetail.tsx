@@ -1474,8 +1474,16 @@ const CampaignDetail = () => {
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Roster</div>
             <h2 className="font-display text-2xl">Creators</h2>
           </div>
+          <div className="flex items-center gap-2">
+          <BroadcastCreatorsDialog
+            campaignId={id!}
+            campaignName={campaign?.name ?? "Campaign"}
+            hashtag={campaign?.hashtag}
+            emails={ci.map((x: any) => x.influencers?.email).filter(Boolean)}
+          />
           <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddBreakdown({}); } }}>
             <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add creator</Button></DialogTrigger>
+
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
