@@ -1976,6 +1976,15 @@ const CampaignDetail = () => {
           <LinkedContestsCard campaignId={id!} />
         </TabsContent>
 
+        <TabsContent value="submissions" className="space-y-6 mt-0">
+          <SubmissionsSection
+            entries={contestEntries}
+            submissionToken={submissionToken}
+            campaignName={c?.name}
+            onRefresh={load}
+          />
+        </TabsContent>
+
         <TabsContent value="emails" className="space-y-6 mt-0">
           <EmailReportsSection campaignId={id!} hasContests={true} />
         </TabsContent>
