@@ -123,19 +123,38 @@ function toIso(v: any): string | null {
   return null;
 }
 
+// Ensemble occasionally nests the aweme a level or two deeper than documented.
+// Walk the payload for the first object that carries recognisable play/like counts.
+function deepFindStats(node: any, depth = 0): any | null {
+  if (!node || typeof node !== "object" || depth > 6) return null;
+  const keys = ["play_count", "playCount", "digg_count", "diggCount", "like_count", "likeCount"];
+  if (keys.some((k) => Number(node[k] ?? NaN) >= 0 && node[k] !== undefined && node[k] !== null)) return node;
+  for (const v of Array.isArray(node) ? node : Object.values(node)) {
+    const found = deepFindStats(v, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
 // --- TikTok via Ensemble ---
 async function edTikTok(url: string) {
   const j = await ed("/tt/post/info", { url });
   const data = j?.data ?? j;
   // Ensemble returns the TikTok itemStruct (or similar) — handle both shapes
-  const item = data?.aweme_detail ?? data?.itemInfo?.itemStruct ?? data?.item ?? data;
-  const stats = item?.statistics ?? item?.stats ?? item;
+  const item = data?.aweme_detail ?? data?.itemInfo?.itemStruct ?? data?.item ?? (Array.isArray(data) ? data[0] : data);
+  const stats = item?.statistics ?? item?.stats ?? deepFindStats(data) ?? item;
   const cover = item?.video?.cover ?? item?.video?.cover?.url_list?.[0] ?? item?.video?.origin_cover?.url_list?.[0] ?? data?.cover ?? null;
   const desc = item?.desc ?? item?.title ?? data?.desc ?? null;
+  const views = stats?.play_count ?? stats?.playCount ?? stats?.view_count;
+  const likes = stats?.digg_count ?? stats?.diggCount ?? stats?.like_count;
+  if (views == null && likes == null) {
+    console.error(`tt/post/info returned no stats. keys=${JSON.stringify(Object.keys(data ?? {})).slice(0, 300)}`);
+    throw new Error("Ensemble tt/post/info returned no stats");
+  }
   return {
     stats: {
-      views: stats?.play_count ?? stats?.playCount ?? stats?.view_count,
-      likes: stats?.digg_count ?? stats?.diggCount ?? stats?.like_count,
+      views,
+      likes,
       comments: stats?.comment_count ?? stats?.commentCount,
       shares: stats?.share_count ?? stats?.shareCount,
       saves: stats?.collect_count ?? stats?.collectCount,
@@ -144,6 +163,39 @@ async function edTikTok(url: string) {
     caption: desc,
     postedAt: toIso(item?.create_time ?? item?.createTime ?? item?.created_at ?? data?.create_time),
   };
+}
+
+
+// Ensemble's /tt/post/info rejects some perfectly valid permalinks ("Url not valid").
+// The user-feed endpoint is far more forgiving, so look the video up by author + id.
+async function edTikTokViaUser(url: string) {
+  const id = ttVideoId(url);
+  const handle = url.match(/tiktok\.com\/@([A-Za-z0-9._-]+)/i)?.[1];
+  if (!id || !handle) throw new Error("Could not parse TikTok handle/video id");
+  for (const depth of ["1", "3"]) {
+    const j = await ed("/tt/user/posts", { username: handle, depth });
+    const arr: any[] = j?.data?.data ?? j?.data ?? [];
+    const list = Array.isArray(arr) ? arr : [];
+    for (const raw of list) {
+      const item = raw?.aweme_detail ?? raw;
+      if (String(item?.aweme_id ?? item?.id ?? "") !== id) continue;
+      const stats = item?.statistics ?? item?.stats ?? {};
+      const cover = item?.video?.cover ?? item?.video?.origin_cover;
+      return {
+        stats: {
+          views: stats?.play_count ?? stats?.playCount,
+          likes: stats?.digg_count ?? stats?.diggCount,
+          comments: stats?.comment_count ?? stats?.commentCount,
+          shares: stats?.share_count ?? stats?.shareCount,
+          saves: stats?.collect_count ?? stats?.collectCount,
+        },
+        thumb: typeof cover === "string" ? cover : cover?.url_list?.[0] ?? null,
+        caption: item?.desc ?? null,
+        postedAt: toIso(item?.create_time ?? item?.createTime),
+      };
+    }
+  }
+  throw new Error("TikTok video not found in author feed");
 }
 
 // --- Instagram via Ensemble ---
@@ -422,18 +474,66 @@ async function scrapeYouTubeHtml(url: string) {
   };
 }
 
+// ----- URL canonicalisation -----
+// Links copied from the apps carry tracking params (?q=, ?t=, ?igsh=, ?si=) and
+// short forms (vm.tiktok.com, fb.watch). Ensemble rejects those outright
+// ("Url not valid"), so normalise before any scraper sees the URL.
+const SHORT_HOST = /(vm\.tiktok\.com|vt\.tiktok\.com|fb\.watch|youtu\.be\/|instagram\.com\/share\/)/i;
+
+async function resolveShortLink(url: string): Promise<string> {
+  if (!SHORT_HOST.test(url)) return url;
+  try {
+    const r = await fetch(url, { method: "GET", redirect: "follow", headers: { "User-Agent": UA } });
+    return r.url || url;
+  } catch { return url; }
+}
+
+function canonicalUrl(url: string): string {
+  let u = (url || "").trim();
+  try {
+    const parsed = new URL(u);
+    // TikTok / Instagram / Facebook video permalinks never need query params.
+    if (/tiktok\.com/i.test(parsed.hostname) && /\/video\/\d+/.test(parsed.pathname)) {
+      return `https://www.tiktok.com${parsed.pathname.replace(/\/+$/, "")}`;
+    }
+    if (/instagram\.com/i.test(parsed.hostname)) {
+      const code = igShortcode(u);
+      if (code) return `https://www.instagram.com/p/${code}/`;
+    }
+    if (/youtube\.com|youtu\.be/i.test(parsed.hostname)) {
+      const id = ytVideoId(u);
+      if (id) return `https://www.youtube.com/watch?v=${id}`;
+    }
+    // Everything else: drop known tracking params only.
+    for (const k of ["q", "t", "igsh", "igshid", "si", "utm_source", "utm_medium", "utm_campaign", "fbclid", "_r", "_t", "is_from_webapp", "sender_device", "web_id"]) {
+      parsed.searchParams.delete(k);
+    }
+    return parsed.toString().replace(/\?$/, "");
+  } catch {
+    return u;
+  }
+}
+
 // ----- dispatcher -----
-async function scrape(platform: string, url: string) {
+async function scrape(platform: string, rawUrl: string) {
   const p = (platform || "").toLowerCase();
+  const url = canonicalUrl(await resolveShortLink((rawUrl || "").trim()));
   const isTikTok = p === "tiktok" || /tiktok\.com/.test(url);
   const isInsta = p === "instagram" || /instagram\.com/.test(url);
   const isYouTube = p === "youtube" || /youtu\.?be/.test(url);
   const isFacebook = p === "facebook" || /facebook\.com|fb\.watch/.test(url);
 
+
   // Try Ensemble first for everything
   if (ENSEMBLE_TOKEN) {
     try {
-      if (isTikTok) return await edTikTok(url);
+      if (isTikTok) {
+        try { return await edTikTok(url); }
+        catch (e) {
+          console.error("Ensemble tt/post/info failed, trying author feed:", (e as Error).message);
+          return await edTikTokViaUser(url);
+        }
+      }
       if (isInsta) return await edInstagram(url);
       if (isYouTube) return await edYouTube(url);
       if (isFacebook) return await edFacebook(url);
@@ -465,7 +565,10 @@ async function processPost(p: any) {
     const { thumb, caption, postedAt } = scraped as any;
     const stats = normalizeStats(scraped.stats);
     const hasMetricSignal = [stats.views, stats.likes, stats.comments, stats.shares, stats.saves, stats.reach, stats.impressions].some((v) => Number(v || 0) > 0);
-    if (!hasMetricSignal) return { id: p.id, ok: false, error: "no_public_metrics" };
+    if (!hasMetricSignal) {
+      console.error(`no_public_metrics for ${p.id} (${p.platform}) ${p.post_url} raw=${JSON.stringify(scraped?.stats ?? {}).slice(0, 300)}`);
+      return { id: p.id, ok: false, error: "no_public_metrics" };
+    }
     await supabase.from("post_metrics").insert({
       post_id: p.id,
       views: stats.views,
