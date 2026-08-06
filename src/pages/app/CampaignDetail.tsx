@@ -1478,8 +1478,8 @@ const CampaignDetail = () => {
           <div className="flex items-center gap-2">
           <BroadcastCreatorsDialog
             campaignId={id!}
-            campaignName={campaign?.name ?? "Campaign"}
-            hashtag={campaign?.hashtag}
+            campaignName={c?.name ?? "Campaign"}
+            hashtag={c?.hashtag}
             emails={ci.map((x: any) => x.influencers?.email).filter(Boolean)}
           />
           <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddBreakdown({}); } }}>
