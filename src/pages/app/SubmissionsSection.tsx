@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, ExternalLink, Copy, Inbox, RefreshCw } from "lucide-react";
+import { Download, ExternalLink, Copy, Inbox, RefreshCw, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 type Entry = {
