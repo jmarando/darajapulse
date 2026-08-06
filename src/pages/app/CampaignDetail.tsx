@@ -83,6 +83,8 @@ const CampaignDetail = () => {
   const [metrics, setMetrics] = useState<any[]>([]);
   const [metricsLoaded, setMetricsLoaded] = useState(false);
   const [contestEntries, setContestEntries] = useState<any[]>([]);
+  const [submissionToken, setSubmissionToken] = useState<string | null>(null);
+
   const [link, setLink] = useState<any>(null);
   const [planLink, setPlanLink] = useState<any>(null);
   const [postOpen, setPostOpen] = useState(false);
