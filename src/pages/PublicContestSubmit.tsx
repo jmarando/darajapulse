@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Sparkles, CheckCircle2, BadgeCheck } from "lucide-react";
+import { Sparkles, CheckCircle2, BadgeCheck, FileSignature } from "lucide-react";
 import { toast } from "sonner";
 
 /** Work out the platform straight from the pasted link so creators don't have to pick. */
@@ -264,6 +264,8 @@ const PublicContestSubmit = () => {
             </Button>
           </form>
         </Card>
+        )}
+
       </div>
     </div>
   );
