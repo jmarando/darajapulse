@@ -4,7 +4,7 @@ import { publicSupabase as supabase } from "@/integrations/supabase/publicClient
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Hash, Wallet, Calendar, CheckCircle2, XCircle, Music2, Check, X, AtSign, Link as LinkIcon, FileText, Clapperboard, Smartphone, Eye, Banknote, Instagram, Youtube, Twitter, Facebook } from "lucide-react";
+import { Hash, Wallet, Calendar, CheckCircle2, XCircle, Music2, Check, X, AtSign, Link as LinkIcon, FileText, Clapperboard, Smartphone, Eye, Banknote, Instagram, Youtube, Twitter, Facebook, Send, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { normalizeBreakdown } from "@/components/DeliverablesEditor";
 
