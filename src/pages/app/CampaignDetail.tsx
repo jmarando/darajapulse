@@ -113,6 +113,20 @@ const CampaignDetail = () => {
   const [postSort, setPostSort] = useState<"views" | "recent" | "engagement">("views");
 
   const [briefTemplates, setBriefTemplates] = useState<any[]>([]);
+  // Calendar-month options derived from actual post dates (newest first), e.g. "August 2026"
+  const monthOptions = useMemo(() => {
+    const keys = new Set<string>();
+    for (const p of posts) {
+      const t = p.posted_at ? new Date(p.posted_at) : null;
+      if (!t || isNaN(+t)) continue;
+      keys.add(`${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}`);
+    }
+    return [...keys].sort().reverse().map(k => {
+      const [y, m] = k.split("-").map(Number);
+      return { value: `m:${k}`, label: new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" }) };
+    });
+  }, [posts]);
+
   const [briefExpanded, setBriefExpanded] = useState(false);
   const [inventory, setInventory] = useState<any[]>([]);
   const [pickSource, setPickSource] = useState<"roster" | "inventory">("roster");
