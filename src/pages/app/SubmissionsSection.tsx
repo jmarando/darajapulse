@@ -232,11 +232,6 @@ export const SubmissionsSection = ({
             </table>
           </div>
         )}
-
-              </tbody>
-            </table>
-          </div>
-        )}
       </Card>
     </div>
   );
