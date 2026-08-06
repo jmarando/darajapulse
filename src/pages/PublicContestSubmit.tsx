@@ -311,6 +311,8 @@ const PublicContestSubmit = () => {
           </form>
         </Card>
         )}
+        </>
+        )}
 
       </div>
     </div>
