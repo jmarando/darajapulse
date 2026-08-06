@@ -1986,6 +1986,10 @@ const CampaignDetail = () => {
               return (
                 <li key={p.id} className="group relative rounded-2xl border border-border bg-card overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_60px_-20px_hsl(var(--primary)/0.35)] hover:border-primary/30">
                   <div className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
+                  {postSort === "views" && idx < 3 && (
+                    <div className="absolute top-2 right-2 z-10 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold px-2 py-0.5 shadow">#{idx + 1}</div>
+                  )}
+
                   <button type="button" onClick={() => setPreviewPost(p)} className="relative block text-left">
                     <PostThumb
                       postId={p.id}
