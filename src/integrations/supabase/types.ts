@@ -2986,6 +2986,7 @@ export type Database = {
         }[]
       }
       get_contract_by_token: { Args: { _token: string }; Returns: Json }
+      get_creator_draft_state: { Args: { _brief_token: string }; Returns: Json }
       get_creator_drafts: {
         Args: { _brief_token: string }
         Returns: {
