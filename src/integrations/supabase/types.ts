@@ -458,6 +458,7 @@ export type Database = {
           budget_kes: number | null
           client_id: string
           content_format: string | null
+          contract_template_id: string | null
           created_at: string
           created_by: string | null
           donts: string[] | null
@@ -484,6 +485,7 @@ export type Database = {
           budget_kes?: number | null
           client_id: string
           content_format?: string | null
+          contract_template_id?: string | null
           created_at?: string
           created_by?: string | null
           donts?: string[] | null
@@ -510,6 +512,7 @@ export type Database = {
           budget_kes?: number | null
           client_id?: string
           content_format?: string | null
+          contract_template_id?: string | null
           created_at?: string
           created_by?: string | null
           donts?: string[] | null
@@ -549,6 +552,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_contract_template_id_fkey"
+            columns: ["contract_template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -1087,6 +1097,137 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_signatures: {
+        Row: {
+          campaign_id: string
+          campaign_influencer_id: string
+          contract_hash: string
+          contract_text: string
+          created_at: string
+          id: string
+          influencer_id: string
+          ip_address: string | null
+          signature_data_url: string | null
+          signed_at: string
+          signer_name: string
+          template_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          campaign_id: string
+          campaign_influencer_id: string
+          contract_hash: string
+          contract_text: string
+          created_at?: string
+          id?: string
+          influencer_id: string
+          ip_address?: string | null
+          signature_data_url?: string | null
+          signed_at?: string
+          signer_name: string
+          template_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          campaign_influencer_id?: string
+          contract_hash?: string
+          contract_text?: string
+          created_at?: string
+          id?: string
+          influencer_id?: string
+          ip_address?: string | null
+          signature_data_url?: string | null
+          signed_at?: string
+          signer_name?: string
+          template_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signatures_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_signatures_campaign_influencer_id_fkey"
+            columns: ["campaign_influencer_id"]
+            isOneToOne: true
+            referencedRelation: "campaign_influencers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_signatures_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_signatures_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_templates: {
+        Row: {
+          agency_id: string | null
+          body: string
+          campaign_id: string | null
+          created_at: string
+          created_by: string | null
+          exclusivity: string | null
+          governing_law: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          agency_id?: string | null
+          body: string
+          campaign_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          exclusivity?: string | null
+          governing_law?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string | null
+          body?: string
+          campaign_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          exclusivity?: string | null
+          governing_law?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_templates_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_templates_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -2712,6 +2853,7 @@ export type Database = {
           handle: string
         }[]
       }
+      get_contract_by_token: { Args: { _token: string }; Returns: Json }
       get_invoice_by_token: { Args: { _token: string }; Returns: Json }
       get_profiles_by_ids: {
         Args: { _ids: string[] }
@@ -2759,7 +2901,17 @@ export type Database = {
           read_ct: number
         }[]
       }
+      render_contract: { Args: { _ci_id: string }; Returns: Json }
       run_contest_auto_polling: { Args: never; Returns: undefined }
+      sign_contract_by_token: {
+        Args: {
+          _signature_data_url?: string
+          _signer_name: string
+          _token: string
+          _user_agent?: string
+        }
+        Returns: Json
+      }
       slugify: { Args: { _s: string }; Returns: string }
       submit_contest_entry: {
         Args: {
