@@ -32,6 +32,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import PublicBrief from "./pages/PublicBrief";
 import PublicContestSubmit from "./pages/PublicContestSubmit";
+import PublicDraftReview from "./pages/PublicDraftReview";
 import ConnectTikTok from "./pages/ConnectTikTok";
 import ConnectInstagram from "./pages/ConnectInstagram";
 import ConnectYouTube from "./pages/ConnectYouTube";
