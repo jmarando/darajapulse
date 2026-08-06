@@ -29,6 +29,8 @@ const PublicContestSubmit = () => {
   const creatorToken = params.get("k");
   const [contest, setContest] = useState<any>(null);
   const [brief, setBrief] = useState<any>(null);
+  const [draftState, setDraftState] = useState<any>(null);
+  const [step, setStep] = useState<1 | 2>(1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [again, setAgain] = useState(0);
