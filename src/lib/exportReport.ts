@@ -182,7 +182,7 @@ export async function exportReportToPptx(d: ReportExportData) {
   // ---------- Posts (paginated, 12 rows per slide) ----------
   if (d.posts.length) {
     const sorted = [...d.posts].sort((a, b) => b.views - a.views);
-    const PER = 12;
+    const PER = 10;
     const pages = Math.ceil(sorted.length / PER);
     for (let p = 0; p < pages; p++) {
       const chunk = sorted.slice(p * PER, (p + 1) * PER);
