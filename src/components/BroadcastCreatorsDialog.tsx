@@ -5,29 +5,50 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Mail, Send } from "lucide-react";
+import { Copy, Mail, Send, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
+type Recipient = { email: string; name?: string | null };
 
 type Props = {
   campaignId: string;
   campaignName: string;
   emails: string[];
+  recipients?: Recipient[];
   hashtag?: string | null;
 };
 
 const BATCH = 80;
 
-export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, hashtag }: Props) => {
+export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, recipients, hashtag }: Props) => {
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [subject, setSubject] = useState(`${campaignName} — update`);
   const [body, setBody] = useState("");
 
+  // Kick-off invite state
+  const [meetingDay, setMeetingDay] = useState("Monday");
+  const [meetingTime, setMeetingTime] = useState("5:00 PM EAT");
+  const [meetingLink, setMeetingLink] = useState("");
+  const [note, setNote] = useState("");
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
   const clean = useMemo(
     () => Array.from(new Set(emails.map((e) => (e || "").trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))),
     [emails]
   );
+
+  const namedRecipients = useMemo(() => {
+    const byEmail = new Map<string, string | null>();
+    (recipients ?? []).forEach((r) => {
+      const e = (r.email || "").trim().toLowerCase();
+      if (e && !byEmail.has(e)) byEmail.set(e, r.name ?? null);
+    });
+    return clean.map((e) => ({ email: e, name: byEmail.get(e) ?? null }));
+  }, [clean, recipients]);
 
   useEffect(() => {
     if (!open) return;
@@ -67,6 +88,45 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, hash
     window.location.href = url;
   };
 
+  const sendInvites = async () => {
+    if (!meetingLink.trim()) {
+      const ok = window.confirm("No meeting link added yet — send the invite without it?");
+      if (!ok) return;
+    }
+    setSending(true);
+    setProgress({ done: 0, total: namedRecipients.length });
+    let failed = 0;
+    for (let i = 0; i < namedRecipients.length; i++) {
+      const r = namedRecipients[i];
+      try {
+        const { error } = await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "royco-kickoff-invite",
+            recipientEmail: r.email,
+            idempotencyKey: `kickoff-${campaignId}-${r.email}`,
+            templateData: {
+              greeting_name: (r.name || "").split(" ")[0] || "there",
+              campaign_name: campaignName,
+              meeting_day: meetingDay,
+              meeting_time: meetingTime,
+              meeting_link: meetingLink.trim() || undefined,
+              submission_url: submitUrl || undefined,
+              custom_note: note.trim() || undefined,
+            },
+          },
+        });
+        if (error) failed++;
+      } catch {
+        failed++;
+      }
+      setProgress({ done: i + 1, total: namedRecipients.length });
+    }
+    setSending(false);
+    toast[failed ? "warning" : "success"](
+      failed ? `Sent with ${failed} failure${failed > 1 ? "s" : ""}` : `Kick-off invite queued to ${namedRecipients.length} creators`
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -74,55 +134,103 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, hash
           <Mail className="w-3 h-3 mr-1" /> Email creators
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">Message all creators</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm">
-            <Badge variant="secondary">{clean.length} contactable</Badge>
-            <span className="text-xs text-muted-foreground">of {emails.length} on the roster</span>
-          </div>
+        <div className="flex items-center gap-2 text-sm mb-2">
+          <Badge variant="secondary">{clean.length} contactable</Badge>
+          <span className="text-xs text-muted-foreground">of {emails.length} on the roster</span>
+        </div>
 
-          {submitUrl && (
-            <div className="rounded-lg border border-border p-3 bg-secondary/40">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Submission form</div>
-              <div className="flex items-center gap-2 mt-1">
-                <Input readOnly value={submitUrl} className="text-xs" />
-                <Button size="sm" variant="outline" onClick={() => copy(submitUrl, "Link")}>
-                  <Copy className="w-3 h-3" />
-                </Button>
+        <Tabs defaultValue="kickoff">
+          <TabsList className="mb-4">
+            <TabsTrigger value="kickoff">Kick-off invite</TabsTrigger>
+            <TabsTrigger value="plain">Plain email</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="kickoff" className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Sends a branded Royco-red invite from Daraja Pulse — meeting details, what we'll cover, and a short intro to the
+              platform for briefing, reporting and payments.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Day</Label>
+                <Input value={meetingDay} onChange={(e) => setMeetingDay(e.target.value)} placeholder="Monday 10 August" />
+              </div>
+              <div>
+                <Label>Time</Label>
+                <Input value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} placeholder="5:00 PM EAT" />
               </div>
             </div>
-          )}
 
-          <div>
-            <Label>Subject</Label>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </div>
-          <div>
-            <Label>Message</Label>
-            <Textarea rows={8} value={body} onChange={(e) => setBody(e.target.value)} />
-          </div>
+            <div>
+              <Label>Teams meeting link</Label>
+              <Input
+                value={meetingLink}
+                onChange={(e) => setMeetingLink(e.target.value)}
+                placeholder="https://teams.microsoft.com/l/meetup-join/..."
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Paste the Teams link here before sending — it becomes the "Join the meeting" button.
+              </p>
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => copy(clean.join(", "), "Emails")}>
-              <Copy className="w-3 h-3 mr-1" /> Copy all emails
+            <div>
+              <Label>Extra note (optional)</Label>
+              <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything else you want to add…" />
+            </div>
+
+            <Button className="bg-primary" disabled={sending || !namedRecipients.length} onClick={sendInvites}>
+              {sending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+              {sending
+                ? `Sending ${progress?.done ?? 0}/${progress?.total ?? 0}`
+                : `Send branded invite to ${namedRecipients.length}`}
             </Button>
-            {batches.map((b, i) => (
-              <Button key={i} size="sm" className="bg-primary" onClick={() => openMail(b)}>
-                <Send className="w-3 h-3 mr-1" />
-                {batches.length > 1 ? `Open batch ${i + 1} (${b.length})` : `Open in email (${b.length})`}
-              </Button>
-            ))}
-          </div>
+          </TabsContent>
 
-          <p className="text-[11px] text-muted-foreground">
-            Recipients go in BCC so creators never see each other's addresses. Large rosters are split into batches of {BATCH} to stay
-            within mail client limits — paste into your mail tool of choice if you prefer.
-          </p>
-        </div>
+          <TabsContent value="plain" className="space-y-4">
+            {submitUrl && (
+              <div className="rounded-lg border border-border p-3 bg-secondary/40">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Submission form</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input readOnly value={submitUrl} className="text-xs" />
+                  <Button size="sm" variant="outline" onClick={() => copy(submitUrl, "Link")}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label>Subject</Label>
+              <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+            </div>
+            <div>
+              <Label>Message</Label>
+              <Textarea rows={8} value={body} onChange={(e) => setBody(e.target.value)} />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => copy(clean.join(", "), "Emails")}>
+                <Copy className="w-3 h-3 mr-1" /> Copy all emails
+              </Button>
+              {batches.map((b, i) => (
+                <Button key={i} size="sm" className="bg-primary" onClick={() => openMail(b)}>
+                  <Send className="w-3 h-3 mr-1" />
+                  {batches.length > 1 ? `Open batch ${i + 1} (${b.length})` : `Open in email (${b.length})`}
+                </Button>
+              ))}
+            </div>
+
+            <p className="text-[11px] text-muted-foreground">
+              Recipients go in BCC so creators never see each other's addresses. Large rosters are split into batches of {BATCH}.
+            </p>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
