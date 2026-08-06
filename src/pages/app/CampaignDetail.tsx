@@ -1845,16 +1845,28 @@ const CampaignDetail = () => {
           </div>
           <div className="flex gap-2 items-center">
             <Select value={periodFilter} onValueChange={(v: any) => setPeriodFilter(v)}>
-              <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All time</SelectItem>
                 <SelectItem value="week">This week</SelectItem>
                 <SelectItem value="month">This month</SelectItem>
                 <SelectItem value="quarter">This quarter</SelectItem>
                 <SelectItem value="year">This year</SelectItem>
+                {monthOptions.map(m => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={postSort} onValueChange={(v: any) => setPostSort(v)}>
+              <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="views">Most views</SelectItem>
+                <SelectItem value="recent">Newest first</SelectItem>
+                <SelectItem value="engagement">Most engagement</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={autoFetchAll}><Sparkles className="w-3 h-3 mr-1" /> Auto-fetch all</Button>
+
             <Dialog open={postOpen} onOpenChange={setPostOpen}>
               <DialogTrigger asChild><Button size="sm" className="bg-primary" disabled={ci.length === 0}><Plus className="w-3 h-3 mr-1" /> Add post</Button></DialogTrigger>
               <DialogContent>
