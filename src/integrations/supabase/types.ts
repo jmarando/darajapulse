@@ -2902,6 +2902,10 @@ export type Database = {
         }[]
       }
       render_contract: { Args: { _ci_id: string }; Returns: Json }
+      review_contest_entry: {
+        Args: { _decision: string; _entry_id: string }
+        Returns: Json
+      }
       run_contest_auto_polling: { Args: never; Returns: undefined }
       sign_contract_by_token: {
         Args: {
