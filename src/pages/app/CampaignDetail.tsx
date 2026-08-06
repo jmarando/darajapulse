@@ -64,6 +64,7 @@ const LinkedContestsCard = ({ campaignId }: { campaignId: string }) => {
   );
 };
 import EmailReportsSection from "./EmailReportsSection";
+import SubmissionsSection from "./SubmissionsSection";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
@@ -191,7 +192,10 @@ const CampaignDetail = () => {
     const contestIds = (contests ?? []).map((x: any) => x.id);
     setSubmissionToken((contests ?? [])[0]?.submission_token ?? null);
     if (contestIds.length) {
-      const { data: ce } = await supabase.from("contest_entries").select("views,likes,comments,shares,saves").in("contest_id", contestIds);
+      const { data: ce } = await supabase
+        .from("contest_entries")
+        .select("id,full_name,handle,submitter_name,submitter_email,platform,post_url,status,source,views,likes,comments,shares,saves,created_at,posted_at")
+        .in("contest_id", contestIds);
       setContestEntries(ce ?? []);
     } else setContestEntries([]);
 
@@ -779,6 +783,13 @@ const CampaignDetail = () => {
             className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
           >
             Contests
+          </TabsTrigger>
+          <TabsTrigger
+            value="submissions"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Submissions
+            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary">{contestEntries.length}</span>
           </TabsTrigger>
           <TabsTrigger
             value="emails"
@@ -1963,6 +1974,15 @@ const CampaignDetail = () => {
 
         <TabsContent value="contests" className="space-y-6 mt-0">
           <LinkedContestsCard campaignId={id!} />
+        </TabsContent>
+
+        <TabsContent value="submissions" className="space-y-6 mt-0">
+          <SubmissionsSection
+            entries={contestEntries}
+            submissionToken={submissionToken}
+            campaignName={c?.name}
+            onRefresh={load}
+          />
         </TabsContent>
 
         <TabsContent value="emails" className="space-y-6 mt-0">
