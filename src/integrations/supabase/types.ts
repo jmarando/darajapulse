@@ -472,6 +472,7 @@ export type Database = {
           name: string
           objective: string | null
           references_urls: string[] | null
+          require_draft_approval: boolean
           slug: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["campaign_status"]
@@ -499,6 +500,7 @@ export type Database = {
           name: string
           objective?: string | null
           references_urls?: string[] | null
+          require_draft_approval?: boolean
           slug?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
@@ -526,6 +528,7 @@ export type Database = {
           name?: string
           objective?: string | null
           references_urls?: string[] | null
+          require_draft_approval?: boolean
           slug?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
@@ -1232,6 +1235,97 @@ export type Database = {
           },
         ]
       }
+      creator_drafts: {
+        Row: {
+          campaign_id: string
+          campaign_influencer_id: string | null
+          caption: string | null
+          created_at: string
+          creator_note: string | null
+          file_name: string | null
+          file_path: string
+          file_size: number | null
+          id: string
+          influencer_id: string | null
+          mime_type: string | null
+          platform: string | null
+          post_url: string | null
+          posted_entry_id: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_label: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          campaign_influencer_id?: string | null
+          caption?: string | null
+          created_at?: string
+          creator_note?: string | null
+          file_name?: string | null
+          file_path: string
+          file_size?: number | null
+          id?: string
+          influencer_id?: string | null
+          mime_type?: string | null
+          platform?: string | null
+          post_url?: string | null
+          posted_entry_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_label?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          campaign_influencer_id?: string | null
+          caption?: string | null
+          created_at?: string
+          creator_note?: string | null
+          file_name?: string | null
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          influencer_id?: string | null
+          mime_type?: string | null
+          platform?: string | null
+          post_url?: string | null
+          posted_entry_id?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_label?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_drafts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_drafts_campaign_influencer_id_fkey"
+            columns: ["campaign_influencer_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_influencers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_drafts_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_deletion_requests: {
         Row: {
           created_at: string
@@ -1437,6 +1531,44 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      draft_links: {
+        Row: {
+          campaign_id: string
+          can_decide: boolean
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string | null
+          token: string
+        }
+        Insert: {
+          campaign_id: string
+          can_decide?: boolean
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          token?: string
+        }
+        Update: {
+          campaign_id?: string
+          can_decide?: boolean
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_send_log: {
         Row: {
@@ -2854,6 +2986,20 @@ export type Database = {
         }[]
       }
       get_contract_by_token: { Args: { _token: string }; Returns: Json }
+      get_creator_drafts: {
+        Args: { _brief_token: string }
+        Returns: {
+          caption: string
+          created_at: string
+          file_name: string
+          id: string
+          platform: string
+          post_url: string
+          review_note: string
+          reviewed_at: string
+          status: string
+        }[]
+      }
       get_invoice_by_token: { Args: { _token: string }; Returns: Json }
       get_profiles_by_ids: {
         Args: { _ids: string[] }
@@ -2928,6 +3074,19 @@ export type Database = {
           _token: string
         }
         Returns: Json
+      }
+      submit_creator_draft: {
+        Args: {
+          _brief_token: string
+          _caption?: string
+          _creator_note?: string
+          _file_name: string
+          _file_path: string
+          _file_size?: number
+          _mime_type?: string
+          _platform?: string
+        }
+        Returns: string
       }
       update_brief_status: {
         Args: { _status: string; _token: string }
