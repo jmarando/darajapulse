@@ -191,7 +191,10 @@ const CampaignDetail = () => {
     const contestIds = (contests ?? []).map((x: any) => x.id);
     setSubmissionToken((contests ?? [])[0]?.submission_token ?? null);
     if (contestIds.length) {
-      const { data: ce } = await supabase.from("contest_entries").select("views,likes,comments,shares,saves").in("contest_id", contestIds);
+      const { data: ce } = await supabase
+        .from("contest_entries")
+        .select("id,full_name,handle,submitter_name,submitter_email,platform,post_url,status,source,views,likes,comments,shares,saves,created_at,posted_at")
+        .in("contest_id", contestIds);
       setContestEntries(ce ?? []);
     } else setContestEntries([]);
 
