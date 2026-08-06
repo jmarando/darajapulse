@@ -84,7 +84,7 @@ const PublicContestSubmit = () => {
     // the metrics pull immediately so the roster updates without waiting for cron.
     const postId = (data as any)?.post_id;
     if (postId) {
-      supabase.functions.invoke("fetch-public-metrics", { body: { post_ids: [postId] } }).catch(() => {});
+      supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } }).catch(() => {});
     }
     setSubmitted(true);
   };
