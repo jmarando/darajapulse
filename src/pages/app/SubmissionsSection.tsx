@@ -141,7 +141,23 @@ export const SubmissionsSection = ({
       </Card>
 
       <Card className="p-0 overflow-hidden">
-        <div className="p-4 flex items-center gap-3 border-b border-border">
+        <div className="p-4 flex flex-wrap items-center gap-3 border-b border-border">
+          <div className="flex gap-1 rounded-md border border-border p-1">
+            {([
+              ["pending", "Pending review"],
+              ["approved", "Approved"],
+              ["rejected", "Declined"],
+              ["all", "All"],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`px-3 h-7 rounded text-xs transition-colors ${tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+              >
+                {label} ({counts[key]})
+              </button>
+            ))}
+          </div>
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search creator, handle or link…" className="max-w-sm h-9" />
           <span className="text-xs text-muted-foreground">{rows.length} submission{rows.length === 1 ? "" : "s"}</span>
         </div>
@@ -149,7 +165,11 @@ export const SubmissionsSection = ({
         {rows.length === 0 ? (
           <div className="p-10 text-center text-muted-foreground">
             <Inbox className="w-6 h-6 mx-auto mb-2 opacity-60" />
-            <div className="text-sm">No submissions yet. Share the link above or send briefs — entries appear here the moment a creator posts.</div>
+            <div className="text-sm">
+              {tab === "pending"
+                ? "Nothing waiting for review right now."
+                : "No submissions yet. Share the link above or send briefs — entries appear here the moment a creator posts."}
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -162,6 +182,7 @@ export const SubmissionsSection = ({
                   <th className="text-right font-medium px-4 py-2">Views</th>
                   <th className="text-left font-medium px-4 py-2">Submitted</th>
                   <th className="text-left font-medium px-4 py-2">Status</th>
+                  <th className="text-right font-medium px-4 py-2">Review</th>
                 </tr>
               </thead>
               <tbody>
@@ -184,10 +205,34 @@ export const SubmissionsSection = ({
                       {e.created_at ? new Date(e.created_at).toLocaleDateString() : "—"}
                     </td>
                     <td className="px-4 py-2">
-                      <Badge variant="outline" className="capitalize text-[10px]">{e.status || "received"}</Badge>
+                      <Badge
+                        variant="outline"
+                        className={`capitalize text-[10px] ${e.status === "approved" ? "border-success/40 text-success" : e.status === "rejected" ? "border-destructive/40 text-destructive" : ""}`}
+                      >
+                        {e.status === "rejected" ? "declined" : e.status || "pending"}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex justify-end gap-1.5">
+                        {e.status !== "approved" && (
+                          <Button size="sm" className="h-7" disabled={busy === e.id} onClick={() => review(e.id, "approved")}>
+                            <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                          </Button>
+                        )}
+                        {e.status !== "rejected" && (
+                          <Button size="sm" variant="outline" className="h-7" disabled={busy === e.id} onClick={() => review(e.id, "rejected")}>
+                            <X className="w-3.5 h-3.5 mr-1" /> Decline
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
               </tbody>
             </table>
           </div>
