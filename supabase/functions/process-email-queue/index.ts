@@ -33,7 +33,8 @@ async function sendViaResend(payload: {
     throw new Error('Resend credentials are not configured')
   }
 
-  const from = Deno.env.get('RESEND_FROM') || payload.from || 'Daraja Pulse <notifications@mail.darajapulse.com>'
+  // darajapulse.com is verified in Resend — always send from the branded sender.
+  const from = 'Daraja Pulse <notifications@darajapulse.com>'
 
   const res = await fetch(`${RESEND_GATEWAY_URL}/emails`, {
     method: 'POST',
