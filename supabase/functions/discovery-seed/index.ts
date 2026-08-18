@@ -180,16 +180,18 @@ async function runSeed(platforms: string[], niches: string[], concurrency: numbe
             .from("discovery_creators").select("id").eq("platform", row.platform).eq("handle", row.handle).maybeSingle()).data?.id;
           if (creatorId) {
             const cs = creators.find(c => String(c.handle).replace(/^@/, "").toLowerCase() === row.handle);
-            if (cs?.public_email) {
-              await supabase.from("discovery_contacts").upsert({
-                creator_id: creatorId, kind: "email", value: cs.public_email, is_public: true, label: "from bio",
-              }, { onConflict: "creator_id,kind,value" as any, ignoreDuplicates: true } as any).catch(() => {});
-            }
-            if (cs?.public_phone) {
-              await supabase.from("discovery_contacts").upsert({
-                creator_id: creatorId, kind: "phone", value: cs.public_phone, is_public: true, label: "from bio",
-              }, { onConflict: "creator_id,kind,value" as any, ignoreDuplicates: true } as any).catch(() => {});
-            }
+            try {
+              if (cs?.public_email) {
+                await supabase.from("discovery_contacts").upsert({
+                  creator_id: creatorId, kind: "email", value: cs.public_email, is_public: true, label: "from bio",
+                }, { onConflict: "creator_id,kind,value" as any, ignoreDuplicates: true } as any);
+              }
+              if (cs?.public_phone) {
+                await supabase.from("discovery_contacts").upsert({
+                  creator_id: creatorId, kind: "phone", value: cs.public_phone, is_public: true, label: "from bio",
+                }, { onConflict: "creator_id,kind,value" as any, ignoreDuplicates: true } as any);
+              }
+            } catch (_e) { /* contact upsert is best-effort */ }
           }
         }
         return { ins, upd };
