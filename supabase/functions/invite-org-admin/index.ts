@@ -8,18 +8,17 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
-    const { data: u } = await userClient.auth.getUser();
-    if (!u?.user) return json({ error: "unauthorized" }, 401);
-
-    const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
+    if (!token) return json({ error: "unauthorized" }, 401);
+    const { data: u, error: authErr } = await admin.auth.getUser(token);
+    if (authErr || !u?.user) return json({ error: "unauthorized", detail: authErr?.message ?? "no session" }, 401);
     const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", u.user.id);
     const roleSet = new Set((roles ?? []).map((r: any) => r.role));
     if (!roleSet.has("agency_admin") && !roleSet.has("super_admin")) {
