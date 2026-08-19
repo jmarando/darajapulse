@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import logo from "@/assets/logo-pulse-mark.png";
-import { authRedirectUrl } from "@/lib/appUrl";
+import { authRedirectUrl, workspaceRedirect } from "@/lib/appUrl";
 
 const safeNext = (raw: string | null): string | null => {
   if (!raw) return null;
