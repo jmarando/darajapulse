@@ -4,10 +4,12 @@ import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquar
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import logo from "@/assets/logo-pulse-mark.png";
 import TenantGuard from "@/components/TenantGuard";
 import { useTenant } from "@/hooks/useTenant";
+import { supabase } from "@/integrations/supabase/client";
+import { isRootHost, workspaceRedirect } from "@/lib/appUrl";
 
 const navGroups: { label?: string; items: { to: string; icon: any; label: string; end?: boolean }[] }[] = [
   {
