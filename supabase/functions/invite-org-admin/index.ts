@@ -49,12 +49,20 @@ Deno.serve(async (req) => {
       if (kind === "brand_org" && !validBrandRoles.has(requestedRole)) return json({ error: "invalid role for brand_org" }, 400);
     }
 
-    const appUrl = `${CANONICAL_APP_ORIGIN}/app`;
+    const table = kind === "agency" ? "agencies" : "brand_orgs";
+    const { data: org } = await admin.from(table).select("name, subdomain").eq("id", org_id).maybeSingle();
+    const orgName = (org as any)?.name ?? (kind === "agency" ? "your agency" : "your brand");
+
+    // Send users to their workspace host (e.g. https://pesalink.darajapulse.com)
+    const sub = String((org as any)?.subdomain ?? "").trim().toLowerCase();
+    let origin = CANONICAL_APP_ORIGIN;
+    if (sub) {
+      const host = sub.includes(".") ? sub : `${sub}.darajapulse.com`;
+      if (host === "darajapulse.com" || host.endsWith(".darajapulse.com")) origin = `https://${host}`;
+    }
+    const appUrl = `${origin}/app`;
     const setupUrl = setupUrlFrom(appUrl);
 
-    const table = kind === "agency" ? "agencies" : "brand_orgs";
-    const { data: org } = await admin.from(table).select("name").eq("id", org_id).maybeSingle();
-    const orgName = (org as any)?.name ?? (kind === "agency" ? "your agency" : "your brand");
 
     const { data: existing } = await admin.auth.admin.listUsers();
     const results: any[] = [];
