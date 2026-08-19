@@ -113,7 +113,20 @@ const Team = () => {
       body: { email, role: permission, title },
     });
     setBusy(false);
-    if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Invite failed");
+    if (error || (data as any)?.error) {
+      let detail = (data as any)?.error ?? error?.message ?? "Invite failed";
+      const ctx = (error as any)?.context;
+      if (ctx?.text) {
+        try {
+          const body = await ctx.text();
+          const parsed = JSON.parse(body);
+          if (parsed?.error) detail = parsed.error;
+        } catch { /* keep default */ }
+      }
+      if (detail === "forbidden") detail = "You need admin access on this workspace to invite teammates.";
+      if (detail === "unauthorized") detail = "Your session expired — sign in again.";
+      return toast.error(detail);
+    }
     toast.success((data as any)?.existed ? "Role assigned to existing user" : "Invite sent");
     setEmail("");
     load();
