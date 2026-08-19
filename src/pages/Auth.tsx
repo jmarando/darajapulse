@@ -58,9 +58,9 @@ const Auth = () => {
 
   const google = async () => {
     setBusy(true);
-    const redirect_uri = nextParam
-      ? `https://darajapulse.com${nextParam}`
-      : "https://darajapulse.com/app";
+    // Stay on the host the user signed in from (tenant subdomains included).
+    const origin = window.location.origin;
+    const redirect_uri = nextParam ? `${origin}${nextParam}` : `${origin}/app`;
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri });
     if (result.error) { setBusy(false); return toast.error("Google sign-in failed"); }
     if (result.redirected) return;
