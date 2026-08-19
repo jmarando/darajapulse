@@ -35,8 +35,20 @@ Deno.serve(async (req) => {
     const cleanTitle = typeof title === "string" && title.length ? title : null;
     if (!cleanEmail) return new Response(JSON.stringify({ error: "email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const appUrl = `${CANONICAL_APP_ORIGIN}/app`;
+    let origin = CANONICAL_APP_ORIGIN;
+    let callerOrgName = "your team";
+    if (callerAgencyId) {
+      const { data: ag } = await admin.from("agencies").select("name, subdomain").eq("id", callerAgencyId).maybeSingle();
+      if ((ag as any)?.name) callerOrgName = (ag as any).name;
+      const sub = String((ag as any)?.subdomain ?? "").trim().toLowerCase();
+      if (sub) {
+        const host = sub.includes(".") ? sub : `${sub}.darajapulse.com`;
+        if (host === "darajapulse.com" || host.endsWith(".darajapulse.com")) origin = `https://${host}`;
+      }
+    }
+    const appUrl = `${origin}/app`;
     const setupUrl = setupUrlFrom(appUrl);
+
 
     let userId: string | null = null;
     const { data: existing } = await admin.auth.admin.listUsers();
