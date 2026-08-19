@@ -341,6 +341,13 @@ const ALL_ROLES = ["super_admin","agency_admin","account_manager","brand_owner",
 function UsersTab() {
   const [users, setUsers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
+  const [orgs, setOrgs] = useState<{ agencies: any[]; brandOrgs: any[] }>({ agencies: [], brandOrgs: [] });
+  const [inviteKind, setInviteKind] = useState<OrgKind>("agency");
+  const [inviteOrg, setInviteOrg] = useState<string>("");
+  const [inviteRole, setInviteRole] = useState<string>("agency_admin");
+  const [inviteEmails, setInviteEmails] = useState("");
+  const [inviting, setInviting] = useState(false);
+
   const load = async () => {
     const { data: profs } = await (supabase.from("profiles") as any).select("id,email,full_name").order("email");
     const { data: rs } = await (supabase.from("user_roles") as any).select("user_id,role,agency_id,brand_org_id");
@@ -349,6 +356,37 @@ function UsersTab() {
     setUsers((profs ?? []).map((p: any) => ({ ...p, roles: byUser[p.id] ?? [] })));
   };
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    (async () => {
+      const [a, b] = await Promise.all([
+        (supabase.from("agencies") as any).select("id,name").order("name"),
+        (supabase.from("brand_orgs") as any).select("id,name").order("name"),
+      ]);
+      setOrgs({ agencies: (a.data as any) ?? [], brandOrgs: (b.data as any) ?? [] });
+    })();
+  }, []);
+
+  const orgOptions = inviteKind === "agency" ? orgs.agencies : orgs.brandOrgs;
+  const roleOptions = inviteKind === "agency" ? ["agency_admin", "account_manager"] : ["brand_owner", "brand_viewer"];
+
+  const sendInvite = async () => {
+    const emails = inviteEmails.split(/[\s,;]+/).map((e) => e.trim().toLowerCase()).filter(Boolean);
+    if (!inviteOrg || !emails.length) return toast({ title: "Pick a workspace and enter at least one email", variant: "destructive" });
+    setInviting(true);
+    const { data, error } = await supabase.functions.invoke("invite-org-admin", {
+      body: { kind: inviteKind, org_id: inviteOrg, emails, role: inviteRole },
+    });
+    setInviting(false);
+    if (error || (data as any)?.error) {
+      let detail = (data as any)?.error ?? error?.message ?? "Invite failed";
+      const ctx = (error as any)?.context;
+      if (ctx?.text) { try { const parsed = JSON.parse(await ctx.text()); if (parsed?.error) detail = parsed.error; } catch { /* keep */ } }
+      return toast({ title: "Invite failed", description: detail, variant: "destructive" });
+    }
+    toast({ title: "Invites sent", description: emails.join(", ") });
+    setInviteEmails("");
+    load();
+  };
 
   const addRole = async (user_id: string, role: string) => {
     const { error } = await (supabase.from("user_roles") as any).insert({ user_id, role });
@@ -365,6 +403,38 @@ function UsersTab() {
 
   return (
     <div className="space-y-4 mt-4">
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Invite users to a workspace</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-[160px_1fr_200px] items-end">
+          <div>
+            <Label>Workspace type</Label>
+            <Select value={inviteKind} onValueChange={(v) => { setInviteKind(v as OrgKind); setInviteOrg(""); setInviteRole(v === "agency" ? "agency_admin" : "brand_owner"); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="agency">Agency</SelectItem><SelectItem value="brand_org">Brand org</SelectItem></SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Workspace</Label>
+            <Select value={inviteOrg} onValueChange={setInviteOrg}>
+              <SelectTrigger><SelectValue placeholder="Select workspace…" /></SelectTrigger>
+              <SelectContent>{orgOptions.map((o: any) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Role</Label>
+            <Select value={inviteRole} onValueChange={setInviteRole}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{roleOptions.map((r) => <SelectItem key={r} value={r}>{r.replace("_", " ")}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="md:col-span-2">
+            <Label>Emails (comma or space separated)</Label>
+            <Textarea rows={2} value={inviteEmails} onChange={(e) => setInviteEmails(e.target.value)} placeholder="person@company.com, other@company.com" />
+          </div>
+          <Button onClick={sendInvite} disabled={inviting}>{inviting ? "Sending…" : "Send invites"}</Button>
+        </CardContent>
+      </Card>
+
       <Input placeholder="Search users…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
       <Card><CardContent className="p-0">
         <Table><TableHeader><TableRow><TableHead>User</TableHead><TableHead>Roles</TableHead><TableHead>Add role</TableHead></TableRow></TableHeader>
