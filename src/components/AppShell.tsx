@@ -119,6 +119,17 @@ const AppShell = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // On the root domain, send tenant workspace members to their own subdomain.
+  useEffect(() => {
+    if (loading || !user || !isRootHost()) return;
+    let cancelled = false;
+    (async () => {
+      const url = await workspaceRedirect((fn) => supabase.rpc(fn as any) as any, window.location.pathname);
+      if (!cancelled && url) window.location.href = url;
+    })();
+    return () => { cancelled = true; };
+  }, [loading, user]);
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (!user) { navigate("/auth"); return null; }
   if (!isAgency && isClient) { navigate("/portal"); return null; }
