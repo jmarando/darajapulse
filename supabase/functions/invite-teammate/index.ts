@@ -35,8 +35,20 @@ Deno.serve(async (req) => {
     const cleanTitle = typeof title === "string" && title.length ? title : null;
     if (!cleanEmail) return new Response(JSON.stringify({ error: "email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const appUrl = `${CANONICAL_APP_ORIGIN}/app`;
+    let origin = CANONICAL_APP_ORIGIN;
+    let callerOrgName = "your team";
+    if (callerAgencyId) {
+      const { data: ag } = await admin.from("agencies").select("name, subdomain").eq("id", callerAgencyId).maybeSingle();
+      if ((ag as any)?.name) callerOrgName = (ag as any).name;
+      const sub = String((ag as any)?.subdomain ?? "").trim().toLowerCase();
+      if (sub) {
+        const host = sub.includes(".") ? sub : `${sub}.darajapulse.com`;
+        if (host === "darajapulse.com" || host.endsWith(".darajapulse.com")) origin = `https://${host}`;
+      }
+    }
+    const appUrl = `${origin}/app`;
     const setupUrl = setupUrlFrom(appUrl);
+
 
     let userId: string | null = null;
     const { data: existing } = await admin.auth.admin.listUsers();
@@ -65,12 +77,7 @@ Deno.serve(async (req) => {
     let welcomeSent = false;
     let welcomeError: string | null = null;
     if (found) {
-      // Resolve caller's agency name for the welcome email
-      let orgName = "your team";
-      if (callerAgencyId) {
-        const { data: ag } = await admin.from("agencies").select("name").eq("id", callerAgencyId).maybeSingle();
-        if ((ag as any)?.name) orgName = (ag as any).name;
-      }
+      const orgName = callerOrgName;
 
       const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
         method: "POST",
@@ -83,7 +90,8 @@ Deno.serve(async (req) => {
           templateName: "workspace-access",
           recipientEmail: cleanEmail,
           idempotencyKey: `teammate-access-${callerAgencyId ?? "na"}-${userId}-${newRole}`,
-          templateData: { org_name: orgName, access_label: newRole === "agency_admin" ? "agency admin" : "account manager", sign_in_url: `${CANONICAL_APP_ORIGIN}/auth` },
+          templateData: { org_name: orgName, access_label: newRole === "agency_admin" ? "agency admin" : "account manager", sign_in_url: `${origin}/auth` },
+
         }),
       });
       if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;
