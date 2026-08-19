@@ -1,0 +1,3 @@
+insert into public.agencies (name, slug, subdomain, kind, monthly_fee_kes, billing_cycle, support_email, legal_name, invoice_address, display_name, is_active, billing_notes)
+values ('Pesalink','pesalink','pesalink','brand',100000,'monthly','twmaina@ipsl.co.ke','Integrated Payment Services Limited','International House, 7th Floor, Mama Ngina Street, Nairobi, Kenya','Pesalink',true,'Negotiated: KES 100,000 per month, billed monthly in advance. Contract with Integrated Payment Services Limited (IPSL).')
+on conflict do nothing;
