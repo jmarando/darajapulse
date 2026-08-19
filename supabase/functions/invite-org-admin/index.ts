@@ -17,8 +17,17 @@ Deno.serve(async (req) => {
     const token = authHeader.replace(/^Bearer\s+/i, "").trim();
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
     if (!token) return json({ error: "unauthorized" }, 401);
-    const { data: u, error: authErr } = await admin.auth.getUser(token);
-    if (authErr || !u?.user) return json({ error: "unauthorized", detail: authErr?.message ?? "no session" }, 401);
+    // Verify the JWT locally (getUser() fails when the session row was revoked
+    // even though the access token is still valid/unexpired).
+    let userId: string | null = null;
+    const { data: claimsData } = await admin.auth.getClaims(token);
+    userId = (claimsData as any)?.claims?.sub ?? null;
+    if (!userId) {
+      const { data: u } = await admin.auth.getUser(token);
+      userId = u?.user?.id ?? null;
+    }
+    if (!userId) return json({ error: "unauthorized", detail: "invalid or expired session" }, 401);
+    const u = { user: { id: userId } };
     const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", u.user.id);
     const roleSet = new Set((roles ?? []).map((r: any) => r.role));
     if (!roleSet.has("agency_admin") && !roleSet.has("super_admin")) {
