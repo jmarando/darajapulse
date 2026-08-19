@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import logo from "@/assets/logo-pulse-mark.png";
-import { authRedirectUrl } from "@/lib/appUrl";
+import { authRedirectUrl, workspaceRedirect } from "@/lib/appUrl";
 
 const safeNext = (raw: string | null): string | null => {
   if (!raw) return null;
@@ -35,8 +35,11 @@ const Auth = () => {
     e.preventDefault();
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setBusy(false); return toast.error(error.message); }
+    // Members of a tenant workspace land on their own subdomain.
+    const ws = await workspaceRedirect((fn) => supabase.rpc(fn as any) as any, nextParam ?? "/app");
+    if (ws) { window.location.href = ws; return; }
     setBusy(false);
-    if (error) return toast.error(error.message);
     nav(dest);
   };
 

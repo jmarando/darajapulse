@@ -4,10 +4,12 @@ import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquar
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import logo from "@/assets/logo-pulse-mark.png";
 import TenantGuard from "@/components/TenantGuard";
 import { useTenant } from "@/hooks/useTenant";
+import { supabase } from "@/integrations/supabase/client";
+import { isRootHost, workspaceRedirect } from "@/lib/appUrl";
 
 const navGroups: { label?: string; items: { to: string; icon: any; label: string; end?: boolean }[] }[] = [
   {
@@ -118,6 +120,17 @@ const AppShell = () => {
   const isSuper = roles.includes("super_admin" as any);
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // On the root domain, send tenant workspace members to their own subdomain.
+  useEffect(() => {
+    if (loading || !user || !isRootHost()) return;
+    let cancelled = false;
+    (async () => {
+      const url = await workspaceRedirect((fn) => supabase.rpc(fn as any) as any, window.location.pathname);
+      if (!cancelled && url) window.location.href = url;
+    })();
+    return () => { cancelled = true; };
+  }, [loading, user]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (!user) { navigate("/auth"); return null; }

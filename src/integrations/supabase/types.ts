@@ -3002,6 +3002,7 @@ export type Database = {
         }[]
       }
       get_invoice_by_token: { Args: { _token: string }; Returns: Json }
+      get_my_workspace_subdomain: { Args: never; Returns: string }
       get_profiles_by_ids: {
         Args: { _ids: string[] }
         Returns: {
