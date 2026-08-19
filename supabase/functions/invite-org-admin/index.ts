@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
             templateName: "workspace-access",
             recipientEmail: cleanEmail,
             idempotencyKey: `workspace-access-${org_id}-${userId}-${requestedRole || kind}`,
-            templateData: { org_name: orgName, access_label: requestedRole || (kind === "agency" ? "agency admin" : "brand owner"), sign_in_url: `${CANONICAL_APP_ORIGIN}/auth` },
+            templateData: { org_name: orgName, access_label: requestedRole || (kind === "agency" ? "agency admin" : "brand owner"), sign_in_url: `${origin}/auth` },
           }),
         });
         if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;
