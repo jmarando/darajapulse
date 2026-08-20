@@ -111,8 +111,9 @@ const ContestsList = () => {
           }
         });
         const views = Array.from(byUrl.values()).reduce((s, v) => s + v, 0) + noUrl.reduce((s, v) => s + v, 0);
-        // Contestants excludes paid roster / campaign creators / manual exclusions.
-        const excludedSet = contestExcl.get(cid) ?? rosterHandles;
+        // Contestants excludes only manually excluded handles.
+        const excludedSet = contestExcl.get(cid) ?? new Set<string>();
+
         const roots = new Set<number>();
         rows.forEach((e: any, i: number) => {
           const hs = [e.handle, e.instagram_handle, e.tiktok_handle, e.facebook_handle].map(cleanH).filter(Boolean) as string[];
