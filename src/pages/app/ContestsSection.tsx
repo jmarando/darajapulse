@@ -344,29 +344,12 @@ export const ContestsSection = ({ campaignId, contestId }: { campaignId?: string
       setEntries([]);
       setOfficialWinners([]);
     }
-    // Paid creators (anyone in the influencer roster) must never appear as
-    // contestants — load every roster handle, not just this campaign's, so
-    // that hashtag-discovered posts from paid talent are filtered out.
+    // Only explicitly excluded handles (brand/agency accounts listed in
+    // contest_excluded_handles) are filtered out. The influencer roster is NOT
+    // used here: contest entrants get imported into the roster after a contest
+    // ends, which previously made the contestant count collapse.
     const set = new Set<string>();
-    const { data: allInf } = await supabase.from("influencers").select("handle, alt_handles");
-    for (const row of allInf ?? []) {
-      const h = cleanH((row as any).handle);
-      if (h) set.add(h);
-      for (const a of ((row as any).alt_handles ?? [])) {
-        const c = cleanH(a); if (c) set.add(c);
-      }
-    }
-    const effectiveCampaignId = campaignId ?? cs[0]?.campaign_id;
-    if (effectiveCampaignId) {
-      const { data: ci } = await supabase
-        .from("campaign_influencers")
-        .select("influencers(handle)")
-        .eq("campaign_id", effectiveCampaignId);
-      for (const row of ci ?? []) {
-        const h = cleanH((row as any).influencers?.handle);
-        if (h) set.add(h);
-      }
-    }
+
     // Per-contest exclusion list (royco.ke, etc.) — treat as paid-creator handles
     // so all existing filters skip them in scoring, leaderboard, and table.
     if (cid) {
