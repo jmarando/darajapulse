@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Mail, Send, Sparkles, Loader2 } from "lucide-react";
+import { Copy, Mail, Send, Sparkles, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 type Recipient = { email: string; name?: string | null };
