@@ -18,6 +18,7 @@ import ContestDetail from "./pages/app/ContestDetail";
 import PublicContestReport from "./pages/PublicContestReport";
 import Influencers from "./pages/app/Influencers";
 import Discovery from "./pages/app/Discovery";
+import Inbox from "./pages/app/Inbox";
 import Stub from "./pages/app/Stub";
 import Briefs from "./pages/app/Briefs";
 import Content from "./pages/app/Content";
