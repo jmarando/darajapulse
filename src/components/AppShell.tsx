@@ -26,6 +26,7 @@ const navGroups: { label?: string; items: { to: string; icon: any; label: string
       { to: "/app/content", icon: Calendar, label: "Content" },
       { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },
       { to: "/app/moderation", icon: MessageSquare, label: "Moderation" },
+      { to: "/app/inbox", icon: Mail, label: "Inbox" },
     ],
   },
   {
