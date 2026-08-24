@@ -55,6 +55,9 @@ Deno.serve(async (req) => {
   let idempotencyKey: string
   let messageId: string
   let previewOnly = false
+  let fromOverride = ''
+  let replyToOverride = ''
+
   let templateData: Record<string, any> = {}
   try {
     const body = await req.json()
