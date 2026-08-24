@@ -29,12 +29,19 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [body, setBody] = useState("");
 
   // Kick-off invite state
-  const [meetingDay, setMeetingDay] = useState("Monday");
-  const [meetingTime, setMeetingTime] = useState("5:00 PM EAT");
-  const [meetingLink, setMeetingLink] = useState("");
+  const [meetingDay, setMeetingDay] = useState("Tuesday 26 August");
+  const [meetingTime, setMeetingTime] = useState("5:00 – 6:30 PM EAT");
+  const [meetingLink, setMeetingLink] = useState("https://teams.microsoft.com/meet/336068736223252?p=zyx6Rhg5jNTRIqUmUq");
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  // Preview + test send
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewSubject, setPreviewSubject] = useState("");
+  const [previewing, setPreviewing] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [testing, setTesting] = useState(false);
 
   const clean = useMemo(
     () => Array.from(new Set(emails.map((e) => (e || "").trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))),
