@@ -50,6 +50,7 @@ const RoycoKickoffInvite = ({
   meeting_link,
   submission_url,
   custom_note,
+  rsvp_email,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
