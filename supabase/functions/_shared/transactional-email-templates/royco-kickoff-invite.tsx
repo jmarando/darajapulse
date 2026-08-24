@@ -10,6 +10,7 @@ interface Props {
   meeting_link?: string
   submission_url?: string
   custom_note?: string
+  rsvp_email?: string
 }
 
 const RED = '#E4002B'
