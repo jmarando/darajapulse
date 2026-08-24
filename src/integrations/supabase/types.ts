@@ -1570,6 +1570,116 @@ export type Database = {
           },
         ]
       }
+      email_mailboxes: {
+        Row: {
+          address: string
+          agency_id: string | null
+          campaign_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string | null
+        }
+        Insert: {
+          address: string
+          agency_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+        }
+        Update: {
+          address?: string
+          agency_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_mailboxes_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_mailboxes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_messages: {
+        Row: {
+          attachments: Json
+          cc_emails: string[]
+          created_at: string
+          direction: string
+          from_email: string
+          from_name: string | null
+          html_body: string | null
+          id: string
+          in_reply_to: string | null
+          message_id: string | null
+          provider_id: string | null
+          sent_by: string | null
+          subject: string | null
+          text_body: string | null
+          thread_id: string
+          to_emails: string[]
+        }
+        Insert: {
+          attachments?: Json
+          cc_emails?: string[]
+          created_at?: string
+          direction: string
+          from_email: string
+          from_name?: string | null
+          html_body?: string | null
+          id?: string
+          in_reply_to?: string | null
+          message_id?: string | null
+          provider_id?: string | null
+          sent_by?: string | null
+          subject?: string | null
+          text_body?: string | null
+          thread_id: string
+          to_emails?: string[]
+        }
+        Update: {
+          attachments?: Json
+          cc_emails?: string[]
+          created_at?: string
+          direction?: string
+          from_email?: string
+          from_name?: string | null
+          html_body?: string | null
+          id?: string
+          in_reply_to?: string | null
+          message_id?: string | null
+          provider_id?: string | null
+          sent_by?: string | null
+          subject?: string | null
+          text_body?: string | null
+          thread_id?: string
+          to_emails?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "email_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -1632,6 +1742,76 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      email_threads: {
+        Row: {
+          agency_id: string | null
+          campaign_id: string | null
+          created_at: string
+          id: string
+          influencer_id: string | null
+          last_message_at: string
+          last_snippet: string | null
+          mailbox: string
+          participant_email: string
+          participant_name: string | null
+          status: string
+          subject: string | null
+          unread_count: number
+        }
+        Insert: {
+          agency_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          influencer_id?: string | null
+          last_message_at?: string
+          last_snippet?: string | null
+          mailbox: string
+          participant_email: string
+          participant_name?: string | null
+          status?: string
+          subject?: string | null
+          unread_count?: number
+        }
+        Update: {
+          agency_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          influencer_id?: string | null
+          last_message_at?: string
+          last_snippet?: string | null
+          mailbox?: string
+          participant_email?: string
+          participant_name?: string | null
+          status?: string
+          subject?: string | null
+          unread_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_unsubscribe_tokens: {
         Row: {
