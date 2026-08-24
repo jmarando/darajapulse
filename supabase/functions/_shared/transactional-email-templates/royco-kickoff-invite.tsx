@@ -89,7 +89,6 @@ const RoycoKickoffInvite = ({
             </Section>
 
             {meeting_link ? <Button style={btn} href={meeting_link}>Join the meeting</Button> : null}
-            {submission_url ? <Button style={btnGhost} href={submission_url}>Open your creator page</Button> : null}
 
             <Text style={h2}>What we'll cover</Text>
             <Text style={li}>• The Royco brief — content direction, tone and the do's & don'ts</Text>
