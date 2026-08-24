@@ -39,7 +39,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
-  const [replyTo, setReplyTo] = useState("royco@darajapulse.com");
+  const [replyTo, setReplyTo] = useState("royco@reply.darajapulse.com");
 
   // Preview + test send
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -248,7 +248,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
 
             <div>
               <Label>Reply-to address</Label>
-              <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="royco@darajapulse.com" />
+              <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="royco@reply.darajapulse.com" />
               <p className="text-[11px] text-muted-foreground mt-1">
                 Sent from <span className="font-mono">royco@darajapulse.com</span>. Creator replies land in whichever inbox you set here.
               </p>
