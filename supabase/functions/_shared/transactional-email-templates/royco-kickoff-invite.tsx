@@ -141,6 +141,7 @@ export const template = {
     meeting_time: '5:00 PM EAT',
     meeting_link: 'https://teams.microsoft.com/l/meetup-join/...',
     submission_url: 'https://darajapulse.com/c/abc123',
+    rsvp_email: 'royco@reply.darajapulse.com',
   },
 } satisfies TemplateEntry
 
