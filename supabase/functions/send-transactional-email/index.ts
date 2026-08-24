@@ -61,6 +61,14 @@ Deno.serve(async (req) => {
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
     previewOnly = body.preview === true
+    // Optional per-send sender identity. Only addresses on the verified
+    // darajapulse.com domain are honoured (enforced again in the queue worker).
+    const rawFrom = typeof body.from === 'string' ? body.from.trim() : ''
+    const rawReplyTo = typeof body.replyTo === 'string' ? body.replyTo.trim() : ''
+    const domainOf = (v: string) =>
+      (v.match(/<([^>]+)>/)?.[1] || v).trim().toLowerCase().split('@')[1] || ''
+    if (rawFrom && domainOf(rawFrom).endsWith('darajapulse.com')) fromOverride = rawFrom
+    if (rawReplyTo && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rawReplyTo)) replyToOverride = rawReplyTo
     messageId = crypto.randomUUID()
     idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
     if (body.templateData && typeof body.templateData === 'object') {
