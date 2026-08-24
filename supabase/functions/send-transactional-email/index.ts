@@ -55,12 +55,23 @@ Deno.serve(async (req) => {
   let idempotencyKey: string
   let messageId: string
   let previewOnly = false
+  let fromOverride = ''
+  let replyToOverride = ''
+
   let templateData: Record<string, any> = {}
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
     previewOnly = body.preview === true
+    // Optional per-send sender identity. Only addresses on the verified
+    // darajapulse.com domain are honoured (enforced again in the queue worker).
+    const rawFrom = typeof body.from === 'string' ? body.from.trim() : ''
+    const rawReplyTo = typeof body.replyTo === 'string' ? body.replyTo.trim() : ''
+    const domainOf = (v: string) =>
+      (v.match(/<([^>]+)>/)?.[1] || v).trim().toLowerCase().split('@')[1] || ''
+    if (rawFrom && domainOf(rawFrom).endsWith('darajapulse.com')) fromOverride = rawFrom
+    if (rawReplyTo && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rawReplyTo)) replyToOverride = rawReplyTo
     messageId = crypto.randomUUID()
     idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
     if (body.templateData && typeof body.templateData === 'object') {
@@ -328,8 +339,9 @@ Deno.serve(async (req) => {
     payload: {
       message_id: messageId,
       to: effectiveRecipient,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+      from: fromOverride || `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
       sender_domain: SENDER_DOMAIN,
+      ...(replyToOverride ? { reply_to: replyToOverride } : {}),
       subject: resolvedSubject,
       html,
       text: plainText,

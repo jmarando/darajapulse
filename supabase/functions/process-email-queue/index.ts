@@ -20,12 +20,29 @@ class ResendSendError extends Error {
   }
 }
 
+// Only senders on domains verified in Resend may be used.
+const VERIFIED_SENDER_DOMAINS = ['darajapulse.com', 'mail.darajapulse.com']
+const DEFAULT_FROM = 'Daraja Pulse <notifications@darajapulse.com>'
+
+function resolveFrom(requested?: string): string {
+  if (!requested) return DEFAULT_FROM
+  const match = requested.match(/<([^>]+)>/) || requested.match(/([^\s<>]+@[^\s<>]+)/)
+  const address = match?.[1]?.trim().toLowerCase()
+  const domain = address?.split('@')[1]
+  if (!domain || !VERIFIED_SENDER_DOMAINS.includes(domain)) {
+    console.warn('Unverified sender requested — falling back to default', { requested })
+    return DEFAULT_FROM
+  }
+  return requested
+}
+
 async function sendViaResend(payload: {
   to: string
   subject: string
   html?: string
   text?: string
   from?: string
+  reply_to?: string
 }): Promise<void> {
   const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')
   const resendApiKey = Deno.env.get('RESEND_API_KEY')
@@ -33,8 +50,8 @@ async function sendViaResend(payload: {
     throw new Error('Resend credentials are not configured')
   }
 
-  // darajapulse.com is verified in Resend — always send from the branded sender.
-  const from = 'Daraja Pulse <notifications@darajapulse.com>'
+  const from = resolveFrom(payload.from)
+  const replyTo = payload.reply_to || Deno.env.get('RESEND_REPLY_TO') || undefined
 
   const res = await fetch(`${RESEND_GATEWAY_URL}/emails`, {
     method: 'POST',
@@ -49,7 +66,7 @@ async function sendViaResend(payload: {
       subject: payload.subject,
       ...(payload.html ? { html: payload.html } : {}),
       ...(payload.text ? { text: payload.text } : {}),
-      ...(Deno.env.get('RESEND_REPLY_TO') ? { reply_to: Deno.env.get('RESEND_REPLY_TO') } : {}),
+      ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   })
 
@@ -309,6 +326,7 @@ Deno.serve(async (req) => {
             html: payload.html as string | undefined,
             text: payload.text as string | undefined,
             from: payload.from as string | undefined,
+            reply_to: payload.reply_to as string | undefined,
           })
         } else {
           await sendLovableEmail(

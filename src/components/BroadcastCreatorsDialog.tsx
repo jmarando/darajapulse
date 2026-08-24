@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Copy, Mail, Send, Sparkles, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
+// Sender identity for Royco creator comms. Must stay on the verified darajapulse.com domain.
+const ROYCO_FROM = "Royco x Daraja Pulse <royco@darajapulse.com>";
+
 type Recipient = { email: string; name?: string | null };
 
 type Props = {
@@ -35,6 +38,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const [replyTo, setReplyTo] = useState("royco@darajapulse.com");
 
   // Preview + test send
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -129,6 +134,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
         body: {
           templateName: "royco-kickoff-invite",
           recipientEmail: to,
+          from: ROYCO_FROM,
+          replyTo: replyTo.trim() || undefined,
           idempotencyKey: `kickoff-test-${campaignId}-${to}-${Date.now()}`,
           templateData: templateData("Test"),
         },
@@ -156,6 +163,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
           body: {
             templateName: "royco-kickoff-invite",
             recipientEmail: r.email,
+            from: ROYCO_FROM,
+            replyTo: replyTo.trim() || undefined,
             idempotencyKey: `kickoff-${campaignId}-${r.email}`,
             templateData: {
               greeting_name: (r.name || "").split(" ")[0] || "there",
@@ -236,6 +245,16 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
               <Label>Extra note (optional)</Label>
               <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything else you want to add…" />
             </div>
+
+            <div>
+              <Label>Reply-to address</Label>
+              <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="royco@darajapulse.com" />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Sent from <span className="font-mono">royco@darajapulse.com</span>. Creator replies land in whichever inbox you set here.
+              </p>
+            </div>
+
+
 
             <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-3">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Preview &amp; test</div>
