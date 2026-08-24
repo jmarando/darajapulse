@@ -95,6 +95,52 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     window.location.href = url;
   };
 
+  const templateData = (name?: string | null) => ({
+    greeting_name: (name || "").split(" ")[0] || "there",
+    campaign_name: campaignName,
+    meeting_day: meetingDay,
+    meeting_time: meetingTime,
+    meeting_link: meetingLink.trim() || undefined,
+    submission_url: submitUrl || undefined,
+    custom_note: note.trim() || undefined,
+  });
+
+  const loadPreview = async () => {
+    setPreviewing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+        body: { templateName: "royco-kickoff-invite", preview: true, templateData: templateData(namedRecipients[0]?.name ?? "Mary") },
+      });
+      if (error) throw error;
+      setPreviewHtml((data as any)?.html ?? null);
+      setPreviewSubject((data as any)?.subject ?? "");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not build the preview");
+    }
+    setPreviewing(false);
+  };
+
+  const sendTest = async () => {
+    const to = testEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
+    setTesting(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "royco-kickoff-invite",
+          recipientEmail: to,
+          idempotencyKey: `kickoff-test-${campaignId}-${to}-${Date.now()}`,
+          templateData: templateData("Test"),
+        },
+      });
+      if (error) throw error;
+      toast.success(`Test invite sent to ${to}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Test send failed");
+    }
+    setTesting(false);
+  };
+
   const sendInvites = async () => {
     if (!meetingLink.trim()) {
       const ok = window.confirm("No meeting link added yet — send the invite without it?");
