@@ -108,7 +108,40 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     meeting_link: meetingLink.trim() || undefined,
     submission_url: submitUrl || undefined,
     custom_note: note.trim() || undefined,
+    rsvp_email: replyTo.trim() || undefined,
   });
+
+  // Who has replied: any creator on the roster with an inbound email thread.
+  const [replied, setReplied] = useState<{ email: string; name: string | null; at: string }[]>([]);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+
+  const loadReplies = async () => {
+    if (!clean.length) return;
+    setLoadingReplies(true);
+    const found: { email: string; name: string | null; at: string }[] = [];
+    for (let i = 0; i < clean.length; i += 100) {
+      const chunk = clean.slice(i, i + 100);
+      const { data } = await supabase
+        .from("email_threads")
+        .select("participant_email, participant_name, last_message_at")
+        .in("participant_email", chunk);
+      (data ?? []).forEach((t: any) =>
+        found.push({ email: t.participant_email, name: t.participant_name ?? null, at: t.last_message_at }),
+      );
+    }
+    const byEmail = new Map(namedRecipients.map((r) => [r.email, r.name]));
+    setReplied(
+      found
+        .map((f) => ({ ...f, name: f.name || byEmail.get(f.email) || null }))
+        .sort((a, b) => (a.at < b.at ? 1 : -1)),
+    );
+    setLoadingReplies(false);
+  };
+
+  useEffect(() => {
+    if (open) loadReplies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, clean.length]);
 
   const loadPreview = async () => {
     setPreviewing(true);
