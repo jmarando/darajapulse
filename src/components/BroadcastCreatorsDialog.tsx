@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Mail, Send, Sparkles, Loader2, Eye } from "lucide-react";
+import { Copy, Mail, Send, Sparkles, Loader2, Eye, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 // Sender identity for Royco creator comms. Must stay on the verified darajapulse.com domain.
@@ -207,6 +207,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
               meeting_link: meetingLink.trim() || undefined,
               submission_url: submitUrl || undefined,
               custom_note: note.trim() || undefined,
+              rsvp_email: replyTo.trim() || undefined,
             },
           },
         });
