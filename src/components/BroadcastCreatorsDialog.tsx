@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Copy, Mail, Send, Sparkles, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
+// Sender identity for Royco creator comms. Must stay on the verified darajapulse.com domain.
+const ROYCO_FROM = "Royco x Daraja Pulse <royco@darajapulse.com>";
+
 type Recipient = { email: string; name?: string | null };
 
 type Props = {
@@ -35,6 +38,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const [replyTo, setReplyTo] = useState("royco@darajapulse.com");
 
   // Preview + test send
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -129,6 +134,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
         body: {
           templateName: "royco-kickoff-invite",
           recipientEmail: to,
+          from: ROYCO_FROM,
+          replyTo: replyTo.trim() || undefined,
           idempotencyKey: `kickoff-test-${campaignId}-${to}-${Date.now()}`,
           templateData: templateData("Test"),
         },
@@ -156,6 +163,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
           body: {
             templateName: "royco-kickoff-invite",
             recipientEmail: r.email,
+            from: ROYCO_FROM,
+            replyTo: replyTo.trim() || undefined,
             idempotencyKey: `kickoff-${campaignId}-${r.email}`,
             templateData: {
               greeting_name: (r.name || "").split(" ")[0] || "there",
