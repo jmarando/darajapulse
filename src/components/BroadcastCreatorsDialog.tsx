@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Mail, Send, Sparkles, Loader2, Eye } from "lucide-react";
+import { Copy, Mail, Send, Sparkles, Loader2, Eye, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 // Sender identity for Royco creator comms. Must stay on the verified darajapulse.com domain.
@@ -108,7 +108,40 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     meeting_link: meetingLink.trim() || undefined,
     submission_url: submitUrl || undefined,
     custom_note: note.trim() || undefined,
+    rsvp_email: replyTo.trim() || undefined,
   });
+
+  // Who has replied: any creator on the roster with an inbound email thread.
+  const [replied, setReplied] = useState<{ email: string; name: string | null; at: string }[]>([]);
+  const [loadingReplies, setLoadingReplies] = useState(false);
+
+  const loadReplies = async () => {
+    if (!clean.length) return;
+    setLoadingReplies(true);
+    const found: { email: string; name: string | null; at: string }[] = [];
+    for (let i = 0; i < clean.length; i += 100) {
+      const chunk = clean.slice(i, i + 100);
+      const { data } = await supabase
+        .from("email_threads")
+        .select("participant_email, participant_name, last_message_at")
+        .in("participant_email", chunk);
+      (data ?? []).forEach((t: any) =>
+        found.push({ email: t.participant_email, name: t.participant_name ?? null, at: t.last_message_at }),
+      );
+    }
+    const byEmail = new Map(namedRecipients.map((r) => [r.email, r.name]));
+    setReplied(
+      found
+        .map((f) => ({ ...f, name: f.name || byEmail.get(f.email) || null }))
+        .sort((a, b) => (a.at < b.at ? 1 : -1)),
+    );
+    setLoadingReplies(false);
+  };
+
+  useEffect(() => {
+    if (open) loadReplies();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, clean.length]);
 
   const loadPreview = async () => {
     setPreviewing(true);
@@ -174,6 +207,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
               meeting_link: meetingLink.trim() || undefined,
               submission_url: submitUrl || undefined,
               custom_note: note.trim() || undefined,
+              rsvp_email: replyTo.trim() || undefined,
             },
           },
         });
@@ -251,7 +285,34 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
               <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="royco@reply.darajapulse.com" />
               <p className="text-[11px] text-muted-foreground mt-1">
                 Sent from <span className="font-mono">royco@darajapulse.com</span>. Creator replies land in whichever inbox you set here.
+                The invite asks each creator to reply "YES" to confirm — replies show up below and in the Inbox.
               </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">RSVPs / acknowledgements</div>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={loadReplies} disabled={loadingReplies}>
+                  {loadingReplies ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                  Refresh
+                </Button>
+              </div>
+              <div className="text-sm">
+                <span className="font-display text-xl font-semibold">{replied.length}</span>{" "}
+                <span className="text-muted-foreground">of {clean.length} creators have replied</span>
+              </div>
+              {replied.length > 0 && (
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {replied.map((r) => (
+                    <div key={r.email} className="text-xs flex items-center justify-between gap-2">
+                      <span className="truncate">{r.name || r.email}</span>
+                      <span className="text-muted-foreground shrink-0">
+                        {new Date(r.at).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
 

@@ -10,6 +10,7 @@ interface Props {
   meeting_link?: string
   submission_url?: string
   custom_note?: string
+  rsvp_email?: string
 }
 
 const RED = '#E4002B'
@@ -49,6 +50,7 @@ const RoycoKickoffInvite = ({
   meeting_link,
   submission_url,
   custom_note,
+  rsvp_email,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -99,6 +101,19 @@ const RoycoKickoffInvite = ({
               and have your payment tracked to completion — no chasing on WhatsApp, no spreadsheets.
             </Text>
 
+            <Text style={h2}>Please confirm you're coming</Text>
+            <Section style={{ ...card, borderLeft: `4px solid ${GOLD}` }}>
+              <Text style={{ ...text, margin: '0 0 8px', fontWeight: 700 }}>
+                Simply reply to this email with "YES" to confirm you've received it and that you'll join the call.
+              </Text>
+              <Text style={{ ...small, margin: 0 }}>
+                {rsvp_email
+                  ? `Your reply goes straight to our team at ${rsvp_email} — a one-word reply is enough.`
+                  : 'Your reply goes straight to our team — a one-word reply is enough.'}
+                {' '}If you can't make it, reply and tell us so we can share the recording and notes.
+              </Text>
+            </Section>
+
             {custom_note ? <Text style={text}>{custom_note}</Text> : null}
 
             <Hr style={{ borderColor: BORDER, margin: '22px 0 14px' }} />
@@ -126,6 +141,7 @@ export const template = {
     meeting_time: '5:00 PM EAT',
     meeting_link: 'https://teams.microsoft.com/l/meetup-join/...',
     submission_url: 'https://darajapulse.com/c/abc123',
+    rsvp_email: 'royco@reply.darajapulse.com',
   },
 } satisfies TemplateEntry
 
