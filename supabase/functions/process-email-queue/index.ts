@@ -326,6 +326,7 @@ Deno.serve(async (req) => {
             html: payload.html as string | undefined,
             text: payload.text as string | undefined,
             from: payload.from as string | undefined,
+            reply_to: payload.reply_to as string | undefined,
           })
         } else {
           await sendLovableEmail(
