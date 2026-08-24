@@ -117,6 +117,7 @@ const App = () => (
               <Route path="influencers" element={<Influencers />} />
               <Route path="discovery" element={<Discovery />} />
               <Route path="briefs" element={<Briefs />} />
+              <Route path="inbox" element={<Inbox />} />
               <Route path="content" element={<Content />} />
               <Route path="moderation" element={<Moderation />} />
               <Route path="team" element={<Team />} />
