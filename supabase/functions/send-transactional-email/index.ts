@@ -54,11 +54,13 @@ Deno.serve(async (req) => {
   let recipientEmail: string
   let idempotencyKey: string
   let messageId: string
+  let previewOnly = false
   let templateData: Record<string, any> = {}
   try {
     const body = await req.json()
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
+    previewOnly = body.preview === true
     messageId = crypto.randomUUID()
     idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
     if (body.templateData && typeof body.templateData === 'object') {
@@ -99,6 +101,24 @@ Deno.serve(async (req) => {
       }
     )
   }
+
+  // Preview mode: render the template with the supplied data and return the HTML.
+  // Nothing is enqueued, logged or sent — used by the in-app email preview.
+  if (previewOnly) {
+    const previewHtml = await renderAsync(
+      React.createElement(template.component, templateData)
+    )
+    const previewSubject =
+      typeof template.subject === 'function'
+        ? template.subject(templateData)
+        : template.subject
+    return new Response(
+      JSON.stringify({ preview: true, subject: previewSubject, html: previewHtml }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+
 
   // Resolve effective recipient: template-level `to` takes precedence over
   // the caller-provided recipientEmail. This allows notification templates

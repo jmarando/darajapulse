@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Mail, Send, Sparkles, Loader2 } from "lucide-react";
+import { Copy, Mail, Send, Sparkles, Loader2, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 type Recipient = { email: string; name?: string | null };
@@ -29,12 +29,19 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [body, setBody] = useState("");
 
   // Kick-off invite state
-  const [meetingDay, setMeetingDay] = useState("Monday");
-  const [meetingTime, setMeetingTime] = useState("5:00 PM EAT");
-  const [meetingLink, setMeetingLink] = useState("");
+  const [meetingDay, setMeetingDay] = useState("Tuesday 26 August");
+  const [meetingTime, setMeetingTime] = useState("5:00 – 6:30 PM EAT");
+  const [meetingLink, setMeetingLink] = useState("https://teams.microsoft.com/meet/336068736223252?p=zyx6Rhg5jNTRIqUmUq");
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  // Preview + test send
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewSubject, setPreviewSubject] = useState("");
+  const [previewing, setPreviewing] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
+  const [testing, setTesting] = useState(false);
 
   const clean = useMemo(
     () => Array.from(new Set(emails.map((e) => (e || "").trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))),
@@ -86,6 +93,52 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const openMail = (batch: string[]) => {
     const url = `mailto:?bcc=${encodeURIComponent(batch.join(","))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = url;
+  };
+
+  const templateData = (name?: string | null) => ({
+    greeting_name: (name || "").split(" ")[0] || "there",
+    campaign_name: campaignName,
+    meeting_day: meetingDay,
+    meeting_time: meetingTime,
+    meeting_link: meetingLink.trim() || undefined,
+    submission_url: submitUrl || undefined,
+    custom_note: note.trim() || undefined,
+  });
+
+  const loadPreview = async () => {
+    setPreviewing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+        body: { templateName: "royco-kickoff-invite", preview: true, templateData: templateData(namedRecipients[0]?.name ?? "Mary") },
+      });
+      if (error) throw error;
+      setPreviewHtml((data as any)?.html ?? null);
+      setPreviewSubject((data as any)?.subject ?? "");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not build the preview");
+    }
+    setPreviewing(false);
+  };
+
+  const sendTest = async () => {
+    const to = testEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
+    setTesting(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "royco-kickoff-invite",
+          recipientEmail: to,
+          idempotencyKey: `kickoff-test-${campaignId}-${to}-${Date.now()}`,
+          templateData: templateData("Test"),
+        },
+      });
+      if (error) throw error;
+      toast.success(`Test invite sent to ${to}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Test send failed");
+    }
+    setTesting(false);
   };
 
   const sendInvites = async () => {
@@ -184,6 +237,36 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
               <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything else you want to add…" />
             </div>
 
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Preview &amp; test</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={loadPreview} disabled={previewing}>
+                  {previewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Eye className="w-3 h-3 mr-1" />}
+                  Preview email
+                </Button>
+                <Input
+                  className="text-xs h-9 w-56"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  placeholder="you@company.com"
+                />
+                <Button size="sm" variant="outline" onClick={sendTest} disabled={testing}>
+                  {testing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
+                  Send test
+                </Button>
+              </div>
+              {previewHtml && (
+                <div>
+                  <div className="text-xs mb-1"><span className="text-muted-foreground">Subject:</span> {previewSubject}</div>
+                  <iframe
+                    title="Kick-off invite preview"
+                    srcDoc={previewHtml}
+                    className="w-full h-[420px] rounded-md border border-border bg-white"
+                  />
+                </div>
+              )}
+            </div>
+
             <Button className="bg-primary" disabled={sending || !namedRecipients.length} onClick={sendInvites}>
               {sending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
               {sending
@@ -191,6 +274,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
                 : `Send branded invite to ${namedRecipients.length}`}
             </Button>
           </TabsContent>
+
 
           <TabsContent value="plain" className="space-y-4">
             {submitUrl && (
