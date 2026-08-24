@@ -102,6 +102,24 @@ Deno.serve(async (req) => {
     )
   }
 
+  // Preview mode: render the template with the supplied data and return the HTML.
+  // Nothing is enqueued, logged or sent — used by the in-app email preview.
+  if (previewOnly) {
+    const previewHtml = await renderAsync(
+      React.createElement(template.component, templateData)
+    )
+    const previewSubject =
+      typeof template.subject === 'function'
+        ? template.subject(templateData)
+        : template.subject
+    return new Response(
+      JSON.stringify({ preview: true, subject: previewSubject, html: previewHtml }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+
+
   // Resolve effective recipient: template-level `to` takes precedence over
   // the caller-provided recipientEmail. This allows notification templates
   // to always send to a fixed address (e.g., site owner from env var).
