@@ -246,6 +246,16 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
               <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything else you want to add…" />
             </div>
 
+            <div>
+              <Label>Reply-to address</Label>
+              <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="royco@darajapulse.com" />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Sent from <span className="font-mono">royco@darajapulse.com</span>. Creator replies land in whichever inbox you set here.
+              </p>
+            </div>
+
+
+
             <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-3">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Preview &amp; test</div>
               <div className="flex flex-wrap items-center gap-2">
