@@ -123,7 +123,12 @@ const RoycoKickoffInvite = ({
           </Section>
 
           <Section style={footer}>
-            <Text style={{ margin: 0 }}>Daraja Pulse · Influence, measured</Text>
+            <Text style={footerWordmark}>Royco</Text>
+            <Text style={footerTag}>Taste Paradise — a Unilever brand</Text>
+            <Text style={footerFine}>Powered by Daraja Pulse · Influence, measured</Text>
+            <Hr style={footerDivider} />
+            <Text style={footerFine}>This email was sent to you because you are part of the {campaign_name} creator roster.</Text>
+            <Text style={footerFine}>Questions? Reply to this email and our team will get back to you.</Text>
           </Section>
         </Container>
       </Section>
