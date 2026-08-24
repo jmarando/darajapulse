@@ -18,12 +18,8 @@ const PublicPlan = () => {
 
   useEffect(() => {
     (async () => {
-      const { data: link } = await supabase
-        .from("plan_links")
-        .select("campaign_id, is_active")
-        .eq("token", token!)
-        .eq("is_active", true)
-        .maybeSingle();
+      const { data: linkCampaignId } = await (supabase as any).rpc("get_plan_link_campaign", { _token: token! });
+      const link = linkCampaignId ? { campaign_id: linkCampaignId as string } : null;
       if (!link) { setError("This plan link is no longer active."); setLoading(false); return; }
 
       const { data: c } = await supabase
