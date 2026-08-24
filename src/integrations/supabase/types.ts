@@ -3085,6 +3085,14 @@ export type Database = {
         Args: { _post_id: string; _user_id: string }
         Returns: boolean
       }
+      campaign_has_active_plan_link: {
+        Args: { _campaign_id: string }
+        Returns: boolean
+      }
+      campaign_has_active_report_link: {
+        Args: { _campaign_id: string }
+        Returns: boolean
+      }
       campaign_perf_summary: {
         Args: { campaign_ids: string[] }
         Returns: {
@@ -3183,6 +3191,7 @@ export type Database = {
       }
       get_invoice_by_token: { Args: { _token: string }; Returns: Json }
       get_my_workspace_subdomain: { Args: never; Returns: string }
+      get_plan_link_campaign: { Args: { _token: string }; Returns: string }
       get_profiles_by_ids: {
         Args: { _ids: string[] }
         Returns: {
@@ -3194,6 +3203,7 @@ export type Database = {
         }[]
       }
       get_public_storefront: { Args: { _agency_slug: string }; Returns: Json }
+      get_report_link_campaign: { Args: { _token: string }; Returns: string }
       get_tenant_by_host: { Args: { _host: string }; Returns: Json }
       get_user_access_status: {
         Args: { _ids: string[] }
@@ -3245,6 +3255,10 @@ export type Database = {
         Returns: Json
       }
       slugify: { Args: { _s: string }; Returns: string }
+      staff_on_influencer: {
+        Args: { _influencer_id: string; _user_id: string }
+        Returns: boolean
+      }
       submit_contest_entry: {
         Args: {
           _brief_token?: string
