@@ -58,7 +58,8 @@ const PublicReport = () => {
   const [metric, setMetric] = useState<"views"|"reach"|"impressions"|"likes"|"comments"|"shares"|"saves"|"engagement">("views");
 
   const load = async () => {
-    const { data: link } = await supabase.from("report_links").select("campaign_id").eq("token", token).eq("is_active", true).maybeSingle();
+    const { data: linkCampaignId } = await (supabase as any).rpc("get_report_link_campaign", { _token: token });
+    const link = linkCampaignId ? { campaign_id: linkCampaignId as string } : null;
     if (!link) { setNotFound(true); return; }
     const { data: c } = await supabase.from("campaigns").select("*").eq("id", link.campaign_id).single();
     setCampaign(c);
