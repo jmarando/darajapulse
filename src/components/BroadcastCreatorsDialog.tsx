@@ -284,7 +284,34 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
               <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="royco@reply.darajapulse.com" />
               <p className="text-[11px] text-muted-foreground mt-1">
                 Sent from <span className="font-mono">royco@darajapulse.com</span>. Creator replies land in whichever inbox you set here.
+                The invite asks each creator to reply "YES" to confirm — replies show up below and in the Inbox.
               </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">RSVPs / acknowledgements</div>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={loadReplies} disabled={loadingReplies}>
+                  {loadingReplies ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                  Refresh
+                </Button>
+              </div>
+              <div className="text-sm">
+                <span className="font-display text-xl font-semibold">{replied.length}</span>{" "}
+                <span className="text-muted-foreground">of {clean.length} creators have replied</span>
+              </div>
+              {replied.length > 0 && (
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {replied.map((r) => (
+                    <div key={r.email} className="text-xs flex items-center justify-between gap-2">
+                      <span className="truncate">{r.name || r.email}</span>
+                      <span className="text-muted-foreground shrink-0">
+                        {new Date(r.at).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
 
