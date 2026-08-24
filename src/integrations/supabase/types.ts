@@ -3173,6 +3173,24 @@ export type Database = {
           handle: string
         }[]
       }
+      get_contest_winners_by_token: {
+        Args: { _token: string }
+        Returns: {
+          contest_id: string
+          entry_id: string
+          frozen_score: number
+          full_name: string
+          handle: string
+          id: string
+          placement: string
+          placement_rank: number
+          platform: string
+          post_url: string
+          prize: string
+          round_number: number
+          thumbnail_url: string
+        }[]
+      }
       get_contract_by_token: { Args: { _token: string }; Returns: Json }
       get_creator_draft_state: { Args: { _brief_token: string }; Returns: Json }
       get_creator_drafts: {
