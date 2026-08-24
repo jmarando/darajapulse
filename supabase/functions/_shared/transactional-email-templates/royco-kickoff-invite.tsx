@@ -38,9 +38,12 @@ const card = { backgroundColor: CARD, borderRadius: '10px', border: `1px solid $
 const label = { color: MUTED, fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.08em', margin: '0 0 2px' }
 const value = { fontSize: 16, fontWeight: 700, color: INK, margin: '0 0 12px' }
 const btn = { backgroundColor: RED, color: '#ffffff', borderRadius: '8px', padding: '13px 26px', fontSize: '14px', fontWeight: 700, textDecoration: 'none', display: 'inline-block', margin: '4px 8px 8px 0' }
-const btnGhost = { ...btn, backgroundColor: INK }
 const small = { fontSize: 12, lineHeight: 1.55, color: MUTED, margin: '0 0 4px' }
-const footer = { padding: '18px 32px 26px', fontSize: '11px', color: MUTED, textAlign: 'center' as const, letterSpacing: '0.04em', textTransform: 'uppercase' as const }
+const footer = { padding: '24px 32px 30px', backgroundColor: INK, textAlign: 'center' as const }
+const footerWordmark = { color: '#ffffff', fontSize: '13px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' as const, margin: '0 0 6px' }
+const footerTag = { color: GOLD, fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', margin: '0 0 14px' }
+const footerFine = { fontSize: '11px', lineHeight: 1.6, color: 'rgba(255,255,255,0.65)', margin: '0 0 4px' }
+const footerDivider = { border: 'none', borderTop: '1px solid rgba(255,255,255,0.12)', margin: '16px 0' }
 
 const RoycoKickoffInvite = ({
   greeting_name = 'there',
