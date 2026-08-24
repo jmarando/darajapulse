@@ -237,6 +237,36 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
               <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Anything else you want to add…" />
             </div>
 
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Preview &amp; test</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={loadPreview} disabled={previewing}>
+                  {previewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Eye className="w-3 h-3 mr-1" />}
+                  Preview email
+                </Button>
+                <Input
+                  className="text-xs h-9 w-56"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  placeholder="you@company.com"
+                />
+                <Button size="sm" variant="outline" onClick={sendTest} disabled={testing}>
+                  {testing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
+                  Send test
+                </Button>
+              </div>
+              {previewHtml && (
+                <div>
+                  <div className="text-xs mb-1"><span className="text-muted-foreground">Subject:</span> {previewSubject}</div>
+                  <iframe
+                    title="Kick-off invite preview"
+                    srcDoc={previewHtml}
+                    className="w-full h-[420px] rounded-md border border-border bg-white"
+                  />
+                </div>
+              )}
+            </div>
+
             <Button className="bg-primary" disabled={sending || !namedRecipients.length} onClick={sendInvites}>
               {sending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
               {sending
@@ -244,6 +274,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
                 : `Send branded invite to ${namedRecipients.length}`}
             </Button>
           </TabsContent>
+
 
           <TabsContent value="plain" className="space-y-4">
             {submitUrl && (
