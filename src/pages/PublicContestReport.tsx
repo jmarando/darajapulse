@@ -176,7 +176,7 @@ const PublicContestReport = () => {
       setContest(data);
       setClient((data as any).client);
       setCampaign((data as any).campaign);
-      const cid = (data as any).id;
+      void (data as any).id;
       const [es, { data: winners }, { data: filterHandles }] = await Promise.all([
         fetchAllContestEntries(token),
         (supabase as any).rpc("get_contest_winners_by_token", { _token: token }),
