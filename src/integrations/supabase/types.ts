@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -1836,6 +1836,63 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: []
+      }
+      event_rsvps: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          email: string
+          id: string
+          influencer_id: string | null
+          name: string | null
+          note: string | null
+          responded_at: string
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          email: string
+          id?: string
+          influencer_id?: string | null
+          name?: string | null
+          note?: string | null
+          responded_at?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          influencer_id?: string | null
+          name?: string | null
+          note?: string | null
+          responded_at?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvps_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       facebook_accounts: {
         Row: {

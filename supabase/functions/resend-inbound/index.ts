@@ -190,6 +190,42 @@ Deno.serve(async (req) => {
     // Duplicate delivery of the same email is fine — ignore unique violations.
     if (msgErr && msgErr.code !== '23505') throw msgErr
 
+    // Auto-capture RSVPs: a reply starting with YES/NO on a campaign mailbox.
+    try {
+      const first = `${subject} ${textBody}`.trim().toLowerCase()
+      const yes = /\b(yes|nitakuja|i(?:'| a)?m in|count me in|will attend|attending|confirmed?)\b/.test(first)
+      const no = /\b(no|siwezi|can(?:no|')t make|not able|unable to attend|decline)\b/.test(first)
+      const status = yes && !no ? 'yes' : no && !yes ? 'no' : null
+      if (status && creator?.id) {
+        const { data: links } = await supabase
+          .from('campaign_influencers')
+          .select('campaign_id, campaigns(created_at)')
+          .eq('influencer_id', creator.id)
+        const target =
+          campaignId ??
+          (links ?? []).sort((a: any, b: any) =>
+            String(b.campaigns?.created_at ?? '').localeCompare(String(a.campaigns?.created_at ?? '')),
+          )[0]?.campaign_id ?? null
+        if (target) {
+          await supabase.from('event_rsvps').upsert(
+            {
+              campaign_id: target,
+              influencer_id: creator.id,
+              email: from.email,
+              name: from.name || creator.full_name || null,
+              status,
+              source: 'email',
+              note: textBody.slice(0, 300) || null,
+              responded_at: new Date().toISOString(),
+            },
+            { onConflict: 'campaign_id,email' },
+          )
+        }
+      }
+    } catch (e) {
+      console.error('rsvp capture failed', e)
+    }
+
     return json({ ok: true, thread_id: threadId })
   } catch (e) {
     console.error('resend-inbound error', e)
