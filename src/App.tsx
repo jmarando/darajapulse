@@ -19,6 +19,7 @@ import PublicContestReport from "./pages/PublicContestReport";
 import Influencers from "./pages/app/Influencers";
 import Discovery from "./pages/app/Discovery";
 import Inbox from "./pages/app/Inbox";
+import Rsvps from "./pages/app/Rsvps";
 import Stub from "./pages/app/Stub";
 import Briefs from "./pages/app/Briefs";
 import Content from "./pages/app/Content";
@@ -118,6 +119,7 @@ const App = () => (
               <Route path="discovery" element={<Discovery />} />
               <Route path="briefs" element={<Briefs />} />
               <Route path="inbox" element={<Inbox />} />
+              <Route path="rsvps" element={<Rsvps />} />
               <Route path="content" element={<Content />} />
               <Route path="moderation" element={<Moderation />} />
               <Route path="team" element={<Team />} />
