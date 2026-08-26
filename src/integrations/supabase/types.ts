@@ -1837,6 +1837,63 @@ export type Database = {
         }
         Relationships: []
       }
+      event_rsvps: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          email: string
+          id: string
+          influencer_id: string | null
+          name: string | null
+          note: string | null
+          responded_at: string
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          email: string
+          id?: string
+          influencer_id?: string | null
+          name?: string | null
+          note?: string | null
+          responded_at?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          influencer_id?: string | null
+          name?: string | null
+          note?: string | null
+          responded_at?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_rsvps_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       facebook_accounts: {
         Row: {
           category: string | null
