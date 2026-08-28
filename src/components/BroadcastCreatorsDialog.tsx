@@ -36,6 +36,12 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [meetingTime, setMeetingTime] = useState("5:00 – 6:30 PM EAT");
   const [meetingLink, setMeetingLink] = useState("https://teams.microsoft.com/meet/336068736223252?p=zyx6Rhg5jNTRIqUmUq");
   const [note, setNote] = useState("");
+
+  // Last-chance training state
+  const [ltDay, setLtDay] = useState("Friday 28 August");
+  const [ltTime, setLtTime] = useState("11:00 AM EAT");
+  const [ltLink, setLtLink] = useState("https://teams.microsoft.com/meet/393508750581228?p=5nHcEwHC3C0WzsfW1v");
+  const [ltNote, setLtNote] = useState("");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
