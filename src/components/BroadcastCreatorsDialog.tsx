@@ -36,17 +36,32 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [meetingTime, setMeetingTime] = useState("5:00 – 6:30 PM EAT");
   const [meetingLink, setMeetingLink] = useState("https://teams.microsoft.com/meet/336068736223252?p=zyx6Rhg5jNTRIqUmUq");
   const [note, setNote] = useState("");
+
+  // Last-chance training state
+  const [ltDay, setLtDay] = useState("Friday 28 August");
+  const [ltTime, setLtTime] = useState("11:00 AM EAT");
+  const [ltLink, setLtLink] = useState("https://teams.microsoft.com/meet/393508750581228?p=5nHcEwHC3C0WzsfW1v");
+  const [ltNote, setLtNote] = useState("");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const [replyTo, setReplyTo] = useState("royco@reply.darajapulse.com");
 
-  // Preview + test send
+  // Preview + test send (kick-off tab)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSubject, setPreviewSubject] = useState("");
   const [previewing, setPreviewing] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [testing, setTesting] = useState(false);
+
+  // Preview + test send (last-training tab)
+  const [ltPreviewHtml, setLtPreviewHtml] = useState<string | null>(null);
+  const [ltPreviewSubject, setLtPreviewSubject] = useState("");
+  const [ltPreviewing, setLtPreviewing] = useState(false);
+  const [ltTestEmail, setLtTestEmail] = useState("");
+  const [ltTesting, setLtTesting] = useState(false);
+  const [ltSending, setLtSending] = useState(false);
+  const [ltProgress, setLtProgress] = useState<{ done: number; total: number } | null>(null);
 
   const clean = useMemo(
     () => Array.from(new Set(emails.map((e) => (e || "").trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))),
@@ -108,6 +123,16 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     meeting_link: meetingLink.trim() || undefined,
     submission_url: submitUrl || undefined,
     custom_note: note.trim() || undefined,
+    rsvp_email: replyTo.trim() || undefined,
+  });
+
+  const ltTemplateData = (name?: string | null) => ({
+    greeting_name: (name || "").split(" ")[0] || "there",
+    campaign_name: campaignName,
+    meeting_day: ltDay,
+    meeting_time: ltTime,
+    meeting_link: ltLink.trim() || undefined,
+    custom_note: ltNote.trim() || undefined,
     rsvp_email: replyTo.trim() || undefined,
   });
 
@@ -223,6 +248,77 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     );
   };
 
+  const ltLoadPreview = async () => {
+    setLtPreviewing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+        body: { templateName: "royco-last-training", preview: true, templateData: ltTemplateData(namedRecipients[0]?.name ?? "Mary") },
+      });
+      if (error) throw error;
+      setLtPreviewHtml((data as any)?.html ?? null);
+      setLtPreviewSubject((data as any)?.subject ?? "");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not build the preview");
+    }
+    setLtPreviewing(false);
+  };
+
+  const ltSendTest = async () => {
+    const to = ltTestEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
+    setLtTesting(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "royco-last-training",
+          recipientEmail: to,
+          from: ROYCO_FROM,
+          replyTo: replyTo.trim() || undefined,
+          idempotencyKey: `lasttraining-test-${campaignId}-${to}-${Date.now()}`,
+          templateData: ltTemplateData("Test"),
+        },
+      });
+      if (error) throw error;
+      toast.success(`Test training invite sent to ${to}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Test send failed");
+    }
+    setLtTesting(false);
+  };
+
+  const ltSendAll = async () => {
+    if (!ltLink.trim()) {
+      const ok = window.confirm("No meeting link added yet — send the invite without it?");
+      if (!ok) return;
+    }
+    setLtSending(true);
+    setLtProgress({ done: 0, total: namedRecipients.length });
+    let failed = 0;
+    for (let i = 0; i < namedRecipients.length; i++) {
+      const r = namedRecipients[i];
+      try {
+        const { error } = await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "royco-last-training",
+            recipientEmail: r.email,
+            from: ROYCO_FROM,
+            replyTo: replyTo.trim() || undefined,
+            idempotencyKey: `lasttraining-${campaignId}-${r.email}`,
+            templateData: ltTemplateData(r.name),
+          },
+        });
+        if (error) failed++;
+      } catch {
+        failed++;
+      }
+      setLtProgress({ done: i + 1, total: namedRecipients.length });
+    }
+    setLtSending(false);
+    toast[failed ? "warning" : "success"](
+      failed ? `Sent with ${failed} failure${failed > 1 ? "s" : ""}` : `Last-training invite queued to ${namedRecipients.length} creators`
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -240,11 +336,85 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
           <span className="text-xs text-muted-foreground">of {emails.length} on the roster</span>
         </div>
 
-        <Tabs defaultValue="kickoff">
+        <Tabs defaultValue="lasttraining">
           <TabsList className="mb-4">
+            <TabsTrigger value="lasttraining">Last training</TabsTrigger>
             <TabsTrigger value="kickoff">Kick-off invite</TabsTrigger>
             <TabsTrigger value="plain">Plain email</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="lasttraining" className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              A Royco-red "last chance" invite for creators who missed the earlier sessions. It tells anyone who already
+              attended Wednesday's training they're all set and don't need to join.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Day</Label>
+                <Input value={ltDay} onChange={(e) => setLtDay(e.target.value)} placeholder="Friday 28 August" />
+              </div>
+              <div>
+                <Label>Time</Label>
+                <Input value={ltTime} onChange={(e) => setLtTime(e.target.value)} placeholder="11:00 AM EAT" />
+              </div>
+            </div>
+
+            <div>
+              <Label>Teams meeting link</Label>
+              <Input
+                value={ltLink}
+                onChange={(e) => setLtLink(e.target.value)}
+                placeholder="https://teams.microsoft.com/meet/..."
+              />
+            </div>
+
+            <div>
+              <Label>Extra note (optional)</Label>
+              <Textarea rows={3} value={ltNote} onChange={(e) => setLtNote(e.target.value)} placeholder="Anything else you want to add…" />
+            </div>
+
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Preview &amp; test</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={ltLoadPreview} disabled={ltPreviewing}>
+                  {ltPreviewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Eye className="w-3 h-3 mr-1" />}
+                  Preview email
+                </Button>
+                <Input
+                  className="text-xs h-9 w-56"
+                  value={ltTestEmail}
+                  onChange={(e) => setLtTestEmail(e.target.value)}
+                  placeholder="you@company.com"
+                />
+                <Button size="sm" variant="outline" onClick={ltSendTest} disabled={ltTesting}>
+                  {ltTesting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
+                  Send test
+                </Button>
+              </div>
+              {ltPreviewHtml && (
+                <div>
+                  <div className="text-xs mb-1"><span className="text-muted-foreground">Subject:</span> {ltPreviewSubject}</div>
+                  <iframe
+                    title="Last training invite preview"
+                    srcDoc={ltPreviewHtml}
+                    className="w-full h-[420px] rounded-md border border-border bg-white"
+                  />
+                </div>
+              )}
+            </div>
+
+            <Button className="bg-primary" disabled={ltSending || !namedRecipients.length} onClick={ltSendAll}>
+              {ltSending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+              {ltSending
+                ? `Sending ${ltProgress?.done ?? 0}/${ltProgress?.total ?? 0}`
+                : `Send last-training invite to ${namedRecipients.length}`}
+            </Button>
+
+            <p className="text-[11px] text-muted-foreground">
+              Sent from <span className="font-mono">royco@darajapulse.com</span>, replies go to {replyTo || "the reply-to inbox"}.
+            </p>
+          </TabsContent>
 
           <TabsContent value="kickoff" className="space-y-4">
             <p className="text-sm text-muted-foreground">
