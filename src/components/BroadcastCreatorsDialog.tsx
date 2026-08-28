@@ -47,12 +47,21 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
 
   const [replyTo, setReplyTo] = useState("royco@reply.darajapulse.com");
 
-  // Preview + test send
+  // Preview + test send (kick-off tab)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [previewSubject, setPreviewSubject] = useState("");
   const [previewing, setPreviewing] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [testing, setTesting] = useState(false);
+
+  // Preview + test send (last-training tab)
+  const [ltPreviewHtml, setLtPreviewHtml] = useState<string | null>(null);
+  const [ltPreviewSubject, setLtPreviewSubject] = useState("");
+  const [ltPreviewing, setLtPreviewing] = useState(false);
+  const [ltTestEmail, setLtTestEmail] = useState("");
+  const [ltTesting, setLtTesting] = useState(false);
+  const [ltSending, setLtSending] = useState(false);
+  const [ltProgress, setLtProgress] = useState<{ done: number; total: number } | null>(null);
 
   const clean = useMemo(
     () => Array.from(new Set(emails.map((e) => (e || "").trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))),
@@ -114,6 +123,16 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     meeting_link: meetingLink.trim() || undefined,
     submission_url: submitUrl || undefined,
     custom_note: note.trim() || undefined,
+    rsvp_email: replyTo.trim() || undefined,
+  });
+
+  const ltTemplateData = (name?: string | null) => ({
+    greeting_name: (name || "").split(" ")[0] || "there",
+    campaign_name: campaignName,
+    meeting_day: ltDay,
+    meeting_time: ltTime,
+    meeting_link: ltLink.trim() || undefined,
+    custom_note: ltNote.trim() || undefined,
     rsvp_email: replyTo.trim() || undefined,
   });
 
@@ -246,8 +265,9 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
           <span className="text-xs text-muted-foreground">of {emails.length} on the roster</span>
         </div>
 
-        <Tabs defaultValue="kickoff">
+        <Tabs defaultValue="lasttraining">
           <TabsList className="mb-4">
+            <TabsTrigger value="lasttraining">Last training</TabsTrigger>
             <TabsTrigger value="kickoff">Kick-off invite</TabsTrigger>
             <TabsTrigger value="plain">Plain email</TabsTrigger>
           </TabsList>
