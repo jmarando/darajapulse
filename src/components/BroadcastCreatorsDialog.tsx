@@ -248,6 +248,77 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     );
   };
 
+  const ltLoadPreview = async () => {
+    setLtPreviewing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+        body: { templateName: "royco-last-training", preview: true, templateData: ltTemplateData(namedRecipients[0]?.name ?? "Mary") },
+      });
+      if (error) throw error;
+      setLtPreviewHtml((data as any)?.html ?? null);
+      setLtPreviewSubject((data as any)?.subject ?? "");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not build the preview");
+    }
+    setLtPreviewing(false);
+  };
+
+  const ltSendTest = async () => {
+    const to = ltTestEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
+    setLtTesting(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "royco-last-training",
+          recipientEmail: to,
+          from: ROYCO_FROM,
+          replyTo: replyTo.trim() || undefined,
+          idempotencyKey: `lasttraining-test-${campaignId}-${to}-${Date.now()}`,
+          templateData: ltTemplateData("Test"),
+        },
+      });
+      if (error) throw error;
+      toast.success(`Test training invite sent to ${to}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Test send failed");
+    }
+    setLtTesting(false);
+  };
+
+  const ltSendAll = async () => {
+    if (!ltLink.trim()) {
+      const ok = window.confirm("No meeting link added yet — send the invite without it?");
+      if (!ok) return;
+    }
+    setLtSending(true);
+    setLtProgress({ done: 0, total: namedRecipients.length });
+    let failed = 0;
+    for (let i = 0; i < namedRecipients.length; i++) {
+      const r = namedRecipients[i];
+      try {
+        const { error } = await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "royco-last-training",
+            recipientEmail: r.email,
+            from: ROYCO_FROM,
+            replyTo: replyTo.trim() || undefined,
+            idempotencyKey: `lasttraining-${campaignId}-${r.email}`,
+            templateData: ltTemplateData(r.name),
+          },
+        });
+        if (error) failed++;
+      } catch {
+        failed++;
+      }
+      setLtProgress({ done: i + 1, total: namedRecipients.length });
+    }
+    setLtSending(false);
+    toast[failed ? "warning" : "success"](
+      failed ? `Sent with ${failed} failure${failed > 1 ? "s" : ""}` : `Last-training invite queued to ${namedRecipients.length} creators`
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
