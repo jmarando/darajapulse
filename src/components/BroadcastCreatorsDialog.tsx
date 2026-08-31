@@ -487,12 +487,98 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
           <span className="text-xs text-muted-foreground">of {emails.length} on the roster</span>
         </div>
 
-        <Tabs defaultValue="lasttraining">
+        <Tabs defaultValue="brieflive">
           <TabsList className="mb-4">
+            <TabsTrigger value="brieflive">Brief &amp; submit</TabsTrigger>
             <TabsTrigger value="lasttraining">Last training</TabsTrigger>
             <TabsTrigger value="kickoff">Kick-off invite</TabsTrigger>
             <TabsTrigger value="plain">Plain email</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="brieflive" className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Sends each creator their <strong>personal</strong> brief link (where they also sign the contract) and their
+              own submission link, plus deliverables and how payment works.
+            </p>
+
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Who gets it</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={blAudience === "rsvp" ? "default" : "outline"}
+                  onClick={() => setBlAudience("rsvp")}
+                >
+                  RSVP'd yes ({namedRecipients.filter((r) => rsvpYes.has(r.email)).length})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={blAudience === "all" ? "default" : "outline"}
+                  onClick={() => setBlAudience("all")}
+                >
+                  Whole roster ({namedRecipients.length})
+                </Button>
+                <Button size="sm" variant="ghost" onClick={blDownloadList}>
+                  <Copy className="w-3 h-3 mr-1" /> Download list (CSV)
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                "RSVP'd yes" is everyone who replied YES to either training session.
+              </p>
+            </div>
+
+            <div>
+              <Label>First video submitted by</Label>
+              <Input value={blFirstPost} onChange={(e) => setBlFirstPost(e.target.value)} placeholder="Sunday 7 September" />
+            </div>
+
+            <div>
+              <Label>Extra note (optional)</Label>
+              <Textarea rows={3} value={blNote} onChange={(e) => setBlNote(e.target.value)} placeholder="Anything else you want to add…" />
+            </div>
+
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Preview &amp; test</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={blLoadPreview} disabled={blPreviewing}>
+                  {blPreviewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Eye className="w-3 h-3 mr-1" />}
+                  Preview email
+                </Button>
+                <Input
+                  className="text-xs h-9 w-56"
+                  value={blTestEmail}
+                  onChange={(e) => setBlTestEmail(e.target.value)}
+                  placeholder="you@company.com"
+                />
+                <Button size="sm" variant="outline" onClick={blSendTest} disabled={blTesting}>
+                  {blTesting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
+                  Send test
+                </Button>
+              </div>
+              {blPreviewHtml && (
+                <div>
+                  <div className="text-xs mb-1"><span className="text-muted-foreground">Subject:</span> {blPreviewSubject}</div>
+                  <iframe
+                    title="Brief email preview"
+                    srcDoc={blPreviewHtml}
+                    className="w-full h-[420px] rounded-md border border-border bg-white"
+                  />
+                </div>
+              )}
+            </div>
+
+            <Button className="bg-primary" disabled={blSending || !blRecipients.length} onClick={blSendAll}>
+              {blSending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+              {blSending
+                ? `Sending ${blProgress?.done ?? 0}/${blProgress?.total ?? 0}`
+                : `Send brief email to ${blRecipients.length}`}
+            </Button>
+
+            <p className="text-[11px] text-muted-foreground">
+              Sent from <span className="font-mono">royco@darajapulse.com</span>, replies go to {replyTo || "the reply-to inbox"}.
+            </p>
+          </TabsContent>
+
 
           <TabsContent value="lasttraining" className="space-y-4">
             <p className="text-sm text-muted-foreground">
