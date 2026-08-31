@@ -2336,6 +2336,38 @@ const CampaignDetail = () => {
         </div>
       </Card>
 
+      {/* Read-only seats for brand contacts */}
+      <Card className="p-6 mt-6">
+        <div className="min-w-0">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Brand access</div>
+          <div className="font-display text-xl mt-1">Invite a read-only viewer</div>
+          <p className="text-sm text-muted-foreground mt-1 max-w-xl">Gives a brand contact a login that only shows this campaign — roster, posts and metrics, no editing. They receive an email to set up their password.</p>
+        </div>
+        <form
+          className="flex flex-wrap items-end gap-2 mt-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!viewerEmail.trim()) return;
+            setViewerBusy(true);
+            const { data, error } = await supabase.functions.invoke("invite-teammate", {
+              body: { email: viewerEmail.trim(), role: "client_viewer", title: "client_viewer", client_id: c?.client_id, campaign_id: id },
+            });
+            setViewerBusy(false);
+            if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Invite failed");
+            toast.success(`${viewerEmail.trim()} now has read-only access to this campaign`);
+            setViewerEmail("");
+          }}
+        >
+          <div className="min-w-[18rem]">
+            <Label>Email</Label>
+            <Input type="email" required value={viewerEmail} onChange={(e) => setViewerEmail(e.target.value)} placeholder="name@brand.com" />
+          </div>
+          <Button type="submit" disabled={viewerBusy}>{viewerBusy ? "Sending…" : "Grant read access"}</Button>
+        </form>
+      </Card>
+
+
+
         </TabsContent>
       </Tabs>
 
