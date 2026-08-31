@@ -1738,6 +1738,7 @@ const CampaignDetail = () => {
                   <th className="text-left font-medium px-5 py-3">Creator</th>
                   <th className="text-left font-medium px-3 py-3">Platform</th>
                   <th className="text-left font-medium px-3 py-3">Status</th>
+                  <th className="text-left font-medium px-3 py-3">Invite / RSVP</th>
                   <th className="text-left font-medium px-3 py-3">Contract</th>
 
                   <th className="text-right font-medium px-3 py-3">Fee (KES)</th>
