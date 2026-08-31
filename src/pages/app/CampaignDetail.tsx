@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/lib/appUrl";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
