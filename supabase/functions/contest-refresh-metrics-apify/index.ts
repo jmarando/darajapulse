@@ -51,11 +51,15 @@ function igStats(item: any) {
   };
 }
 function fbStats(item: any) {
+  const sfv = item?.short_form_video_context ?? item?.video ?? {};
   return {
-    views: num(item?.viewsCount ?? item?.videoViewCount ?? item?.playCount),
-    likes: num(item?.likesCount ?? item?.reactionsCount ?? item?.likes),
-    comments: num(item?.commentsCount ?? item?.comments),
-    shares: num(item?.sharesCount ?? item?.shares),
+    views: num(
+      item?.viewsCount ?? item?.videoViewCount ?? item?.playCount ??
+      item?.video_view_count ?? sfv?.play_count ?? sfv?.video_view_count ?? 0,
+    ),
+    likes: num(item?.likesCount ?? item?.reactionsCount ?? item?.likes ?? item?.unified_reactors?.count),
+    comments: num(item?.commentsCount ?? item?.comments ?? item?.total_comment_count),
+    shares: num(item?.sharesCount ?? item?.shares ?? item?.share_count_reduced),
     caption: item?.text ?? item?.message ?? null,
     thumbnail_url: item?.thumbnailUrl ?? item?.previewImage ?? null,
   };
