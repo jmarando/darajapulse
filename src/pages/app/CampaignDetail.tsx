@@ -1809,6 +1809,19 @@ const CampaignDetail = () => {
                         </span>
                       </td>
                       <td className="px-3 py-3">
+                        {(() => {
+                          const em = String(x.influencers?.email ?? "").toLowerCase();
+                          const coming = em && rsvpYes.has(em);
+                          const invited = em && invitedEmails.has(em);
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {coming && <Badge className="bg-success text-success-foreground text-[10px]">RSVP’d · coming</Badge>}
+                              <Badge variant="outline" className="text-[10px]">{invited ? "Invite sent" : "Not sent"}</Badge>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-3 py-3">
                         {signedCi.has(x.id) ? (
                           <span className="inline-flex items-center gap-1 text-success text-xs"><FileSignature className="w-3.5 h-3.5" /> Signed</span>
                         ) : (
