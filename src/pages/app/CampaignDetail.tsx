@@ -169,9 +169,39 @@ const CampaignDetail = () => {
       setBriefTemplates(tpls ?? []);
     }
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
-    setCi(ciAll ?? []);
-    const { data: sigs } = await supabase.from("contract_signatures").select("campaign_influencer_id").eq("campaign_id", id);
+    const { data: sigs } = await supabase.from("contract_signatures").select("*").eq("campaign_id", id).order("signed_at", { ascending: false });
+    setSignatures(sigs ?? []);
     setSignedCi(new Set((sigs ?? []).map((s: any) => s.campaign_influencer_id)));
+
+    // RSVPs ("Coming") and invite-send history so confirmed creators float to the top of the roster.
+    const { data: rsvps } = await supabase.from("event_rsvps").select("email, influencer_id, status").eq("campaign_id", id);
+    const yes = new Set<string>();
+    for (const r of rsvps ?? []) if (String(r.status).toLowerCase() === "yes" && r.email) yes.add(String(r.email).toLowerCase());
+    setRsvpYes(yes);
+
+    const rosterEmails = (ciAll ?? []).map((x: any) => String(x.influencers?.email ?? "").toLowerCase()).filter(Boolean);
+    const sent = new Set<string>();
+    if (rosterEmails.length) {
+      for (let i = 0; i < rosterEmails.length; i += 200) {
+        const { data: logs } = await supabase
+          .from("email_send_log")
+          .select("recipient_email, status")
+          .in("recipient_email", rosterEmails.slice(i, i + 200));
+        for (const l of logs ?? []) {
+          if (["sent", "queued", "delivered"].includes(String(l.status).toLowerCase())) sent.add(String(l.recipient_email).toLowerCase());
+        }
+      }
+    }
+    setInvitedEmails(sent);
+
+    const rank = (x: any) => {
+      const em = String(x.influencers?.email ?? "").toLowerCase();
+      if (em && yes.has(em)) return 0;
+      if (em && sent.has(em)) return 1;
+      return 2;
+    };
+    setCi([...(ciAll ?? [])].sort((a, b) => rank(a) - rank(b) || String(a.influencers?.full_name ?? "").localeCompare(String(b.influencers?.full_name ?? ""))));
+
 
     const { data: r } = await supabase.from("influencers").select("*");
     setRosterAll(r ?? []);
