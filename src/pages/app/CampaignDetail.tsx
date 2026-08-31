@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/lib/appUrl";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -393,7 +394,7 @@ const CampaignDetail = () => {
       .maybeSingle();
     if (existing) {
       setLink(existing);
-      try { await navigator.clipboard.writeText(`${window.location.origin}/r/${existing.token}`); } catch {}
+      try { await navigator.clipboard.writeText(`${publicOrigin()}/r/${existing.token}`); } catch {}
       toast.success("Report link ready — copied to clipboard");
       return;
     }
@@ -407,7 +408,7 @@ const CampaignDetail = () => {
       return;
     }
     setLink(data);
-    try { await navigator.clipboard.writeText(`${window.location.origin}/r/${data.token}`); } catch {}
+    try { await navigator.clipboard.writeText(`${publicOrigin()}/r/${data.token}`); } catch {}
     toast.success("Report link created — copied to clipboard");
     load();
   };
@@ -626,8 +627,8 @@ const CampaignDetail = () => {
 
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
-  const reportUrl = link ? `${window.location.origin}${slugPath}/report/${link.token}` : "";
-  const planUrl = planLink && planLink.is_active ? `${window.location.origin}${slugPath}/plan/${planLink.token}` : "";
+  const reportUrl = link ? `${publicOrigin()}${slugPath}/report/${link.token}` : "";
+  const planUrl = planLink && planLink.is_active ? `${publicOrigin()}${slugPath}/plan/${planLink.token}` : "";
   const fmt = (n: number) => {
     if (!isFinite(n)) return "—";
     if (n >= 1e9) return `${(n / 1e9).toFixed(n >= 1e10 ? 1 : 2)}B`;
@@ -1523,7 +1524,7 @@ const CampaignDetail = () => {
             campaignId={id!}
             campaignName={c?.name ?? "Campaign"}
             hashtag={c?.hashtag}
-            briefBase={`${window.location.origin}${slugPath}/brief`}
+            briefBase={`${publicOrigin()}${slugPath}/brief`}
             emails={ci.map((x: any) => x.influencers?.email).filter(Boolean)}
             recipients={ci
               .filter((x: any) => x.influencers?.email)
@@ -1698,9 +1699,9 @@ const CampaignDetail = () => {
               </thead>
               <tbody>
                 {ci.map(x => {
-                  const briefUrl = `${window.location.origin}${slugPath}/brief/${x.brief_token}`;
+                  const briefUrl = `${publicOrigin()}${slugPath}/brief/${x.brief_token}`;
                   // Personal submission link: the form pre-fills this creator's name, handle and platform.
-                  const submitUrl = submissionToken ? `${window.location.origin}/c/${submissionToken}?k=${x.brief_token}` : null;
+                  const submitUrl = submissionToken ? `${publicOrigin()}/c/${submissionToken}?k=${x.brief_token}` : null;
 
                   const statusDot: Record<string,string> = {
                     invited: "bg-muted-foreground/40",
@@ -2219,7 +2220,7 @@ const CampaignDetail = () => {
             const inf = selectedCi.influencers;
             const stats = byInfluencer.get(selectedCi.influencer_id);
             const creatorPosts = posts.filter(p => p.influencer_id === selectedCi.influencer_id);
-            const briefUrl = `${window.location.origin}${slugPath}/brief/${selectedCi.brief_token}`;
+            const briefUrl = `${publicOrigin()}${slugPath}/brief/${selectedCi.brief_token}`;
             return (
               <>
                 <SheetHeader className="text-left">

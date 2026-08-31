@@ -25,3 +25,14 @@ export const workspaceRedirect = async (
     return null;
   }
 };
+
+/**
+ * The origin to use inside anything a creator or client will receive
+ * (emails, printed links). Preview/lovable hosts are replaced with the
+ * production domain; tenant subdomains of darajapulse.com are preserved.
+ */
+export const publicOrigin = (): string => {
+  const h = window.location.hostname.toLowerCase();
+  if (h === "darajapulse.com" || h.endsWith(".darajapulse.com")) return window.location.origin;
+  return CANONICAL_APP_ORIGIN;
+};

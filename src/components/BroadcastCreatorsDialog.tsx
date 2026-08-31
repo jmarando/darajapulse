@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/lib/appUrl";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -128,7 +129,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
       .then(({ data }) => setToken(data?.submission_token ?? null));
   }, [open, campaignId]);
 
-  const submitUrl = token ? `${window.location.origin}/c/${token}` : "";
+  const submitUrl = token ? `${publicOrigin()}/c/${token}` : "";
 
   useEffect(() => {
     if (!open || body) return;
@@ -362,7 +363,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     briefBase && briefToken ? `${briefBase}/${briefToken}` : undefined;
 
   const blSubmitUrl = (briefToken?: string | null) =>
-    token ? `${window.location.origin}/c/${token}${briefToken ? `?k=${briefToken}` : ""}` : undefined;
+    token ? `${publicOrigin()}/c/${token}${briefToken ? `?k=${briefToken}` : ""}` : undefined;
 
   const blTemplateData = (r: { name?: string | null; briefToken?: string | null }) => ({
     greeting_name: (r.name || "").split(" ")[0] || "there",

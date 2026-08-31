@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/lib/appUrl";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -54,7 +55,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     const list = ((data as any) ?? []) as Draft[];
     setDrafts(list);
     setRequired(Boolean((camp as any)?.require_draft_approval));
-    setReviewLink((link as any)?.token ? `${window.location.origin}/d/${(link as any).token}` : null);
+    setReviewLink((link as any)?.token ? `${publicOrigin()}/d/${(link as any).token}` : null);
 
     const signed: Record<string, string> = {};
     await Promise.all(
@@ -76,6 +77,53 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
   }), [drafts]);
 
   const rows = tab === "all" ? drafts : drafts.filter((d) => d.status === tab);
+  /** Emails the creator the decision (approved / changes requested). */
+  const notifyCreator = async (
+    d: Draft,
+    decision: "approved" | "changes_requested",
+    note: string,
+    reviewer: string,
+  ) => {
+    try {
+      const influencerId = (d as any).influencer_id as string | null;
+      if (!influencerId) return;
+      const [{ data: inf }, { data: camp }, { data: ci }] = await Promise.all([
+        supabase.from("influencers").select("full_name, email").eq("id", influencerId).maybeSingle(),
+        supabase.from("campaigns").select("name, hashtag").eq("id", campaignId).maybeSingle(),
+        supabase
+          .from("campaign_influencers")
+          .select("brief_token")
+          .eq("campaign_id", campaignId)
+          .eq("influencer_id", influencerId)
+          .maybeSingle(),
+      ]);
+      const email = (inf as any)?.email as string | undefined;
+      if (!email) return;
+      await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "royco-draft-decision",
+          recipientEmail: email,
+          from: "Royco x Daraja Pulse <royco@reply.darajapulse.com>",
+          replyTo: "royco@reply.darajapulse.com",
+          idempotencyKey: `draftdecision-${d.id}-${decision}-${Date.now()}`,
+          templateData: {
+            greeting_name: ((inf as any)?.full_name || "").split(" ")[0] || "there",
+            campaign_name: (camp as any)?.name || undefined,
+            decision,
+            review_note: note || undefined,
+            reviewer_label: reviewer,
+            hashtag: (camp as any)?.hashtag || undefined,
+            submit_url: (ci as any)?.brief_token
+              ? `${publicOrigin()}/brief/${(ci as any).brief_token}`
+              : undefined,
+          },
+        },
+      });
+    } catch {
+      /* non-blocking */
+    }
+  };
+
 
   const decide = async (d: Draft, decision: "approved" | "changes_requested") => {
     const note = (notes[d.id] || "").trim();
@@ -94,9 +142,11 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       .eq("id", d.id);
     setBusy(null);
     if (error) return toast.error(error.message);
-    toast.success(decision === "approved" ? "Approved — the creator can now post and share the link" : "Sent back for changes");
+    await notifyCreator(d, decision, note, user?.email ?? "the team");
+    toast.success(decision === "approved" ? "Approved — the creator has been emailed and can post" : "Sent back for changes — the creator has been emailed");
     load();
   };
+
 
   const createLink = async () => {
     const { data, error } = await supabase
@@ -105,7 +155,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       .select("token")
       .single();
     if (error) return toast.error(error.message);
-    setReviewLink(`${window.location.origin}/d/${(data as any).token}`);
+    setReviewLink(`${publicOrigin()}/d/${(data as any).token}`);
     toast.success("Client review link created");
   };
 
