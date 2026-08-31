@@ -13,7 +13,7 @@ import { toast } from "sonner";
 // Sender identity for Royco creator comms. Must stay on the verified darajapulse.com domain.
 const ROYCO_FROM = "Royco x Daraja Pulse <royco@darajapulse.com>";
 
-type Recipient = { email: string; name?: string | null };
+type Recipient = { email: string; name?: string | null; briefToken?: string | null; influencerId?: string | null };
 
 type Props = {
   campaignId: string;
@@ -21,11 +21,14 @@ type Props = {
   emails: string[];
   recipients?: Recipient[];
   hashtag?: string | null;
+  /** e.g. https://darajapulse.com/royco/q3-nano/brief — the creator's token is appended. */
+  briefBase?: string;
 };
 
 const BATCH = 80;
 
-export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, recipients, hashtag }: Props) => {
+export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, recipients, hashtag, briefBase }: Props) => {
+
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [subject, setSubject] = useState(`${campaignName} — update`);
