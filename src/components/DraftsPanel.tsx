@@ -95,9 +95,11 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       .eq("id", d.id);
     setBusy(null);
     if (error) return toast.error(error.message);
-    toast.success(decision === "approved" ? "Approved — the creator can now post and share the link" : "Sent back for changes");
+    await notifyCreator(d, decision, note, user?.email ?? "the team");
+    toast.success(decision === "approved" ? "Approved — the creator has been emailed and can post" : "Sent back for changes — the creator has been emailed");
     load();
   };
+
 
   const createLink = async () => {
     const { data, error } = await supabase
