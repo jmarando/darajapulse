@@ -83,6 +83,12 @@ const CampaignDetail = () => {
   const [rosterAll, setRosterAll] = useState<any[]>([]);
   const [ci, setCi] = useState<any[]>([]);
   const [signedCi, setSignedCi] = useState<Set<string>>(new Set());
+  const [signatures, setSignatures] = useState<any[]>([]);
+  const [viewSignature, setViewSignature] = useState<any>(null);
+  const [rsvpYes, setRsvpYes] = useState<Set<string>>(new Set());
+  const [invitedEmails, setInvitedEmails] = useState<Set<string>>(new Set());
+  const [viewerEmail, setViewerEmail] = useState("");
+  const [viewerBusy, setViewerBusy] = useState(false);
 
   const [posts, setPosts] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
@@ -165,9 +171,39 @@ const CampaignDetail = () => {
       setBriefTemplates(tpls ?? []);
     }
     const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
-    setCi(ciAll ?? []);
-    const { data: sigs } = await supabase.from("contract_signatures").select("campaign_influencer_id").eq("campaign_id", id);
+    const { data: sigs } = await supabase.from("contract_signatures").select("*").eq("campaign_id", id).order("signed_at", { ascending: false });
+    setSignatures(sigs ?? []);
     setSignedCi(new Set((sigs ?? []).map((s: any) => s.campaign_influencer_id)));
+
+    // RSVPs ("Coming") and invite-send history so confirmed creators float to the top of the roster.
+    const { data: rsvps } = await supabase.from("event_rsvps").select("email, influencer_id, status").eq("campaign_id", id);
+    const yes = new Set<string>();
+    for (const r of rsvps ?? []) if (String(r.status).toLowerCase() === "yes" && r.email) yes.add(String(r.email).toLowerCase());
+    setRsvpYes(yes);
+
+    const rosterEmails = (ciAll ?? []).map((x: any) => String(x.influencers?.email ?? "").toLowerCase()).filter(Boolean);
+    const sent = new Set<string>();
+    if (rosterEmails.length) {
+      for (let i = 0; i < rosterEmails.length; i += 200) {
+        const { data: logs } = await supabase
+          .from("email_send_log")
+          .select("recipient_email, status")
+          .in("recipient_email", rosterEmails.slice(i, i + 200));
+        for (const l of logs ?? []) {
+          if (["sent", "queued", "delivered"].includes(String(l.status).toLowerCase())) sent.add(String(l.recipient_email).toLowerCase());
+        }
+      }
+    }
+    setInvitedEmails(sent);
+
+    const rank = (x: any) => {
+      const em = String(x.influencers?.email ?? "").toLowerCase();
+      if (em && yes.has(em)) return 0;
+      if (em && sent.has(em)) return 1;
+      return 2;
+    };
+    setCi([...(ciAll ?? [])].sort((a, b) => rank(a) - rank(b) || String(a.influencers?.full_name ?? "").localeCompare(String(b.influencers?.full_name ?? ""))));
+
 
     const { data: r } = await supabase.from("influencers").select("*");
     setRosterAll(r ?? []);
@@ -1704,6 +1740,7 @@ const CampaignDetail = () => {
                   <th className="text-left font-medium px-5 py-3">Creator</th>
                   <th className="text-left font-medium px-3 py-3">Platform</th>
                   <th className="text-left font-medium px-3 py-3">Status</th>
+                  <th className="text-left font-medium px-3 py-3">Invite / RSVP</th>
                   <th className="text-left font-medium px-3 py-3">Contract</th>
 
                   <th className="text-right font-medium px-3 py-3">Fee (KES)</th>
@@ -1772,6 +1809,19 @@ const CampaignDetail = () => {
                           <span className={`w-1.5 h-1.5 rounded-full ${statusDot[x.status] ?? "bg-muted-foreground/40"}`} />
                           {statusLabel[x.status] ?? x.status}
                         </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        {(() => {
+                          const em = String(x.influencers?.email ?? "").toLowerCase();
+                          const coming = em && rsvpYes.has(em);
+                          const invited = em && invitedEmails.has(em);
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {coming && <Badge className="bg-success text-success-foreground text-[10px]">RSVP’d · coming</Badge>}
+                              <Badge variant="outline" className="text-[10px]">{invited ? "Invite sent" : "Not sent"}</Badge>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-3 py-3">
                         {signedCi.has(x.id) ? (
@@ -1880,6 +1930,102 @@ const CampaignDetail = () => {
           </div>
         )}
       </Card>
+
+      {/* Signed contracts — every signature captured from the brief / submission flow */}
+      <Card className="p-0 overflow-hidden mb-6">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Legal</div>
+            <h2 className="font-display text-2xl">Signed contracts ({signatures.length})</h2>
+            <p className="text-xs text-muted-foreground mt-1">Captured when a creator accepts the brief. Each record stores the exact contract text, signature and timestamp.</p>
+          </div>
+          {signatures.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const rows = [["Creator", "Signer name", "Signed at", "IP"], ...signatures.map((s: any) => {
+                  const row = ci.find((x: any) => x.id === s.campaign_influencer_id);
+                  return [row?.influencers?.full_name ?? "", s.signer_name ?? "", new Date(s.signed_at).toISOString(), s.ip_address ?? ""];
+                })];
+                const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+                const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+                const a = document.createElement("a"); a.href = url; a.download = `${c?.name ?? "campaign"}-signed-contracts.csv`; a.click(); URL.revokeObjectURL(url);
+              }}
+            >
+              Export CSV
+            </Button>
+          )}
+        </div>
+        {signatures.length === 0 ? (
+          <div className="text-center py-12">
+            <FileSignature className="w-6 h-6 mx-auto text-muted-foreground" />
+            <p className="text-sm text-muted-foreground mt-2">No contracts signed yet.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                  <th className="text-left font-medium px-5 py-3">Creator</th>
+                  <th className="text-left font-medium px-3 py-3">Signed as</th>
+                  <th className="text-left font-medium px-3 py-3">Signed at</th>
+                  <th className="text-right font-medium px-5 py-3">Contract</th>
+                </tr>
+              </thead>
+              <tbody>
+                {signatures.map((s: any) => {
+                  const row = ci.find((x: any) => x.id === s.campaign_influencer_id);
+                  return (
+                    <tr key={s.id} className="border-b border-border last:border-0 hover:bg-secondary/40">
+                      <td className="px-5 py-3 font-medium">{row?.influencers?.full_name ?? "—"}</td>
+                      <td className="px-3 py-3">{s.signer_name}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{new Date(s.signed_at).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-right">
+                        <Button size="sm" variant="outline" onClick={() => setViewSignature(s)}>View</Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Dialog open={!!viewSignature} onOpenChange={(o) => !o && setViewSignature(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Contract — {viewSignature?.signer_name}</DialogTitle>
+          </DialogHeader>
+          {viewSignature && (
+            <div className="space-y-4">
+              <div className="text-xs text-muted-foreground">
+                Signed {new Date(viewSignature.signed_at).toLocaleString()}{viewSignature.ip_address ? ` · IP ${viewSignature.ip_address}` : ""}
+              </div>
+              <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans border rounded-md p-4 bg-secondary/30">{viewSignature.contract_text}</pre>
+              {viewSignature.signature_data_url && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Signature</div>
+                  <img src={viewSignature.signature_data_url} alt={`Signature of ${viewSignature.signer_name}`} className="max-h-32 border rounded-md bg-white" />
+                </div>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const w = window.open("", "_blank");
+                  if (!w) return;
+                  w.document.write(`<html><head><title>Contract — ${viewSignature.signer_name}</title><style>body{font-family:Georgia,serif;max-width:720px;margin:40px auto;line-height:1.6;white-space:pre-wrap}img{max-height:120px}</style></head><body>${viewSignature.contract_text.replace(/</g, "&lt;")}<hr/><p>Signed by ${viewSignature.signer_name} on ${new Date(viewSignature.signed_at).toLocaleString()}</p>${viewSignature.signature_data_url ? `<img src="${viewSignature.signature_data_url}" />` : ""}</body></html>`);
+                  w.document.close(); w.print();
+                }}
+              >
+                Print / save PDF
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
 
       <EditCreatorDialog
         influencerId={editCreatorId}
@@ -2191,6 +2337,38 @@ const CampaignDetail = () => {
           )}
         </div>
       </Card>
+
+      {/* Read-only seats for brand contacts */}
+      <Card className="p-6 mt-6">
+        <div className="min-w-0">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Brand access</div>
+          <div className="font-display text-xl mt-1">Invite a read-only viewer</div>
+          <p className="text-sm text-muted-foreground mt-1 max-w-xl">Gives a brand contact a login that only shows this campaign — roster, posts and metrics, no editing. They receive an email to set up their password.</p>
+        </div>
+        <form
+          className="flex flex-wrap items-end gap-2 mt-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!viewerEmail.trim()) return;
+            setViewerBusy(true);
+            const { data, error } = await supabase.functions.invoke("invite-teammate", {
+              body: { email: viewerEmail.trim(), role: "client_viewer", title: "client_viewer", client_id: c?.client_id, campaign_id: id },
+            });
+            setViewerBusy(false);
+            if (error || (data as any)?.error) return toast.error((data as any)?.error ?? error?.message ?? "Invite failed");
+            toast.success(`${viewerEmail.trim()} now has read-only access to this campaign`);
+            setViewerEmail("");
+          }}
+        >
+          <div className="min-w-[18rem]">
+            <Label>Email</Label>
+            <Input type="email" required value={viewerEmail} onChange={(e) => setViewerEmail(e.target.value)} placeholder="name@brand.com" />
+          </div>
+          <Button type="submit" disabled={viewerBusy}>{viewerBusy ? "Sending…" : "Grant read access"}</Button>
+        </form>
+      </Card>
+
+
 
         </TabsContent>
       </Tabs>
