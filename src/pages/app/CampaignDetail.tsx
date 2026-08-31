@@ -1929,6 +1929,102 @@ const CampaignDetail = () => {
         )}
       </Card>
 
+      {/* Signed contracts — every signature captured from the brief / submission flow */}
+      <Card className="p-0 overflow-hidden mb-6">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Legal</div>
+            <h2 className="font-display text-2xl">Signed contracts ({signatures.length})</h2>
+            <p className="text-xs text-muted-foreground mt-1">Captured when a creator accepts the brief. Each record stores the exact contract text, signature and timestamp.</p>
+          </div>
+          {signatures.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const rows = [["Creator", "Signer name", "Signed at", "IP"], ...signatures.map((s: any) => {
+                  const row = ci.find((x: any) => x.id === s.campaign_influencer_id);
+                  return [row?.influencers?.full_name ?? "", s.signer_name ?? "", new Date(s.signed_at).toISOString(), s.ip_address ?? ""];
+                })];
+                const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+                const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+                const a = document.createElement("a"); a.href = url; a.download = `${c?.name ?? "campaign"}-signed-contracts.csv`; a.click(); URL.revokeObjectURL(url);
+              }}
+            >
+              Export CSV
+            </Button>
+          )}
+        </div>
+        {signatures.length === 0 ? (
+          <div className="text-center py-12">
+            <FileSignature className="w-6 h-6 mx-auto text-muted-foreground" />
+            <p className="text-sm text-muted-foreground mt-2">No contracts signed yet.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                  <th className="text-left font-medium px-5 py-3">Creator</th>
+                  <th className="text-left font-medium px-3 py-3">Signed as</th>
+                  <th className="text-left font-medium px-3 py-3">Signed at</th>
+                  <th className="text-right font-medium px-5 py-3">Contract</th>
+                </tr>
+              </thead>
+              <tbody>
+                {signatures.map((s: any) => {
+                  const row = ci.find((x: any) => x.id === s.campaign_influencer_id);
+                  return (
+                    <tr key={s.id} className="border-b border-border last:border-0 hover:bg-secondary/40">
+                      <td className="px-5 py-3 font-medium">{row?.influencers?.full_name ?? "—"}</td>
+                      <td className="px-3 py-3">{s.signer_name}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{new Date(s.signed_at).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-right">
+                        <Button size="sm" variant="outline" onClick={() => setViewSignature(s)}>View</Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Dialog open={!!viewSignature} onOpenChange={(o) => !o && setViewSignature(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Contract — {viewSignature?.signer_name}</DialogTitle>
+          </DialogHeader>
+          {viewSignature && (
+            <div className="space-y-4">
+              <div className="text-xs text-muted-foreground">
+                Signed {new Date(viewSignature.signed_at).toLocaleString()}{viewSignature.ip_address ? ` · IP ${viewSignature.ip_address}` : ""}
+              </div>
+              <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans border rounded-md p-4 bg-secondary/30">{viewSignature.contract_text}</pre>
+              {viewSignature.signature_data_url && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Signature</div>
+                  <img src={viewSignature.signature_data_url} alt={`Signature of ${viewSignature.signer_name}`} className="max-h-32 border rounded-md bg-white" />
+                </div>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const w = window.open("", "_blank");
+                  if (!w) return;
+                  w.document.write(`<html><head><title>Contract — ${viewSignature.signer_name}</title><style>body{font-family:Georgia,serif;max-width:720px;margin:40px auto;line-height:1.6;white-space:pre-wrap}img{max-height:120px}</style></head><body>${viewSignature.contract_text.replace(/</g, "&lt;")}<hr/><p>Signed by ${viewSignature.signer_name} on ${new Date(viewSignature.signed_at).toLocaleString()}</p>${viewSignature.signature_data_url ? `<img src="${viewSignature.signature_data_url}" />` : ""}</body></html>`);
+                  w.document.close(); w.print();
+                }}
+              >
+                Print / save PDF
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+
       <EditCreatorDialog
         influencerId={editCreatorId}
         open={!!editCreatorId}
