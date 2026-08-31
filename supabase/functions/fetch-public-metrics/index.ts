@@ -266,7 +266,7 @@ const APIFY_ACTORS: Record<string, string> = {
 async function runApifyActor(actor: string, input: any): Promise<any[]> {
   if (!APIFY) throw new Error("APIFY_API_TOKEN not configured");
   const r = await fetch(
-    `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY}&timeout=180`,
+    `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY}&timeout=45`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) },
   );
   const text = await r.text();
