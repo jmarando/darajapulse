@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
     try {
       const items = JSON.parse(t);
       out.facebook_items = Array.isArray(items) ? items.length : 0;
+      out.facebook_keys = Array.isArray(items) && items[0] ? Object.keys(items[0]).slice(0, 40) : [];
       out.facebook_sample = Array.isArray(items) && items[0]
         ? {
             url: items[0].url ?? items[0].topLevelUrl ?? null,
