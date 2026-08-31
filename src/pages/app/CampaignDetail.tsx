@@ -83,6 +83,10 @@ const CampaignDetail = () => {
   const [rosterAll, setRosterAll] = useState<any[]>([]);
   const [ci, setCi] = useState<any[]>([]);
   const [signedCi, setSignedCi] = useState<Set<string>>(new Set());
+  const [signatures, setSignatures] = useState<any[]>([]);
+  const [viewSignature, setViewSignature] = useState<any>(null);
+  const [rsvpYes, setRsvpYes] = useState<Set<string>>(new Set());
+  const [invitedEmails, setInvitedEmails] = useState<Set<string>>(new Set());
 
   const [posts, setPosts] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
