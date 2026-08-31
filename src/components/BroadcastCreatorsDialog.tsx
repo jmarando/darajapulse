@@ -357,7 +357,120 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     );
   };
 
+  // ---- Brief live tab ----
+  const blBriefUrl = (briefToken?: string | null) =>
+    briefBase && briefToken ? `${briefBase}/${briefToken}` : undefined;
+
+  const blSubmitUrl = (briefToken?: string | null) =>
+    token ? `${window.location.origin}/c/${token}${briefToken ? `?k=${briefToken}` : ""}` : undefined;
+
+  const blTemplateData = (r: { name?: string | null; briefToken?: string | null }) => ({
+    greeting_name: (r.name || "").split(" ")[0] || "there",
+    campaign_name: campaignName,
+    brief_url: blBriefUrl(r.briefToken),
+    submit_url: blSubmitUrl(r.briefToken),
+    hashtag: hashtag || undefined,
+    first_post_by: blFirstPost.trim() || undefined,
+    custom_note: blNote.trim() || undefined,
+    rsvp_email: replyTo.trim() || undefined,
+  });
+
+  const blLoadPreview = async () => {
+    setBlPreviewing(true);
+    try {
+      const sample = blRecipients[0] ?? { name: "Mary", briefToken: "sample-token" };
+      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+        body: { templateName: "royco-brief-live", preview: true, templateData: blTemplateData(sample) },
+      });
+      if (error) throw error;
+      setBlPreviewHtml((data as any)?.html ?? null);
+      setBlPreviewSubject((data as any)?.subject ?? "");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not build the preview");
+    }
+    setBlPreviewing(false);
+  };
+
+  const blSendTest = async () => {
+    const to = blTestEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
+    setBlTesting(true);
+    try {
+      const sample = blRecipients[0] ?? { name: "Test", briefToken: "sample-token" };
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "royco-brief-live",
+          recipientEmail: to,
+          from: ROYCO_FROM,
+          replyTo: replyTo.trim() || undefined,
+          idempotencyKey: `brieflive-test-${campaignId}-${to}-${Date.now()}`,
+          templateData: { ...blTemplateData(sample), greeting_name: "Test" },
+        },
+      });
+      if (error) throw error;
+      toast.success(`Test sent to ${to}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Test send failed");
+    }
+    setBlTesting(false);
+  };
+
+  const blSendAll = async () => {
+    if (!blRecipients.length) return;
+    const missing = blRecipients.filter((r) => !blBriefUrl(r.briefToken)).length;
+    if (missing) {
+      const ok = window.confirm(`${missing} creator(s) have no brief link yet — send anyway without their link?`);
+      if (!ok) return;
+    }
+    setBlSending(true);
+    setBlProgress({ done: 0, total: blRecipients.length });
+    let failed = 0;
+    for (let i = 0; i < blRecipients.length; i++) {
+      const r = blRecipients[i];
+      try {
+        const { error } = await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "royco-brief-live",
+            recipientEmail: r.email,
+            from: ROYCO_FROM,
+            replyTo: replyTo.trim() || undefined,
+            idempotencyKey: `brieflive-${campaignId}-${r.email}`,
+            templateData: blTemplateData(r),
+          },
+        });
+        if (error) failed++;
+      } catch {
+        failed++;
+      }
+      setBlProgress({ done: i + 1, total: blRecipients.length });
+    }
+    setBlSending(false);
+    toast[failed ? "warning" : "success"](
+      failed ? `Sent with ${failed} failure${failed > 1 ? "s" : ""}` : `Brief email queued to ${blRecipients.length} creators`
+    );
+  };
+
+  const blDownloadList = () => {
+    const rows = [
+      ["Name", "Email", "RSVP", "Brief link"],
+      ...blRecipients.map((r) => [
+        r.name ?? "",
+        r.email,
+        rsvpYes.has(r.email) ? "yes" : "",
+        blBriefUrl(r.briefToken) ?? "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${blAudience === "rsvp" ? "rsvp-yes" : "all"}-creators.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
+
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
