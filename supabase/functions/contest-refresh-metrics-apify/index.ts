@@ -197,8 +197,15 @@ Deno.serve(async (req) => {
             startUrls: buckets.facebook.map(b => ({ url: b.url })),
             resultsLimit: 1,
           });
+          const idOf = (u: string) => u.match(/(?:reel|videos|posts|watch|permalink)\/?(?:\?v=)?(\d{6,})/i)?.[1] ?? null;
           for (const b of buckets.facebook) {
-            const it = items.find((x: any) => x?.url === b.url || x?.postUrl === b.url || x?.topLevelUrl === b.url);
+            const bid = idOf(b.url);
+            const it = items.find((x: any) => {
+              const cands = [x?.url, x?.postUrl, x?.topLevelUrl, x?.facebookUrl].filter(Boolean).map(String);
+              if (cands.some((c) => c === b.url || c.startsWith(b.url))) return true;
+              if (bid && (String(x?.post_id ?? "") === bid || String(x?.id ?? "") === bid || cands.some((c) => c.includes(bid)))) return true;
+              return false;
+            }) ?? (items.length === 1 && buckets.facebook.length === 1 ? items[0] : null);
             if (!it) { summary.errors.push({ id: b.id, msg: "no result" }); continue; }
             try { await applyResult(b.id, fbStats(it)); summary.facebook++; }
             catch (e) { summary.errors.push({ id: b.id, msg: String(e) }); }
