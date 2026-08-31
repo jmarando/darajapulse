@@ -10,7 +10,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-type Role = "agency_admin" | "account_manager";
+type Role = "agency_admin" | "account_manager" | "client_viewer";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -29,9 +29,9 @@ Deno.serve(async (req) => {
     }
     const callerAgencyId: string | null = (roles ?? []).find((r: any) => r.agency_id)?.agency_id ?? null;
 
-    const { email, role, title } = await req.json();
+    const { email, role, title, client_id, campaign_id } = await req.json();
     const cleanEmail = String(email ?? "").trim().toLowerCase();
-    const newRole: Role = role === "agency_admin" ? "agency_admin" : "account_manager";
+    const newRole: Role = role === "agency_admin" ? "agency_admin" : role === "client_viewer" ? "client_viewer" : "account_manager";
     const cleanTitle = typeof title === "string" && title.length ? title : null;
     if (!cleanEmail) return new Response(JSON.stringify({ error: "email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     } else {
       const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(cleanEmail, {
         redirectTo: setupUrl,
-        data: { access_label: newRole === "agency_admin" ? "agency admin" : "account manager" },
+        data: { access_label: newRole === "agency_admin" ? "agency admin" : newRole === "client_viewer" ? "read-only viewer" : "account manager" },
       });
       if (invErr || !invited?.user) {
         return new Response(JSON.stringify({ error: invErr?.message ?? "invite failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -68,6 +68,14 @@ Deno.serve(async (req) => {
 
     await admin.from("profiles").upsert({ id: userId!, email: cleanEmail, ...(cleanTitle ? { title: cleanTitle } : {}) }, { onConflict: "id" });
     await admin.from("user_roles").upsert({ user_id: userId, role: newRole, agency_id: callerAgencyId }, { onConflict: "user_id,role" });
+    // Read-only brand contacts are scoped to one client and (optionally) one campaign.
+    if (newRole === "client_viewer" && client_id) {
+      await admin.from("client_members").upsert({ client_id, user_id: userId, invited_email: cleanEmail } as any, { onConflict: "client_id,user_id" });
+      if (campaign_id) {
+        await admin.from("campaign_members").upsert({ campaign_id, user_id: userId } as any, { onConflict: "campaign_id,user_id" });
+      }
+    }
+
     // Backfill agency_id on any existing row that's missing it
     if (callerAgencyId) {
       await admin.from("user_roles").update({ agency_id: callerAgencyId }).eq("user_id", userId).eq("role", newRole).is("agency_id", null);
@@ -90,7 +98,7 @@ Deno.serve(async (req) => {
           templateName: "workspace-access",
           recipientEmail: cleanEmail,
           idempotencyKey: `teammate-access-${callerAgencyId ?? "na"}-${userId}-${newRole}`,
-          templateData: { org_name: orgName, access_label: newRole === "agency_admin" ? "agency admin" : "account manager", sign_in_url: `${origin}/auth` },
+          templateData: { org_name: orgName, access_label: newRole === "agency_admin" ? "agency admin" : newRole === "client_viewer" ? "read-only viewer" : "account manager", sign_in_url: `${origin}/auth` },
 
         }),
       });
