@@ -19,6 +19,7 @@ import { template as pakakumiOnboarding } from './pakakumi-onboarding.tsx'
 import { template as roycoKickoffInvite } from './royco-kickoff-invite.tsx'
 import { template as roycoLastTraining } from './royco-last-training.tsx'
 import { template as roycoBriefLive } from './royco-brief-live.tsx'
+import { template as roycoDraftDecision } from './royco-draft-decision.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'contest-daily-summary': contestDailySummary,
@@ -31,4 +32,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'royco-kickoff-invite': roycoKickoffInvite,
   'royco-last-training': roycoLastTraining,
   'royco-brief-live': roycoBriefLive,
+  'royco-draft-decision': roycoDraftDecision,
 }
