@@ -13,7 +13,7 @@ import { toast } from "sonner";
 // Sender identity for Royco creator comms. Must stay on the verified darajapulse.com domain.
 const ROYCO_FROM = "Royco x Daraja Pulse <royco@darajapulse.com>";
 
-type Recipient = { email: string; name?: string | null };
+type Recipient = { email: string; name?: string | null; briefToken?: string | null; influencerId?: string | null };
 
 type Props = {
   campaignId: string;
@@ -21,11 +21,14 @@ type Props = {
   emails: string[];
   recipients?: Recipient[];
   hashtag?: string | null;
+  /** e.g. https://darajapulse.com/royco/q3-nano/brief — the creator's token is appended. */
+  briefBase?: string;
 };
 
 const BATCH = 80;
 
-export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, recipients, hashtag }: Props) => {
+export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, recipients, hashtag, briefBase }: Props) => {
+
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [subject, setSubject] = useState(`${campaignName} — update`);
@@ -63,19 +66,54 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [ltSending, setLtSending] = useState(false);
   const [ltProgress, setLtProgress] = useState<{ done: number; total: number } | null>(null);
 
+  // Brief-live tab state
+  const [blFirstPost, setBlFirstPost] = useState("Sunday 7 September");
+  const [blNote, setBlNote] = useState("");
+  const [blAudience, setBlAudience] = useState<"rsvp" | "all">("rsvp");
+  const [blPreviewHtml, setBlPreviewHtml] = useState<string | null>(null);
+  const [blPreviewSubject, setBlPreviewSubject] = useState("");
+  const [blPreviewing, setBlPreviewing] = useState(false);
+  const [blTestEmail, setBlTestEmail] = useState("");
+  const [blTesting, setBlTesting] = useState(false);
+  const [blSending, setBlSending] = useState(false);
+  const [blProgress, setBlProgress] = useState<{ done: number; total: number } | null>(null);
+  const [rsvpYes, setRsvpYes] = useState<Set<string>>(new Set());
+
   const clean = useMemo(
     () => Array.from(new Set(emails.map((e) => (e || "").trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))),
     [emails]
   );
 
   const namedRecipients = useMemo(() => {
-    const byEmail = new Map<string, string | null>();
+    const byEmail = new Map<string, Recipient>();
     (recipients ?? []).forEach((r) => {
       const e = (r.email || "").trim().toLowerCase();
-      if (e && !byEmail.has(e)) byEmail.set(e, r.name ?? null);
+      if (e && !byEmail.has(e)) byEmail.set(e, r);
     });
-    return clean.map((e) => ({ email: e, name: byEmail.get(e) ?? null }));
+    return clean.map((e) => ({
+      email: e,
+      name: byEmail.get(e)?.name ?? null,
+      briefToken: byEmail.get(e)?.briefToken ?? null,
+    }));
   }, [clean, recipients]);
+
+  // Creators who RSVPed "yes" to either training session.
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("event_rsvps")
+      .select("email")
+      .eq("status", "yes")
+      .then(({ data }) =>
+        setRsvpYes(new Set((data ?? []).map((r: any) => (r.email || "").trim().toLowerCase()))),
+      );
+  }, [open]);
+
+  const blRecipients = useMemo(
+    () => (blAudience === "rsvp" ? namedRecipients.filter((r) => rsvpYes.has(r.email)) : namedRecipients),
+    [blAudience, namedRecipients, rsvpYes],
+  );
+
 
   useEffect(() => {
     if (!open) return;
@@ -319,7 +357,120 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     );
   };
 
+  // ---- Brief live tab ----
+  const blBriefUrl = (briefToken?: string | null) =>
+    briefBase && briefToken ? `${briefBase}/${briefToken}` : undefined;
+
+  const blSubmitUrl = (briefToken?: string | null) =>
+    token ? `${window.location.origin}/c/${token}${briefToken ? `?k=${briefToken}` : ""}` : undefined;
+
+  const blTemplateData = (r: { name?: string | null; briefToken?: string | null }) => ({
+    greeting_name: (r.name || "").split(" ")[0] || "there",
+    campaign_name: campaignName,
+    brief_url: blBriefUrl(r.briefToken),
+    submit_url: blSubmitUrl(r.briefToken),
+    hashtag: hashtag || undefined,
+    first_post_by: blFirstPost.trim() || undefined,
+    custom_note: blNote.trim() || undefined,
+    rsvp_email: replyTo.trim() || undefined,
+  });
+
+  const blLoadPreview = async () => {
+    setBlPreviewing(true);
+    try {
+      const sample = blRecipients[0] ?? { name: "Mary", briefToken: "sample-token" };
+      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+        body: { templateName: "royco-brief-live", preview: true, templateData: blTemplateData(sample) },
+      });
+      if (error) throw error;
+      setBlPreviewHtml((data as any)?.html ?? null);
+      setBlPreviewSubject((data as any)?.subject ?? "");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not build the preview");
+    }
+    setBlPreviewing(false);
+  };
+
+  const blSendTest = async () => {
+    const to = blTestEmail.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
+    setBlTesting(true);
+    try {
+      const sample = blRecipients[0] ?? { name: "Test", briefToken: "sample-token" };
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "royco-brief-live",
+          recipientEmail: to,
+          from: ROYCO_FROM,
+          replyTo: replyTo.trim() || undefined,
+          idempotencyKey: `brieflive-test-${campaignId}-${to}-${Date.now()}`,
+          templateData: { ...blTemplateData(sample), greeting_name: "Test" },
+        },
+      });
+      if (error) throw error;
+      toast.success(`Test sent to ${to}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Test send failed");
+    }
+    setBlTesting(false);
+  };
+
+  const blSendAll = async () => {
+    if (!blRecipients.length) return;
+    const missing = blRecipients.filter((r) => !blBriefUrl(r.briefToken)).length;
+    if (missing) {
+      const ok = window.confirm(`${missing} creator(s) have no brief link yet — send anyway without their link?`);
+      if (!ok) return;
+    }
+    setBlSending(true);
+    setBlProgress({ done: 0, total: blRecipients.length });
+    let failed = 0;
+    for (let i = 0; i < blRecipients.length; i++) {
+      const r = blRecipients[i];
+      try {
+        const { error } = await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "royco-brief-live",
+            recipientEmail: r.email,
+            from: ROYCO_FROM,
+            replyTo: replyTo.trim() || undefined,
+            idempotencyKey: `brieflive-${campaignId}-${r.email}`,
+            templateData: blTemplateData(r),
+          },
+        });
+        if (error) failed++;
+      } catch {
+        failed++;
+      }
+      setBlProgress({ done: i + 1, total: blRecipients.length });
+    }
+    setBlSending(false);
+    toast[failed ? "warning" : "success"](
+      failed ? `Sent with ${failed} failure${failed > 1 ? "s" : ""}` : `Brief email queued to ${blRecipients.length} creators`
+    );
+  };
+
+  const blDownloadList = () => {
+    const rows = [
+      ["Name", "Email", "RSVP", "Brief link"],
+      ...blRecipients.map((r) => [
+        r.name ?? "",
+        r.email,
+        rsvpYes.has(r.email) ? "yes" : "",
+        blBriefUrl(r.briefToken) ?? "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${blAudience === "rsvp" ? "rsvp-yes" : "all"}-creators.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
+
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
@@ -336,12 +487,98 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
           <span className="text-xs text-muted-foreground">of {emails.length} on the roster</span>
         </div>
 
-        <Tabs defaultValue="lasttraining">
+        <Tabs defaultValue="brieflive">
           <TabsList className="mb-4">
+            <TabsTrigger value="brieflive">Brief &amp; submit</TabsTrigger>
             <TabsTrigger value="lasttraining">Last training</TabsTrigger>
             <TabsTrigger value="kickoff">Kick-off invite</TabsTrigger>
             <TabsTrigger value="plain">Plain email</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="brieflive" className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Sends each creator their <strong>personal</strong> brief link (where they also sign the contract) and their
+              own submission link, plus deliverables and how payment works.
+            </p>
+
+            <div className="rounded-lg border border-border p-3 space-y-2">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Who gets it</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={blAudience === "rsvp" ? "default" : "outline"}
+                  onClick={() => setBlAudience("rsvp")}
+                >
+                  RSVP'd yes ({namedRecipients.filter((r) => rsvpYes.has(r.email)).length})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={blAudience === "all" ? "default" : "outline"}
+                  onClick={() => setBlAudience("all")}
+                >
+                  Whole roster ({namedRecipients.length})
+                </Button>
+                <Button size="sm" variant="ghost" onClick={blDownloadList}>
+                  <Copy className="w-3 h-3 mr-1" /> Download list (CSV)
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                "RSVP'd yes" is everyone who replied YES to either training session.
+              </p>
+            </div>
+
+            <div>
+              <Label>First video submitted by</Label>
+              <Input value={blFirstPost} onChange={(e) => setBlFirstPost(e.target.value)} placeholder="Sunday 7 September" />
+            </div>
+
+            <div>
+              <Label>Extra note (optional)</Label>
+              <Textarea rows={3} value={blNote} onChange={(e) => setBlNote(e.target.value)} placeholder="Anything else you want to add…" />
+            </div>
+
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Preview &amp; test</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={blLoadPreview} disabled={blPreviewing}>
+                  {blPreviewing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Eye className="w-3 h-3 mr-1" />}
+                  Preview email
+                </Button>
+                <Input
+                  className="text-xs h-9 w-56"
+                  value={blTestEmail}
+                  onChange={(e) => setBlTestEmail(e.target.value)}
+                  placeholder="you@company.com"
+                />
+                <Button size="sm" variant="outline" onClick={blSendTest} disabled={blTesting}>
+                  {blTesting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Send className="w-3 h-3 mr-1" />}
+                  Send test
+                </Button>
+              </div>
+              {blPreviewHtml && (
+                <div>
+                  <div className="text-xs mb-1"><span className="text-muted-foreground">Subject:</span> {blPreviewSubject}</div>
+                  <iframe
+                    title="Brief email preview"
+                    srcDoc={blPreviewHtml}
+                    className="w-full h-[420px] rounded-md border border-border bg-white"
+                  />
+                </div>
+              )}
+            </div>
+
+            <Button className="bg-primary" disabled={blSending || !blRecipients.length} onClick={blSendAll}>
+              {blSending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+              {blSending
+                ? `Sending ${blProgress?.done ?? 0}/${blProgress?.total ?? 0}`
+                : `Send brief email to ${blRecipients.length}`}
+            </Button>
+
+            <p className="text-[11px] text-muted-foreground">
+              Sent from <span className="font-mono">royco@darajapulse.com</span>, replies go to {replyTo || "the reply-to inbox"}.
+            </p>
+          </TabsContent>
+
 
           <TabsContent value="lasttraining" className="space-y-4">
             <p className="text-sm text-muted-foreground">

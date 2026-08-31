@@ -18,6 +18,7 @@ import { template as invoiceNotification } from './invoice-notification.tsx'
 import { template as pakakumiOnboarding } from './pakakumi-onboarding.tsx'
 import { template as roycoKickoffInvite } from './royco-kickoff-invite.tsx'
 import { template as roycoLastTraining } from './royco-last-training.tsx'
+import { template as roycoBriefLive } from './royco-brief-live.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'contest-daily-summary': contestDailySummary,
@@ -29,4 +30,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'pakakumi-onboarding': pakakumiOnboarding,
   'royco-kickoff-invite': roycoKickoffInvite,
   'royco-last-training': roycoLastTraining,
+  'royco-brief-live': roycoBriefLive,
 }

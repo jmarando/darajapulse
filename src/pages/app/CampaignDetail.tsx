@@ -1523,11 +1523,18 @@ const CampaignDetail = () => {
             campaignId={id!}
             campaignName={c?.name ?? "Campaign"}
             hashtag={c?.hashtag}
+            briefBase={`${window.location.origin}${slugPath}/brief`}
             emails={ci.map((x: any) => x.influencers?.email).filter(Boolean)}
             recipients={ci
               .filter((x: any) => x.influencers?.email)
-              .map((x: any) => ({ email: x.influencers.email, name: x.influencers.full_name }))}
+              .map((x: any) => ({
+                email: x.influencers.email,
+                name: x.influencers.full_name,
+                briefToken: x.brief_token,
+                influencerId: x.influencer_id,
+              }))}
           />
+
           <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddBreakdown({}); } }}>
             <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add creator</Button></DialogTrigger>
 
