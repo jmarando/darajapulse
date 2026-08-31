@@ -190,12 +190,20 @@ Deno.serve(async (req) => {
     // Duplicate delivery of the same email is fine — ignore unique violations.
     if (msgErr && msgErr.code !== '23505') throw msgErr
 
-    // Auto-capture RSVPs: a reply starting with YES/NO on a campaign mailbox.
+    // Auto-capture RSVPs from the REPLY BODY only — the subject is inherited from
+    // our own invite ("Re: … please confirm") and would flag everyone as attending.
     try {
-      const first = `${subject} ${textBody}`.trim().toLowerCase()
-      const yes = /\b(yes|nitakuja|i(?:'| a)?m in|count me in|will attend|attending|confirmed?)\b/.test(first)
-      const no = /\b(no|siwezi|can(?:no|')t make|not able|unable to attend|decline)\b/.test(first)
-      const status = yes && !no ? 'yes' : no && !yes ? 'no' : null
+      const first = textBody.trim().toLowerCase().slice(0, 600)
+      const no =
+        /\b(no|siwezi|sina|nope|sorry|apolog|regret|can(?:no|')?t|cannot|won'?t|will not|unable|not able|not going|not attend|another (?:meeting|commitment)|prior (?:engagement|commitment)|other commitments?|decline|miss(?:ing)? (?:it|this)|unfortunately)\b/.test(
+          first,
+        )
+      const yes =
+        /\b(yes|yeah|yep|sure|noted|nitakuja|niko|i(?:'| a)?m in|count me in|will attend|i will be there|i'?ll be there|see you (?:then|there)|attending|confirmed?|confirming)\b/.test(
+          first,
+        )
+      const status = no ? 'no' : yes ? 'yes' : null
+
       if (status && creator?.id) {
         const { data: links } = await supabase
           .from('campaign_influencers')
