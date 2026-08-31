@@ -596,13 +596,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const { campaign_id, post_id, stale, max } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number };
-    let q = supabase.from("posts").select("id, post_url, platform, thumbnail_url, caption, status, created_at");
+    const { campaign_id, post_id, stale, max, offset } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number };
+    let q = supabase.from("posts").select("id, post_url, platform, thumbnail_url, caption, status, created_at").order("created_at", { ascending: true });
     if (post_id) q = q.eq("id", post_id);
     else if (campaign_id) q = q.eq("campaign_id", campaign_id);
     const { data: postsAll, error } = await q;
     if (error) throw error;
     let posts = postsAll ?? [];
+    const totalMatched = posts.length;
 
     // stale mode: only posts with NO metric row OR most-recent metric older than 6h,
     // skip posts we know can't be auto-fetched (Facebook feed) after 3 tries.
@@ -621,20 +622,27 @@ Deno.serve(async (req) => {
         if (!last) return true;
         return new Date(last).getTime() < sixHoursAgo;
       });
-      if (max && posts.length > max) posts = posts.slice(0, max);
     }
 
+    // Paging so large campaigns can be refreshed without hitting the 150s edge limit.
+    const start = Math.max(0, Number(offset ?? 0));
+    const limit = Math.max(1, Number(max ?? 60));
+    const remaining = Math.max(0, posts.length - (start + limit));
+    posts = posts.slice(start, start + limit);
+
     const results: any[] = [];
-    const chunks = 3;
+    const chunks = 6;
     for (let i = 0; i < posts.length; i += chunks) {
       const batch = posts.slice(i, i + chunks);
       const r = await Promise.all(batch.map(processPost));
       results.push(...r);
     }
+
     const ok = results.filter(r => r.ok).length;
-    return new Response(JSON.stringify({ ok, total: results.length, results, provider: ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
+    return new Response(JSON.stringify({ ok, total: results.length, matched: totalMatched, remaining, next_offset: remaining > 0 ? start + limit : null, results, provider: ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (e) {
     return new Response(JSON.stringify({ error: String((e as Error).message ?? e) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

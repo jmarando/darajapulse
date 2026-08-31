@@ -377,11 +377,25 @@ const CampaignDetail = () => {
 
   const autoFetchAll = async () => {
     toast.loading("Auto-fetching all posts…", { id: "pf-all" });
-    const { data, error } = await supabase.functions.invoke("fetch-public-metrics", { body: { campaign_id: id } });
-    if (error) return toast.error(error.message, { id: "pf-all" });
-    toast.success(`Fetched ${data?.ok ?? 0} of ${data?.total ?? 0} posts`, { id: "pf-all" });
+    let offset = 0;
+    let ok = 0;
+    let total = 0;
+    // Page through so large campaigns don't hit the edge function time limit.
+    for (let page = 0; page < 40; page++) {
+      const { data, error } = await supabase.functions.invoke("fetch-public-metrics", {
+        body: { campaign_id: id, max: 45, offset },
+      });
+      if (error) return toast.error(error.message, { id: "pf-all" });
+      ok += data?.ok ?? 0;
+      total += data?.total ?? 0;
+      toast.loading(`Auto-fetching… ${total} posts done`, { id: "pf-all" });
+      if (!data?.next_offset) break;
+      offset = data.next_offset;
+    }
+    toast.success(`Fetched ${ok} of ${total} posts`, { id: "pf-all" });
     load();
   };
+
 
   const generateLink = async () => {
     // If a link already exists for this campaign, just reuse it.
