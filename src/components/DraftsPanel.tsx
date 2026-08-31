@@ -54,7 +54,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     const list = ((data as any) ?? []) as Draft[];
     setDrafts(list);
     setRequired(Boolean((camp as any)?.require_draft_approval));
-    setReviewLink((link as any)?.token ? `${window.location.origin}/d/${(link as any).token}` : null);
+    setReviewLink((link as any)?.token ? `${publicOrigin()}/d/${(link as any).token}` : null);
 
     const signed: Record<string, string> = {};
     await Promise.all(
@@ -105,7 +105,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       .select("token")
       .single();
     if (error) return toast.error(error.message);
-    setReviewLink(`${window.location.origin}/d/${(data as any).token}`);
+    setReviewLink(`${publicOrigin()}/d/${(data as any).token}`);
     toast.success("Client review link created");
   };
 
