@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
         return json({ error: "Please tell the creator what to change." }, 400);
       }
 
-      const { error } = await admin
+      const { data: updated, error } = await admin
         .from("creator_drafts")
         .update({
           status: decision,
@@ -49,9 +49,53 @@ Deno.serve(async (req) => {
           reviewed_at: new Date().toISOString(),
         })
         .eq("id", draftId)
-        .eq("campaign_id", link.campaign_id);
+        .eq("campaign_id", link.campaign_id)
+        .select("id, influencer_id")
+        .maybeSingle();
       if (error) return json({ error: error.message }, 400);
+
+      // Let the creator know the outcome (non-blocking).
+      try {
+        const influencerId = (updated as any)?.influencer_id;
+        if (influencerId) {
+          const [{ data: inf }, { data: camp }, { data: ci }] = await Promise.all([
+            admin.from("influencers").select("full_name, email").eq("id", influencerId).maybeSingle(),
+            admin.from("campaigns").select("name, hashtag").eq("id", link.campaign_id).maybeSingle(),
+            admin
+              .from("campaign_influencers")
+              .select("brief_token")
+              .eq("campaign_id", link.campaign_id)
+              .eq("influencer_id", influencerId)
+              .maybeSingle(),
+          ]);
+          const email = (inf as any)?.email;
+          if (email) {
+            await admin.functions.invoke("send-transactional-email", {
+              body: {
+                templateName: "royco-draft-decision",
+                recipientEmail: email,
+                from: "Royco x Daraja Pulse <royco@reply.darajapulse.com>",
+                replyTo: "royco@reply.darajapulse.com",
+                idempotencyKey: `draftdecision-${draftId}-${decision}-${Date.now()}`,
+                templateData: {
+                  greeting_name: String((inf as any)?.full_name || "").split(" ")[0] || "there",
+                  campaign_name: (camp as any)?.name ?? undefined,
+                  decision,
+                  review_note: note || undefined,
+                  reviewer_label: reviewer || link.label || "Client",
+                  hashtag: (camp as any)?.hashtag ?? undefined,
+                  submit_url: (ci as any)?.brief_token
+                    ? `https://darajapulse.com/brief/${(ci as any).brief_token}`
+                    : undefined,
+                },
+              },
+            });
+          }
+        }
+      } catch (_) { /* ignore notification failures */ }
+
       return json({ ok: true });
+
     }
 
     // list
