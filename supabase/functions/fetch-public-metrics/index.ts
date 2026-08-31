@@ -630,18 +630,26 @@ Deno.serve(async (req) => {
     const remaining = Math.max(0, posts.length - (start + limit));
     posts = posts.slice(start, start + limit);
 
+    // Wall-clock budget: stop starting new batches near the edge limit so the caller
+    // gets partial results plus a next_offset instead of a 504.
+    const deadline = Date.now() + 100_000;
     const results: any[] = [];
     const chunks = 6;
+    let processed = 0;
     for (let i = 0; i < posts.length; i += chunks) {
+      if (Date.now() > deadline) break;
       const batch = posts.slice(i, i + chunks);
       const r = await Promise.all(batch.map(processPost));
       results.push(...r);
+      processed += batch.length;
     }
+    const leftover = remaining + (posts.length - processed);
 
     const ok = results.filter(r => r.ok).length;
-    return new Response(JSON.stringify({ ok, total: results.length, matched: totalMatched, remaining, next_offset: remaining > 0 ? start + limit : null, results, provider: ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
+    return new Response(JSON.stringify({ ok, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? start + processed : null, results, provider: ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
 
   } catch (e) {
     return new Response(JSON.stringify({ error: String((e as Error).message ?? e) }), {
