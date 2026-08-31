@@ -295,7 +295,8 @@ const Discovery = () => {
 
   const addContact = async (creatorId: string, kind: string, value: string, is_public: boolean) => {
     if (!value.trim()) return;
-    const { error } = await supabase.from("discovery_contacts").insert({ creator_id: creatorId, kind, value: value.trim(), is_public });
+    const { data: auth } = await supabase.auth.getUser();
+    const { error } = await supabase.from("discovery_contacts").insert({ creator_id: creatorId, kind, value: value.trim(), is_public, added_by: auth?.user?.id ?? null });
     if (error) return toast.error(error.message);
     const { data: cs } = await supabase.from("discovery_contacts").select("*").eq("creator_id", creatorId);
     setContactsByCreator(prev => ({ ...prev, [creatorId]: (cs as any) || [] }));

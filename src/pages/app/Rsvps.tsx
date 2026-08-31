@@ -68,17 +68,21 @@ const Rsvps = () => {
 
     const emails = roster.map((r) => r.email);
 
-    // Invite delivery status from the email log
+    // Invite delivery status from the email log — restricted to invite emails only,
+    // so OTPs / system mail from other flows don't count as an invite.
+    const INVITE_TEMPLATES = ["royco-kickoff-invite", "royco-last-training"];
     const sent = new Map<string, string>();
     for (let i = 0; i < emails.length; i += 200) {
       const chunk = emails.slice(i, i + 200);
       const { data } = await supabase
         .from("email_send_log")
-        .select("recipient_email, status, created_at")
+        .select("recipient_email, status, created_at, template_name")
         .in("recipient_email", chunk)
+        .in("template_name", INVITE_TEMPLATES)
         .order("created_at", { ascending: true });
       (data ?? []).forEach((r: any) => sent.set(String(r.recipient_email).toLowerCase(), r.status));
     }
+
 
     const { data: rsvps } = await supabase
       .from("event_rsvps")

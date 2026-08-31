@@ -57,3 +57,10 @@ verify_jwt = false
 
 [functions.storefront-match]
 verify_jwt = false
+
+[functions.resend-inbound]
+verify_jwt = false
+
+[functions.email-reply]
+verify_jwt = true
+
