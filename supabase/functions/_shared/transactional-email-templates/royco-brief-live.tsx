@@ -99,9 +99,11 @@ const RoycoBriefLive = ({
             <Text style={h2}>What you're delivering</Text>
             <Text style={text}>
               Four (4) Reels per month — one per week — cross-posted on your active platforms, always tagging Royco and
-              using <strong>{hashtag}</strong>. Every video must be approved by the team before it goes live, and must
-              stay up for the whole campaign. Aim to have your <strong>first video submitted by {first_post_by}</strong>.
+              using <strong>{hashtag}</strong> and <strong>#Flavormax</strong>. Every video must be approved by the team
+              before it goes live, and must stay up for the whole campaign. Aim to have your{' '}
+              <strong>first video submitted by {first_post_by}</strong>.
             </Text>
+
 
             <Text style={h2}>How you get paid</Text>
             <Text style={text}>
