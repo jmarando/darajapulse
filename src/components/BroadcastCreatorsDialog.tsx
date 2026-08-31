@@ -66,19 +66,54 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [ltSending, setLtSending] = useState(false);
   const [ltProgress, setLtProgress] = useState<{ done: number; total: number } | null>(null);
 
+  // Brief-live tab state
+  const [blFirstPost, setBlFirstPost] = useState("Sunday 7 September");
+  const [blNote, setBlNote] = useState("");
+  const [blAudience, setBlAudience] = useState<"rsvp" | "all">("rsvp");
+  const [blPreviewHtml, setBlPreviewHtml] = useState<string | null>(null);
+  const [blPreviewSubject, setBlPreviewSubject] = useState("");
+  const [blPreviewing, setBlPreviewing] = useState(false);
+  const [blTestEmail, setBlTestEmail] = useState("");
+  const [blTesting, setBlTesting] = useState(false);
+  const [blSending, setBlSending] = useState(false);
+  const [blProgress, setBlProgress] = useState<{ done: number; total: number } | null>(null);
+  const [rsvpYes, setRsvpYes] = useState<Set<string>>(new Set());
+
   const clean = useMemo(
     () => Array.from(new Set(emails.map((e) => (e || "").trim().toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)))),
     [emails]
   );
 
   const namedRecipients = useMemo(() => {
-    const byEmail = new Map<string, string | null>();
+    const byEmail = new Map<string, Recipient>();
     (recipients ?? []).forEach((r) => {
       const e = (r.email || "").trim().toLowerCase();
-      if (e && !byEmail.has(e)) byEmail.set(e, r.name ?? null);
+      if (e && !byEmail.has(e)) byEmail.set(e, r);
     });
-    return clean.map((e) => ({ email: e, name: byEmail.get(e) ?? null }));
+    return clean.map((e) => ({
+      email: e,
+      name: byEmail.get(e)?.name ?? null,
+      briefToken: byEmail.get(e)?.briefToken ?? null,
+    }));
   }, [clean, recipients]);
+
+  // Creators who RSVPed "yes" to either training session.
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("event_rsvps")
+      .select("email")
+      .eq("status", "yes")
+      .then(({ data }) =>
+        setRsvpYes(new Set((data ?? []).map((r: any) => (r.email || "").trim().toLowerCase()))),
+      );
+  }, [open]);
+
+  const blRecipients = useMemo(
+    () => (blAudience === "rsvp" ? namedRecipients.filter((r) => rsvpYes.has(r.email)) : namedRecipients),
+    [blAudience, namedRecipients, rsvpYes],
+  );
+
 
   useEffect(() => {
     if (!open) return;
