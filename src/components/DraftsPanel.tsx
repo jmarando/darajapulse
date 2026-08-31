@@ -77,6 +77,53 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
   }), [drafts]);
 
   const rows = tab === "all" ? drafts : drafts.filter((d) => d.status === tab);
+  /** Emails the creator the decision (approved / changes requested). */
+  const notifyCreator = async (
+    d: Draft,
+    decision: "approved" | "changes_requested",
+    note: string,
+    reviewer: string,
+  ) => {
+    try {
+      const influencerId = (d as any).influencer_id as string | null;
+      if (!influencerId) return;
+      const [{ data: inf }, { data: camp }, { data: ci }] = await Promise.all([
+        supabase.from("influencers").select("full_name, email").eq("id", influencerId).maybeSingle(),
+        supabase.from("campaigns").select("name, hashtag").eq("id", campaignId).maybeSingle(),
+        supabase
+          .from("campaign_influencers")
+          .select("brief_token")
+          .eq("campaign_id", campaignId)
+          .eq("influencer_id", influencerId)
+          .maybeSingle(),
+      ]);
+      const email = (inf as any)?.email as string | undefined;
+      if (!email) return;
+      await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "royco-draft-decision",
+          recipientEmail: email,
+          from: "Royco x Daraja Pulse <royco@reply.darajapulse.com>",
+          replyTo: "royco@reply.darajapulse.com",
+          idempotencyKey: `draftdecision-${d.id}-${decision}-${Date.now()}`,
+          templateData: {
+            greeting_name: ((inf as any)?.full_name || "").split(" ")[0] || "there",
+            campaign_name: (camp as any)?.name || undefined,
+            decision,
+            review_note: note || undefined,
+            reviewer_label: reviewer,
+            hashtag: (camp as any)?.hashtag || undefined,
+            submit_url: (ci as any)?.brief_token
+              ? `${publicOrigin()}/brief/${(ci as any).brief_token}`
+              : undefined,
+          },
+        },
+      });
+    } catch {
+      /* non-blocking */
+    }
+  };
+
 
   const decide = async (d: Draft, decision: "approved" | "changes_requested") => {
     const note = (notes[d.id] || "").trim();
