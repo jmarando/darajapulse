@@ -69,7 +69,7 @@ import SubmissionsSection from "./SubmissionsSection";
 import DraftsPanel from "@/components/DraftsPanel";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
-import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, type Breakdown } from "@/components/DeliverablesEditor";
+import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, DEFAULT_PLATFORMS, type Breakdown } from "@/components/DeliverablesEditor";
 import { EditCreatorDialog } from "@/components/EditCreatorDialog";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
@@ -107,7 +107,7 @@ const CampaignDetail = () => {
   const [rosterSearch, setRosterSearch] = useState("");
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
   const [addFee, setAddFee] = useState<string>("");
-  const [addBreakdown, setAddBreakdown] = useState<Breakdown>({});
+  const [addBreakdown, setAddBreakdown] = useState<Breakdown>({ items: [{ type: "video", count: 1, platforms: [...DEFAULT_PLATFORMS] }] });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFee, setEditFee] = useState<string>("");
   const [editBreakdown, setEditBreakdown] = useState<Breakdown>({});
@@ -268,9 +268,10 @@ const CampaignDetail = () => {
     const fee = Number(addFee) || 0;
     const total = breakdownTotal(addBreakdown);
     const deliv = total > 0 ? total : 1;
-    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: inflId, fee_kes: fee, deliverables_count: deliv, deliverables_breakdown: addBreakdown as any });
+    const bd = breakdownTotal(addBreakdown) > 0 ? normalizeBreakdown(addBreakdown) : { items: [{ type: "video", count: deliv, platforms: [...DEFAULT_PLATFORMS] }] };
+    const { error } = await supabase.from("campaign_influencers").insert({ campaign_id: id, influencer_id: inflId, fee_kes: fee, deliverables_count: deliv, deliverables_breakdown: bd as any });
     if (error) return toast.error(error.message);
-    toast.success("Added"); setAddFee(""); setAddBreakdown({}); setPicked(null); setRosterOpen(false); load();
+    toast.success("Added"); setAddFee(""); setAddBreakdown({ items: [{ type: "video", count: 1, platforms: [...DEFAULT_PLATFORMS] }] }); setPicked(null); setRosterOpen(false); load();
   };
 
   const updateCi = async (ciId: string, patch: any) => {
@@ -1586,7 +1587,7 @@ const CampaignDetail = () => {
               }))}
           />
 
-          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddBreakdown({}); } }}>
+          <Dialog open={rosterOpen} onOpenChange={(o) => { setRosterOpen(o); if (!o) { setCreating(false); setPicked(null); setRosterSearch(""); setAddFee(""); setAddBreakdown({ items: [{ type: "video", count: 1, platforms: [...DEFAULT_PLATFORMS] }] }); } }}>
             <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="w-3 h-3 mr-1" /> Add creator</Button></DialogTrigger>
 
             <DialogContent>
@@ -1908,7 +1909,7 @@ const CampaignDetail = () => {
                                 </DropdownMenuItem>
                               ))}
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); const norm = normalizeBreakdown(x.deliverables_breakdown, x.influencers?.primary_platform || "tiktok"); setEditBreakdown(Object.keys(norm).length ? norm : { [x.influencers?.primary_platform || "tiktok"]: { video: Number(x.deliverables_count) || 1 } }); }}>
+                              <DropdownMenuItem onClick={() => { setEditingId(x.id); setEditFee(String(x.fee_kes ?? 0)); const norm = normalizeBreakdown(x.deliverables_breakdown, DEFAULT_PLATFORMS); setEditBreakdown(norm.items.length ? norm : { items: [{ type: "video", count: Number(x.deliverables_count) || 1, platforms: [...DEFAULT_PLATFORMS] }] }); }}>
                                 <Pencil className="w-4 h-4 mr-2" /> Edit fee & posts
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setEditCreatorId(x.influencer_id)}>

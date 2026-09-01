@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Hash, Wallet, Calendar, CheckCircle2, XCircle, Music2, Check, X, AtSign, Link as LinkIcon, FileText, Clapperboard, Smartphone, Eye, Banknote, Instagram, Youtube, Twitter, Facebook, Send, Copy } from "lucide-react";
 import { toast } from "sonner";
-import { normalizeBreakdown } from "@/components/DeliverablesEditor";
+import { normalizeBreakdown, DEFAULT_PLATFORMS } from "@/components/DeliverablesEditor";
 import ContractSign from "@/components/ContractSign";
 
 
