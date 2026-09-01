@@ -556,7 +556,7 @@ async function scrape(platform: string, rawUrl: string) {
 
   if (isTikTok) return await scrapeTikTokHtml(url);
   if (isYouTube) return await scrapeYouTubeHtml(url);
-  if (isInsta) throw new Error("Instagram fetch failed — Ensemble plan expired and Apify fallback returned nothing");
+  if (isInsta) throw new Error("Instagram fetch failed — Apify returned nothing and Ensemble fallback is unavailable");
   if (isFacebook) throw new Error("Facebook scrapers returned no data for this URL — it may be private/age-restricted. Enter metrics manually or connect the Page.");
   throw new Error(`No scraper for platform: ${platform}`);
 }
@@ -649,7 +649,7 @@ Deno.serve(async (req) => {
     const leftover = remaining + (posts.length - processed);
 
     const ok = results.filter(r => r.ok).length;
-    return new Response(JSON.stringify({ ok, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? start + processed : null, results, provider: ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
+    return new Response(JSON.stringify({ ok, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? start + processed : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
