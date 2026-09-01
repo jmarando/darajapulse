@@ -46,7 +46,7 @@ const PublicBrief = () => {
 
   const paymentSteps: Array<{ icon: any; label: string; desc: string }> = [];
 
-  const breakdown = normalizeBreakdown(b.deliverables_breakdown, b.influencer?.primary_platform || "tiktok");
+  const breakdown = normalizeBreakdown(b.deliverables_breakdown, DEFAULT_PLATFORMS);
   // Group items by platform for display; cross-posted items appear under every platform with a "cross-post" badge.
   const byPlatform: Record<string, { type: string; count: number; crossWith: string[] }[]> = {};
   for (const it of breakdown.items) {
@@ -59,7 +59,7 @@ const PublicBrief = () => {
   // deliverables breakdown is empty — fall back to the influencer's primary platform.
   const connectPlatforms = platforms.length > 0
     ? platforms
-    : (b.influencer?.primary_platform ? [b.influencer.primary_platform] : []);
+    : DEFAULT_PLATFORMS;
   const hasTikTok = platforms.includes("tiktok");
 
   return (
