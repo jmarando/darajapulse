@@ -12,6 +12,9 @@ export const DELIVERABLE_TYPES = [
 export const PLATFORMS = ["tiktok", "instagram", "youtube", "twitter", "facebook"] as const;
 export type Platform = typeof PLATFORMS[number];
 
+/** House default: every creator posts on TikTok + Instagram + Facebook unless changed. */
+export const DEFAULT_PLATFORMS: string[] = ["tiktok", "instagram", "facebook"];
+
 const PLATFORM_LABEL: Record<string, string> = {
   tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube", twitter: "X", facebook: "Facebook",
 };
@@ -34,7 +37,8 @@ const isNested = (b: any): b is PlatformBreakdown =>
   !!b && typeof b === "object" && !Array.isArray(b) && Object.values(b).some(v => v && typeof v === "object" && !Array.isArray(v));
 
 /** Always returns the items shape, converting legacy formats. */
-export const normalizeBreakdown = (b: any, fallbackPlatform: string = "tiktok"): ItemsBreakdown => {
+export const normalizeBreakdown = (b: any, fallbackPlatform: string | string[] = DEFAULT_PLATFORMS): ItemsBreakdown => {
+  const fallback = Array.isArray(fallbackPlatform) ? fallbackPlatform : [fallbackPlatform];
   if (!b || typeof b !== "object") return { items: [] };
   if (isItems(b)) {
     const items = (b.items || [])
@@ -43,7 +47,7 @@ export const normalizeBreakdown = (b: any, fallbackPlatform: string = "tiktok"):
         count: Number(it?.count) || 0,
         platforms: Array.isArray(it?.platforms) && it.platforms.length
           ? it.platforms.map((p: any) => String(p)).filter(Boolean)
-          : [fallbackPlatform],
+          : [...fallback],
       }))
       .filter(it => it.type && it.count > 0 && it.platforms.length > 0);
     return { items };
@@ -60,7 +64,7 @@ export const normalizeBreakdown = (b: any, fallbackPlatform: string = "tiktok"):
   // Flat legacy
   const items: DeliverableItem[] = [];
   for (const [t, n] of Object.entries(b as FlatBreakdown)) {
-    if (Number(n) > 0) items.push({ type: t, count: Number(n), platforms: [fallbackPlatform] });
+    if (Number(n) > 0) items.push({ type: t, count: Number(n), platforms: [...fallback] });
   }
   return { items };
 };
@@ -127,18 +131,18 @@ const PlatformChips = ({ value, onChange }: { value: string[]; onChange: (next: 
 export const DeliverablesEditor = ({ value, onChange }: { value: Breakdown; onChange: (b: ItemsBreakdown) => void }) => {
   const items = useMemo(() => {
     const n = normalizeBreakdown(value);
-    return n.items.length ? n.items : [{ type: "video", count: 1, platforms: ["tiktok"] as string[] }];
+    return n.items.length ? n.items : [{ type: "video", count: 1, platforms: [...DEFAULT_PLATFORMS] }];
   }, [value]);
 
   const commit = (next: DeliverableItem[]) => {
     const cleaned = next
-      .map(it => ({ ...it, count: Number(it.count) || 0, platforms: it.platforms.length ? it.platforms : ["tiktok"] }))
+      .map(it => ({ ...it, count: Number(it.count) || 0, platforms: it.platforms.length ? it.platforms : [...DEFAULT_PLATFORMS] }))
       .filter(it => it.type && it.count > 0);
     onChange({ items: cleaned });
   };
   const setRow = (idx: number, patch: Partial<DeliverableItem>) => commit(items.map((r, i) => i === idx ? { ...r, ...patch } : r));
   const removeRow = (idx: number) => commit(items.filter((_, i) => i !== idx));
-  const addRow = () => commit([...items, { type: "post", count: 1, platforms: [items[items.length - 1]?.platforms[0] || "tiktok"] }]);
+  const addRow = () => commit([...items, { type: "post", count: 1, platforms: [...(items[items.length - 1]?.platforms?.length ? items[items.length - 1].platforms : DEFAULT_PLATFORMS)] }]);
 
   return (
     <div className="space-y-3">
