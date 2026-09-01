@@ -34,7 +34,7 @@ const fmtAgo = (iso?: string | null) => {
 
 const PLATFORM_ICON: Record<string, any> = { tiktok: Music2, instagram: Instagram, youtube: Youtube, twitter: Twitter, facebook: Facebook };
 
-const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", phone_mpesa: "" };
+const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", phone_mpesa: "", email: "" };
 
 const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; format: (v: number) => string; onSave: (v: number) => void; step?: number }) => {
   const [editing, setEditing] = useState(false);
@@ -72,9 +72,10 @@ const Influencers = () => {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(blankForm);
+  const [sort, setSort] = useState<"recent" | "followers" | "name">("recent");
 
   const load = async () => {
-    const { data } = await supabase.from("influencers").select("*").order("follower_count", { ascending: false });
+    const { data } = await supabase.from("influencers").select("*").order("created_at", { ascending: false });
     setRows(data ?? []);
   };
   useEffect(() => { load(); }, []);
@@ -91,13 +92,16 @@ const Influencers = () => {
       engagement_rate: r.engagement_rate ?? 0,
       region: r.region ?? "Kenya",
       phone_mpesa: r.phone_mpesa ?? "",
+      email: r.email ?? "",
     });
     setOpen(true);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { ...form, follower_count: Number(form.follower_count), engagement_rate: Number(form.engagement_rate) };
+    const email = String(form.email ?? "").trim().toLowerCase();
+    if (!email) return toast.error("Email is required — it's how briefs, contracts and invites reach the creator.");
+    const payload = { ...form, email, follower_count: Number(form.follower_count), engagement_rate: Number(form.engagement_rate) };
     if (editingId) {
       const { error } = await (supabase.from("influencers") as any).update(payload).eq("id", editingId);
       if (error) return toast.error(error.message);
@@ -123,7 +127,13 @@ const Influencers = () => {
     toast.success(`${labels[platform] ?? platform} invite link copied`);
   };
 
-  const filtered = rows.filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()));
+  const missingEmail = rows.filter(r => !r.email).length;
+  const filtered = rows.filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => {
+      if (sort === "followers") return Number(b.follower_count ?? 0) - Number(a.follower_count ?? 0);
+      if (sort === "name") return String(a.full_name).localeCompare(String(b.full_name));
+      return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+    });
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -166,7 +176,14 @@ const Influencers = () => {
                 <div><Label>Engagement %</Label><Input type="number" step="0.1" value={form.engagement_rate} onChange={e => setForm({ ...form, engagement_rate: e.target.value })} /></div>
                 <div><Label>Region</Label><Input value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} /></div>
               </div>
-              <div><Label>Phone (WhatsApp)</Label><Input value={form.phone_mpesa} onChange={e => setForm({ ...form, phone_mpesa: e.target.value })} placeholder="2547..." /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Email <span className="text-destructive">*</span></Label>
+                  <Input required type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="creator@email.com" />
+                </div>
+                <div><Label>Phone (WhatsApp)</Label><Input value={form.phone_mpesa} onChange={e => setForm({ ...form, phone_mpesa: e.target.value })} placeholder="2547..." /></div>
+              </div>
+              <p className="text-xs text-muted-foreground">Briefs, contracts, kick-off invites and approval notices are all sent by email — a creator without one can't be contacted from the platform.</p>
               <Button type="submit" className="w-full bg-primary">{editingId ? "Save changes" : "Save"}</Button>
             </form>
           </DialogContent>
@@ -174,9 +191,19 @@ const Influencers = () => {
         </div>
       </div>
 
-      <div className="relative mb-6 max-w-md">
-        <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Search name, handle, niche…" value={q} onChange={e => setQ(e.target.value)} />
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Search name, handle, niche…" value={q} onChange={e => setQ(e.target.value)} />
+        </div>
+        <div className="flex items-center gap-1">
+          {([["recent", "Recently added"], ["followers", "Followers"], ["name", "Name"]] as const).map(([k, label]) => (
+            <Button key={k} size="sm" variant={sort === k ? "default" : "outline"} onClick={() => setSort(k as any)}>{label}</Button>
+          ))}
+        </div>
+        {missingEmail > 0 && (
+          <Badge variant="outline" className="border-destructive/40 text-destructive">{missingEmail} without email</Badge>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -207,6 +234,11 @@ const Influencers = () => {
                       {looksLikeUrl ? handleRaw : handleRaw ? `@${handleRaw}` : "—"}
                     </span>
                   </div>
+                  {r.email ? (
+                    <div className="text-[11px] text-muted-foreground truncate mt-0.5" title={r.email}>{r.email}</div>
+                  ) : (
+                    <button type="button" onClick={() => openEdit(r)} className="text-[11px] text-destructive mt-0.5 hover:underline">Add email</button>
+                  )}
                 </div>
                 <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => openEdit(r)} title="Edit influencer">
                   <Pencil className="w-3.5 h-3.5" />
