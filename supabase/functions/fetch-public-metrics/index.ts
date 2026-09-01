@@ -523,8 +523,20 @@ async function scrape(platform: string, rawUrl: string) {
   const isYouTube = p === "youtube" || /youtu\.?be/.test(url);
   const isFacebook = p === "facebook" || /facebook\.com|fb\.watch/.test(url);
 
+  // Apify is the primary provider for IG / TikTok / Facebook (paid account).
+  if (APIFY && (isInsta || isFacebook || isTikTok)) {
+    try {
+      const res = await apifyFetch(isInsta ? "instagram" : isFacebook ? "facebook" : "tiktok", url);
+      const s: any = (res as any)?.stats ?? {};
+      const hasSignal = ["views", "likes", "comments", "shares", "saves", "reach", "impressions"].some((k) => Number(s?.[k] || 0) > 0);
+      if (hasSignal) return res;
+      console.error(`Apify returned no metric signal for ${platform}, falling back to Ensemble`);
+    } catch (e) {
+      console.error(`Apify failed for ${platform}:`, (e as Error).message);
+    }
+  }
 
-  // Try Ensemble first for everything
+  // Ensemble fallback (and primary for YouTube)
   if (ENSEMBLE_TOKEN) {
     try {
       if (isTikTok) {
@@ -539,18 +551,9 @@ async function scrape(platform: string, rawUrl: string) {
       if (isFacebook) return await edFacebook(url);
     } catch (e) {
       console.error(`Ensemble failed for ${platform}:`, (e as Error).message);
-      // fall through to HTML fallback where possible
     }
   }
 
-  // Fallbacks
-  if (APIFY && (isInsta || isFacebook || isTikTok)) {
-    try {
-      return await apifyFetch(isInsta ? "instagram" : isFacebook ? "facebook" : "tiktok", url);
-    } catch (e) {
-      console.error(`Apify failed for ${platform}:`, (e as Error).message);
-    }
-  }
   if (isTikTok) return await scrapeTikTokHtml(url);
   if (isYouTube) return await scrapeYouTubeHtml(url);
   if (isInsta) throw new Error("Instagram fetch failed — Ensemble plan expired and Apify fallback returned nothing");
