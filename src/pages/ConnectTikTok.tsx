@@ -9,6 +9,7 @@ const ConnectTikTok = () => {
   const { influencerId } = useParams();
   const [params] = useSearchParams();
   const status = params.get("status");
+  const reason = params.get("reason");
   const [name, setName] = useState<string>("");
 
   useEffect(() => {
@@ -36,7 +37,14 @@ const ConnectTikTok = () => {
         ) : status === "error" ? (
           <div className="mt-6 space-y-3">
             <AlertCircle className="w-10 h-10 mx-auto text-destructive" />
-            <p className="text-muted-foreground">Something went wrong. Please try again.</p>
+            <p className="text-muted-foreground">
+              {reason === "token"
+                ? "TikTok refused to issue access. This usually means your TikTok account hasn't been allow-listed on our TikTok app yet — reply to our email and we'll add you, or send us your post links instead."
+                : reason === "invalid_state"
+                  ? "Your session expired. Please start again."
+                  : "Something went wrong. Please try again."}
+            </p>
+            {reason && <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Code: {reason}</p>}
             <Button onClick={start}>Retry</Button>
           </div>
         ) : (
