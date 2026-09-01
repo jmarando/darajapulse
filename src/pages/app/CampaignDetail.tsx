@@ -1741,7 +1741,6 @@ const CampaignDetail = () => {
                   <th className="text-left font-medium px-5 py-3">Creator</th>
                   <th className="text-left font-medium px-3 py-3">Platform</th>
                   <th className="text-left font-medium px-3 py-3">Status</th>
-                  <th className="text-left font-medium px-3 py-3">Invite / RSVP</th>
                   <th className="text-left font-medium px-3 py-3">Contract</th>
 
                   <th className="text-right font-medium px-3 py-3">Fee (KES)</th>
@@ -1810,19 +1809,6 @@ const CampaignDetail = () => {
                           <span className={`w-1.5 h-1.5 rounded-full ${statusDot[x.status] ?? "bg-muted-foreground/40"}`} />
                           {statusLabel[x.status] ?? x.status}
                         </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        {(() => {
-                          const em = String(x.influencers?.email ?? "").toLowerCase();
-                          const coming = em && rsvpYes.has(em);
-                          const invited = em && invitedEmails.has(em);
-                          return (
-                            <div className="flex flex-wrap gap-1">
-                              {coming && <Badge className="bg-success text-success-foreground text-[10px]">RSVP’d · coming</Badge>}
-                              <Badge variant="outline" className="text-[10px]">{invited ? "Invite sent" : "Not sent"}</Badge>
-                            </div>
-                          );
-                        })()}
                       </td>
                       <td className="px-3 py-3">
                         {signedCi.has(x.id) ? (
