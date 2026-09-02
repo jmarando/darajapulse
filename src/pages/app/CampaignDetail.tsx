@@ -161,34 +161,37 @@ const CampaignDetail = () => {
 
   const load = async () => {
     setMetricsLoaded(false);
-    const { data: c1 } = await supabase.from("campaigns").select("*, clients(name, slug, logo_url), brief_templates:brief_template_id(*)").eq("id", id).single();
+
+    // Fire every independent query at once — the previous sequential waterfall meant
+    // ~12 round trips before the KPI cards could render (several seconds of zeros).
+    const [
+      { data: c1 },
+      { data: ciAll },
+      { data: sigs },
+      { data: p },
+      { data: l },
+      { data: pl },
+      { data: contests },
+    ] = await Promise.all([
+      supabase.from("campaigns").select("*, clients(name, slug, logo_url), brief_templates:brief_template_id(*)").eq("id", id).single(),
+      supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id),
+      supabase.from("contract_signatures").select("*").eq("campaign_id", id).order("signed_at", { ascending: false }),
+      supabase.from("posts").select("*, influencers(full_name, handle)").eq("campaign_id", id),
+      supabase.from("report_links").select("*").eq("campaign_id", id).order("created_at", { ascending: true }).limit(1).maybeSingle(),
+      supabase.from("plan_links").select("*").eq("campaign_id", id).maybeSingle(),
+      supabase.from("contests").select("id, submission_token, created_at").eq("campaign_id", id).order("created_at", { ascending: true }),
+    ]);
+
     setC(c1);
     setLearnings(c1?.learnings ?? "");
-    if (c1?.client_id) {
-      const { data: tpls } = await supabase.from("brief_templates").select("id,name").eq("client_id", c1.client_id).order("created_at", { ascending: false });
-      setBriefTemplates(tpls ?? []);
-    }
-    const { data: ciAll } = await supabase.from("campaign_influencers").select("*, influencers(*)").eq("campaign_id", id);
-    const { data: sigs } = await supabase.from("contract_signatures").select("*").eq("campaign_id", id).order("signed_at", { ascending: false });
     setSignatures(sigs ?? []);
     setSignedCi(new Set((sigs ?? []).map((s: any) => s.campaign_influencer_id)));
-
     setCi([...(ciAll ?? [])].sort((a, b) => String(a.influencers?.full_name ?? "").localeCompare(String(b.influencers?.full_name ?? ""))));
-
-    const { data: r } = await supabase.from("influencers").select("*");
-    setRosterAll(r ?? []);
-    if (c1?.agency_id) {
-      const { data: inv } = await supabase
-        .from("inventory_items")
-        .select("*")
-        .eq("agency_id", c1.agency_id)
-        .eq("is_active", true)
-        .order("sort_order")
-        .order("title");
-      setInventory(inv ?? []);
-    } else setInventory([]);
-    const { data: p } = await supabase.from("posts").select("*, influencers(full_name, handle)").eq("campaign_id", id);
     setPosts(p ?? []);
+    setLink(l);
+    setPlanLink(pl);
+    setSubmissionToken((contests ?? [])[0]?.submission_token ?? null);
+
     const postIds = (p ?? []).map((x: any) => x.id);
     if (postIds.length) {
       try {
@@ -196,6 +199,7 @@ const CampaignDetail = () => {
         // of metric snapshots, so downloading the full history before rendering made the
         // hero cards sit at 0 even though the metrics existed in Postgres.
         setMetrics(await fetchCampaignPeakMetrics(supabase, id));
+        setMetricsLoaded(true);
 
         // Then hydrate the chart/date-window history in the background. If this fails,
         // keep the peak KPI rows instead of wiping the campaign back to zero.
@@ -213,23 +217,33 @@ const CampaignDetail = () => {
         }
       }
     } else setMetrics([]);
-    const { data: l } = await supabase.from("report_links").select("*").eq("campaign_id", id).order("created_at", { ascending: true }).limit(1).maybeSingle();
-    setLink(l);
-    const { data: pl } = await supabase.from("plan_links").select("*").eq("campaign_id", id).maybeSingle();
-    setPlanLink(pl);
-    const { data: contests } = await supabase.from("contests").select("id, submission_token, created_at").eq("campaign_id", id).order("created_at", { ascending: true });
-    const contestIds = (contests ?? []).map((x: any) => x.id);
-    setSubmissionToken((contests ?? [])[0]?.submission_token ?? null);
-    if (contestIds.length) {
-      const { data: ce } = await supabase
-        .from("contest_entries")
-        .select("id,full_name,handle,submitter_name,submitter_email,platform,post_url,status,source,views,likes,comments,shares,saves,created_at,posted_at")
-        .in("contest_id", contestIds);
-      setContestEntries(ce ?? []);
-    } else setContestEntries([]);
-
     setMetricsLoaded(true);
+
+    // Secondary data — never block the KPI render on these.
+    const contestIds = (contests ?? []).map((x: any) => x.id);
+    void (async () => {
+      const [{ data: r }, { data: tpls }, { data: inv }, { data: ce }] = await Promise.all([
+        supabase.from("influencers").select("*"),
+        c1?.client_id
+          ? supabase.from("brief_templates").select("id,name").eq("client_id", c1.client_id).order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as any[] }),
+        c1?.agency_id
+          ? supabase.from("inventory_items").select("*").eq("agency_id", c1.agency_id).eq("is_active", true).order("sort_order").order("title")
+          : Promise.resolve({ data: [] as any[] }),
+        contestIds.length
+          ? supabase
+              .from("contest_entries")
+              .select("id,full_name,handle,submitter_name,submitter_email,platform,post_url,status,source,views,likes,comments,shares,saves,created_at,posted_at")
+              .in("contest_id", contestIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      setRosterAll(r ?? []);
+      setBriefTemplates(tpls ?? []);
+      setInventory(inv ?? []);
+      setContestEntries(ce ?? []);
+    })();
   };
+
   useEffect(() => { load(); }, [id]);
 
   const addInfl = async (influencer_id?: string) => {
