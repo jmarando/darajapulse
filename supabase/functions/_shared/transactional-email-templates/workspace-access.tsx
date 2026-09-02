@@ -1,7 +1,7 @@
 import * as React from 'npm:react@18.3.1'
-import { Body, Button, Container, Head, Heading, Hr, Html, Link, Preview, Text } from 'npm:@react-email/components@0.0.22'
+import { Body, Button, Container, Head, Heading, Hr, Html, Img, Link, Preview, Text } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
-import { main, container, wordmark, dot, h1, text, link, button, divider, footer, tagline } from '../email-templates/_styles.ts'
+import { main, container, wordmark, dot, h1, text, link, button, divider, footer, tagline, logoUrl, logoImg } from '../email-templates/_styles.ts'
 
 interface Props {
   org_name?: string
@@ -20,7 +20,7 @@ const WorkspaceAccess = ({ org_name, access_label, sign_in_url }: Props) => {
       <Preview>Welcome to Daraja Pulse — your access to {organisation} is ready</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Text style={wordmark}><span style={dot} />Daraja Pulse</Text>
+          <Img src={logoUrl} alt="Daraja Pulse" width="150" style={logoImg} />
           <Heading style={h1}>Welcome to Daraja Pulse.</Heading>
           <Text style={text}>
             You have been invited to join <strong>{organisation}</strong> as a <strong>{access}</strong>.
