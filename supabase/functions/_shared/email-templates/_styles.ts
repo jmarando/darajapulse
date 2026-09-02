@@ -15,7 +15,15 @@ export const container = {
   maxWidth: '560px',
   margin: '0 auto',
 }
+export const logoUrl = 'https://darajapulse.com/email-logo.png'
+export const logoImg = {
+  display: 'block',
+  width: '150px',
+  height: 'auto',
+  margin: '0 0 24px',
+}
 export const wordmark = {
+
   fontSize: '11px',
   letterSpacing: '0.22em',
   textTransform: 'uppercase' as const,
