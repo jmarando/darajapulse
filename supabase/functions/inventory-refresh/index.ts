@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { apifyProfileStats } from "../_shared/apify-profile.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,6 +122,12 @@ async function fetchTW(handle: string): Promise<Stats | null> {
 
 async function fetchAny(platform: string, handle: string): Promise<Stats | null> {
   const p = (platform || "").toLowerCase();
+  // Apify is the primary source; Ensemble below is the fallback.
+  const h = cleanHandle(handle);
+  if (isLikelyHandle(h)) {
+    const a = await apifyProfileStats(p, h);
+    if (a?.followers) return { followers: a.followers, engagement_rate: a.engagement_rate, username: a.username ?? h };
+  }
   if (p === "tiktok") return fetchTT(handle);
   if (p === "instagram") return fetchIG(handle);
   if (p === "youtube") return fetchYT(handle);

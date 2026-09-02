@@ -5,6 +5,7 @@
 // 2) For every creator that has no email/phone/whatsapp contact yet, ask AI for any
 //    publicly listed email or phone (bio/linktree/agency page) and insert them as
 //    public discovery_contacts.
+import { apifyProfileStats } from "../_shared/apify-profile.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -100,7 +101,14 @@ function extractContacts(payload: any, fallbackBio?: string | null) {
 }
 
 async function fetchProfileContacts(platform: string, handle: string, fallbackBio?: string | null) {
-  if (!handle || !ED_TOKENS.length) return extractContacts(null, fallbackBio);
+  if (!handle) return extractContacts(null, fallbackBio);
+  // Apify first — it returns the richest public profile payload (bio, links, contact info).
+  const apify = await apifyProfileStats(platform, handle);
+  if (apify?.raw) {
+    const fromApify = extractContacts(apify.raw, fallbackBio);
+    if (fromApify.emails.length || fromApify.phones.length || fromApify.bio) return fromApify;
+  }
+  if (!ED_TOKENS.length) return extractContacts(null, fallbackBio);
   if (platform === "instagram") {
     const payload = await edFetch((tok) => `https://ensembledata.com/apis/instagram/user/info?username=${encodeURIComponent(handle)}&token=${tok}`);
     return extractContacts(payload, fallbackBio);

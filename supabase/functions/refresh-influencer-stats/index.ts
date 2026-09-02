@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { apifyProfileStats } from "../_shared/apify-profile.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -213,12 +214,16 @@ Deno.serve(async (req) => {
     if (fb) push(id, await fetchFB_OAuth(fb.page_id, fb.page_access_token), "oauth_fb");
     if (tt) push(id, await fetchTikTok_OAuth(tt.access_token), "oauth_tt");
 
-    // Public-handle fallback for primary platform if nothing yet
+    // Public-handle fallback for primary platform if nothing yet: Apify first, Ensemble as backup
     if (!perInfluencer[id]) {
       const handle = r.handle as string | null;
       if (handle) {
-        if (platform === "tiktok") push(id, await fetchTikTok_Public(handle), "public_tt");
-        else if (platform === "instagram") push(id, await fetchIG_Public(handle), "public_ig");
+        const h = cleanHandle(handle);
+        if (isLikelyHandle(h)) push(id, await apifyProfileStats(platform, h), `apify_${platform}`);
+        if (!perInfluencer[id]) {
+          if (platform === "tiktok") push(id, await fetchTikTok_Public(handle), "public_tt");
+          else if (platform === "instagram") push(id, await fetchIG_Public(handle), "public_ig");
+        }
       }
     }
   }));
