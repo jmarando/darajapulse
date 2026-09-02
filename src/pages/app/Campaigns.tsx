@@ -59,69 +59,71 @@ const Campaigns = () => {
   const [deletingNow, setDeletingNow] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase.from("campaigns").select("*, clients(name, logo_url)").order("created_at", { ascending: false });
+    const [{ data }, { data: cs }] = await Promise.all([
+      supabase.from("campaigns").select("*, clients(name, logo_url)").order("created_at", { ascending: false }),
+      supabase.from("clients").select("id,name"),
+    ]);
     setRows(data ?? []);
-    const { data: cs } = await supabase.from("clients").select("id,name");
     setClients(cs ?? []);
 
-    // Per-campaign performance preview — aggregated server-side via RPC
     const ids = (data ?? []).map((c) => c.id);
-    if (ids.length) {
-      const { data: perfRows, error: perfErr } = await (supabase as any)
-        .rpc("campaign_perf_summary", { campaign_ids: ids });
-      if (perfErr) console.warn("campaign_perf_summary", perfErr);
-      const out: Record<string, { views: number; er: number; posts: number }> = {};
-      for (const row of perfRows ?? []) {
-        const views = Number(row.views || 0);
-        const eng = Number(row.engagement || 0);
-        out[row.campaign_id] = {
-          views,
-          posts: Number(row.posts || 0),
-          er: views > 0 ? (eng / views) * 100 : 0,
-        };
-      }
-      setPerf(out);
-      setPerfLoaded(true);
-    } else {
+    if (!ids.length) {
       setPerf({});
       setPerfLoaded(true);
+      setContestPerf({});
+      return;
     }
 
-    // Contest aggregates per campaign
-    if (ids.length) {
-      const { data: ctsts } = await supabase.from("contests").select("id, campaign_id").in("campaign_id", ids);
-      const contestToCampaign = new Map<string, string>();
-      const cmap: Record<string, ContestPerf> = {};
-      for (const c of ctsts ?? []) {
-        contestToCampaign.set(c.id, c.campaign_id);
-        const cur = cmap[c.campaign_id] ?? { contests: 0, contestants: 0, entries: 0, views: 0 };
-        cur.contests += 1;
-        cmap[c.campaign_id] = cur;
-      }
-      const contestIds = (ctsts ?? []).map(c => c.id);
-      if (contestIds.length) {
-        const { data: es } = await supabase.from("contest_entries").select("contest_id, handle, views").in("contest_id", contestIds);
-        const handlesByCampaign: Record<string, Set<string>> = {};
-        for (const e of es ?? []) {
-          const cid = contestToCampaign.get(e.contest_id);
-          if (!cid) continue;
-          const cur = cmap[cid] ?? { contests: 0, contestants: 0, entries: 0, views: 0 };
-          cur.entries += 1;
-          cur.views += Number(e.views || 0);
-          if (e.handle) {
-            (handlesByCampaign[cid] ||= new Set()).add(String(e.handle).toLowerCase());
-          }
-          cmap[cid] = cur;
-        }
-        for (const [cid, set] of Object.entries(handlesByCampaign)) {
-          if (cmap[cid]) cmap[cid].contestants = set.size;
-        }
-      }
-      setContestPerf(cmap);
-    } else {
-      setContestPerf({});
+    // Per-campaign performance preview and contest aggregates run in parallel.
+    const [{ data: perfRows, error: perfErr }, { data: ctsts }] = await Promise.all([
+      (supabase as any).rpc("campaign_perf_summary", { campaign_ids: ids }),
+      supabase.from("contests").select("id, campaign_id").in("campaign_id", ids),
+    ]);
+
+    if (perfErr) console.warn("campaign_perf_summary", perfErr);
+    const out: Record<string, { views: number; er: number; posts: number }> = {};
+    for (const row of perfRows ?? []) {
+      const views = Number(row.views || 0);
+      const eng = Number(row.engagement || 0);
+      out[row.campaign_id] = {
+        views,
+        posts: Number(row.posts || 0),
+        er: views > 0 ? (eng / views) * 100 : 0,
+      };
     }
+    setPerf(out);
+    setPerfLoaded(true);
+
+    const contestToCampaign = new Map<string, string>();
+    const cmap: Record<string, ContestPerf> = {};
+    for (const c of ctsts ?? []) {
+      contestToCampaign.set(c.id, c.campaign_id);
+      const cur = cmap[c.campaign_id] ?? { contests: 0, contestants: 0, entries: 0, views: 0 };
+      cur.contests += 1;
+      cmap[c.campaign_id] = cur;
+    }
+    const contestIds = (ctsts ?? []).map(c => c.id);
+    if (contestIds.length) {
+      const { data: es } = await supabase.from("contest_entries").select("contest_id, handle, views").in("contest_id", contestIds);
+      const handlesByCampaign: Record<string, Set<string>> = {};
+      for (const e of es ?? []) {
+        const cid = contestToCampaign.get(e.contest_id);
+        if (!cid) continue;
+        const cur = cmap[cid] ?? { contests: 0, contestants: 0, entries: 0, views: 0 };
+        cur.entries += 1;
+        cur.views += Number(e.views || 0);
+        if (e.handle) {
+          (handlesByCampaign[cid] ||= new Set()).add(String(e.handle).toLowerCase());
+        }
+        cmap[cid] = cur;
+      }
+      for (const [cid, set] of Object.entries(handlesByCampaign)) {
+        if (cmap[cid]) cmap[cid].contestants = set.size;
+      }
+    }
+    setContestPerf(cmap);
   };
+
   useEffect(() => { load(); }, []);
 
   const saveName = async () => {
