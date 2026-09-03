@@ -12,7 +12,7 @@ export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => 
     <Preview>Your Daraja Pulse verification code</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img src={logoUrl} alt="Daraja Pulse" width="150" style={logoImg} />
+        <Img src={logoUrl} alt="Daraja Pulse" width="210" style={logoImg} />
         <Heading style={h1}>Confirm it's you.</Heading>
         <Text style={text}>Use this verification code to confirm your identity:</Text>
         <Text style={codeStyle}>{token}</Text>

@@ -18,7 +18,7 @@ export const EmailChangeEmail = ({ siteName, oldEmail, newEmail, confirmationUrl
     <Preview>Confirm your new email for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img src={logoUrl} alt="Daraja Pulse" width="150" style={logoImg} />
+        <Img src={logoUrl} alt="Daraja Pulse" width="210" style={logoImg} />
         <Heading style={h1}>Confirm your new email.</Heading>
         <Text style={text}>
           You requested to change your {siteName} email from{' '}

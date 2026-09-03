@@ -20,7 +20,7 @@ const WorkspaceAccess = ({ org_name, access_label, sign_in_url }: Props) => {
       <Preview>Welcome to Daraja Pulse — your access to {organisation} is ready</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Img src={logoUrl} alt="Daraja Pulse" width="150" style={logoImg} />
+          <Img src={logoUrl} alt="Daraja Pulse" width="210" style={logoImg} />
           <Heading style={h1}>Welcome to Daraja Pulse.</Heading>
           <Text style={text}>
             You have been invited to join <strong>{organisation}</strong> as a <strong>{access}</strong>.

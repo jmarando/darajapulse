@@ -12,7 +12,7 @@ export const MagicLinkEmail = ({ siteName, confirmationUrl }: MagicLinkEmailProp
     <Preview>Your secure login link for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img src={logoUrl} alt="Daraja Pulse" width="150" style={logoImg} />
+        <Img src={logoUrl} alt="Daraja Pulse" width="210" style={logoImg} />
         <Heading style={h1}>Your login link.</Heading>
         <Text style={text}>Tap below to sign in to {siteName}. The link expires shortly, so use it soon.</Text>
         <Button style={button} href={confirmationUrl}>Log in</Button>

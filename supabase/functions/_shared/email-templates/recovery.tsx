@@ -12,7 +12,7 @@ export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps)
     <Preview>Reset your {siteName} password</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img src={logoUrl} alt="Daraja Pulse" width="150" style={logoImg} />
+        <Img src={logoUrl} alt="Daraja Pulse" width="210" style={logoImg} />
         <Heading style={h1}>Reset your password.</Heading>
         <Text style={text}>We received a request to reset the password for your {siteName} account. Choose a new one below.</Text>
         <Button style={button} href={confirmationUrl}>Reset password</Button>

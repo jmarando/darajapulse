@@ -18,9 +18,9 @@ export const container = {
 export const logoUrl = 'https://darajapulse.com/email-logo.png'
 export const logoImg = {
   display: 'block',
-  width: '150px',
+  width: '210px',
   height: 'auto',
-  margin: '0 0 24px',
+  margin: '0 0 26px',
 }
 export const wordmark = {
 
