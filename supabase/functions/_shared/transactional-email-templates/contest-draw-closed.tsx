@@ -107,7 +107,7 @@ const ContestDrawClosed = (p: Props) => {
           </Section>
 
           <Section style={footerStyle}>
-            <Text style={{ margin: 0 }}>Powered by DarajaPulse</Text>
+            <Text style={{ margin: 0 }}>Powered by Daraja Pulse</Text>
           </Section>
         </Container>
       </Body>

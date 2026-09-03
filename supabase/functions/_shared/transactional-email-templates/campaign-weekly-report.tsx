@@ -337,9 +337,9 @@ const CampaignWeeklyReport = (p: Props) => {
 
           <Section style={footerStyle}>
             <Text style={{ margin: 0 }}>
-              Weekly report for {p.campaign_name}. Manage recipients in DarajaPulse.
+              Weekly report for {p.campaign_name}. Manage recipients in Daraja Pulse.
             </Text>
-            <Text style={{ margin: '6px 0 0' }}>Powered by DarajaPulse</Text>
+            <Text style={{ margin: '6px 0 0' }}>Powered by Daraja Pulse</Text>
           </Section>
         </Container>
       </Body>

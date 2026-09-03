@@ -49,14 +49,14 @@ const navGroups: { label?: string; items: { to: string; icon: any; label: string
 const SidebarBody = ({ user, isAdmin, isSuper, onSignOut, onNavigate }: any) => {
   const { tenant } = useTenant();
   const brandLogo = tenant?.logo_url || logo;
-  const brandName = tenant?.display_name || tenant?.name || "DarajaPulse";
+  const brandName = tenant?.display_name || tenant?.name || "Daraja Pulse";
   return (
   <>
     <div className="px-5 py-5 border-b border-sidebar-border bg-white flex items-center gap-3">
       <img src={brandLogo} alt={brandName} className="h-10 w-auto object-contain" />
       <div className="leading-tight">
         <div className="font-display text-base font-semibold text-primary">{brandName}</div>
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{tenant ? "Powered by DarajaPulse" : "Influencer OS"}</div>
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{tenant ? "Powered by Daraja Pulse" : "Influencer OS"}</div>
       </div>
     </div>
     <nav className="flex-1 p-3 space-y-1 overflow-y-auto">

@@ -17,7 +17,7 @@ import dashboardImg from "@/assets/landing-dashboard.jpg";
 import logo from "@/assets/darajapulse-logo-1024.png";
 
 /* ---------------------------------------------------------------- */
-/* DarajaPulse — Influence, orchestrated.                           */
+/* Daraja Pulse — Influence, orchestrated.                           */
 /* ---------------------------------------------------------------- */
 
 const STEPS = [
@@ -52,8 +52,8 @@ function TopNav({ onDemo }: { onDemo: () => void }) {
       <div className="flex justify-between items-center gap-3 h-20 md:h-24 px-4 md:px-6 lg:px-16 max-w-screen-2xl mx-auto">
         <div className="flex items-center gap-10 min-w-0">
           <Link to="/" className="flex items-center gap-2 md:gap-3 min-w-0">
-            <img src={logo} alt="DarajaPulse" className="h-10 md:h-14 w-auto shrink-0" data-no-outline />
-            <span className="hidden lg:inline font-display font-semibold tracking-tight text-lg truncate">DarajaPulse</span>
+            <img src={logo} alt="Daraja Pulse" className="h-10 md:h-14 w-auto shrink-0" data-no-outline />
+            <span className="hidden lg:inline font-display font-semibold tracking-tight text-lg truncate">Daraja Pulse</span>
           </Link>
           <div className="hidden md:flex gap-6">
             <a href="#capabilities" className="text-sm font-medium text-muted-foreground hover:text-accent transition-colors">Platform</a>
@@ -125,7 +125,7 @@ function Hero({ onDemo }: { onDemo: () => void }) {
           >
             <img
               src={dashboardImg}
-              alt="DarajaPulse dashboard"
+              alt="Daraja Pulse dashboard"
               width={1536}
               height={1024}
               className="w-full rounded-xl shadow-soft"

@@ -37,7 +37,7 @@ const DemoRequest = ({ name, email, company, role, message }: Props) => (
           <Section style={body}>
             <Hr style={accentRule} />
             <Heading style={h1}>New demo request</Heading>
-            <Text style={text}>Someone just requested a DarajaPulse demo via the website.</Text>
+            <Text style={text}>Someone just requested a Daraja Pulse demo via the website.</Text>
             <Text style={label}>Name</Text>
             <Text style={value}>{name || '—'}</Text>
             <Text style={label}>Email</Text>
