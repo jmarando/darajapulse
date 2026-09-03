@@ -132,7 +132,7 @@ const ContestDailySummary = (p: Props) => {
             <Text style={{ margin: 0 }}>
               You're receiving this because you're on the report list for {p.campaign_name}.
             </Text>
-            <Text style={{ margin: '6px 0 0' }}>Powered by DarajaPulse</Text>
+            <Text style={{ margin: '6px 0 0' }}>Powered by Daraja Pulse</Text>
           </Section>
         </Container>
       </Body>

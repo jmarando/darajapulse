@@ -1,4 +1,4 @@
-// Shared inline-style tokens for DarajaPulse / client-branded report emails.
+// Shared inline-style tokens for Daraja Pulse / client-branded report emails.
 
 export const brand = {
   bgPage: '#ffffff',
