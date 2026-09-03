@@ -12,7 +12,7 @@ export const SignupEmail = ({ siteName, siteUrl, recipient, confirmationUrl }: S
     <Preview>Confirm your email to start measuring influence on {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Img src={logoUrl} alt="Daraja Pulse" width="150" style={logoImg} />
+        <Img src={logoUrl} alt="Daraja Pulse" width="210" style={logoImg} />
         <Heading style={h1}>Confirm your email.</Heading>
         <Text style={text}>
           Welcome to{' '}
