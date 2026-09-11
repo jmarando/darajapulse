@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, FileVideo, MessageSquareWarning } from "lucide-react";
+import { Check, Download, FileVideo, MessageSquareWarning } from "lucide-react";
 import { toast } from "sonner";
+import { downloadFile } from "@/lib/downloadFile";
 
 type Draft = {
   id: string;
@@ -154,6 +155,16 @@ const PublicDraftReview = () => {
                       <span className="text-muted-foreground">{d.reviewer_label || "Reviewer"}:</span> {d.review_note}
                     </p>
                   )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-full"
+                    disabled={!d.video_url}
+                    onClick={() => downloadFile(d.video_url!, d.file_name || `${d.creator_name || "video"}.mp4`)}
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1.5" /> Download video
+                  </Button>
 
                   {data.can_decide && d.status !== "approved" && (
                     <div className="mt-auto space-y-2">

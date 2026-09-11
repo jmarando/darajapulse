@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Check, Copy, ExternalLink, FileVideo, MessageSquareWarning, RefreshCw } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, FileVideo, MessageSquareWarning, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { downloadFile } from "@/lib/downloadFile";
 
 type Draft = {
   id: string;
@@ -255,6 +256,16 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
                     <span className="text-muted-foreground">{d.reviewer_label || "Reviewer"}:</span> {d.review_note}
                   </p>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-full"
+                  disabled={!urls[d.id]}
+                  onClick={() => downloadFile(urls[d.id], d.file_name || `${d.influencers?.full_name || "draft"}.mp4`)}
+                >
+                  <Download className="w-3.5 h-3.5 mr-1.5" /> Download video
+                </Button>
+
                 {d.post_url && (
                   <a href={d.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent inline-flex items-center gap-1 truncate">
                     <ExternalLink className="w-3 h-3" /> Live post submitted
