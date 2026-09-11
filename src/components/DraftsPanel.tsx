@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Check, Copy, Download, ExternalLink, FileVideo, MessageSquareWarning, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { downloadFile } from "@/lib/downloadFile";
+import { DraftVideo } from "@/components/DraftVideo";
+
 
 type Draft = {
   id: string;
