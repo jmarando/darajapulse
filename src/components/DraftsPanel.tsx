@@ -206,12 +206,12 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
         </div>
       </Card>
 
-      <div className="flex gap-1 rounded-md border border-border p-1 w-fit">
+      <div className="flex gap-1 rounded-md border border-border p-1 overflow-x-auto">
         {TABS.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`px-3 h-7 rounded text-xs transition-colors ${tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+            className={`px-3 h-7 rounded text-xs whitespace-nowrap transition-colors ${tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
           >
             {label} ({counts[key]})
           </button>
@@ -227,13 +227,8 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((d) => (
             <Card key={d.id} className="p-0 overflow-hidden flex flex-col">
-              <div className="bg-black aspect-[9/16] max-h-[420px]">
-                {urls[d.id] ? (
-                  <video src={urls[d.id]} controls playsInline className="w-full h-full object-contain" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">Loading…</div>
-                )}
-              </div>
+              <DraftVideo getUrl={() => signUrl(d)} label={d.influencers?.full_name} />
+
               <div className="p-4 space-y-3 flex-1 flex flex-col">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
