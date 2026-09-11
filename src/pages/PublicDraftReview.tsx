@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Check, Download, FileVideo, MessageSquareWarning } from "lucide-react";
 import { toast } from "sonner";
 import { downloadFile } from "@/lib/downloadFile";
+import { DraftVideo } from "@/components/DraftVideo";
+
 
 type Draft = {
   id: string;
@@ -41,6 +43,9 @@ const PublicDraftReview = () => {
   const [reviewer, setReviewer] = useState(localStorage.getItem("dp_reviewer") || "");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [visible, setVisible] = useState(9);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
 
   const load = async () => {
     const { data: res, error: err } = await supabase.functions.invoke("draft-review", { body: { token, action: "list" } });
@@ -81,35 +86,35 @@ const PublicDraftReview = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/60 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-[1200px] mx-auto px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            {data.campaign?.client?.logo_url && <img src={data.campaign.client.logo_url} alt={data.campaign.client.name} className="h-7" />}
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {data.campaign?.client?.logo_url && <img src={data.campaign.client.logo_url} alt={data.campaign.client.name} loading="lazy" className="h-7 w-auto" />}
             <div className="min-w-0">
               <div className="font-display text-sm truncate">{data.campaign?.name}</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Video approvals · {counts.pending} waiting</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{counts.pending} waiting</div>
             </div>
           </div>
           <Input
             value={reviewer}
             onChange={(e) => setReviewer(e.target.value)}
             placeholder="Your name"
-            className="h-9 w-40 sm:w-52"
+            className="h-9 w-28 sm:w-52 shrink-0"
           />
         </div>
       </header>
 
-      <main className="max-w-[1200px] mx-auto px-6 py-6 space-y-4">
+      <main className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
         <p className="text-sm text-muted-foreground max-w-3xl">
           Watch each video before it goes live. Approve it and the creator can publish and share the live link —
           request changes and it goes straight back to them with your note.
         </p>
 
-        <div className="flex gap-1 rounded-md border border-border p-1 w-fit">
+        <div className="flex gap-1 rounded-md border border-border p-1 overflow-x-auto">
           {TABS.map(([key, label]) => (
             <button
               key={key}
-              onClick={() => setTab(key)}
-              className={`px-3 h-8 rounded text-xs transition-colors ${tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+              onClick={() => { setTab(key); setVisible(9); }}
+              className={`px-3 h-8 rounded text-xs whitespace-nowrap transition-colors ${tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
             >
               {label} ({counts[key]})
             </button>
@@ -123,15 +128,10 @@ const PublicDraftReview = () => {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {rows.map((d) => (
+            {rows.slice(0, visible).map((d) => (
               <Card key={d.id} className="p-0 overflow-hidden flex flex-col">
-                <div className="bg-black aspect-[9/16] max-h-[440px]">
-                  {d.video_url ? (
-                    <video src={d.video_url} controls playsInline className="w-full h-full object-contain" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">Video unavailable</div>
-                  )}
-                </div>
+                <DraftVideo url={d.video_url} label={d.creator_name} />
+
                 <div className="p-4 space-y-3 flex-1 flex flex-col">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -159,7 +159,7 @@ const PublicDraftReview = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 w-full"
+                    className="h-9 w-full"
                     disabled={!d.video_url}
                     onClick={() => downloadFile(d.video_url!, d.file_name || `${d.creator_name || "video"}.mp4`)}
                   >
@@ -175,10 +175,19 @@ const PublicDraftReview = () => {
                         className="text-xs min-h-[60px]"
                       />
                       <div className="flex gap-2">
-                        <Button size="sm" className="flex-1 h-8" disabled={busy === d.id} onClick={() => decide(d, "approved")}>
-                          <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                        <Button
+                          size="sm"
+                          className="flex-1 h-10"
+                          disabled={busy === d.id}
+                          onClick={() => {
+                            if (confirmId === d.id) return decide(d, "approved");
+                            setConfirmId(d.id);
+                            setTimeout(() => setConfirmId((c) => (c === d.id ? null : c)), 4000);
+                          }}
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1" /> {confirmId === d.id ? "Tap again to confirm" : "Approve"}
                         </Button>
-                        <Button size="sm" variant="outline" className="flex-1 h-8" disabled={busy === d.id} onClick={() => decide(d, "changes_requested")}>
+                        <Button size="sm" variant="outline" className="flex-1 h-10" disabled={busy === d.id} onClick={() => decide(d, "changes_requested")}>
                           <MessageSquareWarning className="w-3.5 h-3.5 mr-1" /> Changes
                         </Button>
                       </div>
@@ -189,6 +198,15 @@ const PublicDraftReview = () => {
             ))}
           </div>
         )}
+
+        {rows.length > visible && (
+          <div className="flex justify-center pt-2">
+            <Button variant="outline" onClick={() => setVisible((v) => v + 9)}>
+              Show more ({rows.length - visible} left)
+            </Button>
+          </div>
+        )}
+
       </main>
     </div>
   );

@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Check, Copy, Download, ExternalLink, FileVideo, MessageSquareWarning, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { downloadFile } from "@/lib/downloadFile";
+import { DraftVideo } from "@/components/DraftVideo";
+
 
 type Draft = {
   id: string;
@@ -57,18 +59,19 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     setDrafts(list);
     setRequired(Boolean((camp as any)?.require_draft_approval));
     setReviewLink((link as any)?.token ? `${publicOrigin()}/d/${(link as any).token}` : null);
+  };
 
-    const signed: Record<string, string> = {};
-    await Promise.all(
-      list.map(async (d) => {
-        const { data: s } = await supabase.storage.from("creator-drafts").createSignedUrl(d.file_path, 60 * 60 * 6);
-        if (s?.signedUrl) signed[d.id] = s.signedUrl;
-      }),
-    );
-    setUrls(signed);
+  /** Signs a video URL only when it is actually needed (play / download). */
+  const signUrl = async (d: Draft): Promise<string | null> => {
+    if (urls[d.id]) return urls[d.id];
+    const { data: s } = await supabase.storage.from("creator-drafts").createSignedUrl(d.file_path, 60 * 60 * 6);
+    if (!s?.signedUrl) return null;
+    setUrls((prev) => ({ ...prev, [d.id]: s.signedUrl }));
+    return s.signedUrl;
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [campaignId]);
+
 
   const counts = useMemo(() => ({
     pending: drafts.filter((d) => d.status === "pending").length,
@@ -205,12 +208,12 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
         </div>
       </Card>
 
-      <div className="flex gap-1 rounded-md border border-border p-1 w-fit">
+      <div className="flex gap-1 rounded-md border border-border p-1 overflow-x-auto">
         {TABS.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`px-3 h-7 rounded text-xs transition-colors ${tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
+            className={`px-3 h-7 rounded text-xs whitespace-nowrap transition-colors ${tab === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}
           >
             {label} ({counts[key]})
           </button>
@@ -226,13 +229,8 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((d) => (
             <Card key={d.id} className="p-0 overflow-hidden flex flex-col">
-              <div className="bg-black aspect-[9/16] max-h-[420px]">
-                {urls[d.id] ? (
-                  <video src={urls[d.id]} controls playsInline className="w-full h-full object-contain" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">Loading…</div>
-                )}
-              </div>
+              <DraftVideo getUrl={() => signUrl(d)} label={d.influencers?.full_name} />
+
               <div className="p-4 space-y-3 flex-1 flex flex-col">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -259,12 +257,16 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 w-full"
-                  disabled={!urls[d.id]}
-                  onClick={() => downloadFile(urls[d.id], d.file_name || `${d.influencers?.full_name || "draft"}.mp4`)}
+                  className="h-9 w-full"
+                  onClick={async () => {
+                    const u = await signUrl(d);
+                    if (!u) return toast.error("Video unavailable");
+                    downloadFile(u, d.file_name || `${d.influencers?.full_name || "draft"}.mp4`);
+                  }}
                 >
                   <Download className="w-3.5 h-3.5 mr-1.5" /> Download video
                 </Button>
+
 
                 {d.post_url && (
                   <a href={d.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent inline-flex items-center gap-1 truncate">

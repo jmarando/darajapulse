@@ -111,20 +111,24 @@ Deno.serve(async (req) => {
       .eq("campaign_id", link.campaign_id)
       .order("created_at", { ascending: false });
 
-    const items = await Promise.all(
-      (drafts ?? []).map(async (d: any) => {
-        const { data: signed } = await admin.storage
-          .from("creator-drafts")
-          .createSignedUrl(d.file_path, 60 * 60 * 6);
-        return {
-          ...d,
-          file_path: undefined,
-          creator_name: d.influencers?.full_name ?? null,
-          creator_handle: d.influencers?.handle ?? null,
-          video_url: signed?.signedUrl ?? null,
-        };
-      }),
-    );
+    // One batched signing call instead of one request per video — much faster lists.
+    const paths = (drafts ?? []).map((d: any) => d.file_path);
+    const { data: signedList } = paths.length
+      ? await admin.storage.from("creator-drafts").createSignedUrls(paths, 60 * 60 * 6)
+      : { data: [] as any[] };
+    const byPath = new Map<string, string>();
+    for (const s of (signedList ?? []) as any[]) {
+      if (s?.path && s?.signedUrl) byPath.set(s.path, s.signedUrl);
+    }
+
+    const items = (drafts ?? []).map((d: any) => ({
+      ...d,
+      file_path: undefined,
+      creator_name: d.influencers?.full_name ?? null,
+      creator_handle: d.influencers?.handle ?? null,
+      video_url: byPath.get(d.file_path) ?? null,
+    }));
+
 
     return json({
       campaign: {
