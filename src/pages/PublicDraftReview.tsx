@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Check, Download, FileVideo, MessageSquareWarning } from "lucide-react";
 import { toast } from "sonner";
 import { downloadFile } from "@/lib/downloadFile";
+import { DraftVideo } from "@/components/DraftVideo";
+
 
 type Draft = {
   id: string;
