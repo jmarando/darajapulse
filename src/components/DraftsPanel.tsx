@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Check, Copy, ExternalLink, FileVideo, MessageSquareWarning, RefreshCw } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, FileVideo, MessageSquareWarning, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { downloadFile } from "@/lib/downloadFile";
 
 type Draft = {
   id: string;
