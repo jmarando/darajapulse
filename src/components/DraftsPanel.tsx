@@ -255,12 +255,16 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 w-full"
-                  disabled={!urls[d.id]}
-                  onClick={() => downloadFile(urls[d.id], d.file_name || `${d.influencers?.full_name || "draft"}.mp4`)}
+                  className="h-9 w-full"
+                  onClick={async () => {
+                    const u = await signUrl(d);
+                    if (!u) return toast.error("Video unavailable");
+                    downloadFile(u, d.file_name || `${d.influencers?.full_name || "draft"}.mp4`);
+                  }}
                 >
                   <Download className="w-3.5 h-3.5 mr-1.5" /> Download video
                 </Button>
+
 
                 {d.post_url && (
                   <a href={d.post_url} target="_blank" rel="noreferrer" className="text-xs text-accent inline-flex items-center gap-1 truncate">
