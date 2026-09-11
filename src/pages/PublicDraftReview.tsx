@@ -154,7 +154,7 @@ const PublicDraftReview = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 w-full"
+                    className="h-9 w-full"
                     disabled={!d.video_url}
                     onClick={() => downloadFile(d.video_url!, d.file_name || `${d.creator_name || "video"}.mp4`)}
                   >
@@ -170,10 +170,19 @@ const PublicDraftReview = () => {
                         className="text-xs min-h-[60px]"
                       />
                       <div className="flex gap-2">
-                        <Button size="sm" className="flex-1 h-8" disabled={busy === d.id} onClick={() => decide(d, "approved")}>
-                          <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                        <Button
+                          size="sm"
+                          className="flex-1 h-10"
+                          disabled={busy === d.id}
+                          onClick={() => {
+                            if (confirmId === d.id) return decide(d, "approved");
+                            setConfirmId(d.id);
+                            setTimeout(() => setConfirmId((c) => (c === d.id ? null : c)), 4000);
+                          }}
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1" /> {confirmId === d.id ? "Tap again to confirm" : "Approve"}
                         </Button>
-                        <Button size="sm" variant="outline" className="flex-1 h-8" disabled={busy === d.id} onClick={() => decide(d, "changes_requested")}>
+                        <Button size="sm" variant="outline" className="flex-1 h-10" disabled={busy === d.id} onClick={() => decide(d, "changes_requested")}>
                           <MessageSquareWarning className="w-3.5 h-3.5 mr-1" /> Changes
                         </Button>
                       </div>
@@ -184,6 +193,15 @@ const PublicDraftReview = () => {
             ))}
           </div>
         )}
+
+        {rows.length > visible && (
+          <div className="flex justify-center pt-2">
+            <Button variant="outline" onClick={() => setVisible((v) => v + 9)}>
+              Show more ({rows.length - visible} left)
+            </Button>
+          </div>
+        )}
+
       </main>
     </div>
   );
