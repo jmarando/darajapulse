@@ -41,6 +41,9 @@ const PublicDraftReview = () => {
   const [reviewer, setReviewer] = useState(localStorage.getItem("dp_reviewer") || "");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [visible, setVisible] = useState(9);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
 
   const load = async () => {
     const { data: res, error: err } = await supabase.functions.invoke("draft-review", { body: { token, action: "list" } });
