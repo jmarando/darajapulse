@@ -57,18 +57,19 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     setDrafts(list);
     setRequired(Boolean((camp as any)?.require_draft_approval));
     setReviewLink((link as any)?.token ? `${publicOrigin()}/d/${(link as any).token}` : null);
+  };
 
-    const signed: Record<string, string> = {};
-    await Promise.all(
-      list.map(async (d) => {
-        const { data: s } = await supabase.storage.from("creator-drafts").createSignedUrl(d.file_path, 60 * 60 * 6);
-        if (s?.signedUrl) signed[d.id] = s.signedUrl;
-      }),
-    );
-    setUrls(signed);
+  /** Signs a video URL only when it is actually needed (play / download). */
+  const signUrl = async (d: Draft): Promise<string | null> => {
+    if (urls[d.id]) return urls[d.id];
+    const { data: s } = await supabase.storage.from("creator-drafts").createSignedUrl(d.file_path, 60 * 60 * 6);
+    if (!s?.signedUrl) return null;
+    setUrls((prev) => ({ ...prev, [d.id]: s.signedUrl }));
+    return s.signedUrl;
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [campaignId]);
+
 
   const counts = useMemo(() => ({
     pending: drafts.filter((d) => d.status === "pending").length,
