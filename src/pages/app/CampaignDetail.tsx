@@ -1450,9 +1450,12 @@ const CampaignDetail = () => {
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audience</div>
           <div className="flex flex-wrap items-center gap-2 mt-1 mb-4">
             <h2 className="font-display text-2xl">Who we reached</h2>
-            <Badge variant="outline" className="text-[10px]">Estimated</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {audience.measuredCount === audience.creatorsWithData && audience.creatorsWithData > 0 ? "Measured" : "Estimated"}
+            </Badge>
             <span className="text-xs text-muted-foreground">
-              {audience.creatorsWithData} of {audience.creatorCount} creators with audience data
+              {audience.measuredCount} of {audience.creatorCount} creators measured from their own account stats
+              {audience.modelledCount > 0 && ` · ${audience.modelledCount} estimated from platform, category, location and audience size`}
               {audience.zeroFollowerCount > 0 && ` · ${audience.zeroFollowerCount} without follower counts weighted at the roster average`}
             </span>
           </div>
