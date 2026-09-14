@@ -64,3 +64,6 @@ verify_jwt = false
 [functions.email-reply]
 verify_jwt = true
 
+
+[functions.estimate-audience]
+verify_jwt = true
