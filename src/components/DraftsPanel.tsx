@@ -16,6 +16,7 @@ import { DraftVideo } from "@/components/DraftVideo";
 type Draft = {
   id: string;
   file_path: string;
+  poster_path?: string | null;
   file_name: string | null;
   platform: string | null;
   caption: string | null;
@@ -39,6 +40,7 @@ const TABS = [
 export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
+  const [posters, setPosters] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<(typeof TABS)[number][0]>("pending");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -57,6 +59,14 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     ]);
     const list = ((data as any) ?? []) as Draft[];
     setDrafts(list);
+    // Sign the small poster stills up front so the grid paints instantly.
+    const posterPaths = list.map((d) => d.poster_path).filter(Boolean) as string[];
+    if (posterPaths.length) {
+      const { data: signed } = await supabase.storage.from("creator-drafts").createSignedUrls(posterPaths, 60 * 60 * 6);
+      const map: Record<string, string> = {};
+      for (const s of (signed as any[]) ?? []) if (s?.path && s?.signedUrl) map[s.path] = s.signedUrl;
+      setPosters(map);
+    }
     setRequired(Boolean((camp as any)?.require_draft_approval));
     setReviewLink((link as any)?.token ? `${publicOrigin()}/d/${(link as any).token}` : null);
   };
@@ -229,7 +239,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((d) => (
             <Card key={d.id} className="p-0 overflow-hidden flex flex-col">
-              <DraftVideo getUrl={() => signUrl(d)} label={d.influencers?.full_name} />
+              <DraftVideo getUrl={() => signUrl(d)} poster={d.poster_path ? posters[d.poster_path] : null} label={d.influencers?.full_name} />
 
               <div className="p-4 space-y-3 flex-1 flex flex-col">
                 <div className="flex items-start justify-between gap-2">
