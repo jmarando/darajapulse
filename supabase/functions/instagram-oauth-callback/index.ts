@@ -21,11 +21,16 @@ Deno.serve(async (req) => {
   const error = url.searchParams.get("error");
 
   if (error) {
+    const detail = url.searchParams.get("error_description")
+      || url.searchParams.get("error_reason")
+      || "";
+    console.error("ig oauth denied", { error, detail });
     return Response.redirect(
-      `${APP_ORIGIN}/connect/instagram/done?status=error&reason=${encodeURIComponent(error)}`,
+      `${APP_ORIGIN}/connect/instagram/done?status=error&reason=${encodeURIComponent(error)}&detail=${encodeURIComponent(detail.slice(0, 300))}`,
       302,
     );
   }
+
   if (!code || !state) return new Response("Missing code/state", { status: 400 });
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
