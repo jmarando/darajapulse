@@ -600,7 +600,10 @@ Deno.serve(async (req) => {
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const { campaign_id, post_id, stale, max, offset } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number };
-    let q = supabase.from("posts").select("id, post_url, platform, thumbnail_url, caption, status, created_at").order("created_at", { ascending: true });
+    let q = supabase
+      .from("posts")
+      .select("id, post_url, platform, thumbnail_url, caption, status, created_at, posted_at, campaign_id, campaigns!inner(status)")
+      .order("created_at", { ascending: true });
     if (post_id) q = q.eq("id", post_id);
     else if (campaign_id) q = q.eq("campaign_id", campaign_id);
     const { data: postsAll, error } = await q;
@@ -608,24 +611,37 @@ Deno.serve(async (req) => {
     let posts = postsAll ?? [];
     const totalMatched = posts.length;
 
-    // stale mode: only posts with NO metric row OR most-recent metric older than 6h,
-    // skip posts we know can't be auto-fetched (Facebook feed) after 3 tries.
+    // stale mode: age-tiered refresh. Views plateau fast, so an old post does not
+    // need the same cadence as one published this morning. This is what keeps the
+    // paid scraper quota down while the numbers stay accurate where it matters.
+    //   < 3 days old   -> refresh if last capture > 10h ago  (≈2x/day)
+    //   < 14 days old  -> > 22h                              (≈1x/day)
+    //   < 45 days old  -> > 3 days
+    //   older          -> > 14 days
+    // Draft campaigns are skipped entirely.
     if (stale && posts.length) {
+      posts = posts.filter((p: any) => (p.campaigns?.status ?? "live") !== "draft");
       const ids = posts.map((p: any) => p.id);
-      const { data: metricAgg } = await supabase
-        .from("post_metrics")
-        .select("post_id, captured_at")
-        .in("post_id", ids)
-        .order("captured_at", { ascending: false });
       const latest = new Map<string, string>();
-      for (const m of (metricAgg ?? []) as any[]) if (!latest.has(m.post_id)) latest.set(m.post_id, m.captured_at);
-      const sixHoursAgo = Date.now() - 6 * 3600_000;
+      for (let i = 0; i < ids.length; i += 500) {
+        const { data: metricAgg } = await supabase
+          .from("post_metrics")
+          .select("post_id, captured_at")
+          .in("post_id", ids.slice(i, i + 500))
+          .order("captured_at", { ascending: false });
+        for (const m of (metricAgg ?? []) as any[]) if (!latest.has(m.post_id)) latest.set(m.post_id, m.captured_at);
+      }
+      const H = 3600_000;
+      const now = Date.now();
       posts = posts.filter((p: any) => {
         const last = latest.get(p.id);
         if (!last) return true;
-        return new Date(last).getTime() < sixHoursAgo;
+        const ageDays = (now - new Date(p.posted_at ?? p.created_at).getTime()) / (24 * H);
+        const minGapHours = ageDays < 3 ? 10 : ageDays < 14 ? 22 : ageDays < 45 ? 72 : 336;
+        return now - new Date(last).getTime() > minGapHours * H;
       });
     }
+
 
     // Paging so large campaigns can be refreshed without hitting the 150s edge limit.
     const start = Math.max(0, Number(offset ?? 0));
