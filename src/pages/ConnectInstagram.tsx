@@ -10,6 +10,8 @@ const ConnectInstagram = () => {
   const [params] = useSearchParams();
   const status = params.get("status");
   const reason = params.get("reason");
+  const detail = params.get("detail");
+
   const [name, setName] = useState<string>("");
 
   useEffect(() => {
