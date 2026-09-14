@@ -47,11 +47,11 @@ Deno.serve(async (req) => {
       // Account-level insights (each requires instagram_manage_insights)
       await hit(
         "insights_day",
-        `${GRAPH}/${acct.ig_user_id}/insights?metric=reach,impressions,profile_views&period=day&access_token=${token}`,
+        `${GRAPH}/${acct.ig_user_id}/insights?metric=reach,views,profile_views&period=day&access_token=${token}`,
       );
       await hit(
         "insights_week",
-        `${GRAPH}/${acct.ig_user_id}/insights?metric=reach,impressions&period=week&access_token=${token}`,
+        `${GRAPH}/${acct.ig_user_id}/insights?metric=reach,views&period=week&access_token=${token}`,
       );
       await hit(
         "insights_lifetime_audience",
