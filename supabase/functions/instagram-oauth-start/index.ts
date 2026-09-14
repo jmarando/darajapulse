@@ -9,17 +9,17 @@ const APP_ID = Deno.env.get("META_APP_ID") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-// Scopes required for hashtag search, insights, mentions on IG Business via FB Login
+// Minimum scopes needed for IG Business reporting. Anything extra (e.g.
+// business_management, instagram_manage_comments) needs separate App Review and
+// makes Meta reject the whole login for non-admin users, so we keep it lean.
 const SCOPES = [
   "public_profile",
-  "email",
   "pages_show_list",
   "pages_read_engagement",
   "instagram_basic",
   "instagram_manage_insights",
-  "instagram_manage_comments",
-  "business_management",
 ].join(",");
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

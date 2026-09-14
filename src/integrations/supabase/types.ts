@@ -3182,6 +3182,10 @@ export type Database = {
           views: number
         }[]
       }
+      dashboard_overview: {
+        Args: { _from: string; _to: string }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

@@ -21,8 +21,11 @@ Deno.serve(async (req) => {
   const error = url.searchParams.get("error");
 
   if (error) {
+    const detail = url.searchParams.get("error_description")
+      || url.searchParams.get("error_reason") || "";
+    console.error("fb oauth denied", { error, detail });
     return Response.redirect(
-      `${APP_ORIGIN}/connect/facebook/done?status=error&reason=${encodeURIComponent(error)}`,
+      `${APP_ORIGIN}/connect/facebook/done?status=error&reason=${encodeURIComponent(error)}&detail=${encodeURIComponent(detail.slice(0, 300))}`,
       302,
     );
   }
@@ -34,7 +37,10 @@ Deno.serve(async (req) => {
     .select("*")
     .eq("state", state)
     .maybeSingle();
-  if (!st) return new Response("Invalid state", { status: 400 });
+  if (!st) {
+    console.error("fb invalid or reused oauth state", { statePrefix: state.slice(0, 8) });
+    return Response.redirect(`${APP_ORIGIN}/connect/facebook/done?status=error&reason=invalid_state`, 302);
+  }
   await supabase.from("facebook_oauth_states").delete().eq("state", state);
 
   const redirectUri = `${SUPABASE_URL}/functions/v1/facebook-oauth-callback`;
