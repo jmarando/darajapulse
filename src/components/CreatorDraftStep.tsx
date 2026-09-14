@@ -157,11 +157,41 @@ export const CreatorDraftStep = ({
             <Label className="text-sm">Anything the team should know?</Label>
             <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note" className="mt-1.5 h-11" />
           </div>
+          {progress && (
+            <div className="rounded-md border border-border p-3 space-y-2">
+              <Progress value={progress.percent} className="h-2" />
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>
+                  {Math.floor(progress.percent)}% · {formatBytes(progress.uploaded)} of {formatBytes(progress.total)}
+                  {progress.eta !== null && progress.eta > 1
+                    ? ` · about ${progress.eta > 90 ? `${Math.round(progress.eta / 60)} min` : `${Math.round(progress.eta)} sec`} left`
+                    : ""}
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 hover:text-foreground"
+                  onClick={() => {
+                    abortRef.current?.();
+                    abortRef.current = null;
+                    setBusy(false);
+                    setProgress(null);
+                  }}
+                >
+                  <X className="w-3 h-3" /> Cancel
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Keep this page open. If your network drops, tap Send again and it continues from where it stopped.
+              </p>
+            </div>
+          )}
           <Button type="submit" disabled={busy} size="lg" className="w-full h-12 text-base">
-            <UploadCloud className="w-4 h-4 mr-2" /> {busy ? "Uploading…" : "Send for approval"}
+            <UploadCloud className="w-4 h-4 mr-2" />
+            {busy ? (progress ? `Uploading ${Math.floor(progress.percent)}%` : "Uploading…") : "Send for approval"}
           </Button>
         </form>
       </Card>
+
 
       {drafts.length > 0 && (
         <Card className="p-5">
