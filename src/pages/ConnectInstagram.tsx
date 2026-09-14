@@ -64,8 +64,11 @@ const ConnectInstagram = () => {
             <p className="text-muted-foreground">
               {errorMessage}
             </p>
-            <Button onClick={start}>Retry</Button>
+            {detail && <p className="text-xs text-muted-foreground/80 italic">Meta said: {detail}</p>}
+            {!influencerId && <p className="text-xs text-muted-foreground">Please reopen the connect link we sent you.</p>}
+            <Button onClick={start} disabled={!influencerId}>Retry</Button>
           </div>
+
         ) : (
           <>
             <p className="text-muted-foreground mt-3">
