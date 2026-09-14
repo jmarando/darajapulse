@@ -76,7 +76,7 @@ const PublicReport = () => {
       return { ...p, metrics: peak, history: list };
     });
     setPosts(grouped);
-    const INFLUENCER_PUBLIC_COLS = "id, full_name, handle, primary_platform, niche, region, follower_count, engagement_rate, avg_cpm_kes, audience_kenya_pct, authenticity_score, avatar_url, alt_handles";
+    const INFLUENCER_PUBLIC_COLS = "id, full_name, handle, primary_platform, niche, region, follower_count, engagement_rate, avg_cpm_kes, audience_kenya_pct, authenticity_score, avatar_url, alt_handles, demo_source";
     const ENTRY_PUBLIC_COLS = "id, contest_id, influencer_id, platform, post_url, handle, caption, thumbnail_url, posted_at, views, likes, comments, shares, saves, score, round_number, status, source, submitter_name, full_name, instagram_handle, tiktok_handle, facebook_handle, cross_posts, metadata, created_at";
     const { data: ci } = await supabase.from("campaign_influencers").select(`*, influencers(${INFLUENCER_PUBLIC_COLS})`).eq("campaign_id", link.campaign_id);
     setInfluencers(ci ?? []);
@@ -867,9 +867,12 @@ const PublicReport = () => {
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audience</div>
               <div className="flex flex-wrap items-center gap-2 mt-1 mb-4">
                 <h2 className="font-display text-2xl">Who we reached</h2>
-                <Badge variant="outline" className="text-[10px]">Estimated</Badge>
+                <Badge variant="outline" className="text-[10px]">
+                  {audience.measuredCount > 0 && audience.measuredCount === audience.creatorsWithData ? "Measured" : "Estimated"}
+                </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {audience.creatorsWithData} of {audience.creatorCount} creators with audience data
+                  {audience.measuredCount} of {audience.creatorCount} creators measured from their own account stats
+                  {audience.modelledCount > 0 && ` · ${audience.modelledCount} estimated from platform, category, location and audience size`}
                   {audience.zeroFollowerCount > 0 && ` · ${audience.zeroFollowerCount} without follower counts weighted at the roster average`}
                 </span>
               </div>
