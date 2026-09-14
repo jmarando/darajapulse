@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     console.error("fb invalid or reused oauth state", { statePrefix: state.slice(0, 8) });
     return Response.redirect(`${APP_ORIGIN}/connect/facebook/done?status=error&reason=invalid_state`, 302);
   }
-
+  await supabase.from("facebook_oauth_states").delete().eq("state", state);
 
   const redirectUri = `${SUPABASE_URL}/functions/v1/facebook-oauth-callback`;
 
