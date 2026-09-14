@@ -116,5 +116,7 @@ export function buildAudience(list: AudienceInfluencer[]) {
     creatorCount: creators.length,
     creatorsWithData,
     zeroFollowerCount: creators.length - withFollowers.length,
+    measuredCount: creators.filter(c => c.demo_source === "measured" || c.demo_source === "self_reported").length,
+    modelledCount: creators.filter(c => hasData(c) && c.demo_source !== "measured" && c.demo_source !== "self_reported").length,
   };
 }
