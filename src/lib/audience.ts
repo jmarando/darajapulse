@@ -11,6 +11,8 @@ export type AudienceInfluencer = {
   audience_age_breakdown?: Record<string, number> | null;
   audience_gender_breakdown?: Record<string, number> | null;
   audience_top_cities?: Array<{ city: string; pct: number }> | null;
+  /** measured = pulled from a connected account, self_reported = creator supplied, modelled = our estimate */
+  demo_source?: string | null;
 };
 
 export const AGE_BUCKETS = ["13-17", "18-24", "25-34", "35-44", "45-54", "55+"];
