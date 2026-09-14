@@ -9,15 +9,18 @@ export const DraftVideo = ({
   url,
   getUrl,
   label,
+  poster,
 }: {
   url?: string | null;
   getUrl?: () => Promise<string | null>;
   label?: string | null;
+  poster?: string | null;
 }) => {
   const [src, setSrc] = useState<string | null>(url ?? null);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+
 
   const start = async () => {
     if (loading) return;
