@@ -6,11 +6,18 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, AlertCircle, Facebook } from "lucide-react";
 
 const ConnectFacebook = () => {
-  const { influencerId } = useParams();
+  const { influencerId: routeId } = useParams();
   const [params] = useSearchParams();
   const status = params.get("status");
   const reason = params.get("reason");
+  const detail = params.get("detail");
   const [name, setName] = useState<string>("");
+
+  const isRealId = !!routeId && routeId !== "done";
+  const influencerId = isRealId ? routeId : (localStorage.getItem("connect_influencer_id") || "");
+  useEffect(() => {
+    if (isRealId) localStorage.setItem("connect_influencer_id", routeId!);
+  }, [isRealId, routeId]);
 
   useEffect(() => {
     if (influencerId) {
@@ -23,6 +30,7 @@ const ConnectFacebook = () => {
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/facebook-oauth-start?influencer_id=${influencerId}`;
     window.location.href = url;
   };
+
 
   const errorMessage = reason === "no_pages"
     ? "Facebook didn't return any Pages for your account. Log in with the Facebook profile that has full control of the Page, then retry."
