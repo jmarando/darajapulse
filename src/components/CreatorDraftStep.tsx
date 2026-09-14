@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { UploadCloud, FileVideo, CheckCircle2, Clock, MessageSquareWarning } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { UploadCloud, FileVideo, CheckCircle2, Clock, MessageSquareWarning, X } from "lucide-react";
 import { toast } from "sonner";
+import { uploadResumable, capturePoster, formatBytes, type UploadProgress } from "@/lib/uploadVideo";
 
 type Draft = {
   id: string;
@@ -19,7 +21,7 @@ type Draft = {
   post_url: string | null;
 };
 
-const MAX_BYTES = 400 * 1024 * 1024; // 400MB
+const MAX_BYTES = 900 * 1024 * 1024; // 900MB
 
 export const CreatorDraftStep = ({
   briefToken,
@@ -35,22 +37,55 @@ export const CreatorDraftStep = ({
   const [platform, setPlatform] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<(() => void) | null>(null);
 
   const upload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return toast.error("Choose your video file first");
-    if (file.size > MAX_BYTES) return toast.error("That file is over 400MB — please compress it and try again");
+    if (file.size > MAX_BYTES) return toast.error("That file is too big — please compress it and try again");
     setBusy(true);
+    setProgress({ percent: 0, uploaded: 0, total: file.size, speed: 0, eta: null });
+
     const safe = file.name.replace(/[^a-zA-Z0-9._-]+/g, "_");
-    const path = `${briefToken}/${Date.now()}-${safe}`;
-    const { error: upErr } = await supabase.storage
-      .from("creator-drafts")
-      .upload(path, file, { contentType: file.type || "video/mp4", upsert: false });
-    if (upErr) {
-      setBusy(false);
-      return toast.error(upErr.message);
+    const stamp = Date.now();
+    const path = `${briefToken}/${stamp}-${safe}`;
+
+    // Poster first: it is tiny and lets reviewers see the video without downloading it.
+    let posterPath: string | null = null;
+    try {
+      const poster = await capturePoster(file);
+      if (poster) {
+        posterPath = `${briefToken}/${stamp}-poster.jpg`;
+        const { error: pErr } = await supabase.storage
+          .from("creator-drafts")
+          .upload(posterPath, poster, { contentType: "image/jpeg", upsert: true, cacheControl: "31536000" });
+        if (pErr) posterPath = null;
+      }
+    } catch {
+      posterPath = null;
     }
+
+    try {
+      const { promise, abort } = uploadResumable({
+        bucket: "creator-drafts",
+        path,
+        file,
+        onProgress: setProgress,
+      });
+      abortRef.current = abort;
+      await promise;
+    } catch (err: any) {
+      setBusy(false);
+      setProgress(null);
+      abortRef.current = null;
+      return toast.error(
+        "Upload stopped — check your connection and tap Send again. It will continue from where it stopped."
+      );
+    }
+    abortRef.current = null;
+
     const { error } = await supabase.rpc("submit_creator_draft" as any, {
       _brief_token: briefToken,
       _file_path: path,
@@ -60,8 +95,10 @@ export const CreatorDraftStep = ({
       _platform: platform || null,
       _caption: caption || null,
       _creator_note: note || null,
+      _poster_path: posterPath,
     });
     setBusy(false);
+    setProgress(null);
     if (error) return toast.error(error.message);
     toast.success("Video sent for approval");
     setFile(null);
@@ -70,6 +107,7 @@ export const CreatorDraftStep = ({
     if (inputRef.current) inputRef.current.value = "";
     onUploaded();
   };
+
 
   return (
     <div className="space-y-4">
@@ -88,11 +126,15 @@ export const CreatorDraftStep = ({
               ref={inputRef}
               type="file"
               accept="video/mp4,video/quicktime,video/*"
+              disabled={busy}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="mt-1.5 h-12 text-sm file:mr-3 file:rounded file:border-0 file:bg-secondary file:px-3 file:py-1.5"
             />
-            <p className="text-xs text-muted-foreground mt-1.5">Up to 400MB. MP4 works best.</p>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Up to 900MB. MP4 works best{file ? ` · your file is ${formatBytes(file.size)}` : ""}.
+            </p>
           </div>
+
           <div>
             <Label className="text-sm">Where will you post it?</Label>
             <select
@@ -115,11 +157,41 @@ export const CreatorDraftStep = ({
             <Label className="text-sm">Anything the team should know?</Label>
             <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional note" className="mt-1.5 h-11" />
           </div>
+          {progress && (
+            <div className="rounded-md border border-border p-3 space-y-2">
+              <Progress value={progress.percent} className="h-2" />
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>
+                  {Math.floor(progress.percent)}% · {formatBytes(progress.uploaded)} of {formatBytes(progress.total)}
+                  {progress.eta !== null && progress.eta > 1
+                    ? ` · about ${progress.eta > 90 ? `${Math.round(progress.eta / 60)} min` : `${Math.round(progress.eta)} sec`} left`
+                    : ""}
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 hover:text-foreground"
+                  onClick={() => {
+                    abortRef.current?.();
+                    abortRef.current = null;
+                    setBusy(false);
+                    setProgress(null);
+                  }}
+                >
+                  <X className="w-3 h-3" /> Cancel
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Keep this page open. If your network drops, tap Send again and it continues from where it stopped.
+              </p>
+            </div>
+          )}
           <Button type="submit" disabled={busy} size="lg" className="w-full h-12 text-base">
-            <UploadCloud className="w-4 h-4 mr-2" /> {busy ? "Uploading…" : "Send for approval"}
+            <UploadCloud className="w-4 h-4 mr-2" />
+            {busy ? (progress ? `Uploading ${Math.floor(progress.percent)}%` : "Uploading…") : "Send for approval"}
           </Button>
         </form>
       </Card>
+
 
       {drafts.length > 0 && (
         <Card className="p-5">

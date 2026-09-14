@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.submit_creator_draft(text, text, text, text, bigint, text, text, text);

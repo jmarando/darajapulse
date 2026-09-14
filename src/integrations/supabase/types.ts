@@ -3349,34 +3349,20 @@ export type Database = {
         }
         Returns: Json
       }
-      submit_creator_draft:
-        | {
-            Args: {
-              _brief_token: string
-              _caption?: string
-              _creator_note?: string
-              _file_name: string
-              _file_path: string
-              _file_size?: number
-              _mime_type?: string
-              _platform?: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              _brief_token: string
-              _caption?: string
-              _creator_note?: string
-              _file_name: string
-              _file_path: string
-              _file_size?: number
-              _mime_type?: string
-              _platform?: string
-              _poster_path?: string
-            }
-            Returns: string
-          }
+      submit_creator_draft: {
+        Args: {
+          _brief_token: string
+          _caption?: string
+          _creator_note?: string
+          _file_name: string
+          _file_path: string
+          _file_size?: number
+          _mime_type?: string
+          _platform?: string
+          _poster_path?: string
+        }
+        Returns: string
+      }
       update_brief_status: {
         Args: { _status: string; _token: string }
         Returns: undefined
