@@ -26,6 +26,7 @@ type Draft = {
   creator_name: string | null;
   creator_handle: string | null;
   video_url: string | null;
+  poster_url: string | null;
 };
 
 const TABS = [
@@ -130,7 +131,7 @@ const PublicDraftReview = () => {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {rows.slice(0, visible).map((d) => (
               <Card key={d.id} className="p-0 overflow-hidden flex flex-col">
-                <DraftVideo url={d.video_url} label={d.creator_name} />
+                <DraftVideo url={d.video_url} poster={d.poster_url} label={d.creator_name} />
 
                 <div className="p-4 space-y-3 flex-1 flex flex-col">
                   <div className="flex items-start justify-between gap-2">
