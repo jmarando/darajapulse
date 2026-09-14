@@ -1975,6 +1975,8 @@ export type Database = {
           avatar_url: string | null
           avg_cpm_kes: number | null
           created_at: string
+          demo_source: string | null
+          demo_updated_at: string | null
           email: string | null
           engagement_rate: number | null
           follower_count: number | null
@@ -2007,6 +2009,8 @@ export type Database = {
           avatar_url?: string | null
           avg_cpm_kes?: number | null
           created_at?: string
+          demo_source?: string | null
+          demo_updated_at?: string | null
           email?: string | null
           engagement_rate?: number | null
           follower_count?: number | null
@@ -2039,6 +2043,8 @@ export type Database = {
           avatar_url?: string | null
           avg_cpm_kes?: number | null
           created_at?: string
+          demo_source?: string | null
+          demo_updated_at?: string | null
           email?: string | null
           engagement_rate?: number | null
           follower_count?: number | null
