@@ -664,6 +664,18 @@ Deno.serve(async (req) => {
     }
     const leftover = remaining + (posts.length - processed);
 
+    // Cron runs (stale mode) chain themselves until the due queue is empty, so two
+    // scheduled runs a day are enough no matter how many posts are due.
+    if (stale && leftover > 0 && processed > 0) {
+      fetch(`${SUPABASE_URL}/functions/v1/fetch-public-metrics`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
+        body: JSON.stringify({ stale: true, max: limit }),
+      }).catch(() => {});
+    }
+
+
+
     const ok = results.filter(r => r.ok).length;
     return new Response(JSON.stringify({ ok, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? start + processed : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
