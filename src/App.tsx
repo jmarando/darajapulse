@@ -85,7 +85,9 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/data-deletion" element={<DataDeletion />} />
             <Route path="/b/:token" element={<PublicBrief />} />
+            <Route path="/brief/:token" element={<PublicBrief />} />
             <Route path="/c/:token" element={<PublicContestSubmit />} />
+            <Route path="/submit/:token" element={<PublicContestSubmit />} />
             <Route path="/m/:token" element={<PublicModeration />} />
             <Route path="/d/:token" element={<PublicDraftReview />} />
             <Route path="/:clientSlug/:campaignSlug/report/:token" element={<PublicReport />} />
