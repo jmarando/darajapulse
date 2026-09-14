@@ -76,61 +76,45 @@ const Overview = () => {
   }, [user]);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const [c, ca, i, lv, pm, posts, briefs, contests, recent, topC] = await Promise.all([
-        supabase.from("clients").select("id", { count: "exact", head: true }),
-        supabase.from("campaigns").select("id", { count: "exact", head: true }),
-        supabase.from("influencers").select("id", { count: "exact", head: true }),
-        supabase.from("campaigns").select("id", { count: "exact", head: true }).eq("status", "live"),
-        supabase.from("post_metrics").select("captured_at, views, reach, likes, comments, shares, post_id").order("captured_at", { ascending: true }),
-        supabase.from("posts").select("id", { count: "exact", head: true }),
-        supabase.from("content_items").select("id", { count: "exact", head: true }),
-        supabase.from("contests").select("id", { count: "exact", head: true }),
-        supabase.from("campaigns").select("id, name, status, hashtag, budget_kes, clients(name)").order("created_at", { ascending: false }).limit(5),
-        supabase.from("posts").select("id, caption, campaign_id, influencer_id, campaigns(name), influencers(handle, full_name), post_metrics(views, likes)").limit(50),
-      ]);
-
+      const { data, error } = await supabase.rpc("dashboard_overview" as any, { _from: from, _to: to });
+      if (cancelled || error || !data) { if (!cancelled) setLoaded(true); return; }
+      const d: any = data;
       setS({
-        clients: c.count ?? 0,
-        campaigns: ca.count ?? 0,
-        influencers: i.count ?? 0,
+        clients: d.clients ?? 0,
+        campaigns: d.campaigns ?? 0,
+        influencers: d.influencers ?? 0,
         payouts: 0,
-        live: lv.count ?? 0,
-        posts: posts.count ?? 0,
-        briefs: briefs.count ?? 0, // content items count
-        contests: contests.count ?? 0,
+        live: d.live ?? 0,
+        posts: d.posts ?? 0,
+        briefs: d.briefs ?? 0,
+        contests: d.contests ?? 0,
       });
-      setMetrics(pm.data ?? []);
-      setRecentCampaigns(recent.data ?? []);
-
-      // Peak metric per post → totals + top performer. This avoids a bad zero poll wiping views out.
-      const latest = buildPeakMetricsByPost(pm.data ?? []);
-      const t = { views: 0, likes: 0, comments: 0, shares: 0, reach: 0 };
-      Array.from(latest.values()).forEach((m: any) => {
-        t.views += m.views || 0; t.likes += m.likes || 0; t.comments += m.comments || 0;
-        t.shares += m.shares || 0; t.reach += m.reach || 0;
+      setTotals({
+        views: Number(d.totals?.views ?? 0),
+        likes: Number(d.totals?.likes ?? 0),
+        comments: Number(d.totals?.comments ?? 0),
+        shares: Number(d.totals?.shares ?? 0),
+        reach: Number(d.totals?.reach ?? 0),
       });
-      setTotals(t);
-
-      // Top performer post
-      const postsWithViews = (topC.data ?? []).map((p: any) => {
-        const latestMetric = (p.post_metrics ?? []).reduce((acc: any, m: any) => (m.views > (acc?.views || 0) ? m : acc), null);
-        return { ...p, views: latestMetric?.views || 0, likes: latestMetric?.likes || 0 };
-      }).sort((a: any, b: any) => b.views - a.views);
-      if (postsWithViews[0]?.views > 0) setTopCreator(postsWithViews[0]);
-
-      // Top campaign by total views
-      const camp: Record<string, { id: string; name: string; views: number }> = {};
-      postsWithViews.forEach((p: any) => {
-        if (!p.campaign_id) return;
-        camp[p.campaign_id] = camp[p.campaign_id] || { id: p.campaign_id, name: p.campaigns?.name || "—", views: 0 };
-        camp[p.campaign_id].views += p.views;
-      });
-      const topCmp = Object.values(camp).sort((a, b) => b.views - a.views)[0];
-      if (topCmp) setTopCampaign(topCmp);
+      setMetrics(d.series ?? []);
+      setRecentCampaigns(d.recent ?? []);
+      if (d.top_campaign) setTopCampaign({ id: d.top_campaign.id, name: d.top_campaign.name, views: Number(d.top_campaign.views || 0) });
+      if (d.top_post) {
+        setTopCreator({
+          id: d.top_post.post_id,
+          caption: d.top_post.caption,
+          views: Number(d.top_post.views || 0),
+          likes: Number(d.top_post.likes || 0),
+          campaigns: { name: d.top_post.campaign_name },
+          influencers: { handle: d.top_post.handle, full_name: d.top_post.full_name },
+        });
+      }
       setLoaded(true);
     })();
-  }, []);
+    return () => { cancelled = true; };
+  }, [from, to]);
 
   const series = useMemo(() => {
     const fromTs = +new Date(from);
@@ -141,15 +125,12 @@ const Overview = () => {
       const d = new Date(fromTs + i * 86400000).toISOString().slice(5, 10);
       buckets[d] = 0;
     }
-    metrics.forEach((m: any) => {
-      const ts = +new Date(m.captured_at);
-      if (ts < fromTs || ts > toTs) return;
-      const d = new Date(ts).toISOString().slice(5, 10);
-      const eng = (m.likes || 0) + (m.comments || 0) + (m.shares || 0);
-      if (d in buckets) buckets[d] = Math.max(buckets[d], eng);
+    (metrics as any[]).forEach((m: any) => {
+      if (m?.d in buckets) buckets[m.d] = Math.max(buckets[m.d], Number(m.v) || 0);
     });
     return Object.entries(buckets).map(([d, v]) => ({ d, v }));
   }, [metrics, from, to]);
+
 
   const totalEng = series.reduce((a, x) => a + x.v, 0);
   const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares) / totals.views) * 100 : 0;
