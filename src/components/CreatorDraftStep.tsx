@@ -126,11 +126,15 @@ export const CreatorDraftStep = ({
               ref={inputRef}
               type="file"
               accept="video/mp4,video/quicktime,video/*"
+              disabled={busy}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               className="mt-1.5 h-12 text-sm file:mr-3 file:rounded file:border-0 file:bg-secondary file:px-3 file:py-1.5"
             />
-            <p className="text-xs text-muted-foreground mt-1.5">Up to 400MB. MP4 works best.</p>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Up to 900MB. MP4 works best{file ? ` · your file is ${formatBytes(file.size)}` : ""}.
+            </p>
           </div>
+
           <div>
             <Label className="text-sm">Where will you post it?</Label>
             <select
