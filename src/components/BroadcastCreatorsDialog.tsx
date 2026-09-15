@@ -111,9 +111,36 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
       );
   }, [open]);
 
-  const blRecipients = useMemo(
-    () => (blAudience === "rsvp" ? namedRecipients.filter((r) => rsvpYes.has(r.email)) : namedRecipients),
-    [blAudience, namedRecipients, rsvpYes],
+  // Addresses typed/pasted into the "specific people" box (comma, space or newline separated).
+  const blPickedEmails = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          blPicked
+            .split(/[\s,;]+/)
+            .map((e) => e.trim().toLowerCase())
+            .filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)),
+        ),
+      ),
+    [blPicked],
+  );
+
+  const blRecipients = useMemo(() => {
+    if (blAudience === "rsvp") return namedRecipients.filter((r) => rsvpYes.has(r.email));
+    if (blAudience === "pick") {
+      const known = new Map(namedRecipients.map((r) => [r.email, r]));
+      return blPickedEmails.map((e) => known.get(e) ?? { email: e, name: null, briefToken: null });
+    }
+    return namedRecipients;
+  }, [blAudience, namedRecipients, rsvpYes, blPickedEmails]);
+
+  // Addresses entered that aren't on this campaign's roster (no personal brief link).
+  const blUnknownPicked = useMemo(
+    () =>
+      blAudience === "pick"
+        ? blPickedEmails.filter((e) => !namedRecipients.some((r) => r.email === e))
+        : [],
+    [blAudience, blPickedEmails, namedRecipients],
   );
 
 
