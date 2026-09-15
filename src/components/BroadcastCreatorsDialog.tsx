@@ -549,13 +549,41 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
                 >
                   Whole roster ({namedRecipients.length})
                 </Button>
+                <Button
+                  size="sm"
+                  variant={blAudience === "pick" ? "default" : "outline"}
+                  onClick={() => setBlAudience("pick")}
+                >
+                  Specific people ({blPickedEmails.length})
+                </Button>
                 <Button size="sm" variant="ghost" onClick={blDownloadList}>
                   <Copy className="w-3 h-3 mr-1" /> Download list (CSV)
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                "RSVP'd yes" is everyone who replied YES to either training session.
-              </p>
+              {blAudience === "pick" ? (
+                <div className="space-y-2">
+                  <Textarea
+                    rows={4}
+                    value={blPicked}
+                    onChange={(e) => setBlPicked(e.target.value)}
+                    placeholder="mary@example.com, john@example.com — one per line or separated by commas"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Paste the addresses of the creators who missed the email. Each one still gets their own personal
+                    brief and submission links, and sending again here is never blocked as a duplicate.
+                  </p>
+                  {blUnknownPicked.length > 0 && (
+                    <p className="text-[11px] text-destructive">
+                      Not on this campaign's roster (they'll get the email without personal links):{" "}
+                      {blUnknownPicked.join(", ")}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  "RSVP'd yes" is everyone who replied YES to either training session.
+                </p>
+              )}
             </div>
 
             <div>
