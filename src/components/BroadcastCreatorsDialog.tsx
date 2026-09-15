@@ -70,7 +70,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   // Brief-live tab state
   const [blFirstPost, setBlFirstPost] = useState("Sunday 7 September");
   const [blNote, setBlNote] = useState("");
-  const [blAudience, setBlAudience] = useState<"rsvp" | "all">("rsvp");
+  const [blAudience, setBlAudience] = useState<"rsvp" | "all" | "pick">("rsvp");
+  const [blPicked, setBlPicked] = useState("");
   const [blPreviewHtml, setBlPreviewHtml] = useState<string | null>(null);
   const [blPreviewSubject, setBlPreviewSubject] = useState("");
   const [blPreviewing, setBlPreviewing] = useState(false);
@@ -110,9 +111,36 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
       );
   }, [open]);
 
-  const blRecipients = useMemo(
-    () => (blAudience === "rsvp" ? namedRecipients.filter((r) => rsvpYes.has(r.email)) : namedRecipients),
-    [blAudience, namedRecipients, rsvpYes],
+  // Addresses typed/pasted into the "specific people" box (comma, space or newline separated).
+  const blPickedEmails = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          blPicked
+            .split(/[\s,;]+/)
+            .map((e) => e.trim().toLowerCase())
+            .filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)),
+        ),
+      ),
+    [blPicked],
+  );
+
+  const blRecipients = useMemo(() => {
+    if (blAudience === "rsvp") return namedRecipients.filter((r) => rsvpYes.has(r.email));
+    if (blAudience === "pick") {
+      const known = new Map(namedRecipients.map((r) => [r.email, r]));
+      return blPickedEmails.map((e) => known.get(e) ?? { email: e, name: null, briefToken: null });
+    }
+    return namedRecipients;
+  }, [blAudience, namedRecipients, rsvpYes, blPickedEmails]);
+
+  // Addresses entered that aren't on this campaign's roster (no personal brief link).
+  const blUnknownPicked = useMemo(
+    () =>
+      blAudience === "pick"
+        ? blPickedEmails.filter((e) => !namedRecipients.some((r) => r.email === e))
+        : [],
+    [blAudience, blPickedEmails, namedRecipients],
   );
 
 
@@ -425,6 +453,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     }
     setBlSending(true);
     setBlProgress({ done: 0, total: blRecipients.length });
+    // Re-sends to hand-picked addresses must not be de-duplicated against the first send.
+    const batch = blAudience === "pick" ? `-resend-${Date.now()}` : "";
     let failed = 0;
     for (let i = 0; i < blRecipients.length; i++) {
       const r = blRecipients[i];
@@ -435,7 +465,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
             recipientEmail: r.email,
             from: ROYCO_FROM,
             replyTo: replyTo.trim() || undefined,
-            idempotencyKey: `brieflive-${campaignId}-${r.email}`,
+            idempotencyKey: `brieflive-${campaignId}-${r.email}${batch}`,
             templateData: blTemplateData(r),
           },
         });
@@ -519,13 +549,41 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
                 >
                   Whole roster ({namedRecipients.length})
                 </Button>
+                <Button
+                  size="sm"
+                  variant={blAudience === "pick" ? "default" : "outline"}
+                  onClick={() => setBlAudience("pick")}
+                >
+                  Specific people ({blPickedEmails.length})
+                </Button>
                 <Button size="sm" variant="ghost" onClick={blDownloadList}>
                   <Copy className="w-3 h-3 mr-1" /> Download list (CSV)
                 </Button>
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                "RSVP'd yes" is everyone who replied YES to either training session.
-              </p>
+              {blAudience === "pick" ? (
+                <div className="space-y-2">
+                  <Textarea
+                    rows={4}
+                    value={blPicked}
+                    onChange={(e) => setBlPicked(e.target.value)}
+                    placeholder="mary@example.com, john@example.com — one per line or separated by commas"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Paste the addresses of the creators who missed the email. Each one still gets their own personal
+                    brief and submission links, and sending again here is never blocked as a duplicate.
+                  </p>
+                  {blUnknownPicked.length > 0 && (
+                    <p className="text-[11px] text-destructive">
+                      Not on this campaign's roster (they'll get the email without personal links):{" "}
+                      {blUnknownPicked.join(", ")}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  "RSVP'd yes" is everyone who replied YES to either training session.
+                </p>
+              )}
             </div>
 
             <div>
