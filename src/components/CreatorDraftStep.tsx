@@ -101,7 +101,7 @@ export const CreatorDraftStep = ({
       _file_name: file.name,
       _mime_type: file.type || "video/mp4",
       _file_size: file.size,
-      _platform: platform || null,
+      _platform: platforms.length ? platforms.join(", ") : null,
       _caption: caption || null,
       _creator_note: note || null,
       _poster_path: posterPath,
