@@ -45,6 +45,7 @@ export const uploadResumable = ({
       retryDelays: [0, 2000, 5000, 10000, 20000, 30000],
       headers: {
         authorization: `Bearer ${SUPABASE_KEY}`,
+        apikey: SUPABASE_KEY,
         "x-upsert": "true",
       },
       // Include the destination object in the fingerprint. tus's default fingerprint
