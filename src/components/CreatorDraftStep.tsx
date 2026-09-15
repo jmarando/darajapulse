@@ -59,16 +59,19 @@ export const CreatorDraftStep = ({
     try {
       const poster = await capturePoster(file);
       if (poster) {
-        posterPath = `${briefToken}/${stamp}-poster.jpg`;
+        // No upsert: anonymous creators cannot read existing objects, and asking storage
+        // to overwrite makes it check that permission and reject the upload outright.
+        posterPath = `${briefToken}/${stamp}-${Date.now()}-poster.jpg`;
         const { error: pErr } = await supabase.storage
           .from("creator-drafts")
-          .upload(posterPath, poster, { contentType: "image/jpeg", upsert: true, cacheControl: "31536000" });
+          .upload(posterPath, poster, { contentType: "image/jpeg", cacheControl: "31536000" });
         if (pErr) posterPath = null;
       }
     } catch {
       posterPath = null;
     }
 
+    let storedPath = path;
     try {
       const { promise, abort } = uploadResumable({
         bucket: "creator-drafts",
@@ -77,7 +80,7 @@ export const CreatorDraftStep = ({
         onProgress: setProgress,
       });
       abortRef.current = abort;
-      await promise;
+      storedPath = await promise;
     } catch (err: any) {
       setBusy(false);
       setProgress(null);
@@ -88,9 +91,10 @@ export const CreatorDraftStep = ({
     }
     abortRef.current = null;
 
+
     const { error } = await supabase.rpc("submit_creator_draft" as any, {
       _brief_token: briefToken,
-      _file_path: path,
+      _file_path: storedPath,
       _file_name: file.name,
       _mime_type: file.type || "video/mp4",
       _file_size: file.size,
