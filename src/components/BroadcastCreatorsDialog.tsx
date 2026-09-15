@@ -465,7 +465,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
             recipientEmail: r.email,
             from: ROYCO_FROM,
             replyTo: replyTo.trim() || undefined,
-            idempotencyKey: `brieflive-${campaignId}-${r.email}`,
+            idempotencyKey: `brieflive-${campaignId}-${r.email}${batch}`,
             templateData: blTemplateData(r),
           },
         });
