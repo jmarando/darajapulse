@@ -47,6 +47,12 @@ export const uploadResumable = ({
         authorization: `Bearer ${SUPABASE_KEY}`,
         "x-upsert": "true",
       },
+      // Include the destination object in the fingerprint. tus's default fingerprint
+      // only covers the file + endpoint, so a retry with a different object path would
+      // resume the OLD upload URL and write bytes to the old object while the draft row
+      // points at the new one — the reviewer then sees "Video unavailable".
+      fingerprint: async (f) =>
+        ["tus", bucket, path, f.name, f.type, f.size, (f as File).lastModified].join("/"),
       uploadDataDuringCreation: true,
       removeFingerprintOnSuccess: true,
       chunkSize: 6 * 1024 * 1024,

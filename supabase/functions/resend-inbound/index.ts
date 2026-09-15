@@ -202,7 +202,10 @@ Deno.serve(async (req) => {
         /\b(yes|yeah|yep|sure|noted|nitakuja|niko|i(?:'| a)?m in|count me in|will attend|i will be there|i'?ll be there|see you (?:then|there)|attending|confirmed?|confirming)\b/.test(
           first,
         )
-      const status = no ? 'no' : yes ? 'yes' : null
+      // Polite replies often mix both ("Sorry for the late reply, yes I'll be there").
+      // Only record a decision when the message is unambiguous; anything mixed is left
+      // for a human rather than silently flipping an earlier "yes" to "no".
+      const status = yes && !no ? 'yes' : no && !yes ? 'no' : null
 
       if (status && creator?.id) {
         const { data: links } = await supabase
