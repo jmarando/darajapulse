@@ -21,32 +21,39 @@ export type UploadProgress = {
  * dropped connection restarted the whole file and the UI showed nothing. This
  * uploads in 6MB chunks, retries automatically and can resume an interrupted
  * file from where it stopped.
+ *
+ * NOTE: we deliberately do NOT send `x-upsert`. Overwriting makes storage check
+ * read permission on the existing object, which anonymous creators (link-only
+ * access) don't have — every upload was rejected with an RLS error before the
+ * first chunk. Instead each attempt uses a deterministic path and, if that
+ * object already exists, we fall back to a suffixed one. The resolved path is
+ * returned so the draft row always points at the file we actually wrote.
  */
-export const uploadResumable = ({
+const startUpload = ({
   bucket,
   path,
   file,
   onProgress,
+  onUpload,
 }: {
   bucket: string;
   path: string;
   file: File;
   onProgress?: (p: UploadProgress) => void;
-}): { promise: Promise<void>; abort: () => void } => {
-  let upload: tus.Upload | null = null;
-  const started = Date.now();
-  let lastBytes = 0;
-  let lastAt = started;
-  let speed = 0;
+  onUpload: (u: tus.Upload) => void;
+}) =>
+  new Promise<void>((resolve, reject) => {
+    const started = Date.now();
+    let lastBytes = 0;
+    let lastAt = started;
+    let speed = 0;
 
-  const promise = new Promise<void>((resolve, reject) => {
-    upload = new tus.Upload(file, {
+    const upload = new tus.Upload(file, {
       endpoint: `${SUPABASE_URL}/storage/v1/upload/resumable`,
       retryDelays: [0, 2000, 5000, 10000, 20000, 30000],
       headers: {
         authorization: `Bearer ${SUPABASE_KEY}`,
         apikey: SUPABASE_KEY,
-        "x-upsert": "true",
       },
       // Include the destination object in the fingerprint. tus's default fingerprint
       // only covers the file + endpoint, so a retry with a different object path would
@@ -84,15 +91,52 @@ export const uploadResumable = ({
       onSuccess: () => resolve(),
     });
 
+    onUpload(upload);
+
     // Resume an earlier attempt at the same file when one exists.
     upload.findPreviousUploads().then((prev) => {
-      if (prev.length) upload!.resumeFromPreviousUpload(prev[0]);
-      upload!.start();
+      if (prev.length) upload.resumeFromPreviousUpload(prev[0]);
+      upload.start();
     });
   });
 
-  return { promise, abort: () => upload?.abort(true) };
+const isConflict = (err: unknown) => {
+  const msg = String((err as Error)?.message ?? err);
+  return /409|Duplicate|already exists/i.test(msg);
 };
+
+export const uploadResumable = ({
+  bucket,
+  path,
+  file,
+  onProgress,
+}: {
+  bucket: string;
+  path: string;
+  file: File;
+  onProgress?: (p: UploadProgress) => void;
+}): { promise: Promise<string>; abort: () => void } => {
+  let current: tus.Upload | null = null;
+  const onUpload = (u: tus.Upload) => {
+    current = u;
+  };
+
+  const promise = (async () => {
+    try {
+      await startUpload({ bucket, path, file, onProgress, onUpload });
+      return path;
+    } catch (err) {
+      if (!isConflict(err)) throw err;
+      // Same file name already stored (an earlier finished attempt): write a fresh copy.
+      const retryPath = path.replace(/(\.[^./]+)?$/, (ext) => `-${Date.now()}${ext || ""}`);
+      await startUpload({ bucket, path: retryPath, file, onProgress, onUpload });
+      return retryPath;
+    }
+  })();
+
+  return { promise, abort: () => current?.abort(true) };
+};
+
 
 /** Grabs a still frame so review lists can show an image instead of loading video. */
 export const capturePoster = (file: File): Promise<Blob | null> =>
