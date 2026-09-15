@@ -668,11 +668,15 @@ Deno.serve(async (req) => {
 
     // Cron runs (stale mode) chain themselves until the due queue is empty, so two
     // scheduled runs a day are enough no matter how many posts are due.
-    if (stale && leftover > 0 && processed > 0) {
+    // The next run starts AFTER what we just processed and the chain is depth-capped:
+    // posts that can never be scraped (private/deleted links) write no metrics row, so
+    // they stay "due" forever — restarting at offset 0 would re-scrape them endlessly
+    // and burn paid scraper credits.
+    if (stale && leftover > 0 && processed > 0 && chainDepth < MAX_CHAIN) {
       fetch(`${SUPABASE_URL}/functions/v1/fetch-public-metrics`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
-        body: JSON.stringify({ stale: true, max: limit }),
+        body: JSON.stringify({ stale: true, max: limit, offset: start + processed, chain: chainDepth + 1 }),
       }).catch(() => {});
     }
 
