@@ -23,6 +23,13 @@ type Draft = {
 
 const MAX_BYTES = 900 * 1024 * 1024; // 900MB
 
+const PLATFORM_OPTIONS = [
+  { value: "tiktok", label: "TikTok" },
+  { value: "instagram", label: "Instagram" },
+  { value: "facebook", label: "Facebook" },
+  { value: "youtube", label: "YouTube" },
+];
+
 export const CreatorDraftStep = ({
   briefToken,
   drafts,
@@ -34,7 +41,10 @@ export const CreatorDraftStep = ({
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
-  const [platform, setPlatform] = useState("");
+  // Creators often post the same video on several platforms — allow picking more than one.
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const togglePlatform = (v: string) =>
+    setPlatforms((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]));
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
@@ -98,7 +108,7 @@ export const CreatorDraftStep = ({
       _file_name: file.name,
       _mime_type: file.type || "video/mp4",
       _file_size: file.size,
-      _platform: platform || null,
+      _platform: platforms.length ? platforms.join(", ") : null,
       _caption: caption || null,
       _creator_note: note || null,
       _poster_path: posterPath,
@@ -110,6 +120,7 @@ export const CreatorDraftStep = ({
     setFile(null);
     setCaption("");
     setNote("");
+    setPlatforms([]);
     if (inputRef.current) inputRef.current.value = "";
     onUploaded();
   };
@@ -143,17 +154,35 @@ export const CreatorDraftStep = ({
 
           <div>
             <Label className="text-sm">Where will you post it?</Label>
-            <select
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value)}
-              className="mt-1.5 h-12 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Select platform</option>
-              <option value="tiktok">TikTok</option>
-              <option value="instagram">Instagram</option>
-              <option value="facebook">Facebook</option>
-              <option value="youtube">YouTube</option>
-            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Pick every platform you'll post this same video on — one approval covers all of them.
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {PLATFORM_OPTIONS.map((p) => {
+                const on = platforms.includes(p.value);
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => togglePlatform(p.value)}
+                    aria-pressed={on}
+                    className={`h-12 rounded-md border px-3 text-sm text-left transition-colors ${
+                      on
+                        ? "border-primary bg-primary/10 text-foreground font-medium"
+                        : "border-input bg-background text-muted-foreground"
+                    }`}
+                  >
+                    {on ? "✓ " : ""}
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+            {platforms.length > 1 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Cross-post: after approval, paste the live link from each platform in step 2.
+              </p>
+            )}
           </div>
           <div>
             <Label className="text-sm">Caption you plan to use</Label>
