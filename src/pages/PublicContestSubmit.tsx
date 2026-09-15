@@ -268,6 +268,10 @@ const PublicContestSubmit = () => {
                   "Open your post, tap Share → Copy link, then paste here. We pick up the platform automatically."
                 )}
               </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Cross-posted the same video? Submit one link now, then paste the next platform's link here again — each
+                one counts separately.
+              </p>
             </div>
 
             {creator ? (
