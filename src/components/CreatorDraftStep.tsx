@@ -94,7 +94,7 @@ export const CreatorDraftStep = ({
 
     const { error } = await supabase.rpc("submit_creator_draft" as any, {
       _brief_token: briefToken,
-      _file_path: path,
+      _file_path: storedPath,
       _file_name: file.name,
       _mime_type: file.type || "video/mp4",
       _file_size: file.size,
