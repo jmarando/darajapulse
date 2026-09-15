@@ -23,6 +23,13 @@ type Draft = {
 
 const MAX_BYTES = 900 * 1024 * 1024; // 900MB
 
+const PLATFORM_OPTIONS = [
+  { value: "tiktok", label: "TikTok" },
+  { value: "instagram", label: "Instagram" },
+  { value: "facebook", label: "Facebook" },
+  { value: "youtube", label: "YouTube" },
+];
+
 export const CreatorDraftStep = ({
   briefToken,
   drafts,
