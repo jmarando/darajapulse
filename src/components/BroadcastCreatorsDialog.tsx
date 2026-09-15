@@ -453,6 +453,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     }
     setBlSending(true);
     setBlProgress({ done: 0, total: blRecipients.length });
+    // Re-sends to hand-picked addresses must not be de-duplicated against the first send.
+    const batch = blAudience === "pick" ? `-resend-${Date.now()}` : "";
     let failed = 0;
     for (let i = 0; i < blRecipients.length; i++) {
       const r = blRecipients[i];
