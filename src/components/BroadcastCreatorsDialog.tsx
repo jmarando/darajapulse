@@ -70,7 +70,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   // Brief-live tab state
   const [blFirstPost, setBlFirstPost] = useState("Sunday 7 September");
   const [blNote, setBlNote] = useState("");
-  const [blAudience, setBlAudience] = useState<"rsvp" | "all">("rsvp");
+  const [blAudience, setBlAudience] = useState<"rsvp" | "all" | "pick">("rsvp");
+  const [blPicked, setBlPicked] = useState("");
   const [blPreviewHtml, setBlPreviewHtml] = useState<string | null>(null);
   const [blPreviewSubject, setBlPreviewSubject] = useState("");
   const [blPreviewing, setBlPreviewing] = useState(false);
