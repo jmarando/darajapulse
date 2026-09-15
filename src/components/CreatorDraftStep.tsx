@@ -49,7 +49,9 @@ export const CreatorDraftStep = ({
     setProgress({ percent: 0, uploaded: 0, total: file.size, speed: 0, eta: null });
 
     const safe = file.name.replace(/[^a-zA-Z0-9._-]+/g, "_");
-    const stamp = Date.now();
+    // Derived from the file itself, not the clock: a retry of the same file must reuse
+    // the same object path so a resumed transfer and the saved draft point at one file.
+    const stamp = `${file.lastModified}-${file.size}`;
     const path = `${briefToken}/${stamp}-${safe}`;
 
     // Poster first: it is tiny and lets reviewers see the video without downloading it.
