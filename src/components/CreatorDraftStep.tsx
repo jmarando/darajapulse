@@ -120,6 +120,7 @@ export const CreatorDraftStep = ({
     setFile(null);
     setCaption("");
     setNote("");
+    setPlatforms([]);
     if (inputRef.current) inputRef.current.value = "";
     onUploaded();
   };
