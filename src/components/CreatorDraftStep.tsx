@@ -143,17 +143,35 @@ export const CreatorDraftStep = ({
 
           <div>
             <Label className="text-sm">Where will you post it?</Label>
-            <select
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value)}
-              className="mt-1.5 h-12 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">Select platform</option>
-              <option value="tiktok">TikTok</option>
-              <option value="instagram">Instagram</option>
-              <option value="facebook">Facebook</option>
-              <option value="youtube">YouTube</option>
-            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Pick every platform you'll post this same video on — one approval covers all of them.
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {PLATFORM_OPTIONS.map((p) => {
+                const on = platforms.includes(p.value);
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => togglePlatform(p.value)}
+                    aria-pressed={on}
+                    className={`h-12 rounded-md border px-3 text-sm text-left transition-colors ${
+                      on
+                        ? "border-primary bg-primary/10 text-foreground font-medium"
+                        : "border-input bg-background text-muted-foreground"
+                    }`}
+                  >
+                    {on ? "✓ " : ""}
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+            {platforms.length > 1 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Cross-post: after approval, paste the live link from each platform in step 2.
+              </p>
+            )}
           </div>
           <div>
             <Label className="text-sm">Caption you plan to use</Label>
