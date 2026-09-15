@@ -599,7 +599,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const { campaign_id, post_id, stale, max, offset } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number };
+    const { campaign_id, post_id, stale, max, offset, chain } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number; chain?: number };
+    const chainDepth = Math.max(0, Number(chain ?? 0));
+    const MAX_CHAIN = 12;
     let q = supabase
       .from("posts")
       .select("id, post_url, platform, thumbnail_url, caption, status, created_at, posted_at, campaign_id, campaigns!inner(status)")
