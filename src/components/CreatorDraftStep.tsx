@@ -34,7 +34,10 @@ export const CreatorDraftStep = ({
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [caption, setCaption] = useState("");
-  const [platform, setPlatform] = useState("");
+  // Creators often post the same video on several platforms — allow picking more than one.
+  const [platforms, setPlatforms] = useState<string[]>([]);
+  const togglePlatform = (v: string) =>
+    setPlatforms((cur) => (cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]));
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
