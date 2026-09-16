@@ -256,7 +256,12 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((d) => (
             <Card key={d.id} className="p-0 overflow-hidden flex flex-col">
-              <DraftVideo getUrl={() => signUrl(d)} poster={d.poster_path ? posters[d.poster_path] : null} label={d.influencers?.full_name} />
+              <DraftVideo
+                getUrl={d.stream_uid ? undefined : () => signUrl(d)}
+                getStream={d.stream_uid ? () => streamSign(d) : undefined}
+                poster={d.poster_path ? posters[d.poster_path] : null}
+                label={d.influencers?.full_name}
+              />
 
               <div className="p-4 space-y-3 flex-1 flex flex-col">
                 <div className="flex items-start justify-between gap-2">
@@ -265,6 +270,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
                     <div className="text-xs text-muted-foreground truncate">
                       {d.influencers?.handle ? `@${String(d.influencers.handle).replace(/^@/, "")}` : d.file_name}
                       {d.platform ? ` · ${d.platform}` : ""}
+                      {d.stream_uid && d.stream_status === "processing" ? " · converting…" : ""}
                     </div>
                   </div>
                   <Badge
@@ -287,6 +293,11 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
                   className="h-9 w-full"
                   onClick={async () => {
                     const name = d.file_name || `${d.influencers?.full_name || "draft"}.mp4`;
+                    if (d.stream_uid) {
+                      const s = await streamSign(d);
+                      if (!s?.downloadUrl) return toast.error("Video unavailable");
+                      return downloadFile(s.downloadUrl, name);
+                    }
                     const u = await signDownloadUrl(d, name);
                     if (!u) return toast.error("Video unavailable");
                     downloadFile(u, name);
