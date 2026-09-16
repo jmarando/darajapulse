@@ -545,9 +545,29 @@ const Reports = () => {
       </Tabs>
 
       {loading && <div className="text-sm text-muted-foreground">Loading reporting data…</div>}
-      {!loading && !filtered.length && <div className="text-sm text-muted-foreground">No publications match these filters.</div>}
+      {!loading && loadError && (
+        <div className="text-sm text-destructive">
+          Reporting data could not be loaded: {loadError}{" "}
+          <Button variant="link" size="sm" className="px-1" onClick={load}>Try again</Button>
+        </div>
+      )}
+      {!loading && !loadError && !rows.length && (
+        <div className="text-sm text-muted-foreground">
+          No publications have been recorded yet for the campaigns you can access. Add posts to a campaign, then refresh metrics.
+        </div>
+      )}
+      {!loading && !loadError && !!rows.length && !filtered.length && (
+        <div className="text-sm text-muted-foreground">
+          No reporting data matches the selected filters.{" "}
+          <Button variant="link" size="sm" className="px-1" onClick={resetFilters}>Clear filters</Button>
+        </div>
+      )}
+      {!loading && lastRefreshed && (
+        <div className="text-xs text-muted-foreground">Last refreshed {lastRefreshed.toLocaleString()}</div>
+      )}
     </div>
   );
 };
+
 
 export default Reports;
