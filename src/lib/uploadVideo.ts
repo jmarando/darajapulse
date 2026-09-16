@@ -14,6 +14,31 @@ export type UploadProgress = {
   eta: number | null;
 };
 
+/** Shared progress → UploadProgress plumbing for both upload pipelines. */
+const trackProgress = (onProgress?: (p: UploadProgress) => void) => {
+  const started = Date.now();
+  let lastBytes = 0;
+  let lastAt = started;
+  let speed = 0;
+  return (uploaded: number, total: number) => {
+    const now = Date.now();
+    const dt = (now - lastAt) / 1000;
+    if (dt > 0.5) {
+      const inst = (uploaded - lastBytes) / dt;
+      speed = speed ? speed * 0.7 + inst * 0.3 : inst;
+      lastBytes = uploaded;
+      lastAt = now;
+    }
+    onProgress?.({
+      percent: total ? (uploaded / total) * 100 : 0,
+      uploaded,
+      total,
+      speed,
+      eta: speed > 0 ? Math.max(0, (total - uploaded) / speed) : null,
+    });
+  };
+};
+
 /**
  * Resumable (tus) upload straight to storage.
  *
@@ -43,10 +68,7 @@ const startUpload = ({
   onUpload: (u: tus.Upload) => void;
 }) =>
   new Promise<void>((resolve, reject) => {
-    const started = Date.now();
-    let lastBytes = 0;
-    let lastAt = started;
-    let speed = 0;
+    const report = trackProgress(onProgress);
 
     const upload = new tus.Upload(file, {
       endpoint: `${SUPABASE_URL}/storage/v1/upload/resumable`,
@@ -71,29 +93,57 @@ const startUpload = ({
         cacheControl: "31536000",
       },
       onError: (err) => reject(err),
-      onProgress: (uploaded, total) => {
-        const now = Date.now();
-        const dt = (now - lastAt) / 1000;
-        if (dt > 0.5) {
-          const inst = (uploaded - lastBytes) / dt;
-          speed = speed ? speed * 0.7 + inst * 0.3 : inst;
-          lastBytes = uploaded;
-          lastAt = now;
-        }
-        onProgress?.({
-          percent: total ? (uploaded / total) * 100 : 0,
-          uploaded,
-          total,
-          speed,
-          eta: speed > 0 ? Math.max(0, (total - uploaded) / speed) : null,
-        });
-      },
+      onProgress: report,
       onSuccess: () => resolve(),
     });
 
     onUpload(upload);
 
     // Resume an earlier attempt at the same file when one exists.
+    upload.findPreviousUploads().then((prev) => {
+      if (prev.length) upload.resumeFromPreviousUpload(prev[0]);
+      upload.start();
+    });
+  });
+
+/**
+ * Upload to Cloudflare Stream via a one-time tus URL minted by our backend
+ * (stream-upload-url). Stream converts the video, generates the thumbnail and
+ * serves it from African edge locations — no poster capture needed.
+ */
+const startStreamUpload = ({
+  uploadUrl,
+  file,
+  onProgress,
+  onUpload,
+}: {
+  uploadUrl: string;
+  file: File;
+  onProgress?: (p: UploadProgress) => void;
+  onUpload: (u: tus.Upload) => void;
+}) =>
+  new Promise<void>((resolve, reject) => {
+    const report = trackProgress(onProgress);
+
+    const upload = new tus.Upload(file, {
+      endpoint: uploadUrl,
+      retryDelays: [0, 2000, 5000, 10000, 20000, 30000],
+      // Cloudflare tus requires chunk sizes in 256KiB multiples; 64MiB keeps
+      // the number of round trips (Nairobi → edge) low without huge memory use.
+      chunkSize: 64 * 1024 * 1024,
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      metadata: {
+        filename: file.name,
+        filetype: file.type || "video/mp4",
+      },
+      onError: (err) => reject(err),
+      onProgress: report,
+      onSuccess: () => resolve(),
+    });
+
+    onUpload(upload);
+
     upload.findPreviousUploads().then((prev) => {
       if (prev.length) upload.resumeFromPreviousUpload(prev[0]);
       upload.start();
@@ -137,6 +187,27 @@ export const uploadResumable = ({
   return { promise, abort: () => current?.abort(true) };
 };
 
+/** Same contract as uploadResumable, but pointed at a pre-minted Stream URL. */
+export const uploadStream = ({
+  uploadUrl,
+  file,
+  onProgress,
+}: {
+  uploadUrl: string;
+  file: File;
+  onProgress?: (p: UploadProgress) => void;
+}): { promise: Promise<void>; abort: () => void } => {
+  let current: tus.Upload | null = null;
+  const promise = startStreamUpload({
+    uploadUrl,
+    file,
+    onProgress,
+    onUpload: (u) => {
+      current = u;
+    },
+  });
+  return { promise, abort: () => current?.abort(true) };
+};
 
 /** Grabs a still frame so review lists can show an image instead of loading video. */
 export const capturePoster = (file: File): Promise<Blob | null> =>
