@@ -456,7 +456,59 @@ const Reports = () => {
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          {/* COUNTRY BREAKDOWN — follows every other active filter */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Views and engagement by country</CardTitle></CardHeader>
+              <CardContent className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={countryGroups.map((c) => ({ name: c.label, views: Math.round(c.views), engagement: Math.round(c.engagement) }))}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="name" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
+                    <Tooltip formatter={(v: any) => fmtNum(Number(v))} /><Legend />
+                    <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="engagement" fill={C_INK} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Country breakdown</CardTitle></CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Country</TableHead><TableHead className="text-right">Creators</TableHead>
+                    <TableHead className="text-right">Deliverables</TableHead><TableHead className="text-right">Publications</TableHead>
+                    <TableHead className="text-right">Views</TableHead><TableHead className="text-right">Engagement</TableHead>
+                    <TableHead className="text-right">ER</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {countryGroups.length === 0 ? (
+                      <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">No country data for these filters</TableCell></TableRow>
+                    ) : countryGroups.map((c) => (
+                      <TableRow
+                        key={c.key}
+                        className="cursor-pointer"
+                        onClick={() => setCountry(c.key === "unknown" ? UNKNOWN : c.key)}
+                        title={`Filter reports to ${c.label}`}
+                      >
+                        <TableCell className="font-medium">{c.label}</TableCell>
+                        <TableCell className="text-right">{c.creators}</TableCell>
+                        <TableCell className="text-right">{c.deliverables}</TableCell>
+                        <TableCell className="text-right">{c.publications}</TableCell>
+                        <TableCell className="text-right">{fmtNum(c.views)}</TableCell>
+                        <TableCell className="text-right">{fmtNum(c.engagement)}</TableCell>
+                        <TableCell className="text-right">{c.er.toFixed(1)}%</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
+
 
         {/* BY INFLUENCER */}
         <TabsContent value="influencer" className="mt-4">
