@@ -163,6 +163,7 @@ const Discovery = () => {
     key: string;
     full_name: string;
     city?: string;
+    country_code?: string | null;
     bio?: string;
     niches: string[];
     verified_at?: string | null;
