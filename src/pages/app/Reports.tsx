@@ -474,7 +474,14 @@ const Reports = () => {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Country breakdown</CardTitle></CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Country breakdown</CardTitle>
+                {/* Be explicit: this is where the creator is based, not where their audience is. */}
+                <p className="text-xs text-muted-foreground mt-1">
+                  Based on the creator's own country — not audience location or the campaign's market.
+                  {unverifiedCount > 0 && ` ${fmtNum(unverifiedCount)} of ${fmtNum(filtered.length)} publications come from creators whose country is still a default or best guess, not confirmed.`}
+                </p>
+              </CardHeader>
               <CardContent className="p-0 overflow-x-auto">
                 <Table>
                   <TableHeader><TableRow>
