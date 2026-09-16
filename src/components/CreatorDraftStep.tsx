@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { UploadCloud, FileVideo, CheckCircle2, Clock, MessageSquareWarning, X } from "lucide-react";
 import { toast } from "sonner";
-import { uploadResumable, capturePoster, formatBytes, type UploadProgress } from "@/lib/uploadVideo";
+import { uploadResumable, uploadStream, capturePoster, formatBytes, type UploadProgress } from "@/lib/uploadVideo";
 
 type Draft = {
   id: string;
@@ -19,6 +19,7 @@ type Draft = {
   review_note: string | null;
   created_at: string;
   post_url: string | null;
+  stream_status?: string | null;
 };
 
 const MAX_BYTES = 900 * 1024 * 1024; // 900MB
