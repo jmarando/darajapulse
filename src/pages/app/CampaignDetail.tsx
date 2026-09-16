@@ -74,6 +74,7 @@ import { EditCreatorDialog } from "@/components/EditCreatorDialog";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
 import { buildAudience } from "@/lib/audience";
+import { useGeo } from "@/lib/geo";
 
 
 const CampaignDetail = () => {
@@ -103,6 +104,8 @@ const CampaignDetail = () => {
   const [submitting, setSubmitting] = useState(false);
   const [picked, setPicked] = useState<any>(null);
   const [rosterSearch, setRosterSearch] = useState("");
+  const [rosterCountry, setRosterCountry] = useState("__all__");
+  const { nameOf } = useGeo();
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
   const [addFee, setAddFee] = useState<string>("");
   const [addBreakdown, setAddBreakdown] = useState<Breakdown>({ items: [{ type: "video", count: 1, platforms: [...DEFAULT_PLATFORMS] }] });
@@ -605,6 +608,21 @@ const CampaignDetail = () => {
     const confirmed = ci.filter(x => ["confirmed","live","completed"].includes(x.status)).length;
     return { fees, deliv, confirmed };
   }, [ci]);
+
+  // Countries actually present on this campaign's roster, most common first.
+  const rosterCountries = useMemo(() => {
+    const counts = new Map<string, number>();
+    ci.forEach((x: any) => {
+      const k = x.influencers?.country_code || "__none__";
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k);
+  }, [ci]);
+  const ciByCountry = useMemo(
+    () => rosterCountry === "__all__" ? ci : ci.filter((x: any) => (x.influencers?.country_code || "__none__") === rosterCountry),
+    [ci, rosterCountry],
+  );
+
 
   const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
   const valOf = (m: any) => {
@@ -1715,6 +1733,21 @@ const CampaignDetail = () => {
           </div>
         </div>
 
+        {/* Filter the roster by the creator's country when the campaign spans markets. */}
+        {rosterCountries.length > 1 && (
+          <div className="px-5 pb-3 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Country</span>
+            <Button size="sm" variant={rosterCountry === "__all__" ? "default" : "outline"} onClick={() => setRosterCountry("__all__")}>
+              All ({ci.length})
+            </Button>
+            {rosterCountries.map((code) => (
+              <Button key={code} size="sm" variant={rosterCountry === code ? "default" : "outline"} onClick={() => setRosterCountry(code)}>
+                {code === "__none__" ? "Not specified" : nameOf(code)} ({ci.filter((x: any) => (x.influencers?.country_code || "__none__") === code).length})
+              </Button>
+            ))}
+          </div>
+        )}
+
         {ci.length === 0 ? (
           <div className="text-center py-14">
             <Users className="w-6 h-6 mx-auto text-muted-foreground" />
@@ -1736,7 +1769,7 @@ const CampaignDetail = () => {
                 </tr>
               </thead>
               <tbody>
-                {ci.map(x => {
+                {ciByCountry.map(x => {
                   const briefUrl = `${publicOrigin()}${slugPath}/brief/${x.brief_token}`;
                   // Personal submission link: the form pre-fills this creator's name, handle and platform.
                   const submitUrl = submissionToken ? `${publicOrigin()}/c/${submissionToken}?k=${x.brief_token}` : null;
@@ -1768,6 +1801,11 @@ const CampaignDetail = () => {
                           <div className="min-w-0">
                             <div className="font-medium truncate">{x.influencers?.full_name}</div>
                             {x.influencers?.handle && <div className="text-xs text-muted-foreground truncate">@{x.influencers.handle.replace(/^@/, "")}</div>}
+                            {(x.influencers?.city || x.influencers?.country_code) && (
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {[x.influencers?.city, x.influencers?.country_code ? nameOf(x.influencers.country_code) : ""].filter(Boolean).join(", ")}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>

@@ -10,6 +10,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, Users, Search, ShieldCheck, Link2, Pencil, ChevronDown, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, TrendingUp, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformPicker } from "@/components/PlatformPicker";
+import { Combobox } from "@/components/ui/combobox";
+import { UNKNOWN, cityItems, countryItems, matchesGeo, useGeo } from "@/lib/geo";
+
+const ALL = "__all__";
 
 // Compact formatter so big follower counts (e.g. 130,000) don't blow up a 3-col stat grid.
 const fmtCompact = (n: number) => {
@@ -34,7 +38,7 @@ const fmtAgo = (iso?: string | null) => {
 
 const PLATFORM_ICON: Record<string, any> = { tiktok: Music2, instagram: Instagram, youtube: Youtube, twitter: Twitter, facebook: Facebook };
 
-const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", phone_mpesa: "", email: "" };
+const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", country_code: "KE", city: "", phone_mpesa: "", email: "" };
 
 const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; format: (v: number) => string; onSave: (v: number) => void; step?: number }) => {
   const [editing, setEditing] = useState(false);
@@ -73,6 +77,9 @@ const Influencers = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(blankForm);
   const [sort, setSort] = useState<"recent" | "followers" | "name">("recent");
+  const [country, setCountry] = useState(ALL);
+  const [city, setCity] = useState(ALL);
+  const { countries, nameOf, citiesOf } = useGeo();
 
   const load = async () => {
     const { data } = await supabase.from("influencers").select("*").order("created_at", { ascending: false });
@@ -91,6 +98,8 @@ const Influencers = () => {
       follower_count: r.follower_count ?? 0,
       engagement_rate: r.engagement_rate ?? 0,
       region: r.region ?? "Kenya",
+      country_code: r.country_code ?? "",
+      city: r.city ?? "",
       phone_mpesa: r.phone_mpesa ?? "",
       email: r.email ?? "",
     });
@@ -101,7 +110,13 @@ const Influencers = () => {
     e.preventDefault();
     const email = String(form.email ?? "").trim().toLowerCase();
     if (!email) return toast.error("Email is required — it's how briefs, contracts and invites reach the creator.");
-    const payload = { ...form, email, follower_count: Number(form.follower_count), engagement_rate: Number(form.engagement_rate) };
+    const payload = {
+      ...form, email,
+      follower_count: Number(form.follower_count),
+      engagement_rate: Number(form.engagement_rate),
+      country_code: form.country_code || null,
+      city: form.city || null,
+    };
     if (editingId) {
       const { error } = await (supabase.from("influencers") as any).update(payload).eq("id", editingId);
       if (error) return toast.error(error.message);
@@ -128,7 +143,14 @@ const Influencers = () => {
   };
 
   const missingEmail = rows.filter(r => !r.email).length;
-  const filtered = rows.filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()))
+  // Country/city options come from the roster itself, so only real values show.
+  const usedCountries = countries.filter(c => rows.some(r => r.country_code === c.code));
+  const usedCities = [...new Set(rows
+    .filter(r => country === ALL || country === UNKNOWN ? true : r.country_code === country)
+    .map(r => r.city).filter(Boolean))] as string[];
+  const filtered = rows
+    .filter(r => matchesGeo({ country: r.country_code, city: r.city }, country, city, ALL))
+    .filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()) || (r.city ?? "").toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => {
       if (sort === "followers") return Number(b.follower_count ?? 0) - Number(a.follower_count ?? 0);
       if (sort === "name") return String(a.full_name).localeCompare(String(b.full_name));
@@ -174,7 +196,23 @@ const Influencers = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Engagement %</Label><Input type="number" step="0.1" value={form.engagement_rate} onChange={e => setForm({ ...form, engagement_rate: e.target.value })} /></div>
-                <div><Label>Region</Label><Input value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} /></div>
+                <div><Label>Region (notes)</Label><Input value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Country</Label>
+                  <Combobox className="w-full md:w-full mt-1" allValue="" value={form.country_code || ""}
+                    onChange={(v) => setForm({ ...form, country_code: v, city: "" })}
+                    placeholder="Not specified"
+                    items={countries.map(c => ({ id: c.code, label: c.name }))} />
+                </div>
+                <div>
+                  <Label>City</Label>
+                  <Combobox className="w-full md:w-full mt-1" allValue="" value={form.city || ""}
+                    onChange={(v) => setForm({ ...form, city: v })}
+                    placeholder="Not specified"
+                    items={citiesOf(form.country_code).map(c => ({ id: c, label: c }))} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -194,8 +232,12 @@ const Influencers = () => {
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Search name, handle, niche…" value={q} onChange={e => setQ(e.target.value)} />
+          <Input className="pl-9" placeholder="Search name, handle, niche, city…" value={q} onChange={e => setQ(e.target.value)} />
         </div>
+        <Combobox allValue={ALL} value={country} onChange={(v) => { setCountry(v); setCity(ALL); }}
+          placeholder="All countries" items={countryItems(usedCountries)} />
+        <Combobox allValue={ALL} value={city} onChange={setCity}
+          placeholder="All cities" items={cityItems(usedCities)} />
         <div className="flex items-center gap-1">
           {([["recent", "Recently added"], ["followers", "Followers"], ["name", "Name"]] as const).map(([k, label]) => (
             <Button key={k} size="sm" variant={sort === k ? "default" : "outline"} onClick={() => setSort(k as any)}>{label}</Button>
@@ -258,9 +300,13 @@ const Influencers = () => {
                 <div className="p-2.5 text-center min-w-0">
                   <div className="font-display text-base inline-flex items-center gap-1 justify-center max-w-full">
                     <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="truncate" title={r.region ?? ""}>{r.region ?? "—"}</span>
+                    <span className="truncate" title={[r.city, nameOf(r.country_code)].filter(Boolean).join(", ")}>
+                      {r.city || nameOf(r.country_code)}
+                    </span>
                   </div>
-                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Region</div>
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">
+                    {r.city ? nameOf(r.country_code) : "Country"}
+                  </div>
                 </div>
               </div>
 

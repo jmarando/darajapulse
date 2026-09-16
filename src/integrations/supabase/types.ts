@@ -532,6 +532,7 @@ export type Database = {
           client_id: string
           content_format: string | null
           contract_template_id: string | null
+          country_code: string | null
           created_at: string
           created_by: string | null
           donts: string[] | null
@@ -560,6 +561,7 @@ export type Database = {
           client_id: string
           content_format?: string | null
           contract_template_id?: string | null
+          country_code?: string | null
           created_at?: string
           created_by?: string | null
           donts?: string[] | null
@@ -588,6 +590,7 @@ export type Database = {
           client_id?: string
           content_format?: string | null
           contract_template_id?: string | null
+          country_code?: string | null
           created_at?: string
           created_by?: string | null
           donts?: string[] | null
@@ -636,6 +639,45 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contract_templates"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      cities: {
+        Row: {
+          country_code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          country_code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          country_code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cities_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -1308,6 +1350,30 @@ export type Database = {
           },
         ]
       }
+      countries: {
+        Row: {
+          code: string
+          created_at: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       creator_drafts: {
         Row: {
           campaign_id: string
@@ -1584,6 +1650,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           city: string | null
+          country_code: string | null
           created_at: string
           demo_source: string | null
           engagement_rate: number | null
@@ -1608,6 +1675,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
+          country_code?: string | null
           created_at?: string
           demo_source?: string | null
           engagement_rate?: number | null
@@ -1632,6 +1700,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
+          country_code?: string | null
           created_at?: string
           demo_source?: string | null
           engagement_rate?: number | null
@@ -1650,7 +1719,15 @@ export type Database = {
           verified_at?: string | null
           works_for?: string[] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "discovery_creators_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       discovery_searches: {
         Row: {
@@ -2115,6 +2192,8 @@ export type Database = {
           authenticity_score: number | null
           avatar_url: string | null
           avg_cpm_kes: number | null
+          city: string | null
+          country_code: string | null
           created_at: string
           demo_source: string | null
           demo_updated_at: string | null
@@ -2149,6 +2228,8 @@ export type Database = {
           authenticity_score?: number | null
           avatar_url?: string | null
           avg_cpm_kes?: number | null
+          city?: string | null
+          country_code?: string | null
           created_at?: string
           demo_source?: string | null
           demo_updated_at?: string | null
@@ -2183,6 +2264,8 @@ export type Database = {
           authenticity_score?: number | null
           avatar_url?: string | null
           avg_cpm_kes?: number | null
+          city?: string | null
+          country_code?: string | null
           created_at?: string
           demo_source?: string | null
           demo_updated_at?: string | null
@@ -2214,6 +2297,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "agencies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "influencers_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["code"]
           },
         ]
       }
@@ -3495,6 +3585,7 @@ export type Database = {
       reporting_publications: {
         Args: { _campaign_ids?: string[]; _from?: string; _to?: string }
         Returns: {
+          campaign_country: string
           campaign_id: string
           campaign_name: string
           campaign_status: string
@@ -3508,6 +3599,8 @@ export type Database = {
           deliverable_status: string
           deliverable_title: string
           impressions: number
+          influencer_city: string
+          influencer_country: string
           influencer_handle: string
           influencer_id: string
           influencer_name: string

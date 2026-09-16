@@ -16,9 +16,10 @@ import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import {
-  PublicationRow, byDeliverable, byInfluencer, byMonth, byPlatform, deliverableKey,
-  fmtNum, fmtShort, monthKey, monthLabel, normalizeRow, platformCounts, titleCase, totalsFor,
+  PublicationRow, byCountry, byDeliverable, byInfluencer, byMonth, byPlatform, deliverableKey,
+  fmtNum, fmtShort, monthKey, monthLabel, normalizeRow, platformCounts, rowCountry, titleCase, totalsFor,
 } from "@/lib/reporting";
+import { UNKNOWN, cityItems, countryItems, useGeo } from "@/lib/geo";
 import { buildDetailedSheets, buildSummarySheets, exportToCsv, exportToExcel, printReport } from "@/lib/reportExports";
 import DeliverableGrouping from "@/components/DeliverableGrouping";
 
@@ -78,6 +79,9 @@ const Reports = () => {
   const [contentType, setContentType] = useState(ALL);
   const [delStatus, setDelStatus] = useState(ALL);
   const [campStatus, setCampStatus] = useState(ALL);
+  const [country, setCountry] = useState(ALL);
+  const [city, setCity] = useState(ALL);
+  const { countries, nameOf } = useGeo();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [openDeliverable, setOpenDeliverable] = useState<string | null>(null);
@@ -97,6 +101,8 @@ const Reports = () => {
     if (g("type")) setContentType(g("type"));
     if (g("dstatus")) setDelStatus(g("dstatus"));
     if (g("cstatus")) setCampStatus(g("cstatus"));
+    if (g("country")) setCountry(g("country"));
+    if (g("city")) setCity(g("city"));
     if (g("from")) setFrom(g("from"));
     if (g("to")) setTo(g("to"));
     if (g("tab")) setTab(g("tab"));
@@ -149,8 +155,13 @@ const Reports = () => {
       contentTypes: [...new Set(rows.map((r) => r.deliverable_content_type).filter(Boolean))] as string[],
       delStatuses: [...new Set(rows.map((r) => r.deliverable_status).filter(Boolean))] as string[],
       campStatuses: [...new Set(rows.map((r) => r.campaign_status).filter(Boolean))] as string[],
+      // Countries/cities present in the data the user can actually see.
+      countries: countries.filter((c) => rows.some((r) => rowCountry(r) === c.code)),
+      cities: [...new Set(rows
+        .filter((r) => country === ALL || country === UNKNOWN || rowCountry(r) === country)
+        .map((r) => r.influencer_city).filter(Boolean))] as string[],
     };
-  }, [rows, client, campaign]);
+  }, [rows, client, campaign, countries, country]);
 
   const filtered = useMemo(() => rows.filter((r) => {
     if (client !== ALL && r.client_id !== client) return false;
@@ -161,17 +172,25 @@ const Reports = () => {
     if (contentType !== ALL && r.deliverable_content_type !== contentType) return false;
     if (delStatus !== ALL && r.deliverable_status !== delStatus) return false;
     if (campStatus !== ALL && r.campaign_status !== campStatus) return false;
+    if (country !== ALL) {
+      const c = rowCountry(r);
+      if (country === UNKNOWN ? !!c : c !== country) return false;
+    }
+    if (city !== ALL) {
+      if (city === UNKNOWN ? !!r.influencer_city : r.influencer_city !== city) return false;
+    }
     const at = r.posted_at ? r.posted_at.slice(0, 10) : "";
     if (from && (!at || at < from)) return false;
     if (to && (!at || at > to)) return false;
     return true;
-  }), [rows, client, campaign, creator, platform, month, contentType, delStatus, campStatus, from, to]);
+  }), [rows, client, campaign, creator, platform, month, contentType, delStatus, campStatus, country, city, from, to]);
 
   const totals = useMemo(() => totalsFor(filtered), [filtered]);
   const platforms = useMemo(() => byPlatform(filtered), [filtered]);
   const creators = useMemo(() => byInfluencer(filtered), [filtered]);
   const months = useMemo(() => byMonth(filtered), [filtered]);
   const deliverables = useMemo(() => byDeliverable(filtered), [filtered]);
+  const countryGroups = useMemo(() => byCountry(filtered, nameOf), [filtered, nameOf]);
 
   const reportName = useMemo(() => {
     const parts = ["Daraja Pulse report"];
@@ -179,12 +198,14 @@ const Reports = () => {
     else if (client !== ALL) parts.push(filtered[0]?.client_name || "");
     if (creator !== ALL) parts.push(filtered[0]?.influencer_name || "");
     if (platform !== ALL) parts.push(titleCase(platform));
+    if (country !== ALL) parts.push(country === UNKNOWN ? "No country" : nameOf(country));
+    if (city !== ALL) parts.push(city === UNKNOWN ? "No city" : city);
     if (month !== ALL) parts.push(monthLabel(month));
     return parts.filter(Boolean).join(" - ");
-  }, [campaign, client, creator, platform, month, filtered]);
+  }, [campaign, client, creator, platform, country, city, month, filtered, nameOf]);
 
   const doExport = (kind: "excel" | "csv", detail: "summary" | "detailed") => {
-    const sheets = detail === "summary" ? buildSummarySheets(filtered) : buildDetailedSheets(filtered);
+    const sheets = detail === "summary" ? buildSummarySheets(filtered, nameOf) : buildDetailedSheets(filtered, nameOf);
     if (kind === "excel") exportToExcel(sheets, reportName);
     else exportToCsv(sheets, reportName);
   };
@@ -192,6 +213,7 @@ const Reports = () => {
   const resetFilters = () => {
     setClient(ALL); setCampaign(ALL); setCreator(ALL); setPlatform(ALL);
     setMonth(ALL); setContentType(ALL); setDelStatus(ALL); setCampStatus(ALL);
+    setCountry(ALL); setCity(ALL);
     setFrom(""); setTo("");
   };
 
@@ -207,12 +229,14 @@ const Reports = () => {
     if (contentType !== ALL) next.type = contentType;
     if (delStatus !== ALL) next.dstatus = delStatus;
     if (campStatus !== ALL) next.cstatus = campStatus;
+    if (country !== ALL) next.country = country;
+    if (city !== ALL) next.city = city;
     if (from) next.from = from;
     if (to) next.to = to;
     if (tab !== "summary") next.tab = tab;
     setParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, campaign, creator, platform, month, contentType, delStatus, campStatus, from, to, tab]);
+  }, [client, campaign, creator, platform, month, contentType, delStatus, campStatus, country, city, from, to, tab]);
 
   const labelOf = (list: { id: string; label: string }[], id: string) =>
     list.find((i) => i.id === id)?.label || id;
@@ -227,10 +251,12 @@ const Reports = () => {
     if (contentType !== ALL) chips.push({ key: "type", label: `Type: ${titleCase(contentType)}`, clear: () => setContentType(ALL) });
     if (delStatus !== ALL) chips.push({ key: "dstatus", label: `Deliverable: ${titleCase(delStatus)}`, clear: () => setDelStatus(ALL) });
     if (campStatus !== ALL) chips.push({ key: "cstatus", label: `Campaign status: ${titleCase(campStatus)}`, clear: () => setCampStatus(ALL) });
+    if (country !== ALL) chips.push({ key: "country", label: `Country: ${country === UNKNOWN ? "Not specified" : nameOf(country)}`, clear: () => { setCountry(ALL); setCity(ALL); } });
+    if (city !== ALL) chips.push({ key: "city", label: `City: ${city === UNKNOWN ? "Not specified" : city}`, clear: () => setCity(ALL) });
     if (from) chips.push({ key: "from", label: `From ${from}`, clear: () => setFrom("") });
     if (to) chips.push({ key: "to", label: `To ${to}`, clear: () => setTo("") });
     return chips;
-  }, [options, client, campaign, creator, platform, month, contentType, delStatus, campStatus, from, to]);
+  }, [options, client, campaign, creator, platform, month, contentType, delStatus, campStatus, country, city, from, to, nameOf]);
 
   const monthChart = months.map((m) => ({
     month: m.key === "unknown" ? "Undated" : m.label.replace(/^(\w{3})\w* (\d{4})$/, "$1 $2").slice(0, 8),
@@ -286,6 +312,8 @@ const Reports = () => {
             <Combobox allValue={ALL} value={campaign} onChange={(v) => { setCampaign(v); setCreator(ALL); }} placeholder="All campaigns" items={options.campaigns} />
             <Combobox allValue={ALL} value={creator} onChange={setCreator} placeholder="All creators" items={options.creators} />
             <Combobox allValue={ALL} value={platform} onChange={setPlatform} placeholder="All platforms" items={options.platforms.map((p) => ({ id: p, label: titleCase(p) }))} />
+            <Combobox allValue={ALL} value={country} onChange={(v) => { setCountry(v); setCity(ALL); }} placeholder="All countries" items={countryItems(options.countries)} />
+            <Combobox allValue={ALL} value={city} onChange={setCity} placeholder="All cities" items={cityItems(options.cities)} />
             <Combobox allValue={ALL} value={month} onChange={setMonth} placeholder="All months" items={options.months.map((m) => ({ id: m, label: monthLabel(m) }))} />
             <Combobox allValue={ALL} value={contentType} onChange={setContentType} placeholder="All content types" items={options.contentTypes.map((c) => ({ id: c, label: titleCase(c) }))} />
             <Combobox allValue={ALL} value={delStatus} onChange={setDelStatus} placeholder="All deliverable statuses" items={options.delStatuses.map((c) => ({ id: c, label: titleCase(c) }))} />
@@ -428,14 +456,66 @@ const Reports = () => {
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          {/* COUNTRY BREAKDOWN — follows every other active filter */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Views and engagement by country</CardTitle></CardHeader>
+              <CardContent className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={countryGroups.map((c) => ({ name: c.label, views: Math.round(c.views), engagement: Math.round(c.engagement) }))}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="name" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
+                    <Tooltip formatter={(v: any) => fmtNum(Number(v))} /><Legend />
+                    <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="engagement" fill={C_INK} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Country breakdown</CardTitle></CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Country</TableHead><TableHead className="text-right">Creators</TableHead>
+                    <TableHead className="text-right">Deliverables</TableHead><TableHead className="text-right">Publications</TableHead>
+                    <TableHead className="text-right">Views</TableHead><TableHead className="text-right">Engagement</TableHead>
+                    <TableHead className="text-right">ER</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {countryGroups.length === 0 ? (
+                      <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">No country data for these filters</TableCell></TableRow>
+                    ) : countryGroups.map((c) => (
+                      <TableRow
+                        key={c.key}
+                        className="cursor-pointer"
+                        onClick={() => setCountry(c.key === "unknown" ? UNKNOWN : c.key)}
+                        title={`Filter reports to ${c.label}`}
+                      >
+                        <TableCell className="font-medium">{c.label}</TableCell>
+                        <TableCell className="text-right">{c.creators}</TableCell>
+                        <TableCell className="text-right">{c.deliverables}</TableCell>
+                        <TableCell className="text-right">{c.publications}</TableCell>
+                        <TableCell className="text-right">{fmtNum(c.views)}</TableCell>
+                        <TableCell className="text-right">{fmtNum(c.engagement)}</TableCell>
+                        <TableCell className="text-right">{c.er.toFixed(1)}%</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
+
 
         {/* BY INFLUENCER */}
         <TabsContent value="influencer" className="mt-4">
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Influencer</TableHead><TableHead className="text-right">Deliverables</TableHead>
+                <TableHead>Influencer</TableHead><TableHead>Location</TableHead><TableHead className="text-right">Deliverables</TableHead>
                 <TableHead className="text-right">Publications</TableHead><TableHead className="text-right">TikTok</TableHead>
                 <TableHead className="text-right">Instagram</TableHead><TableHead className="text-right">Facebook</TableHead>
                 <TableHead className="text-right">Other</TableHead><TableHead className="text-right">Views</TableHead>
@@ -452,6 +532,9 @@ const Reports = () => {
                     <>
                       <TableRow key={c.key} className="cursor-pointer" onClick={() => setOpenMonth(openMonth === c.key ? null : c.key)}>
                         <TableCell className="font-medium">{c.label}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {[c.rows[0].influencer_city, rowCountry(c.rows[0]) ? nameOf(rowCountry(c.rows[0])) : ""].filter(Boolean).join(", ") || "Not specified"}
+                        </TableCell>
                         <TableCell className="text-right">{c.deliverables}</TableCell>
                         <TableCell className="text-right">{c.publications}</TableCell>
                         <TableCell className="text-right">{pc.tiktok || 0}</TableCell>
@@ -468,6 +551,7 @@ const Reports = () => {
                       {openMonth === c.key && mrows.map((m) => (
                         <TableRow key={`${c.key}-${m.key}`} className="bg-muted/40 text-sm">
                           <TableCell className="pl-8 text-muted-foreground">{m.label}</TableCell>
+                          <TableCell />
                           <TableCell className="text-right">{m.deliverables}</TableCell>
                           <TableCell className="text-right">{m.publications}</TableCell>
                           <TableCell colSpan={4} />

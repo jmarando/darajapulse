@@ -13,6 +13,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck, Phone, Mail, MessageCircle, Tv } from "lucide-react";
 import { toast } from "sonner";
 import ShowsTab from "./ShowsTab";
+import { Combobox } from "@/components/ui/combobox";
+import { UNKNOWN, cityItems, countryItems, useGeo } from "@/lib/geo";
+
+const ALL = "__all__";
 
 const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, whatsapp: MessageCircle };
 const PLATFORMS = ["instagram", "tiktok", "youtube", "twitter", "facebook"];
@@ -27,7 +31,7 @@ const fmtCompact = (n: number) => {
 
 type Creator = {
   id: string; full_name: string; handle: string; platform: string; profile_url?: string;
-  niche?: string[]; city?: string; region?: string; follower_count: number; engagement_rate: number;
+  niche?: string[]; city?: string; region?: string; country_code?: string | null; follower_count: number; engagement_rate: number;
   bio?: string; avatar_url?: string; ai_confidence?: number; verified_at?: string | null; notes?: string;
 };
 type Contact = { id: string; creator_id: string; kind: string; value: string; label?: string; is_public: boolean };
@@ -54,6 +58,10 @@ const Discovery = () => {
   const [hasContact, setHasContact] = useState(false);
   const [contactsByCreator, setContactsByCreator] = useState<Record<string, Contact[]>>({});
   const [lookupSearching, setLookupSearching] = useState(false);
+  const [country, setCountry] = useState(ALL);
+  const [city, setCity] = useState(ALL);
+  const { countries, citiesOf, nameOf } = useGeo();
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
 
   // Matchmaker
   const [brief, setBrief] = useState({ brand: "", category: "", audience: "", platforms: [] as string[], budget_tier: "any", goal: "awareness", notes: "" });
@@ -64,9 +72,16 @@ const Discovery = () => {
   const [openCreator, setOpenCreator] = useState<Creator | null>(null);
   const [seeding, setSeeding] = useState(false);
 
+  // Country/city are applied in the database query so results stay accurate
+  // even when a market has more profiles than one page can hold.
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("discovery_creators").select("*").order("follower_count", { ascending: false }).limit(2000);
+    let query = supabase.from("discovery_creators").select("*").order("follower_count", { ascending: false }).limit(2000);
+    if (country === UNKNOWN) query = query.is("country_code", null);
+    else if (country !== ALL) query = query.eq("country_code", country);
+    if (city === UNKNOWN) query = query.is("city", null);
+    else if (city !== ALL) query = query.eq("city", city);
+    const { data, error } = await query;
     if (error) toast.error(error.message);
     setRows((data as any) ?? []);
     const { data: cs } = await supabase.from("discovery_contacts").select("*");
@@ -75,7 +90,17 @@ const Discovery = () => {
     setContactsByCreator(grouped);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [country, city]);
+
+  // City choices for the chosen country come from the recorded profiles themselves.
+  useEffect(() => {
+    (async () => {
+      let q2 = supabase.from("discovery_creators").select("city").not("city", "is", null).limit(3000);
+      if (country !== ALL && country !== UNKNOWN) q2 = q2.eq("country_code", country);
+      const { data } = await q2;
+      setCityOptions([...new Set(((data as any[]) ?? []).map((r) => r.city).filter(Boolean))] as string[]);
+    })();
+  }, [country]);
 
   const niches = useMemo(() => {
     const s = new Set<string>();
@@ -118,11 +143,13 @@ const Discovery = () => {
     });
   }, [queryMatches, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
 
-  const activeFiltersCount = [platformFilter !== "all", nicheFilter !== "all", !!minFollowers, verifiedOnly, hasContact].filter(Boolean).length;
+  const activeFiltersCount = [platformFilter !== "all", nicheFilter !== "all", !!minFollowers, verifiedOnly, hasContact, country !== ALL, city !== ALL].filter(Boolean).length;
 
   const clearDiscoveryFilters = () => {
     setPlatformFilter("all");
     setNicheFilter("all");
+    setCountry(ALL);
+    setCity(ALL);
     setMinFollowers(0);
     setVerifiedOnly(false);
     setHasContact(false);
@@ -136,6 +163,7 @@ const Discovery = () => {
     key: string;
     full_name: string;
     city?: string;
+    country_code?: string | null;
     bio?: string;
     niches: string[];
     verified_at?: string | null;
@@ -167,6 +195,7 @@ const Discovery = () => {
       const engagement_avg = eng.length ? eng.reduce((s, p) => s + Number(p.engagement_rate || 0), 0) / eng.length : 0;
       return {
         key, full_name: primary.full_name, city: profiles.find(p => p.city)?.city,
+        country_code: profiles.find(p => p.country_code)?.country_code ?? null,
         bio: profiles.find(p => p.bio)?.bio, niches,
         verified_at: profiles.find(p => p.verified_at)?.verified_at ?? null,
         ai_confidence: Math.max(...profiles.map(p => p.ai_confidence || 0)),
@@ -287,6 +316,7 @@ const Discovery = () => {
       full_name: c.full_name, handle: c.handle, primary_platform: c.platform as any,
       niche: (c.niche || []).join(", "), follower_count: c.follower_count,
       engagement_rate: c.engagement_rate, region: c.region || "Kenya",
+      country_code: c.country_code || null, city: c.city || null,
     };
     const { error } = await (supabase.from("influencers") as any).insert(payload);
     if (error) return toast.error(error.message);
@@ -447,6 +477,11 @@ const Discovery = () => {
             {niches.map(n => <SelectItem key={n} value={n} className="capitalize">{n}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Combobox className="w-[150px] md:w-[150px]" allValue={ALL} value={country}
+          onChange={(v) => { setCountry(v); setCity(ALL); }}
+          placeholder="All countries" items={countryItems(countries)} />
+        <Combobox className="w-[150px] md:w-[150px]" allValue={ALL} value={city} onChange={setCity}
+          placeholder="All cities" items={cityItems(cityOptions)} />
         <Select value={String(minFollowers)} onValueChange={v => setMinFollowers(Number(v))}>
           <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -538,7 +573,7 @@ const Discovery = () => {
                       <div className="min-w-0">
                         <p className="text-[10px] font-bold tracking-[0.22em] text-muted-foreground uppercase">Creator</p>
                         <p className="text-[11px] font-semibold text-foreground/70 mt-0.5 uppercase tracking-wider truncate">
-                          {p.city || "Kenya"}
+                          {p.city || nameOf(p.country_code)}
                         </p>
                       </div>
                     </div>
@@ -657,7 +692,10 @@ const Discovery = () => {
                 <div className="grid grid-cols-3 gap-2 text-sm">
                   <div><div className="text-xs uppercase text-muted-foreground">Followers</div><div className="font-display">{fmtCompact(openCreator.follower_count)}</div></div>
                   <div><div className="text-xs uppercase text-muted-foreground">Engagement</div><div className="font-display">{Number(openCreator.engagement_rate).toFixed(1)}%</div></div>
-                  <div><div className="text-xs uppercase text-muted-foreground">City</div><div className="font-display">{openCreator.city || "—"}</div></div>
+                  <div>
+                    <div className="text-xs uppercase text-muted-foreground">Location</div>
+                    <div className="font-display">{[openCreator.city, nameOf(openCreator.country_code)].filter(Boolean).join(", ") || "—"}</div>
+                  </div>
                 </div>
 
                 <div>

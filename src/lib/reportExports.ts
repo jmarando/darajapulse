@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import {
-  PublicationRow, byDeliverable, byInfluencer, byMonth, byPlatform,
-  platformCounts, titleCase, totalsFor,
+  PublicationRow, byCountry, byDeliverable, byInfluencer, byMonth, byPlatform,
+  platformCounts, rowCountry, titleCase, totalsFor,
 } from "@/lib/reporting";
 
 const round = (n: number) => Math.round(n || 0);
@@ -9,7 +9,11 @@ const er = (t: { engagement: number; views: number }) => (t.views ? +((t.engagem
 
 export type SheetSet = { name: string; rows: Record<string, any>[] }[];
 
-export const buildSummarySheets = (rows: PublicationRow[]): SheetSet => {
+/** `nameOf` turns a country code into its display name; defaults to the raw code. */
+export const buildSummarySheets = (
+  rows: PublicationRow[],
+  nameOf: (c: string) => string = (c) => c,
+): SheetSet => {
   const t = totalsFor(rows);
   return [
     {
@@ -44,6 +48,8 @@ export const buildSummarySheets = (rows: PublicationRow[]): SheetSet => {
         const pc = platformCounts(g.rows);
         return {
           Influencer: g.label,
+          Country: rowCountry(g.rows[0]) ? nameOf(rowCountry(g.rows[0])) : "Not specified",
+          City: g.rows[0].influencer_city || "Not specified",
           "Unique deliverables": g.deliverables,
           "Platform publications": g.publications,
           TikTok: pc.tiktok || 0, Instagram: pc.instagram || 0, Facebook: pc.facebook || 0,
@@ -52,6 +58,17 @@ export const buildSummarySheets = (rows: PublicationRow[]): SheetSet => {
           Shares: round(g.shares), Engagement: round(g.engagement), "Engagement rate %": er(g),
         };
       }),
+    },
+    {
+      name: "By country",
+      rows: byCountry(rows, nameOf).map((g) => ({
+        Country: g.label,
+        Creators: g.creators,
+        "Unique deliverables": g.deliverables,
+        "Platform publications": g.publications,
+        Views: round(g.views), Likes: round(g.likes), Comments: round(g.comments),
+        Shares: round(g.shares), Engagement: round(g.engagement), "Engagement rate %": er(g),
+      })),
     },
     {
       name: "By month",
@@ -66,14 +83,19 @@ export const buildSummarySheets = (rows: PublicationRow[]): SheetSet => {
   ];
 };
 
-export const buildDetailedSheets = (rows: PublicationRow[]): SheetSet => [
-  ...buildSummarySheets(rows),
+export const buildDetailedSheets = (
+  rows: PublicationRow[],
+  nameOf: (c: string) => string = (c) => c,
+): SheetSet => [
+  ...buildSummarySheets(rows, nameOf),
   {
     name: "Deliverables",
     rows: byDeliverable(rows).map((g) => ({
       Deliverable: g.label,
       Campaign: g.rows[0].campaign_name,
       Influencer: g.rows[0].influencer_name || "",
+      Country: rowCountry(g.rows[0]) ? nameOf(rowCountry(g.rows[0])) : "Not specified",
+      City: g.rows[0].influencer_city || "Not specified",
       "Content type": g.rows[0].deliverable_content_type || "",
       Status: g.rows[0].deliverable_status || "",
       Platforms: [...new Set(g.rows.map((r) => titleCase(r.platform)))].join(", "),
@@ -90,6 +112,8 @@ export const buildDetailedSheets = (rows: PublicationRow[]): SheetSet => [
       Campaign: r.campaign_name,
       Client: r.client_name || "",
       Influencer: r.influencer_name || "",
+      Country: rowCountry(r) ? nameOf(rowCountry(r)) : "Not specified",
+      City: r.influencer_city || "Not specified",
       Handle: r.influencer_handle || "",
       Platform: titleCase(r.platform),
       "Post URL": r.post_url || "",
