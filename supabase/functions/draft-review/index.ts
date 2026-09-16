@@ -98,6 +98,25 @@ Deno.serve(async (req) => {
 
     }
 
+    if (action === "sign") {
+      // One video at a time, on demand: signing every video on list load was slow and wasteful.
+      const draftId = String(body?.draft_id || "");
+      const download = body?.download ? String(body.download).slice(0, 200) : null;
+      if (!draftId) return json({ error: "draft_id required" }, 400);
+      const { data: draft } = await admin
+        .from("creator_drafts")
+        .select("id, file_path")
+        .eq("id", draftId)
+        .eq("campaign_id", link.campaign_id)
+        .maybeSingle();
+      if (!draft?.file_path) return json({ error: "Video unavailable" }, 404);
+      const { data: signed, error: sErr } = await admin.storage
+        .from("creator-drafts")
+        .createSignedUrl(draft.file_path, 60 * 60 * 6, download ? { download } : undefined);
+      if (sErr || !signed?.signedUrl) return json({ error: "Video unavailable" }, 400);
+      return json({ url: signed.signedUrl });
+    }
+
     // list
     const { data: campaign } = await admin
       .from("campaigns")
@@ -111,15 +130,8 @@ Deno.serve(async (req) => {
       .eq("campaign_id", link.campaign_id)
       .order("created_at", { ascending: false });
 
-    // One batched signing call instead of one request per video — much faster lists.
-    const paths = (drafts ?? []).map((d: any) => d.file_path);
-    const { data: signedList } = paths.length
-      ? await admin.storage.from("creator-drafts").createSignedUrls(paths, 60 * 60 * 6)
-      : { data: [] as any[] };
+    // Videos are signed on demand (action "sign") when someone taps play or download.
     const byPath = new Map<string, string>();
-    for (const s of (signedList ?? []) as any[]) {
-      if (s?.path && s?.signedUrl) byPath.set(s.path, s.signedUrl);
-    }
 
     // Posters are small stills; they let the list render without touching the videos.
     const posterPaths = (drafts ?? []).map((d: any) => d.poster_path).filter(Boolean);
@@ -136,7 +148,8 @@ Deno.serve(async (req) => {
       poster_path: undefined,
       creator_name: d.influencers?.full_name ?? null,
       creator_handle: d.influencers?.handle ?? null,
-      video_url: byPath.get(d.file_path) ?? null,
+      video_url: null,
+      has_video: Boolean(d.file_path),
       poster_url: d.poster_path ? byPath.get(d.poster_path) ?? null : null,
     }));
 

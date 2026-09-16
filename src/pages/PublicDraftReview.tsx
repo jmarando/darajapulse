@@ -26,6 +26,7 @@ type Draft = {
   creator_name: string | null;
   creator_handle: string | null;
   video_url: string | null;
+  has_video?: boolean;
   poster_url: string | null;
 };
 
@@ -56,6 +57,15 @@ const PublicDraftReview = () => {
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [token]);
+
+  /** Ask the server for a signed URL for one video, only when it is needed. */
+  const signOne = async (draftId: string, download?: string): Promise<string | null> => {
+    const { data: res, error: err } = await supabase.functions.invoke("draft-review", {
+      body: { token, action: "sign", draft_id: draftId, download: download ?? null },
+    });
+    if (err || (res as any)?.error || !(res as any)?.url) return null;
+    return (res as any).url as string;
+  };
 
   const decide = async (d: Draft, decision: "approved" | "changes_requested") => {
     const note = (notes[d.id] || "").trim();
@@ -131,7 +141,7 @@ const PublicDraftReview = () => {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {rows.slice(0, visible).map((d) => (
               <Card key={d.id} className="p-0 overflow-hidden flex flex-col">
-                <DraftVideo url={d.video_url} poster={d.poster_url} label={d.creator_name} />
+                <DraftVideo getUrl={() => signOne(d.id)} poster={d.poster_url} label={d.creator_name} />
 
                 <div className="p-4 space-y-3 flex-1 flex flex-col">
                   <div className="flex items-start justify-between gap-2">
@@ -161,8 +171,12 @@ const PublicDraftReview = () => {
                     variant="outline"
                     size="sm"
                     className="h-9 w-full"
-                    disabled={!d.video_url}
-                    onClick={() => downloadFile(d.video_url!, d.file_name || `${d.creator_name || "video"}.mp4`)}
+                    onClick={async () => {
+                      const name = d.file_name || `${d.creator_name || "video"}.mp4`;
+                      const u = await signOne(d.id, name);
+                      if (!u) return toast.error("Video unavailable");
+                      downloadFile(u, name);
+                    }}
                   >
                     <Download className="w-3.5 h-3.5 mr-1.5" /> Download video
                   </Button>

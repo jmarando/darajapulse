@@ -150,6 +150,12 @@ export const CreatorDraftStep = ({
             <p className="text-xs text-muted-foreground mt-1.5">
               Up to 900MB. MP4 works best{file ? ` · your file is ${formatBytes(file.size)}` : ""}.
             </p>
+            {file && (file.size > 150 * 1024 * 1024 || file.type === "video/quicktime" || /\.mov$/i.test(file.name)) && (
+              <p className="mt-2 rounded-md border border-accent/40 bg-accent/10 p-2.5 text-xs text-foreground">
+                This file is large and may take a long time on mobile data. On iPhone: Settings → Camera → Formats →
+                Most Compatible, or export at 1080p before uploading.
+              </p>
+            )}
           </div>
 
           <div>
