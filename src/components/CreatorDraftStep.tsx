@@ -274,6 +274,8 @@ export const CreatorDraftStep = ({
                   <div className="text-sm truncate">{d.file_name || "Video"}</div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(d.created_at).toLocaleDateString()} {d.platform ? `· ${d.platform}` : ""}
+                    {d.status === "pending" && d.stream_status === "processing" ? " · converting…" : ""}
+                    {d.status === "pending" && d.stream_status === "failed" ? " · conversion failed — try re-uploading" : ""}
                   </div>
                   {d.review_note && <p className="text-xs mt-1.5 rounded bg-secondary/50 p-2">{d.review_note}</p>}
                 </div>
