@@ -27,6 +27,8 @@ type Draft = {
   reviewed_at: string | null;
   created_at: string;
   post_url: string | null;
+  stream_uid?: string | null;
+  stream_status?: string | null;
   influencers?: { full_name?: string | null; handle?: string | null } | null;
 };
 
@@ -86,6 +88,13 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       .from("creator-drafts")
       .createSignedUrl(d.file_path, 60 * 60 * 6, { download: fileName });
     return s?.signedUrl ?? null;
+  };
+
+  /** Stream-hosted drafts: mint player / thumbnail / download URLs on demand. */
+  const streamSign = async (d: Draft): Promise<{ status: "processing" | "ready"; embedUrl?: string; posterUrl?: string; downloadUrl?: string } | null> => {
+    const { data: res, error } = await supabase.functions.invoke("stream-sign", { body: { draft_id: d.id } });
+    if (error || (res as any)?.error) return null;
+    return res as any;
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [campaignId]);
