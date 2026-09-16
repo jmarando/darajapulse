@@ -1715,6 +1715,21 @@ const CampaignDetail = () => {
           </div>
         </div>
 
+        {/* Filter the roster by the creator's country when the campaign spans markets. */}
+        {rosterCountries.length > 1 && (
+          <div className="px-5 pb-3 flex flex-wrap items-center gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Country</span>
+            <Button size="sm" variant={rosterCountry === "__all__" ? "default" : "outline"} onClick={() => setRosterCountry("__all__")}>
+              All ({ci.length})
+            </Button>
+            {rosterCountries.map((code) => (
+              <Button key={code} size="sm" variant={rosterCountry === code ? "default" : "outline"} onClick={() => setRosterCountry(code)}>
+                {code === "__none__" ? "Not specified" : nameOf(code)} ({ci.filter((x: any) => (x.influencers?.country_code || "__none__") === code).length})
+              </Button>
+            ))}
+          </div>
+        )}
+
         {ci.length === 0 ? (
           <div className="text-center py-14">
             <Users className="w-6 h-6 mx-auto text-muted-foreground" />
