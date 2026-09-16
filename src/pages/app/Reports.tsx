@@ -16,9 +16,10 @@ import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import {
-  PublicationRow, byDeliverable, byInfluencer, byMonth, byPlatform, deliverableKey,
-  fmtNum, fmtShort, monthKey, monthLabel, normalizeRow, platformCounts, titleCase, totalsFor,
+  PublicationRow, byCountry, byDeliverable, byInfluencer, byMonth, byPlatform, deliverableKey,
+  fmtNum, fmtShort, monthKey, monthLabel, normalizeRow, platformCounts, rowCountry, titleCase, totalsFor,
 } from "@/lib/reporting";
+import { UNKNOWN, cityItems, countryItems, useGeo } from "@/lib/geo";
 import { buildDetailedSheets, buildSummarySheets, exportToCsv, exportToExcel, printReport } from "@/lib/reportExports";
 import DeliverableGrouping from "@/components/DeliverableGrouping";
 
