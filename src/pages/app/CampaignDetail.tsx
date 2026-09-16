@@ -1751,7 +1751,7 @@ const CampaignDetail = () => {
                 </tr>
               </thead>
               <tbody>
-                {ci.map(x => {
+                {ciByCountry.map(x => {
                   const briefUrl = `${publicOrigin()}${slugPath}/brief/${x.brief_token}`;
                   // Personal submission link: the form pre-fills this creator's name, handle and platform.
                   const submitUrl = submissionToken ? `${publicOrigin()}/c/${submissionToken}?k=${x.brief_token}` : null;
@@ -1783,6 +1783,11 @@ const CampaignDetail = () => {
                           <div className="min-w-0">
                             <div className="font-medium truncate">{x.influencers?.full_name}</div>
                             {x.influencers?.handle && <div className="text-xs text-muted-foreground truncate">@{x.influencers.handle.replace(/^@/, "")}</div>}
+                            {(x.influencers?.city || x.influencers?.country_code) && (
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {[x.influencers?.city, x.influencers?.country_code ? nameOf(x.influencers.country_code) : ""].filter(Boolean).join(", ")}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
