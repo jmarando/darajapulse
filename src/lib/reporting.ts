@@ -123,7 +123,15 @@ export const byMonth = (rows: PublicationRow[]) =>
     .sort((a, b) => a.key.localeCompare(b.key));
 
 /** Country of a publication — the creator's, falling back to the campaign market. */
-export const rowCountry = (r: PublicationRow) => r.influencer_country || r.campaign_country || "";
+/**
+ * Where the creator is based. Deliberately NOT the campaign's target market and
+ * never the audience geography — a blank here means "we don't know", not Kenya.
+ */
+export const rowCountry = (r: PublicationRow) => r.influencer_country || "";
+
+/** True when the creator's country was defaulted or guessed rather than confirmed. */
+export const isUnverifiedCountry = (r: PublicationRow) =>
+  !!r.influencer_country && r.influencer_country_source !== "verified";
 
 export const byCountry = (rows: PublicationRow[], nameOf: (c: string) => string) =>
   groupBy(rows, (r) => rowCountry(r) || "unknown", (r) => (rowCountry(r) ? nameOf(rowCountry(r)) : "Not specified"));
