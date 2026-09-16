@@ -1,48 +1,61 @@
-# WhatsApp messaging for creators (Meta Cloud API, two-way)
+# Campaign Reporting & Deliverables Intelligence
 
-Add a WhatsApp channel alongside "Email creators": broadcast approved templates to a campaign roster, receive replies in an in-app inbox, and track delivery/read status.
+## What I found in the current system
 
-## The journey, end to end
+- **Posts are the only publication record** — 915 posts across 11 campaigns and 119 creators, each tied to one campaign, one creator and one platform (Instagram 438, TikTok 401, Facebook 65, Twitter 10, YouTube 1). 859 carry captions.
+- **Performance figures** live in a separate history table, one row per refresh; reporting already uses the "peak value per post" rule, which I will keep.
+- **Creator uploads** (146 videos, 70 with live links) are already the natural "one piece of content, posted in several places" record — creators recently got the option to tick several platforms for a single upload.
+- **The content calendar table is empty** (unused), so nothing needs migrating from it.
+- Same-caption-same-creator-same-campaign clusters already exist in the data (e.g. one video on TikTok + Instagram + Facebook), confirming cross-posting is real and currently counted three times.
 
-### 1. Meta setup (you, one-off — about a day plus review time)
-1. In Meta Business Suite, confirm a verified Business (Daraja Pulse). Business verification is required before you can message beyond test numbers.
-2. At developers.facebook.com, create an app of type **Business**, add the **WhatsApp** product.
-3. Create/attach a **WhatsApp Business Account (WABA)** and register a phone number (a fresh line, or an existing one migrated off the consumer app). Verify it by SMS/voice.
-4. Note four values: **Phone Number ID**, **WABA ID**, **App Secret**, and a **System User permanent access token** (Business Settings → System Users → generate token with `whatsapp_business_messaging` + `whatsapp_business_management`). Temporary tokens expire in 24h — use the permanent one.
-5. Submit **message templates** for approval (Meta requires a pre-approved template for any message you send outside a 24-hour window). Approval is usually minutes to a day.
-6. Point the app's **Webhooks → WhatsApp Business Account** at our callback URL with a verify token, and subscribe to the `messages` field. The callback URL comes from step 3 of the build below, so we deploy the function first.
+No duplicate structures will be created: creators, campaigns, posts and performance history stay exactly as they are.
 
-### 2. What we build
-- **Secrets**: `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID`, `WHATSAPP_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` (the last one generated for you).
-- **Tables**
-  - `whatsapp_templates` — mirror of approved Meta templates (name, language, body preview, variable list, status) so the UI can offer them.
-  - `whatsapp_messages` — one row per outbound/inbound message: influencer_id, campaign_id, wa_id (E.164), direction, template name, body, `wamid`, status (`queued|sent|delivered|read|failed`), error, timestamps.
-  - `whatsapp_conversations` — one row per creator number: last message at, last inbound at (drives the 24-hour free-form window), unread count.
-  - `whatsapp_opt_outs` — numbers that replied STOP; the sender always skips these.
-  - RLS: agency staff on the campaign can read/write their agency's rows; service role for the functions.
-- **Edge functions**
-  - `whatsapp-send` (JWT verified) — takes campaign + recipient list + template + variables, normalizes `phone_mpesa` to E.164 (`+254…`), skips opt-outs and invalid numbers, calls Graph API `/{phone-number-id}/messages`, writes `whatsapp_messages` rows with the returned `wamid`. Throttled in batches so we stay under Meta's per-second and daily tier limits.
-  - `whatsapp-webhook` (public, `verify_jwt = false`) — `GET` answers Meta's `hub.challenge` handshake; `POST` validates the `X-Hub-Signature-256` HMAC against the app secret, then upserts status callbacks (sent/delivered/read/failed) and stores inbound replies, auto-handling STOP/UNSTOP.
-  - `whatsapp-sync-templates` — pulls approved templates from the WABA so the picker stays current.
-- **UI**
-  - `BroadcastCreatorsDialog` gets a **WhatsApp** tab next to the email tabs: recipient count with reachable/unreachable split, template picker, variable preview per creator, send with live progress.
-  - New **Inbox** panel on the campaign page: conversation list (creator, last message, unread) and a thread view. Inside a 24-hour window since their last reply you can type free text; outside it the composer switches to template-only, with the reason shown.
-  - Per-creator card gets a WhatsApp status chip (delivered / read / replied / opted out), replacing the current plain `wa.me` link with a real send.
+## The one schema addition
 
-### 3. Ongoing behaviour
-- Sending outside 24h = template only, and each template message is billed by Meta per conversation (roughly a few US cents in Kenya).
-- Replies land in the inbox and open the 24h window automatically; unread badges surface on the campaign.
-- STOP replies opt the creator out permanently until they message again.
+A **deliverable** record (campaign + creator + title + content type + expected platforms + status + due date + notes) and a single new link column on existing posts pointing at its deliverable. Nothing else changes, so every existing page keeps working; posts without a deliverable are simply treated as a deliverable of one.
 
-## Technical notes
-- Numbers come from `influencers.phone_mpesa`, normalized to E.164 (strip non-digits, `07…` → `2547…`, keep `254…`). Rows that don't normalize are shown as unreachable rather than silently dropped.
-- Graph API v21.0, same version already used by the Facebook/Instagram functions.
-- Webhook must return 200 fast; signature verification uses the raw body before JSON parse.
-- `supabase/config.toml` gets `verify_jwt = false` for `whatsapp-webhook` only.
+Approved creator uploads become deliverables automatically, and their live links attach to them.
+
+## How posts get grouped
+
+A backfill and an ongoing matcher group posts into one deliverable only when they agree on: same campaign, same creator, near-identical caption (normalised, ignoring punctuation, hashtags and emoji), posted within a short window of each other, and different platforms. Two posts on the same platform are never merged. Anything that is a near-miss is offered as a **suggestion** the user confirms or dismisses — never merged silently. Manual link/unlink is always available.
+
+## Counting rules
+
+- Unique deliverables = distinct deliverable groups (an ungrouped post counts as one).
+- Platform publications = post count.
+- Consolidated performance = sum of each platform post's peak figures.
+- Platform breakdown = same figures split by platform, plus how many distinct deliverables that platform represents.
+- Engagement = likes + comments + shares + saves; rate = engagement ÷ views.
+
+## The Reporting section
+
+New **Reports** item in the main navigation. Top bar: client, campaign, creator, platform, content type, deliverable status, month and custom date range — all combinable.
+
+Summary cards: Unique Deliverables, Platform Publications, Views, Engagement, Likes, Comments.
+
+Tabs:
+1. **Summary** — campaign header, totals, platform and creator breakdown, monthly views/engagement trend charts.
+2. **By Influencer** — per creator: deliverables, publications, per-platform publication counts, totals, engagement rate, expandable monthly rows.
+3. **By Platform** — publications, deliverables represented, totals, engagement rate, comparison chart.
+4. **By Month** — month rows with deliverables/publications/totals, drill down month → creator → deliverable → publication.
+5. **Deliverables register** — title, creator, platforms, publication count, consolidated figures, status; row opens the linked publications with manual link/unlink and grouping suggestions.
+6. **Detailed posts** — every publication with its own figures and link.
+
+## Exports
+
+Excel, CSV and print/PDF, all respecting the active filters, in both summary and detailed form (detailed lists every deliverable with its linked publications).
 
 ## Build order
-1. Migration for the four tables + RLS/grants.
-2. Deploy `whatsapp-webhook`, give you the callback URL and verify token for the Meta dashboard.
-3. Collect the Meta secrets once your app exists.
-4. `whatsapp-send` + template sync, then the UI tab and inbox.
-5. Test send to your own number before broadcasting to the roster.
+
+1. Deliverable record, link column, access rules, backfill of existing posts into deliverables.
+2. Reporting page, filters, summary cards, summary tab.
+3. Influencer, platform and monthly tabs with charts and drill-down.
+4. Exports.
+5. Grouping suggestions plus manual link/unlink tools.
+
+## Assumptions and limits
+
+- Grouping relies on caption and timing similarity; we do not compare the actual video files, so odd cases are surfaced as suggestions rather than auto-merged.
+- Reach, saves and clicks appear only where the platform supplies them; estimated values stay labelled as today.
+- Monthly grouping uses each post's publication date; performance is the latest known peak, not a per-month delta, unless a date range is applied.
