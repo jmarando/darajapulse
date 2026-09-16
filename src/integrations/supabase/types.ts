@@ -3342,6 +3342,10 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      detach_post_to_own_deliverable: {
+        Args: { _post_id: string }
+        Returns: string
+      }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enforce_billing_status: { Args: never; Returns: undefined }
       enqueue_email: {
@@ -3462,6 +3466,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      merge_posts_into_deliverable: {
+        Args: { _post_ids: string[]; _target_deliverable_id?: string }
+        Returns: string
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -3478,6 +3486,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      refresh_deliverable_suggestions: {
+        Args: { _campaign_id: string }
+        Returns: number
       }
       render_contract: { Args: { _ci_id: string }; Returns: Json }
       reporting_publications: {
