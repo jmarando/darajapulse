@@ -13,6 +13,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck, Phone, Mail, MessageCircle, Tv } from "lucide-react";
 import { toast } from "sonner";
 import ShowsTab from "./ShowsTab";
+import { Combobox } from "@/components/ui/combobox";
+import { UNKNOWN, cityItems, countryItems, useGeo } from "@/lib/geo";
+
+const ALL = "__all__";
 
 const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, whatsapp: MessageCircle };
 const PLATFORMS = ["instagram", "tiktok", "youtube", "twitter", "facebook"];
@@ -27,7 +31,7 @@ const fmtCompact = (n: number) => {
 
 type Creator = {
   id: string; full_name: string; handle: string; platform: string; profile_url?: string;
-  niche?: string[]; city?: string; region?: string; follower_count: number; engagement_rate: number;
+  niche?: string[]; city?: string; region?: string; country_code?: string | null; follower_count: number; engagement_rate: number;
   bio?: string; avatar_url?: string; ai_confidence?: number; verified_at?: string | null; notes?: string;
 };
 type Contact = { id: string; creator_id: string; kind: string; value: string; label?: string; is_public: boolean };
