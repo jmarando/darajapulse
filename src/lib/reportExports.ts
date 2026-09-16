@@ -58,6 +58,17 @@ export const buildSummarySheets = (
       }),
     },
     {
+      name: "By country",
+      rows: byCountry(rows, nameOf).map((g) => ({
+        Country: g.label,
+        Creators: g.creators,
+        "Unique deliverables": g.deliverables,
+        "Platform publications": g.publications,
+        Views: round(g.views), Likes: round(g.likes), Comments: round(g.comments),
+        Shares: round(g.shares), Engagement: round(g.engagement), "Engagement rate %": er(g),
+      })),
+    },
+    {
       name: "By month",
       rows: byMonth(rows).map((g) => ({
         Month: g.label,
