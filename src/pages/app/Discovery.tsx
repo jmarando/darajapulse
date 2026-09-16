@@ -690,7 +690,10 @@ const Discovery = () => {
                 <div className="grid grid-cols-3 gap-2 text-sm">
                   <div><div className="text-xs uppercase text-muted-foreground">Followers</div><div className="font-display">{fmtCompact(openCreator.follower_count)}</div></div>
                   <div><div className="text-xs uppercase text-muted-foreground">Engagement</div><div className="font-display">{Number(openCreator.engagement_rate).toFixed(1)}%</div></div>
-                  <div><div className="text-xs uppercase text-muted-foreground">City</div><div className="font-display">{openCreator.city || "—"}</div></div>
+                  <div>
+                    <div className="text-xs uppercase text-muted-foreground">Location</div>
+                    <div className="font-display">{[openCreator.city, nameOf(openCreator.country_code)].filter(Boolean).join(", ") || "—"}</div>
+                  </div>
                 </div>
 
                 <div>
