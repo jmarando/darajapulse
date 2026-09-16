@@ -18,6 +18,8 @@ export type PublicationRow = {
   influencer_handle: string | null;
   influencer_country: string | null;
   influencer_city: string | null;
+  /** How the creator's country was set: defaulted | inferred_campaign | imported | verified. */
+  influencer_country_source: string | null;
   platform: string;
   post_url: string | null;
   caption: string | null;
