@@ -22,9 +22,18 @@ Deno.serve(async (req) => {
   const action = String((body as any)?.action ?? "check");
 
   if (action === "check") {
+    // Raw calls to separate "bad token" from "token lacks Stream access".
+    const raw = async (url: string) => {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${Deno.env.get("CLOUDFLARE_STREAM_TOKEN") ?? ""}` } });
+      let data: any = null;
+      try { data = await res.json(); } catch { /* non-JSON */ }
+      return { status: res.status, errors: data?.errors ?? null, valid: data?.result?.status ?? null };
+    };
+    const verify = await raw("https://api.cloudflare.com/client/v4/user/tokens/verify");
     const list = await streamApi("/stream?per_page=1");
     const hook = await streamApi("/stream/webhook");
     return json({
+      tokenVerify: verify,
       tokenWorks: list.ok,
       listError: list.ok ? null : list.data?.errors ?? list.status,
       webhook: hook.ok ? hook.data?.result : hook.data?.errors ?? hook.status,
