@@ -80,6 +80,14 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     return s.signedUrl;
   };
 
+  /** Separate signature that asks storage to send the file as an attachment. */
+  const signDownloadUrl = async (d: Draft, fileName: string): Promise<string | null> => {
+    const { data: s } = await supabase.storage
+      .from("creator-drafts")
+      .createSignedUrl(d.file_path, 60 * 60 * 6, { download: fileName });
+    return s?.signedUrl ?? null;
+  };
+
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [campaignId]);
 
 
@@ -269,9 +277,10 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
                   size="sm"
                   className="h-9 w-full"
                   onClick={async () => {
-                    const u = await signUrl(d);
+                    const name = d.file_name || `${d.influencers?.full_name || "draft"}.mp4`;
+                    const u = await signDownloadUrl(d, name);
                     if (!u) return toast.error("Video unavailable");
-                    downloadFile(u, d.file_name || `${d.influencers?.full_name || "draft"}.mp4`);
+                    downloadFile(u, name);
                   }}
                 >
                   <Download className="w-3.5 h-3.5 mr-1.5" /> Download video
