@@ -251,6 +251,8 @@ const Reports = () => {
     if (contentType !== ALL) chips.push({ key: "type", label: `Type: ${titleCase(contentType)}`, clear: () => setContentType(ALL) });
     if (delStatus !== ALL) chips.push({ key: "dstatus", label: `Deliverable: ${titleCase(delStatus)}`, clear: () => setDelStatus(ALL) });
     if (campStatus !== ALL) chips.push({ key: "cstatus", label: `Campaign status: ${titleCase(campStatus)}`, clear: () => setCampStatus(ALL) });
+    if (country !== ALL) chips.push({ key: "country", label: `Country: ${country === UNKNOWN ? "Not specified" : nameOf(country)}`, clear: () => { setCountry(ALL); setCity(ALL); } });
+    if (city !== ALL) chips.push({ key: "city", label: `City: ${city === UNKNOWN ? "Not specified" : city}`, clear: () => setCity(ALL) });
     if (from) chips.push({ key: "from", label: `From ${from}`, clear: () => setFrom("") });
     if (to) chips.push({ key: "to", label: `To ${to}`, clear: () => setTo("") });
     return chips;
