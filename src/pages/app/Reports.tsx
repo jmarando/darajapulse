@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
-import { Download, FileSpreadsheet, Printer, RefreshCw, ChevronRight, Layers } from "lucide-react";
+import { Download, FileSpreadsheet, Printer, RefreshCw, ChevronRight, Layers, ArrowUpRight, ExternalLink, X } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -22,15 +24,46 @@ import DeliverableGrouping from "@/components/DeliverableGrouping";
 
 const ALL = "__all__";
 
-const Stat = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
-  <Card>
-    <CardContent className="p-4">
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-      {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
-    </CardContent>
-  </Card>
-);
+/** Chart palette drawn from the app's own tokens — accent, ink, amber highlight. */
+const C_ACCENT = "hsl(var(--accent))";
+const C_INK = "hsl(var(--primary))";
+const C_HIGHLIGHT = "hsl(var(--highlight))";
+
+const Stat = ({ label, value, hint, onClick, to }: {
+  label: string; value: string; hint?: string; onClick?: () => void; to?: string;
+}) => {
+  const interactive = !!onClick;
+  return (
+    <Card
+      {...(interactive
+        ? {
+            role: "button" as const,
+            tabIndex: 0,
+            onClick,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); }
+            },
+            "aria-label": `${label} — ${value}. ${to || "Open details"}`,
+            title: to,
+          }
+        : {})}
+      className={
+        interactive
+          ? "cursor-pointer transition-[box-shadow,transform] duration-150 hover:shadow-soft active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          : undefined
+      }
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-[10px] uppercase tracking-widest text-accent font-medium">{label}</div>
+          {interactive && <ArrowUpRight className="w-3.5 h-3.5 text-accent shrink-0" aria-hidden />}
+        </div>
+        <div className="text-2xl font-semibold mt-1 tabular-nums">{value}</div>
+        {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
+      </CardContent>
+    </Card>
+  );
+};
 
 const Reports = () => {
   const [rows, setRows] = useState<PublicationRow[]>([]);
@@ -49,6 +82,26 @@ const Reports = () => {
   const [to, setTo] = useState("");
   const [openDeliverable, setOpenDeliverable] = useState<string | null>(null);
   const [openMonth, setOpenMonth] = useState<string | null>(null);
+  const [tab, setTab] = useState("summary");
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+
+  // Read shareable filter state from the URL once on mount.
+  useEffect(() => {
+    const g = (k: string) => params.get(k) || "";
+    if (g("client")) setClient(g("client"));
+    if (g("campaign")) setCampaign(g("campaign"));
+    if (g("creator")) setCreator(g("creator"));
+    if (g("platform")) setPlatform(g("platform"));
+    if (g("month")) setMonth(g("month"));
+    if (g("type")) setContentType(g("type"));
+    if (g("dstatus")) setDelStatus(g("dstatus"));
+    if (g("cstatus")) setCampStatus(g("cstatus"));
+    if (g("from")) setFrom(g("from"));
+    if (g("to")) setTo(g("to"));
+    if (g("tab")) setTab(g("tab"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -142,17 +195,42 @@ const Reports = () => {
     setFrom(""); setTo("");
   };
 
-  const Picker = ({ value, onChange, placeholder, items }: {
-    value: string; onChange: (v: string) => void; placeholder: string; items: { id: string; label: string }[];
-  }) => (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-9 w-full md:w-[190px]"><SelectValue placeholder={placeholder} /></SelectTrigger>
-      <SelectContent className="max-h-72">
-        <SelectItem value={ALL}>{placeholder}</SelectItem>
-        {items.map((i) => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
-      </SelectContent>
-    </Select>
-  );
+  // Keep the URL in step with the filters so reports can be shared and
+  // so drill-through links can carry context back.
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    if (client !== ALL) next.client = client;
+    if (campaign !== ALL) next.campaign = campaign;
+    if (creator !== ALL) next.creator = creator;
+    if (platform !== ALL) next.platform = platform;
+    if (month !== ALL) next.month = month;
+    if (contentType !== ALL) next.type = contentType;
+    if (delStatus !== ALL) next.dstatus = delStatus;
+    if (campStatus !== ALL) next.cstatus = campStatus;
+    if (from) next.from = from;
+    if (to) next.to = to;
+    if (tab !== "summary") next.tab = tab;
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client, campaign, creator, platform, month, contentType, delStatus, campStatus, from, to, tab]);
+
+  const labelOf = (list: { id: string; label: string }[], id: string) =>
+    list.find((i) => i.id === id)?.label || id;
+
+  const activeChips = useMemo(() => {
+    const chips: { key: string; label: string; clear: () => void }[] = [];
+    if (client !== ALL) chips.push({ key: "client", label: `Client: ${labelOf(options.clients, client)}`, clear: () => setClient(ALL) });
+    if (campaign !== ALL) chips.push({ key: "campaign", label: `Campaign: ${labelOf(options.campaigns, campaign)}`, clear: () => setCampaign(ALL) });
+    if (creator !== ALL) chips.push({ key: "creator", label: `Creator: ${labelOf(options.creators, creator)}`, clear: () => setCreator(ALL) });
+    if (platform !== ALL) chips.push({ key: "platform", label: `Platform: ${titleCase(platform)}`, clear: () => setPlatform(ALL) });
+    if (month !== ALL) chips.push({ key: "month", label: `Month: ${monthLabel(month)}`, clear: () => setMonth(ALL) });
+    if (contentType !== ALL) chips.push({ key: "type", label: `Type: ${titleCase(contentType)}`, clear: () => setContentType(ALL) });
+    if (delStatus !== ALL) chips.push({ key: "dstatus", label: `Deliverable: ${titleCase(delStatus)}`, clear: () => setDelStatus(ALL) });
+    if (campStatus !== ALL) chips.push({ key: "cstatus", label: `Campaign status: ${titleCase(campStatus)}`, clear: () => setCampStatus(ALL) });
+    if (from) chips.push({ key: "from", label: `From ${from}`, clear: () => setFrom("") });
+    if (to) chips.push({ key: "to", label: `To ${to}`, clear: () => setTo("") });
+    return chips;
+  }, [options, client, campaign, creator, platform, month, contentType, delStatus, campStatus, from, to]);
 
   const monthChart = months.map((m) => ({
     month: m.key === "unknown" ? "Undated" : m.label.replace(/^(\w{3})\w* (\d{4})$/, "$1 $2").slice(0, 8),
@@ -202,34 +280,72 @@ const Reports = () => {
       </div>
 
       <Card className="print:hidden">
-        <CardContent className="p-4 flex flex-wrap gap-2 items-center">
-          <Picker value={client} onChange={(v) => { setClient(v); setCampaign(ALL); setCreator(ALL); }} placeholder="All clients" items={options.clients} />
-          <Picker value={campaign} onChange={(v) => { setCampaign(v); setCreator(ALL); }} placeholder="All campaigns" items={options.campaigns} />
-          <Picker value={creator} onChange={setCreator} placeholder="All creators" items={options.creators} />
-          <Picker value={platform} onChange={setPlatform} placeholder="All platforms" items={options.platforms.map((p) => ({ id: p, label: titleCase(p) }))} />
-          <Picker value={month} onChange={setMonth} placeholder="All months" items={options.months.map((m) => ({ id: m, label: monthLabel(m) }))} />
-          <Picker value={contentType} onChange={setContentType} placeholder="All content types" items={options.contentTypes.map((c) => ({ id: c, label: titleCase(c) }))} />
-          <Picker value={delStatus} onChange={setDelStatus} placeholder="All deliverable statuses" items={options.delStatuses.map((c) => ({ id: c, label: titleCase(c) }))} />
-          <Picker value={campStatus} onChange={setCampStatus} placeholder="All campaign statuses" items={options.campStatuses.map((c) => ({ id: c, label: titleCase(c) }))} />
-          <div className="flex items-center gap-2">
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-[150px]" />
-            <span className="text-muted-foreground text-sm">to</span>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-[150px]" />
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-wrap gap-2 items-center">
+            <Combobox allValue={ALL} value={client} onChange={(v) => { setClient(v); setCampaign(ALL); setCreator(ALL); }} placeholder="All clients" items={options.clients} />
+            <Combobox allValue={ALL} value={campaign} onChange={(v) => { setCampaign(v); setCreator(ALL); }} placeholder="All campaigns" items={options.campaigns} />
+            <Combobox allValue={ALL} value={creator} onChange={setCreator} placeholder="All creators" items={options.creators} />
+            <Combobox allValue={ALL} value={platform} onChange={setPlatform} placeholder="All platforms" items={options.platforms.map((p) => ({ id: p, label: titleCase(p) }))} />
+            <Combobox allValue={ALL} value={month} onChange={setMonth} placeholder="All months" items={options.months.map((m) => ({ id: m, label: monthLabel(m) }))} />
+            <Combobox allValue={ALL} value={contentType} onChange={setContentType} placeholder="All content types" items={options.contentTypes.map((c) => ({ id: c, label: titleCase(c) }))} />
+            <Combobox allValue={ALL} value={delStatus} onChange={setDelStatus} placeholder="All deliverable statuses" items={options.delStatuses.map((c) => ({ id: c, label: titleCase(c) }))} />
+            <Combobox allValue={ALL} value={campStatus} onChange={setCampStatus} placeholder="All campaign statuses" items={options.campStatuses.map((c) => ({ id: c, label: titleCase(c) }))} />
+            <div className="flex items-center gap-2">
+              <Input type="date" aria-label="From date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-[150px]" />
+              <span className="text-muted-foreground text-sm">to</span>
+              <Input type="date" aria-label="To date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-[150px]" />
+            </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={resetFilters}>Clear</Button>
+          {!!activeChips.length && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Active filters</span>
+              {activeChips.map((c) => (
+                <button
+                  key={c.key}
+                  onClick={c.clear}
+                  aria-label={`Remove filter ${c.label}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-2.5 py-1 text-xs hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="max-w-[220px] truncate">{c.label}</span>
+                  <X className="w-3 h-3" />
+                </button>
+              ))}
+              <Button variant="ghost" size="sm" onClick={resetFilters}>Clear all</Button>
+              {campaign !== ALL && (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/app/campaigns/${campaign}`)}>
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Open campaign
+                </Button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Stat label="Unique deliverables" value={fmtNum(totals.deliverables)} hint={`${totals.creators} creators`} />
-        <Stat label="Platform publications" value={fmtNum(totals.publications)} hint="one per platform post" />
-        <Stat label="Total views" value={fmtShort(totals.views)} hint={fmtNum(totals.views)} />
-        <Stat label="Total engagement" value={fmtShort(totals.engagement)} hint={`${totals.er.toFixed(1)}% rate`} />
-        <Stat label="Total likes" value={fmtShort(totals.likes)} />
-        <Stat label="Total comments" value={fmtShort(totals.comments)} />
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}><CardContent className="p-4 space-y-2">
+              <Skeleton className="h-3 w-20" /><Skeleton className="h-7 w-16" /><Skeleton className="h-3 w-14" />
+            </CardContent></Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Stat label="Unique deliverables" value={fmtNum(totals.deliverables)} hint={`${totals.creators} creators`}
+            to="Deliverables register" onClick={() => setTab("deliverables")} />
+          <Stat label="Platform publications" value={fmtNum(totals.publications)} hint="one per platform post"
+            to={campaign !== ALL ? "Campaign submissions" : "Detailed posts"}
+            onClick={() => (campaign !== ALL ? navigate(`/app/campaigns/${campaign}?tab=submissions`) : setTab("posts"))} />
+          <Stat label="Total views" value={fmtShort(totals.views)} hint={fmtNum(totals.views)}
+            to="Platform breakdown" onClick={() => setTab("platform")} />
+          <Stat label="Total engagement" value={fmtShort(totals.engagement)} hint={`${totals.er.toFixed(1)}% rate`}
+            to="Creator breakdown" onClick={() => setTab("influencer")} />
+          <Stat label="Total likes" value={fmtShort(totals.likes)} />
+          <Stat label="Total comments" value={fmtShort(totals.comments)} />
+        </div>
+      )}
 
-      <Tabs defaultValue="summary">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="print:hidden flex-wrap h-auto">
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="influencer">By influencer</TabsTrigger>
@@ -251,7 +367,7 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} />
-                    <Line type="monotone" dataKey="views" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="views" stroke={C_ACCENT} strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -264,7 +380,7 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} />
-                    <Line type="monotone" dataKey="engagement" stroke="hsl(var(--accent-foreground))" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="engagement" stroke={C_HIGHLIGHT} strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -277,8 +393,8 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="name" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} /><Legend />
-                    <Bar dataKey="views" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="engagement" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="engagement" fill={C_INK} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -291,8 +407,8 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} allowDecimals={false} />
                     <Tooltip /><Legend />
-                    <Bar dataKey="deliverables" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="publications" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="deliverables" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="publications" fill={C_INK} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -307,7 +423,7 @@ const Reports = () => {
                   <XAxis dataKey="name" fontSize={11} interval={0} angle={-25} textAnchor="end" height={60} />
                   <YAxis fontSize={11} tickFormatter={fmtShort} />
                   <Tooltip formatter={(v: any) => fmtNum(Number(v))} />
-                  <Bar dataKey="views" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
