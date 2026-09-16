@@ -256,7 +256,7 @@ const Reports = () => {
     if (from) chips.push({ key: "from", label: `From ${from}`, clear: () => setFrom("") });
     if (to) chips.push({ key: "to", label: `To ${to}`, clear: () => setTo("") });
     return chips;
-  }, [options, client, campaign, creator, platform, month, contentType, delStatus, campStatus, from, to]);
+  }, [options, client, campaign, creator, platform, month, contentType, delStatus, campStatus, country, city, from, to, nameOf]);
 
   const monthChart = months.map((m) => ({
     month: m.key === "unknown" ? "Undated" : m.label.replace(/^(\w{3})\w* (\d{4})$/, "$1 $2").slice(0, 8),
