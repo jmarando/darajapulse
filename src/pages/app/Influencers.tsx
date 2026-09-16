@@ -10,6 +10,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, Users, Search, ShieldCheck, Link2, Pencil, ChevronDown, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, TrendingUp, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformPicker } from "@/components/PlatformPicker";
+import { Combobox } from "@/components/ui/combobox";
+import { UNKNOWN, cityItems, countryItems, matchesGeo, useGeo } from "@/lib/geo";
+
+const ALL = "__all__";
 
 // Compact formatter so big follower counts (e.g. 130,000) don't blow up a 3-col stat grid.
 const fmtCompact = (n: number) => {
@@ -34,7 +38,7 @@ const fmtAgo = (iso?: string | null) => {
 
 const PLATFORM_ICON: Record<string, any> = { tiktok: Music2, instagram: Instagram, youtube: Youtube, twitter: Twitter, facebook: Facebook };
 
-const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", phone_mpesa: "", email: "" };
+const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", country_code: "KE", city: "", phone_mpesa: "", email: "" };
 
 const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; format: (v: number) => string; onSave: (v: number) => void; step?: number }) => {
   const [editing, setEditing] = useState(false);
