@@ -196,7 +196,23 @@ const Influencers = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Engagement %</Label><Input type="number" step="0.1" value={form.engagement_rate} onChange={e => setForm({ ...form, engagement_rate: e.target.value })} /></div>
-                <div><Label>Region</Label><Input value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} /></div>
+                <div><Label>Region (notes)</Label><Input value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Country</Label>
+                  <Combobox className="w-full md:w-full mt-1" allValue="" value={form.country_code || ""}
+                    onChange={(v) => setForm({ ...form, country_code: v, city: "" })}
+                    placeholder="Not specified"
+                    items={countries.map(c => ({ id: c.code, label: c.name }))} />
+                </div>
+                <div>
+                  <Label>City</Label>
+                  <Combobox className="w-full md:w-full mt-1" allValue="" value={form.city || ""}
+                    onChange={(v) => setForm({ ...form, city: v })}
+                    placeholder="Not specified"
+                    items={citiesOf(form.country_code).map(c => ({ id: c, label: c }))} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -216,8 +232,12 @@ const Influencers = () => {
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Search name, handle, niche…" value={q} onChange={e => setQ(e.target.value)} />
+          <Input className="pl-9" placeholder="Search name, handle, niche, city…" value={q} onChange={e => setQ(e.target.value)} />
         </div>
+        <Combobox allValue={ALL} value={country} onChange={(v) => { setCountry(v); setCity(ALL); }}
+          placeholder="All countries" items={countryItems(usedCountries)} />
+        <Combobox allValue={ALL} value={city} onChange={setCity}
+          placeholder="All cities" items={cityItems(usedCities)} />
         <div className="flex items-center gap-1">
           {([["recent", "Recently added"], ["followers", "Followers"], ["name", "Name"]] as const).map(([k, label]) => (
             <Button key={k} size="sm" variant={sort === k ? "default" : "outline"} onClick={() => setSort(k as any)}>{label}</Button>
