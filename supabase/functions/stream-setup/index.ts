@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       });
       let data: any = null;
       try { data = await res.json(); } catch { /* ignore */ }
-      return { status: res.status, errors: data?.errors ?? null };
+      return { status: res.status, errors: data?.errors ?? null, result: data?.result ?? null };
     };
     const acc = accountId() ?? "";
     return json({
