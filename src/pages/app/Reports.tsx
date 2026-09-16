@@ -190,6 +190,7 @@ const Reports = () => {
   const creators = useMemo(() => byInfluencer(filtered), [filtered]);
   const months = useMemo(() => byMonth(filtered), [filtered]);
   const deliverables = useMemo(() => byDeliverable(filtered), [filtered]);
+  const countryGroups = useMemo(() => byCountry(filtered, nameOf), [filtered, nameOf]);
 
   const reportName = useMemo(() => {
     const parts = ["Daraja Pulse report"];
@@ -197,9 +198,11 @@ const Reports = () => {
     else if (client !== ALL) parts.push(filtered[0]?.client_name || "");
     if (creator !== ALL) parts.push(filtered[0]?.influencer_name || "");
     if (platform !== ALL) parts.push(titleCase(platform));
+    if (country !== ALL) parts.push(country === UNKNOWN ? "No country" : nameOf(country));
+    if (city !== ALL) parts.push(city === UNKNOWN ? "No city" : city);
     if (month !== ALL) parts.push(monthLabel(month));
     return parts.filter(Boolean).join(" - ");
-  }, [campaign, client, creator, platform, month, filtered]);
+  }, [campaign, client, creator, platform, country, city, month, filtered, nameOf]);
 
   const doExport = (kind: "excel" | "csv", detail: "summary" | "detailed") => {
     const sheets = detail === "summary" ? buildSummarySheets(filtered) : buildDetailedSheets(filtered);
