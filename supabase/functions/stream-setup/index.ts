@@ -58,9 +58,13 @@ Deno.serve(async (req) => {
       });
       let data: any = null;
       try { data = await res.json(); } catch { /* ignore */ }
-      return { status: res.status, errors: data?.errors ?? null };
+      return { status: res.status, errors: data?.errors ?? null, result: data?.result ?? null };
     };
     const acc = accountId() ?? "";
+    const verify = await raw(`/accounts/${acc}/tokens/verify`);
+    const tokenId = (verify.result as any)?.id ?? null;
+    const detail = tokenId ? await raw(`/accounts/${acc}/tokens/${tokenId}`) : null;
+    const subs = await raw(`/accounts/${acc}/subscriptions`);
     return json({
       tokenShape: {
         length: tok.length,
@@ -68,11 +72,12 @@ Deno.serve(async (req) => {
         hasWhitespace: /\s/.test(tok),
         trimmedDiffers: tok.trim().length !== tok.length,
       },
-      accountDetails: await raw(`/accounts/${acc}`),
-      accountSubscriptions: await raw(`/accounts/${acc}/subscriptions`),
+      tokenId,
+      tokenName: (detail?.result as any)?.name ?? null,
+      tokenPolicies: (detail?.result as any)?.policies ?? detail?.errors ?? null,
+      subscriptions: (subs.result ?? []).map((s: any) => s?.rate_plan?.id ?? s?.product?.name ?? null),
       streamList: await raw(`/accounts/${acc}/stream?per_page=1`),
       streamKeys: await raw(`/accounts/${acc}/stream/keys`),
-      accountTokensVerify: await raw(`/accounts/${acc}/tokens/verify`),
     });
   }
 
