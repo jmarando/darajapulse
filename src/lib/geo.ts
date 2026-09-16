@@ -64,6 +64,7 @@ export const matchesGeo = (
   city: string,
   all: string,
 ) => {
+  // UNKNOWN means "no value recorded".
   if (country !== all) {
     if (country === UNKNOWN ? !!rec.country : rec.country !== country) return false;
   }
