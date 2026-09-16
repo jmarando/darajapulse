@@ -130,15 +130,8 @@ Deno.serve(async (req) => {
       .eq("campaign_id", link.campaign_id)
       .order("created_at", { ascending: false });
 
-    // One batched signing call instead of one request per video — much faster lists.
-    const paths = (drafts ?? []).map((d: any) => d.file_path);
-    const { data: signedList } = paths.length
-      ? await admin.storage.from("creator-drafts").createSignedUrls(paths, 60 * 60 * 6)
-      : { data: [] as any[] };
+    // Videos are signed on demand (action "sign") when someone taps play or download.
     const byPath = new Map<string, string>();
-    for (const s of (signedList ?? []) as any[]) {
-      if (s?.path && s?.signedUrl) byPath.set(s.path, s.signedUrl);
-    }
 
     // Posters are small stills; they let the list render without touching the videos.
     const posterPaths = (drafts ?? []).map((d: any) => d.poster_path).filter(Boolean);
