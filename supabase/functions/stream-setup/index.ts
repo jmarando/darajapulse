@@ -50,6 +50,32 @@ Deno.serve(async (req) => {
     });
   }
 
+  if (action === "probe") {
+    const tok = Deno.env.get("CLOUDFLARE_STREAM_TOKEN") ?? "";
+    const raw = async (path: string) => {
+      const res = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+        headers: { Authorization: `Bearer ${tok.trim()}` },
+      });
+      let data: any = null;
+      try { data = await res.json(); } catch { /* ignore */ }
+      return { status: res.status, errors: data?.errors ?? null };
+    };
+    const acc = accountId() ?? "";
+    return json({
+      tokenShape: {
+        length: tok.length,
+        prefix: tok.slice(0, 5),
+        hasWhitespace: /\s/.test(tok),
+        trimmedDiffers: tok.trim().length !== tok.length,
+      },
+      accountDetails: await raw(`/accounts/${acc}`),
+      accountSubscriptions: await raw(`/accounts/${acc}/subscriptions`),
+      streamList: await raw(`/accounts/${acc}/stream?per_page=1`),
+      streamKeys: await raw(`/accounts/${acc}/stream/keys`),
+      accountTokensVerify: await raw(`/accounts/${acc}/tokens/verify`),
+    });
+  }
+
   if (action === "webhook") {
     const url = String((body as any)?.url ?? "");
     if (!/^https:\/\//.test(url)) return json({ error: "https url required" }, 400);
