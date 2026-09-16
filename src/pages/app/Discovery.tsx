@@ -195,6 +195,7 @@ const Discovery = () => {
       const engagement_avg = eng.length ? eng.reduce((s, p) => s + Number(p.engagement_rate || 0), 0) / eng.length : 0;
       return {
         key, full_name: primary.full_name, city: profiles.find(p => p.city)?.city,
+        country_code: profiles.find(p => p.country_code)?.country_code ?? null,
         bio: profiles.find(p => p.bio)?.bio, niches,
         verified_at: profiles.find(p => p.verified_at)?.verified_at ?? null,
         ai_confidence: Math.max(...profiles.map(p => p.ai_confidence || 0)),
