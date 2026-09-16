@@ -354,6 +354,79 @@ export type Database = {
           },
         ]
       }
+      campaign_deliverables: {
+        Row: {
+          campaign_id: string
+          content_type: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          expected_platforms: string[]
+          id: string
+          influencer_id: string | null
+          notes: string | null
+          source_draft_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          content_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          expected_platforms?: string[]
+          id?: string
+          influencer_id?: string | null
+          notes?: string | null
+          source_draft_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          content_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          expected_platforms?: string[]
+          id?: string
+          influencer_id?: string | null
+          notes?: string | null
+          source_draft_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_deliverables_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_deliverables_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_deliverables_source_draft_id_fkey"
+            columns: ["source_draft_id"]
+            isOneToOne: false
+            referencedRelation: "creator_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_influencers: {
         Row: {
           brief_token: string
@@ -1358,6 +1431,74 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      deliverable_link_suggestions: {
+        Row: {
+          campaign_id: string
+          confidence: number | null
+          created_at: string
+          id: string
+          influencer_id: string | null
+          other_post_id: string
+          post_id: string
+          reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          influencer_id?: string | null
+          other_post_id: string
+          post_id: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          influencer_id?: string | null
+          other_post_id?: string
+          post_id?: string
+          reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deliverable_link_suggestions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliverable_link_suggestions_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliverable_link_suggestions_other_post_id_fkey"
+            columns: ["other_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliverable_link_suggestions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       demo_requests: {
         Row: {
@@ -2587,6 +2728,7 @@ export type Database = {
           campaign_id: string
           caption: string | null
           created_at: string
+          deliverable_id: string | null
           id: string
           influencer_id: string
           platform: Database["public"]["Enums"]["platform"]
@@ -2600,6 +2742,7 @@ export type Database = {
           campaign_id: string
           caption?: string | null
           created_at?: string
+          deliverable_id?: string | null
           id?: string
           influencer_id: string
           platform?: Database["public"]["Enums"]["platform"]
@@ -2613,6 +2756,7 @@ export type Database = {
           campaign_id?: string
           caption?: string | null
           created_at?: string
+          deliverable_id?: string | null
           id?: string
           influencer_id?: string
           platform?: Database["public"]["Enums"]["platform"]
@@ -2628,6 +2772,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_deliverable_id_fkey"
+            columns: ["deliverable_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_deliverables"
             referencedColumns: ["id"]
           },
           {
@@ -3182,6 +3333,7 @@ export type Database = {
           views: number
         }[]
       }
+      caption_key: { Args: { _s: string }; Returns: string }
       dashboard_overview: {
         Args: { _from: string; _to: string }
         Returns: Json
@@ -3189,6 +3341,10 @@ export type Database = {
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
+      }
+      detach_post_to_own_deliverable: {
+        Args: { _post_id: string }
+        Returns: string
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enforce_billing_status: { Args: never; Returns: undefined }
@@ -3310,6 +3466,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      merge_posts_into_deliverable: {
+        Args: { _post_ids: string[]; _target_deliverable_id?: string }
+        Returns: string
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -3327,7 +3487,44 @@ export type Database = {
           read_ct: number
         }[]
       }
+      refresh_deliverable_suggestions: {
+        Args: { _campaign_id: string }
+        Returns: number
+      }
       render_contract: { Args: { _ci_id: string }; Returns: Json }
+      reporting_publications: {
+        Args: { _campaign_ids?: string[]; _from?: string; _to?: string }
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          campaign_status: string
+          caption: string
+          client_id: string
+          client_name: string
+          comments: number
+          deliverable_content_type: string
+          deliverable_due_date: string
+          deliverable_id: string
+          deliverable_status: string
+          deliverable_title: string
+          impressions: number
+          influencer_handle: string
+          influencer_id: string
+          influencer_name: string
+          last_synced: string
+          likes: number
+          platform: string
+          post_id: string
+          post_status: string
+          post_url: string
+          posted_at: string
+          reach: number
+          saves: number
+          shares: number
+          thumbnail_url: string
+          views: number
+        }[]
+      }
       review_contest_entry: {
         Args: { _decision: string; _entry_id: string }
         Returns: Json

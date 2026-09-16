@@ -23,6 +23,7 @@ import Rsvps from "./pages/app/Rsvps";
 import Stub from "./pages/app/Stub";
 import Briefs from "./pages/app/Briefs";
 import Content from "./pages/app/Content";
+import Reports from "./pages/app/Reports";
 import Moderation from "./pages/app/Moderation";
 import Team from "./pages/app/Team";
 import AdminBilling from "./pages/app/AdminBilling";
@@ -123,6 +124,7 @@ const App = () => (
               <Route path="inbox" element={<Inbox />} />
               <Route path="rsvps" element={<Rsvps />} />
               <Route path="content" element={<Content />} />
+              <Route path="reports" element={<Reports />} />
               <Route path="moderation" element={<Moderation />} />
               <Route path="team" element={<Team />} />
               <Route path="inventory" element={<Inventory />} />
