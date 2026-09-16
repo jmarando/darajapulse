@@ -551,6 +551,7 @@ const Reports = () => {
                       {openMonth === c.key && mrows.map((m) => (
                         <TableRow key={`${c.key}-${m.key}`} className="bg-muted/40 text-sm">
                           <TableCell className="pl-8 text-muted-foreground">{m.label}</TableCell>
+                          <TableCell />
                           <TableCell className="text-right">{m.deliverables}</TableCell>
                           <TableCell className="text-right">{m.publications}</TableCell>
                           <TableCell colSpan={4} />
