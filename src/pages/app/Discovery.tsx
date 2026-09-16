@@ -314,6 +314,7 @@ const Discovery = () => {
       full_name: c.full_name, handle: c.handle, primary_platform: c.platform as any,
       niche: (c.niche || []).join(", "), follower_count: c.follower_count,
       engagement_rate: c.engagement_rate, region: c.region || "Kenya",
+      country_code: c.country_code || null, city: c.city || null,
     };
     const { error } = await (supabase.from("influencers") as any).insert(payload);
     if (error) return toast.error(error.message);
@@ -570,7 +571,7 @@ const Discovery = () => {
                       <div className="min-w-0">
                         <p className="text-[10px] font-bold tracking-[0.22em] text-muted-foreground uppercase">Creator</p>
                         <p className="text-[11px] font-semibold text-foreground/70 mt-0.5 uppercase tracking-wider truncate">
-                          {p.city || "Kenya"}
+                          {p.city || nameOf(p.country_code)}
                         </p>
                       </div>
                     </div>
