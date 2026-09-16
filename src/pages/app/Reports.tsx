@@ -205,7 +205,7 @@ const Reports = () => {
   }, [campaign, client, creator, platform, country, city, month, filtered, nameOf]);
 
   const doExport = (kind: "excel" | "csv", detail: "summary" | "detailed") => {
-    const sheets = detail === "summary" ? buildSummarySheets(filtered) : buildDetailedSheets(filtered);
+    const sheets = detail === "summary" ? buildSummarySheets(filtered, nameOf) : buildDetailedSheets(filtered, nameOf);
     if (kind === "excel") exportToExcel(sheets, reportName);
     else exportToCsv(sheets, reportName);
   };
