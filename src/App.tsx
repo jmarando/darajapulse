@@ -23,6 +23,7 @@ import Rsvps from "./pages/app/Rsvps";
 import Stub from "./pages/app/Stub";
 import Briefs from "./pages/app/Briefs";
 import Content from "./pages/app/Content";
+import Reports from "./pages/app/Reports";
 import Moderation from "./pages/app/Moderation";
 import Team from "./pages/app/Team";
 import AdminBilling from "./pages/app/AdminBilling";
