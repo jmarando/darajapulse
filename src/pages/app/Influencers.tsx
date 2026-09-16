@@ -110,7 +110,13 @@ const Influencers = () => {
     e.preventDefault();
     const email = String(form.email ?? "").trim().toLowerCase();
     if (!email) return toast.error("Email is required — it's how briefs, contracts and invites reach the creator.");
-    const payload = { ...form, email, follower_count: Number(form.follower_count), engagement_rate: Number(form.engagement_rate) };
+    const payload = {
+      ...form, email,
+      follower_count: Number(form.follower_count),
+      engagement_rate: Number(form.engagement_rate),
+      country_code: form.country_code || null,
+      city: form.city || null,
+    };
     if (editingId) {
       const { error } = await (supabase.from("influencers") as any).update(payload).eq("id", editingId);
       if (error) return toast.error(error.message);
