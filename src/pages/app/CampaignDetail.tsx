@@ -103,6 +103,8 @@ const CampaignDetail = () => {
   const [submitting, setSubmitting] = useState(false);
   const [picked, setPicked] = useState<any>(null);
   const [rosterSearch, setRosterSearch] = useState("");
+  const [rosterCountry, setRosterCountry] = useState("__all__");
+  const { nameOf } = useGeo();
   const [newInfl, setNewInfl] = useState<any>({ full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0 });
   const [addFee, setAddFee] = useState<string>("");
   const [addBreakdown, setAddBreakdown] = useState<Breakdown>({ items: [{ type: "video", count: 1, platforms: [...DEFAULT_PLATFORMS] }] });
