@@ -233,7 +233,13 @@ Deno.serve(async (req) => {
         }
       }
     }
-  }));
+  };
+
+  for (let i = 0; i < targets.length; i += CONCURRENCY) {
+    if (Date.now() > deadline) { skippedForTime = targets.length - i; break; }
+    await Promise.all(targets.slice(i, i + CONCURRENCY).map(refreshOne));
+  }
+
 
   const results: any[] = [];
   for (const r of targets) {
