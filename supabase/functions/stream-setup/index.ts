@@ -86,8 +86,9 @@ Deno.serve(async (req) => {
     if (!/^https:\/\//.test(url)) return json({ error: "https url required" }, 400);
     const { ok, data } = await streamApi("/stream/webhook", {
       method: "PUT",
-      body: JSON.stringify({ url, notificationEmail: "justin@glab.africa" }),
+      body: JSON.stringify({ notificationUrl: url }),
     });
+
     return json(ok ? { ok: true, result: data?.result } : { ok: false, errors: data?.errors ?? data }, ok ? 200 : 502);
   }
 
