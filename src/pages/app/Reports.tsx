@@ -191,6 +191,7 @@ const Reports = () => {
   const months = useMemo(() => byMonth(filtered), [filtered]);
   const deliverables = useMemo(() => byDeliverable(filtered), [filtered]);
   const countryGroups = useMemo(() => byCountry(filtered, nameOf), [filtered, nameOf]);
+  const unverifiedCount = useMemo(() => filtered.filter(isUnverifiedCountry).length, [filtered]);
 
   const reportName = useMemo(() => {
     const parts = ["Daraja Pulse report"];
