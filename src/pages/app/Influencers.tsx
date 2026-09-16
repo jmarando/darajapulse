@@ -38,7 +38,8 @@ const fmtAgo = (iso?: string | null) => {
 
 const PLATFORM_ICON: Record<string, any> = { tiktok: Music2, instagram: Instagram, youtube: Youtube, twitter: Twitter, facebook: Facebook };
 
-const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", country_code: "KE", city: "", phone_mpesa: "", email: "" };
+// Country is left blank on purpose — we don't want to assume Kenya for a new creator.
+const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", country_code: "", city: "", phone_mpesa: "", email: "" };
 
 const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; format: (v: number) => string; onSave: (v: number) => void; step?: number }) => {
   const [editing, setEditing] = useState(false);
@@ -116,6 +117,8 @@ const Influencers = () => {
       engagement_rate: Number(form.engagement_rate),
       country_code: form.country_code || null,
       city: form.city || null,
+      // A person chose this country in the form, so it counts as confirmed.
+      country_source: form.country_code ? "verified" : null,
     };
     if (editingId) {
       const { error } = await (supabase.from("influencers") as any).update(payload).eq("id", editingId);
