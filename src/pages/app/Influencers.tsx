@@ -300,9 +300,13 @@ const Influencers = () => {
                 <div className="p-2.5 text-center min-w-0">
                   <div className="font-display text-base inline-flex items-center gap-1 justify-center max-w-full">
                     <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="truncate" title={r.region ?? ""}>{r.region ?? "—"}</span>
+                    <span className="truncate" title={[r.city, nameOf(r.country_code)].filter(Boolean).join(", ")}>
+                      {r.city || nameOf(r.country_code)}
+                    </span>
                   </div>
-                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">Region</div>
+                  <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">
+                    {r.city ? nameOf(r.country_code) : "Country"}
+                  </div>
                 </div>
               </div>
 
