@@ -143,7 +143,14 @@ const Influencers = () => {
   };
 
   const missingEmail = rows.filter(r => !r.email).length;
-  const filtered = rows.filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()))
+  // Country/city options come from the roster itself, so only real values show.
+  const usedCountries = countries.filter(c => rows.some(r => r.country_code === c.code));
+  const usedCities = [...new Set(rows
+    .filter(r => country === ALL || country === UNKNOWN ? true : r.country_code === country)
+    .map(r => r.city).filter(Boolean))] as string[];
+  const filtered = rows
+    .filter(r => matchesGeo({ country: r.country_code, city: r.city }, country, city, ALL))
+    .filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()) || (r.city ?? "").toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => {
       if (sort === "followers") return Number(b.follower_count ?? 0) - Number(a.follower_count ?? 0);
       if (sort === "name") return String(a.full_name).localeCompare(String(b.full_name));
