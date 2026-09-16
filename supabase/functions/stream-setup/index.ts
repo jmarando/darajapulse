@@ -23,17 +23,27 @@ Deno.serve(async (req) => {
 
   if (action === "check") {
     // Raw calls to separate "bad token" from "token lacks Stream access".
-    const raw = async (url: string) => {
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${Deno.env.get("CLOUDFLARE_STREAM_TOKEN") ?? ""}` } });
+    const raw = async (url: string, init: RequestInit = {}) => {
+      const res = await fetch(url, {
+        ...init,
+        headers: { Authorization: `Bearer ${Deno.env.get("CLOUDFLARE_STREAM_TOKEN") ?? ""}`, ...(init.headers ?? {}) },
+      });
       let data: any = null;
       try { data = await res.json(); } catch { /* non-JSON */ }
-      return { status: res.status, errors: data?.errors ?? null, valid: data?.result?.status ?? null };
+      return { status: res.status, errors: data?.errors ?? null, result: data?.result ?? null };
     };
     const verify = await raw("https://api.cloudflare.com/client/v4/user/tokens/verify");
+    const accounts = await raw("https://api.cloudflare.com/client/v4/accounts?per_page=5");
+    const configured = accountId();
+    const listed = (accounts.result ?? []).map((a: any) => a.id);
+    const accountMatch = configured ? listed.includes(configured) : null;
     const list = await streamApi("/stream?per_page=1");
     const hook = await streamApi("/stream/webhook");
     return json({
-      tokenVerify: verify,
+      tokenVerify: { status: verify.status, errors: verify.errors, valid: verify.result?.status ?? null },
+      accountsListed: accounts.status === 200 ? listed : accounts.errors,
+      configuredAccountId: configured ? `${configured.slice(0, 6)}…${configured.slice(-4)}` : null,
+      accountMatch,
       tokenWorks: list.ok,
       listError: list.ok ? null : list.data?.errors ?? list.status,
       webhook: hook.ok ? hook.data?.result : hook.data?.errors ?? hook.status,
