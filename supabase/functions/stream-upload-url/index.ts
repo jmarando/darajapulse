@@ -37,8 +37,8 @@ Deno.serve(async (req) => {
       `name ${b64(fileName)}`,
       `brief_token ${b64(briefToken)}`,
       `maxdurationseconds ${b64("3600")}`,
-      `requiresigned urls ${b64("false")}`.replace(" urls", "urls"),
     ].join(",");
+
 
     const cfRes = await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${Deno.env.get("CLOUDFLARE_ACCOUNT_ID")}/stream?direct_user=true`,
