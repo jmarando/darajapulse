@@ -35,6 +35,8 @@ const Stat = ({ label, value, hint }: { label: string; value: string; hint?: str
 const Reports = () => {
   const [rows, setRows] = useState<PublicationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [client, setClient] = useState(ALL);
   const [campaign, setCampaign] = useState(ALL);
   const [creator, setCreator] = useState(ALL);
@@ -50,15 +52,30 @@ const Reports = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.rpc("reporting_publications", {
-      _campaign_ids: null, _from: null, _to: null,
-    } as any);
-    if (error) toast({ title: "Could not load reporting data", description: error.message, variant: "destructive" });
-    setRows(((data as any[]) ?? []).map(normalizeRow));
+    setLoadError(null);
+    const page = 1000;
+    const all: any[] = [];
+    try {
+      for (let start = 0; ; start += page) {
+        const { data, error } = await (supabase.rpc("reporting_publications", {
+          _campaign_ids: null, _from: null, _to: null,
+        } as any) as any).range(start, start + page - 1);
+        if (error) throw error;
+        const batch = (data as any[]) ?? [];
+        all.push(...batch);
+        if (batch.length < page) break;
+      }
+      setRows(all.map(normalizeRow));
+      setLastRefreshed(new Date());
+    } catch (e: any) {
+      setLoadError(e?.message || "Unknown error");
+      toast({ title: "Could not load reporting data", description: e?.message, variant: "destructive" });
+    }
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
 
   const options = useMemo(() => {
     const uniq = (list: { id: string; label: string }[]) => {
@@ -138,7 +155,8 @@ const Reports = () => {
   );
 
   const monthChart = months.map((m) => ({
-    month: m.label.replace(/ \d{4}$/, ""),
+    month: m.key === "unknown" ? "Undated" : m.label.replace(/^(\w{3})\w* (\d{4})$/, "$1 $2").slice(0, 8),
+
     views: Math.round(m.views),
     engagement: Math.round(m.engagement),
     deliverables: m.deliverables,
@@ -528,9 +546,29 @@ const Reports = () => {
       </Tabs>
 
       {loading && <div className="text-sm text-muted-foreground">Loading reporting data…</div>}
-      {!loading && !filtered.length && <div className="text-sm text-muted-foreground">No publications match these filters.</div>}
+      {!loading && loadError && (
+        <div className="text-sm text-destructive">
+          Reporting data could not be loaded: {loadError}{" "}
+          <Button variant="link" size="sm" className="px-1" onClick={load}>Try again</Button>
+        </div>
+      )}
+      {!loading && !loadError && !rows.length && (
+        <div className="text-sm text-muted-foreground">
+          No publications have been recorded yet for the campaigns you can access. Add posts to a campaign, then refresh metrics.
+        </div>
+      )}
+      {!loading && !loadError && !!rows.length && !filtered.length && (
+        <div className="text-sm text-muted-foreground">
+          No reporting data matches the selected filters.{" "}
+          <Button variant="link" size="sm" className="px-1" onClick={resetFilters}>Clear filters</Button>
+        </div>
+      )}
+      {!loading && lastRefreshed && (
+        <div className="text-xs text-muted-foreground">Last refreshed {lastRefreshed.toLocaleString()}</div>
+      )}
     </div>
   );
 };
+
 
 export default Reports;
