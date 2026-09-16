@@ -10,11 +10,14 @@ export type PublicationRow = {
   campaign_id: string;
   campaign_name: string;
   campaign_status: string | null;
+  campaign_country: string | null;
   client_id: string | null;
   client_name: string | null;
   influencer_id: string | null;
   influencer_name: string | null;
   influencer_handle: string | null;
+  influencer_country: string | null;
+  influencer_city: string | null;
   platform: string;
   post_url: string | null;
   caption: string | null;
