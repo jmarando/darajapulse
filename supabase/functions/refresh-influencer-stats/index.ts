@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({ ok: true, checked: targets.length, updated: results.filter((r) => !r.skipped).length, results }),
+    JSON.stringify({ ok: true, checked: targets.length, updated: results.filter((r) => !r.skipped).length, skipped_for_time: skippedForTime, results }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });
