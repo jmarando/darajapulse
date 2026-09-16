@@ -317,6 +317,8 @@ const Discovery = () => {
       niche: (c.niche || []).join(", "), follower_count: c.follower_count,
       engagement_rate: c.engagement_rate, region: c.region || "Kenya",
       country_code: c.country_code || null, city: c.city || null,
+      // Carried over from the discovery profile, so it is imported rather than confirmed.
+      country_source: c.country_code ? "imported" : null,
     };
     const { error } = await (supabase.from("influencers") as any).insert(payload);
     if (error) return toast.error(error.message);
