@@ -58,6 +58,10 @@ const Discovery = () => {
   const [hasContact, setHasContact] = useState(false);
   const [contactsByCreator, setContactsByCreator] = useState<Record<string, Contact[]>>({});
   const [lookupSearching, setLookupSearching] = useState(false);
+  const [country, setCountry] = useState(ALL);
+  const [city, setCity] = useState(ALL);
+  const { countries, citiesOf, nameOf } = useGeo();
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
 
   // Matchmaker
   const [brief, setBrief] = useState({ brand: "", category: "", audience: "", platforms: [] as string[], budget_tier: "any", goal: "awareness", notes: "" });
@@ -68,9 +72,16 @@ const Discovery = () => {
   const [openCreator, setOpenCreator] = useState<Creator | null>(null);
   const [seeding, setSeeding] = useState(false);
 
+  // Country/city are applied in the database query so results stay accurate
+  // even when a market has more profiles than one page can hold.
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("discovery_creators").select("*").order("follower_count", { ascending: false }).limit(2000);
+    let query = supabase.from("discovery_creators").select("*").order("follower_count", { ascending: false }).limit(2000);
+    if (country === UNKNOWN) query = query.is("country_code", null);
+    else if (country !== ALL) query = query.eq("country_code", country);
+    if (city === UNKNOWN) query = query.is("city", null);
+    else if (city !== ALL) query = query.eq("city", city);
+    const { data, error } = await query;
     if (error) toast.error(error.message);
     setRows((data as any) ?? []);
     const { data: cs } = await supabase.from("discovery_contacts").select("*");
@@ -79,7 +90,17 @@ const Discovery = () => {
     setContactsByCreator(grouped);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [country, city]);
+
+  // City choices for the chosen country come from the recorded profiles themselves.
+  useEffect(() => {
+    (async () => {
+      let q2 = supabase.from("discovery_creators").select("city").not("city", "is", null).limit(3000);
+      if (country !== ALL && country !== UNKNOWN) q2 = q2.eq("country_code", country);
+      const { data } = await q2;
+      setCityOptions([...new Set(((data as any[]) ?? []).map((r) => r.city).filter(Boolean))] as string[]);
+    })();
+  }, [country]);
 
   const niches = useMemo(() => {
     const s = new Set<string>();
