@@ -316,9 +316,12 @@ const Influencers = () => {
                     <span className="truncate" title={[r.city, nameOf(r.country_code)].filter(Boolean).join(", ")}>
                       {r.city || nameOf(r.country_code)}
                     </span>
+                    {r.country_code && r.country_source !== "verified" && (
+                      <span className="text-[9px] text-muted-foreground" title="Carried over from the old default — not confirmed">?</span>
+                    )}
                   </div>
                   <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">
-                    {r.city ? nameOf(r.country_code) : "Country"}
+                    {r.city ? nameOf(r.country_code) : r.country_code && r.country_source !== "verified" ? "Country · unconfirmed" : "Country"}
                   </div>
                 </div>
               </div>
