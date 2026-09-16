@@ -3585,6 +3585,7 @@ export type Database = {
       reporting_publications: {
         Args: { _campaign_ids?: string[]; _from?: string; _to?: string }
         Returns: {
+          campaign_country: string
           campaign_id: string
           campaign_name: string
           campaign_status: string
@@ -3598,6 +3599,8 @@ export type Database = {
           deliverable_status: string
           deliverable_title: string
           impressions: number
+          influencer_city: string
+          influencer_country: string
           influencer_handle: string
           influencer_id: string
           influencer_name: string
