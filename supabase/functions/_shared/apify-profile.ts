@@ -25,22 +25,37 @@ const num = (v: any) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+/** Apify says "slow down" (memory/concurrency limits) — worth waiting and retrying. */
+const isTransientLimit = (status: number, body: string) =>
+  status === 402 && /actor-memory-limit-exceeded|concurrent-runs-limit-exceeded/i.test(body);
+
 export async function runApifyActor(actor: string, input: unknown, timeoutSecs = 120): Promise<any[]> {
   if (!APIFY) throw new Error("APIFY_API_TOKEN not configured");
   const url =
     `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${APIFY}&timeout=${timeoutSecs}`;
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  const text = await r.text();
-  if (!r.ok) throw new Error(`Apify ${actor} ${r.status}: ${text.slice(0, 300)}`);
-  try {
-    const j = JSON.parse(text);
-    return Array.isArray(j) ? j : [];
-  } catch {
-    throw new Error(`Apify non-JSON: ${text.slice(0, 200)}`);
+  const backoffs = [3000, 8000];
+  for (let attempt = 0; ; attempt++) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      if (isTransientLimit(r.status, text) && attempt < backoffs.length) {
+        await sleep(backoffs[attempt]);
+        continue;
+      }
+      throw new Error(`Apify ${actor} ${r.status}: ${text.slice(0, 300)}`);
+    }
+    try {
+      const j = JSON.parse(text);
+      return Array.isArray(j) ? j : [];
+    } catch {
+      throw new Error(`Apify non-JSON: ${text.slice(0, 200)}`);
+    }
   }
 }
 

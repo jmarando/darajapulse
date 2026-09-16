@@ -154,17 +154,25 @@ Deno.serve(async (req) => {
   const targets = (rows ?? []).filter((r: any) => r.handle && r.platform);
 
   const results: any[] = [];
-  await Promise.all(targets.map(async (r: any) => {
+  // Small batches: scraper providers reject a burst of simultaneous jobs.
+  const CONCURRENCY = 5;
+  const deadline = Date.now() + 110_000;
+  let skippedForTime = 0;
+  const refreshOne = async (r: any) => {
     const s = await fetchAny(r.platform, r.handle);
     if (!s) { results.push({ id: r.id, skipped: "no_data" }); return; }
     const update: any = { follower_count: s.followers };
     if (s.engagement_rate > 0) update.engagement_rate = s.engagement_rate;
     const { error } = await (supabase.from("inventory_items") as any).update(update).eq("id", r.id);
     results.push({ id: r.id, ...update, error: error?.message });
-  }));
+  };
+  for (let i = 0; i < targets.length; i += CONCURRENCY) {
+    if (Date.now() > deadline) { skippedForTime = targets.length - i; break; }
+    await Promise.all(targets.slice(i, i + CONCURRENCY).map(refreshOne));
+  }
 
   return new Response(
-    JSON.stringify({ ok: true, checked: targets.length, updated: results.filter(r => !r.skipped).length, results }),
+    JSON.stringify({ ok: true, checked: targets.length, updated: results.filter(r => !r.skipped).length, skipped_for_time: skippedForTime, results }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } },
   );
 });

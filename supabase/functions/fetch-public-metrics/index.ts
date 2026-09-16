@@ -601,7 +601,7 @@ Deno.serve(async (req) => {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const { campaign_id, post_id, stale, max, offset, chain } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number; chain?: number };
     const chainDepth = Math.max(0, Number(chain ?? 0));
-    const MAX_CHAIN = 12;
+    const MAX_CHAIN = 40;
     let q = supabase
       .from("posts")
       .select("id, post_url, platform, thumbnail_url, caption, status, created_at, posted_at, campaign_id, campaigns!inner(status)")
@@ -665,25 +665,31 @@ Deno.serve(async (req) => {
       processed += batch.length;
     }
     const leftover = remaining + (posts.length - processed);
+    const succeeded = results.filter(r => r.ok).length;
+    // Posts we scraped successfully write a fresh post_metrics row, so they are no
+    // longer "due" and disappear from the queue the next run rebuilds. Only the
+    // failures stay in the list, so the next run must skip exactly those — skipping
+    // by the full processed count would jump over posts never touched.
+    const failedThisRun = Math.max(0, processed - succeeded);
+    const nextOffset = start + failedThisRun;
 
     // Cron runs (stale mode) chain themselves until the due queue is empty, so two
     // scheduled runs a day are enough no matter how many posts are due.
-    // The next run starts AFTER what we just processed and the chain is depth-capped:
-    // posts that can never be scraped (private/deleted links) write no metrics row, so
-    // they stay "due" forever — restarting at offset 0 would re-scrape them endlessly
-    // and burn paid scraper credits.
+    // The chain stays depth-capped: posts that can never be scraped (private/deleted
+    // links) write no metrics row, so they stay "due" forever — without the offset
+    // over failures we would re-scrape them endlessly and burn paid scraper credits.
     if (stale && leftover > 0 && processed > 0 && chainDepth < MAX_CHAIN) {
       fetch(`${SUPABASE_URL}/functions/v1/fetch-public-metrics`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
-        body: JSON.stringify({ stale: true, max: limit, offset: start + processed, chain: chainDepth + 1 }),
+        body: JSON.stringify({ stale: true, max: limit, offset: nextOffset, chain: chainDepth + 1 }),
       }).catch(() => {});
     }
 
 
 
-    const ok = results.filter(r => r.ok).length;
-    return new Response(JSON.stringify({ ok, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? start + processed : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
+    const ok = succeeded;
+    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
