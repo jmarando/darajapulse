@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import {
-  PublicationRow, byDeliverable, byInfluencer, byMonth, byPlatform,
-  platformCounts, titleCase, totalsFor,
+  PublicationRow, byCountry, byDeliverable, byInfluencer, byMonth, byPlatform,
+  platformCounts, rowCountry, titleCase, totalsFor,
 } from "@/lib/reporting";
 
 const round = (n: number) => Math.round(n || 0);
@@ -9,7 +9,11 @@ const er = (t: { engagement: number; views: number }) => (t.views ? +((t.engagem
 
 export type SheetSet = { name: string; rows: Record<string, any>[] }[];
 
-export const buildSummarySheets = (rows: PublicationRow[]): SheetSet => {
+/** `nameOf` turns a country code into its display name; defaults to the raw code. */
+export const buildSummarySheets = (
+  rows: PublicationRow[],
+  nameOf: (c: string) => string = (c) => c,
+): SheetSet => {
   const t = totalsFor(rows);
   return [
     {
