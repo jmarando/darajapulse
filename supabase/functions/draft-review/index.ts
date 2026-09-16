@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
 
     const { data: drafts } = await admin
       .from("creator_drafts")
-      .select("id, file_path, poster_path, file_name, mime_type, file_size, platform, caption, creator_note, status, review_note, reviewer_label, reviewed_at, created_at, post_url, influencers(full_name, handle, avatar_url)")
+      .select("id, file_path, poster_path, file_name, mime_type, file_size, platform, caption, creator_note, status, review_note, reviewer_label, reviewed_at, created_at, post_url, stream_uid, stream_status, influencers(full_name, handle, avatar_url)")
       .eq("campaign_id", link.campaign_id)
       .order("created_at", { ascending: false });
 
@@ -146,10 +146,12 @@ Deno.serve(async (req) => {
       ...d,
       file_path: undefined,
       poster_path: undefined,
+      stream_uid: undefined,
       creator_name: d.influencers?.full_name ?? null,
       creator_handle: d.influencers?.handle ?? null,
       video_url: null,
-      has_video: Boolean(d.file_path),
+      has_video: Boolean(d.file_path || d.stream_uid),
+      has_stream: Boolean(d.stream_uid),
       poster_url: d.poster_path ? byPath.get(d.poster_path) ?? null : null,
     }));
 

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { UploadCloud, FileVideo, CheckCircle2, Clock, MessageSquareWarning, X } from "lucide-react";
 import { toast } from "sonner";
-import { uploadResumable, capturePoster, formatBytes, type UploadProgress } from "@/lib/uploadVideo";
+import { uploadResumable, uploadStream, capturePoster, formatBytes, type UploadProgress } from "@/lib/uploadVideo";
 
 type Draft = {
   id: string;
@@ -19,6 +19,7 @@ type Draft = {
   review_note: string | null;
   created_at: string;
   post_url: string | null;
+  stream_status?: string | null;
 };
 
 const MAX_BYTES = 900 * 1024 * 1024; // 900MB
@@ -64,33 +65,58 @@ export const CreatorDraftStep = ({
     const stamp = `${file.lastModified}-${file.size}`;
     const path = `${briefToken}/${stamp}-${safe}`;
 
-    // Poster first: it is tiny and lets reviewers see the video without downloading it.
-    let posterPath: string | null = null;
+    // Preferred pipeline: Cloudflare Stream — adaptive playback, server-generated
+    // thumbnail and delivery from African edge locations. If it isn't configured
+    // yet (or errors before the upload starts), fall back to storage.
+    let streamUid: string | null = null;
+    let streamUrl: string | null = null;
     try {
-      const poster = await capturePoster(file);
-      if (poster) {
-        // No upsert: anonymous creators cannot read existing objects, and asking storage
-        // to overwrite makes it check that permission and reject the upload outright.
-        posterPath = `${briefToken}/${stamp}-${Date.now()}-poster.jpg`;
-        const { error: pErr } = await supabase.storage
-          .from("creator-drafts")
-          .upload(posterPath, poster, { contentType: "image/jpeg", cacheControl: "31536000" });
-        if (pErr) posterPath = null;
+      const { data: up, error: upErr } = await supabase.functions.invoke("stream-upload-url", {
+        body: { brief_token: briefToken, file_name: file.name, file_size: file.size },
+      });
+      if (!upErr && (up as any)?.uploadUrl && (up as any)?.uid) {
+        streamUid = (up as any).uid as string;
+        streamUrl = (up as any).uploadUrl as string;
       }
     } catch {
-      posterPath = null;
+      /* fall back below */
     }
 
+    let posterPath: string | null = null;
     let storedPath = path;
     try {
-      const { promise, abort } = uploadResumable({
-        bucket: "creator-drafts",
-        path,
-        file,
-        onProgress: setProgress,
-      });
-      abortRef.current = abort;
-      storedPath = await promise;
+      if (streamUrl && streamUid) {
+        const { promise, abort } = uploadStream({ uploadUrl: streamUrl, file, onProgress: setProgress });
+        abortRef.current = abort;
+        await promise;
+        abortRef.current = null;
+      } else {
+        // Poster first: it is tiny and lets reviewers see the video without downloading it.
+        try {
+          const poster = await capturePoster(file);
+          if (poster) {
+            // No upsert: anonymous creators cannot read existing objects, and asking storage
+            // to overwrite makes it check that permission and reject the upload outright.
+            posterPath = `${briefToken}/${stamp}-${Date.now()}-poster.jpg`;
+            const { error: pErr } = await supabase.storage
+              .from("creator-drafts")
+              .upload(posterPath, poster, { contentType: "image/jpeg", cacheControl: "31536000" });
+            if (pErr) posterPath = null;
+          }
+        } catch {
+          posterPath = null;
+        }
+
+        const { promise, abort } = uploadResumable({
+          bucket: "creator-drafts",
+          path,
+          file,
+          onProgress: setProgress,
+        });
+        abortRef.current = abort;
+        storedPath = await promise;
+        abortRef.current = null;
+      }
     } catch (err: any) {
       setBusy(false);
       setProgress(null);
@@ -99,12 +125,10 @@ export const CreatorDraftStep = ({
         "Upload stopped — check your connection and tap Send again. It will continue from where it stopped."
       );
     }
-    abortRef.current = null;
-
 
     const { error } = await supabase.rpc("submit_creator_draft" as any, {
       _brief_token: briefToken,
-      _file_path: storedPath,
+      _file_path: streamUid ? null : storedPath,
       _file_name: file.name,
       _mime_type: file.type || "video/mp4",
       _file_size: file.size,
@@ -112,11 +136,16 @@ export const CreatorDraftStep = ({
       _caption: caption || null,
       _creator_note: note || null,
       _poster_path: posterPath,
+      _stream_uid: streamUid,
     });
     setBusy(false);
     setProgress(null);
     if (error) return toast.error(error.message);
-    toast.success("Video sent for approval");
+    toast.success(
+      streamUid
+        ? "Video sent — it appears for review as soon as it finishes converting (usually under a minute)"
+        : "Video sent for approval"
+    );
     setFile(null);
     setCaption("");
     setNote("");
@@ -245,6 +274,8 @@ export const CreatorDraftStep = ({
                   <div className="text-sm truncate">{d.file_name || "Video"}</div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(d.created_at).toLocaleDateString()} {d.platform ? `· ${d.platform}` : ""}
+                    {d.status === "pending" && d.stream_status === "processing" ? " · converting…" : ""}
+                    {d.status === "pending" && d.stream_status === "failed" ? " · conversion failed — try re-uploading" : ""}
                   </div>
                   {d.review_note && <p className="text-xs mt-1.5 rounded bg-secondary/50 p-2">{d.review_note}</p>}
                 </div>
