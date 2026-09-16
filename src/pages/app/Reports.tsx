@@ -213,6 +213,7 @@ const Reports = () => {
   const resetFilters = () => {
     setClient(ALL); setCampaign(ALL); setCreator(ALL); setPlatform(ALL);
     setMonth(ALL); setContentType(ALL); setDelStatus(ALL); setCampStatus(ALL);
+    setCountry(ALL); setCity(ALL);
     setFrom(""); setTo("");
   };
 
@@ -228,12 +229,14 @@ const Reports = () => {
     if (contentType !== ALL) next.type = contentType;
     if (delStatus !== ALL) next.dstatus = delStatus;
     if (campStatus !== ALL) next.cstatus = campStatus;
+    if (country !== ALL) next.country = country;
+    if (city !== ALL) next.city = city;
     if (from) next.from = from;
     if (to) next.to = to;
     if (tab !== "summary") next.tab = tab;
     setParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [client, campaign, creator, platform, month, contentType, delStatus, campStatus, from, to, tab]);
+  }, [client, campaign, creator, platform, month, contentType, delStatus, campStatus, country, city, from, to, tab]);
 
   const labelOf = (list: { id: string; label: string }[], id: string) =>
     list.find((i) => i.id === id)?.label || id;
