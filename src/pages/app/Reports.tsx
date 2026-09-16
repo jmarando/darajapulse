@@ -312,6 +312,8 @@ const Reports = () => {
             <Combobox allValue={ALL} value={campaign} onChange={(v) => { setCampaign(v); setCreator(ALL); }} placeholder="All campaigns" items={options.campaigns} />
             <Combobox allValue={ALL} value={creator} onChange={setCreator} placeholder="All creators" items={options.creators} />
             <Combobox allValue={ALL} value={platform} onChange={setPlatform} placeholder="All platforms" items={options.platforms.map((p) => ({ id: p, label: titleCase(p) }))} />
+            <Combobox allValue={ALL} value={country} onChange={(v) => { setCountry(v); setCity(ALL); }} placeholder="All countries" items={countryItems(options.countries)} />
+            <Combobox allValue={ALL} value={city} onChange={setCity} placeholder="All cities" items={cityItems(options.cities)} />
             <Combobox allValue={ALL} value={month} onChange={setMonth} placeholder="All months" items={options.months.map((m) => ({ id: m, label: monthLabel(m) }))} />
             <Combobox allValue={ALL} value={contentType} onChange={setContentType} placeholder="All content types" items={options.contentTypes.map((c) => ({ id: c, label: titleCase(c) }))} />
             <Combobox allValue={ALL} value={delStatus} onChange={setDelStatus} placeholder="All deliverable statuses" items={options.delStatuses.map((c) => ({ id: c, label: titleCase(c) }))} />
