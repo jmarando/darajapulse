@@ -608,6 +608,21 @@ const CampaignDetail = () => {
     return { fees, deliv, confirmed };
   }, [ci]);
 
+  // Countries actually present on this campaign's roster, most common first.
+  const rosterCountries = useMemo(() => {
+    const counts = new Map<string, number>();
+    ci.forEach((x: any) => {
+      const k = x.influencers?.country_code || "__none__";
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k);
+  }, [ci]);
+  const ciByCountry = useMemo(
+    () => rosterCountry === "__all__" ? ci : ci.filter((x: any) => (x.influencers?.country_code || "__none__") === rosterCountry),
+    [ci, rosterCountry],
+  );
+
+
   const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
   const valOf = (m: any) => {
     if (metric === "engagement") return (m.likes||0)+(m.comments||0)+(m.shares||0)+(m.saves||0);
