@@ -79,6 +79,9 @@ const Reports = () => {
   const [contentType, setContentType] = useState(ALL);
   const [delStatus, setDelStatus] = useState(ALL);
   const [campStatus, setCampStatus] = useState(ALL);
+  const [country, setCountry] = useState(ALL);
+  const [city, setCity] = useState(ALL);
+  const { countries, nameOf } = useGeo();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [openDeliverable, setOpenDeliverable] = useState<string | null>(null);
@@ -98,6 +101,8 @@ const Reports = () => {
     if (g("type")) setContentType(g("type"));
     if (g("dstatus")) setDelStatus(g("dstatus"));
     if (g("cstatus")) setCampStatus(g("cstatus"));
+    if (g("country")) setCountry(g("country"));
+    if (g("city")) setCity(g("city"));
     if (g("from")) setFrom(g("from"));
     if (g("to")) setTo(g("to"));
     if (g("tab")) setTab(g("tab"));
