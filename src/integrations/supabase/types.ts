@@ -3480,6 +3480,39 @@ export type Database = {
         }[]
       }
       render_contract: { Args: { _ci_id: string }; Returns: Json }
+      reporting_publications: {
+        Args: { _campaign_ids?: string[]; _from?: string; _to?: string }
+        Returns: {
+          campaign_id: string
+          campaign_name: string
+          campaign_status: string
+          caption: string
+          client_id: string
+          client_name: string
+          comments: number
+          deliverable_content_type: string
+          deliverable_due_date: string
+          deliverable_id: string
+          deliverable_status: string
+          deliverable_title: string
+          impressions: number
+          influencer_handle: string
+          influencer_id: string
+          influencer_name: string
+          last_synced: string
+          likes: number
+          platform: string
+          post_id: string
+          post_status: string
+          post_url: string
+          posted_at: string
+          reach: number
+          saves: number
+          shares: number
+          thumbnail_url: string
+          views: number
+        }[]
+      }
       review_contest_entry: {
         Args: { _decision: string; _entry_id: string }
         Returns: Json
