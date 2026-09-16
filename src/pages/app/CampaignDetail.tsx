@@ -74,6 +74,7 @@ import { EditCreatorDialog } from "@/components/EditCreatorDialog";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
 import { buildAudience } from "@/lib/audience";
+import { useGeo } from "@/lib/geo";
 
 
 const CampaignDetail = () => {
