@@ -11,12 +11,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const raw = await req.text();
+  if (!raw.trim()) return new Response("ok", { headers: corsHeaders }); // Cloudflare URL validation probe
   let event: any = null;
   try {
     event = JSON.parse(raw);
   } catch {
-    return new Response("bad request", { status: 400, headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
+
 
   const uid = String(event?.uid ?? "");
   if (!uid) return new Response("ok", { headers: corsHeaders });

@@ -31,22 +31,36 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!ci) return json({ error: "invalid link" }, 404);
 
-    const { ok, status, data } = await streamApi("/stream/direct_upload", {
-      method: "POST",
-      body: JSON.stringify({
-        maxDurationSeconds: 3600,
-        requireSignedURLs: false,
-        creator: briefToken,
-        meta: { brief_token: briefToken, file_name: fileName },
-      }),
-    });
-    const result = data?.result;
-    if (!ok || !result?.uploadURL || !result?.uid) {
-      console.error("stream direct_upload failed", status, JSON.stringify(data?.errors ?? data));
+    // tus-style creation: returns a one-time upload URL our tus client can PATCH to.
+    const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+    const meta = [
+      `name ${b64(fileName)}`,
+      `brief_token ${b64(briefToken)}`,
+      `maxdurationseconds ${b64("3600")}`,
+    ].join(",");
+
+
+    const cfRes = await fetch(
+      `https://api.cloudflare.com/client/v4/accounts/${Deno.env.get("CLOUDFLARE_ACCOUNT_ID")}/stream?direct_user=true`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${Deno.env.get("CLOUDFLARE_STREAM_TOKEN")}`,
+          "Tus-Resumable": "1.0.0",
+          "Upload-Length": String(fileSize),
+          "Upload-Metadata": meta,
+        },
+      },
+    );
+    const uploadUrl = cfRes.headers.get("Location");
+    const uid = cfRes.headers.get("stream-media-id");
+    if (!cfRes.ok || !uploadUrl || !uid) {
+      console.error("stream tus create failed", cfRes.status, await cfRes.text().catch(() => ""));
       return json({ error: "The video service hiccuped — please try again in a moment." }, 502);
     }
 
-    return json({ uid: result.uid, uploadUrl: result.uploadURL });
+    return json({ uid, uploadUrl });
+
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : "unexpected error" }, 500);
   }

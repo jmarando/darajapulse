@@ -67,3 +67,15 @@ verify_jwt = true
 
 [functions.estimate-audience]
 verify_jwt = true
+
+[functions.stream-upload-url]
+verify_jwt = false
+
+[functions.stream-webhook]
+verify_jwt = false
+
+[functions.stream-sign]
+verify_jwt = false
+
+[functions.stream-setup]
+verify_jwt = false
