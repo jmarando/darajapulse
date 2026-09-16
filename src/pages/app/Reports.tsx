@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
-import { Download, FileSpreadsheet, Printer, RefreshCw, ChevronRight, Layers } from "lucide-react";
+import { Download, FileSpreadsheet, Printer, RefreshCw, ChevronRight, Layers, ArrowUpRight, ExternalLink, X } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -22,15 +24,46 @@ import DeliverableGrouping from "@/components/DeliverableGrouping";
 
 const ALL = "__all__";
 
-const Stat = ({ label, value, hint }: { label: string; value: string; hint?: string }) => (
-  <Card>
-    <CardContent className="p-4">
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-      {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
-    </CardContent>
-  </Card>
-);
+/** Chart palette drawn from the app's own tokens — accent, ink, amber highlight. */
+const C_ACCENT = "hsl(var(--accent))";
+const C_INK = "hsl(var(--primary))";
+const C_HIGHLIGHT = "hsl(var(--highlight))";
+
+const Stat = ({ label, value, hint, onClick, to }: {
+  label: string; value: string; hint?: string; onClick?: () => void; to?: string;
+}) => {
+  const interactive = !!onClick;
+  return (
+    <Card
+      {...(interactive
+        ? {
+            role: "button" as const,
+            tabIndex: 0,
+            onClick,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.(); }
+            },
+            "aria-label": `${label} — ${value}. ${to || "Open details"}`,
+            title: to,
+          }
+        : {})}
+      className={
+        interactive
+          ? "cursor-pointer transition-[box-shadow,transform] duration-150 hover:shadow-soft active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          : undefined
+      }
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="text-[10px] uppercase tracking-widest text-accent font-medium">{label}</div>
+          {interactive && <ArrowUpRight className="w-3.5 h-3.5 text-accent shrink-0" aria-hidden />}
+        </div>
+        <div className="text-2xl font-semibold mt-1 tabular-nums">{value}</div>
+        {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
+      </CardContent>
+    </Card>
+  );
+};
 
 const Reports = () => {
   const [rows, setRows] = useState<PublicationRow[]>([]);
