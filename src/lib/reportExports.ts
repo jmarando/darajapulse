@@ -4,6 +4,14 @@ import {
   platformCounts, rowCountry, titleCase, totalsFor,
 } from "@/lib/reporting";
 
+/** Plain-language label for how a creator's country was set. */
+const srcLabel = (s?: string | null) =>
+  s === "verified" ? "Confirmed"
+  : s === "inferred_campaign" ? "Best guess from campaign"
+  : s === "imported" ? "Imported"
+  : s === "defaulted" ? "Default, not confirmed"
+  : "Unknown";
+
 const round = (n: number) => Math.round(n || 0);
 const er = (t: { engagement: number; views: number }) => (t.views ? +((t.engagement / t.views) * 100).toFixed(2) : 0);
 
@@ -50,6 +58,7 @@ export const buildSummarySheets = (
           Influencer: g.label,
           Country: rowCountry(g.rows[0]) ? nameOf(rowCountry(g.rows[0])) : "Not specified",
           City: g.rows[0].influencer_city || "Not specified",
+          "Country data": srcLabel(g.rows[0].influencer_country_source),
           "Unique deliverables": g.deliverables,
           "Platform publications": g.publications,
           TikTok: pc.tiktok || 0, Instagram: pc.instagram || 0, Facebook: pc.facebook || 0,
@@ -96,6 +105,7 @@ export const buildDetailedSheets = (
       Influencer: g.rows[0].influencer_name || "",
       Country: rowCountry(g.rows[0]) ? nameOf(rowCountry(g.rows[0])) : "Not specified",
       City: g.rows[0].influencer_city || "Not specified",
+      "Country data": srcLabel(g.rows[0].influencer_country_source),
       "Content type": g.rows[0].deliverable_content_type || "",
       Status: g.rows[0].deliverable_status || "",
       Platforms: [...new Set(g.rows.map((r) => titleCase(r.platform)))].join(", "),
@@ -114,6 +124,7 @@ export const buildDetailedSheets = (
       Influencer: r.influencer_name || "",
       Country: rowCountry(r) ? nameOf(rowCountry(r)) : "Not specified",
       City: r.influencer_city || "Not specified",
+      "Country data": srcLabel(r.influencer_country_source),
       Handle: r.influencer_handle || "",
       Platform: titleCase(r.platform),
       "Post URL": r.post_url || "",

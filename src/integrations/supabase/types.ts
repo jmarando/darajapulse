@@ -1651,6 +1651,7 @@ export type Database = {
           bio: string | null
           city: string | null
           country_code: string | null
+          country_source: Database["public"]["Enums"]["geo_source"] | null
           created_at: string
           demo_source: string | null
           engagement_rate: number | null
@@ -1676,6 +1677,7 @@ export type Database = {
           bio?: string | null
           city?: string | null
           country_code?: string | null
+          country_source?: Database["public"]["Enums"]["geo_source"] | null
           created_at?: string
           demo_source?: string | null
           engagement_rate?: number | null
@@ -1701,6 +1703,7 @@ export type Database = {
           bio?: string | null
           city?: string | null
           country_code?: string | null
+          country_source?: Database["public"]["Enums"]["geo_source"] | null
           created_at?: string
           demo_source?: string | null
           engagement_rate?: number | null
@@ -2194,6 +2197,7 @@ export type Database = {
           avg_cpm_kes: number | null
           city: string | null
           country_code: string | null
+          country_source: Database["public"]["Enums"]["geo_source"] | null
           created_at: string
           demo_source: string | null
           demo_updated_at: string | null
@@ -2230,6 +2234,7 @@ export type Database = {
           avg_cpm_kes?: number | null
           city?: string | null
           country_code?: string | null
+          country_source?: Database["public"]["Enums"]["geo_source"] | null
           created_at?: string
           demo_source?: string | null
           demo_updated_at?: string | null
@@ -2266,6 +2271,7 @@ export type Database = {
           avg_cpm_kes?: number | null
           city?: string | null
           country_code?: string | null
+          country_source?: Database["public"]["Enums"]["geo_source"] | null
           created_at?: string
           demo_source?: string | null
           demo_updated_at?: string | null
@@ -3601,6 +3607,7 @@ export type Database = {
           impressions: number
           influencer_city: string
           influencer_country: string
+          influencer_country_source: string
           influencer_handle: string
           influencer_id: string
           influencer_name: string
@@ -3704,6 +3711,7 @@ export type Database = {
         | "live"
         | "reporting"
         | "closed"
+      geo_source: "defaulted" | "inferred_campaign" | "imported" | "verified"
       inventory_kind: "owned_account" | "influencer" | "ad_slot" | "bundle"
       payout_status: "pending" | "processing" | "paid" | "failed"
       platform: "tiktok" | "instagram" | "youtube" | "twitter" | "facebook"
@@ -3856,6 +3864,7 @@ export const Constants = {
         "reporting",
         "closed",
       ],
+      geo_source: ["defaulted", "inferred_campaign", "imported", "verified"],
       inventory_kind: ["owned_account", "influencer", "ad_slot", "bundle"],
       payout_status: ["pending", "processing", "paid", "failed"],
       platform: ["tiktok", "instagram", "youtube", "twitter", "facebook"],

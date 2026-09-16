@@ -38,7 +38,8 @@ const fmtAgo = (iso?: string | null) => {
 
 const PLATFORM_ICON: Record<string, any> = { tiktok: Music2, instagram: Instagram, youtube: Youtube, twitter: Twitter, facebook: Facebook };
 
-const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", country_code: "KE", city: "", phone_mpesa: "", email: "" };
+// Country is left blank on purpose — we don't want to assume Kenya for a new creator.
+const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", country_code: "", city: "", phone_mpesa: "", email: "" };
 
 const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; format: (v: number) => string; onSave: (v: number) => void; step?: number }) => {
   const [editing, setEditing] = useState(false);
@@ -79,6 +80,7 @@ const Influencers = () => {
   const [sort, setSort] = useState<"recent" | "followers" | "name">("recent");
   const [country, setCountry] = useState(ALL);
   const [city, setCity] = useState(ALL);
+  const [unconfirmedOnly, setUnconfirmedOnly] = useState(false);
   const { countries, nameOf, citiesOf } = useGeo();
 
   const load = async () => {
@@ -116,6 +118,8 @@ const Influencers = () => {
       engagement_rate: Number(form.engagement_rate),
       country_code: form.country_code || null,
       city: form.city || null,
+      // A person chose this country in the form, so it counts as confirmed.
+      country_source: form.country_code ? "verified" : null,
     };
     if (editingId) {
       const { error } = await (supabase.from("influencers") as any).update(payload).eq("id", editingId);
@@ -148,7 +152,10 @@ const Influencers = () => {
   const usedCities = [...new Set(rows
     .filter(r => country === ALL || country === UNKNOWN ? true : r.country_code === country)
     .map(r => r.city).filter(Boolean))] as string[];
+  // Countries carried over from the old "Kenya" default have never been confirmed.
+  const unconfirmed = rows.filter(r => r.country_code && r.country_source !== "verified").length;
   const filtered = rows
+    .filter(r => !unconfirmedOnly || (r.country_code && r.country_source !== "verified"))
     .filter(r => matchesGeo({ country: r.country_code, city: r.city }, country, city, ALL))
     .filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()) || (r.city ?? "").toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => {
@@ -238,6 +245,12 @@ const Influencers = () => {
           placeholder="All countries" items={countryItems(usedCountries)} />
         <Combobox allValue={ALL} value={city} onChange={setCity}
           placeholder="All cities" items={cityItems(usedCities)} />
+        {unconfirmed > 0 && (
+          <Button size="sm" variant={unconfirmedOnly ? "default" : "outline"} onClick={() => setUnconfirmedOnly(v => !v)}
+            title="Countries carried over from the old Kenya default — open a creator and save their country to confirm it">
+            Country not confirmed ({unconfirmed})
+          </Button>
+        )}
         <div className="flex items-center gap-1">
           {([["recent", "Recently added"], ["followers", "Followers"], ["name", "Name"]] as const).map(([k, label]) => (
             <Button key={k} size="sm" variant={sort === k ? "default" : "outline"} onClick={() => setSort(k as any)}>{label}</Button>
@@ -303,9 +316,12 @@ const Influencers = () => {
                     <span className="truncate" title={[r.city, nameOf(r.country_code)].filter(Boolean).join(", ")}>
                       {r.city || nameOf(r.country_code)}
                     </span>
+                    {r.country_code && r.country_source !== "verified" && (
+                      <span className="text-[9px] text-muted-foreground" title="Carried over from the old default — not confirmed">?</span>
+                    )}
                   </div>
                   <div className="text-[9px] uppercase tracking-widest text-muted-foreground mt-0.5">
-                    {r.city ? nameOf(r.country_code) : "Country"}
+                    {r.city ? nameOf(r.country_code) : r.country_code && r.country_source !== "verified" ? "Country · unconfirmed" : "Country"}
                   </div>
                 </div>
               </div>
