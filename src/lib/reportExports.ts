@@ -48,6 +48,8 @@ export const buildSummarySheets = (
         const pc = platformCounts(g.rows);
         return {
           Influencer: g.label,
+          Country: rowCountry(g.rows[0]) ? nameOf(rowCountry(g.rows[0])) : "Not specified",
+          City: g.rows[0].influencer_city || "Not specified",
           "Unique deliverables": g.deliverables,
           "Platform publications": g.publications,
           TikTok: pc.tiktok || 0, Instagram: pc.instagram || 0, Facebook: pc.facebook || 0,
@@ -81,8 +83,11 @@ export const buildSummarySheets = (
   ];
 };
 
-export const buildDetailedSheets = (rows: PublicationRow[]): SheetSet => [
-  ...buildSummarySheets(rows),
+export const buildDetailedSheets = (
+  rows: PublicationRow[],
+  nameOf: (c: string) => string = (c) => c,
+): SheetSet => [
+  ...buildSummarySheets(rows, nameOf),
   {
     name: "Deliverables",
     rows: byDeliverable(rows).map((g) => ({
