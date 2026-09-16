@@ -77,6 +77,9 @@ const Influencers = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(blankForm);
   const [sort, setSort] = useState<"recent" | "followers" | "name">("recent");
+  const [country, setCountry] = useState(ALL);
+  const [city, setCity] = useState(ALL);
+  const { countries, nameOf, citiesOf } = useGeo();
 
   const load = async () => {
     const { data } = await supabase.from("influencers").select("*").order("created_at", { ascending: false });
@@ -95,6 +98,8 @@ const Influencers = () => {
       follower_count: r.follower_count ?? 0,
       engagement_rate: r.engagement_rate ?? 0,
       region: r.region ?? "Kenya",
+      country_code: r.country_code ?? "",
+      city: r.city ?? "",
       phone_mpesa: r.phone_mpesa ?? "",
       email: r.email ?? "",
     });
