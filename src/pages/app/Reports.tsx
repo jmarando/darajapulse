@@ -35,6 +35,8 @@ const Stat = ({ label, value, hint }: { label: string; value: string; hint?: str
 const Reports = () => {
   const [rows, setRows] = useState<PublicationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [client, setClient] = useState(ALL);
   const [campaign, setCampaign] = useState(ALL);
   const [creator, setCreator] = useState(ALL);
@@ -50,15 +52,30 @@ const Reports = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.rpc("reporting_publications", {
-      _campaign_ids: null, _from: null, _to: null,
-    } as any);
-    if (error) toast({ title: "Could not load reporting data", description: error.message, variant: "destructive" });
-    setRows(((data as any[]) ?? []).map(normalizeRow));
+    setLoadError(null);
+    const page = 1000;
+    const all: any[] = [];
+    try {
+      for (let start = 0; ; start += page) {
+        const { data, error } = await (supabase.rpc("reporting_publications", {
+          _campaign_ids: null, _from: null, _to: null,
+        } as any) as any).range(start, start + page - 1);
+        if (error) throw error;
+        const batch = (data as any[]) ?? [];
+        all.push(...batch);
+        if (batch.length < page) break;
+      }
+      setRows(all.map(normalizeRow));
+      setLastRefreshed(new Date());
+    } catch (e: any) {
+      setLoadError(e?.message || "Unknown error");
+      toast({ title: "Could not load reporting data", description: e?.message, variant: "destructive" });
+    }
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
 
   const options = useMemo(() => {
     const uniq = (list: { id: string; label: string }[]) => {
