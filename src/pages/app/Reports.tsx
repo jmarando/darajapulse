@@ -155,7 +155,8 @@ const Reports = () => {
   );
 
   const monthChart = months.map((m) => ({
-    month: m.label.replace(/ \d{4}$/, ""),
+    month: m.key === "unknown" ? "Undated" : m.label.replace(/^(\w{3})\w* (\d{4})$/, "$1 $2").slice(0, 8),
+
     views: Math.round(m.views),
     engagement: Math.round(m.engagement),
     deliverables: m.deliverables,
