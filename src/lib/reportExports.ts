@@ -59,7 +59,6 @@ export const buildSummarySheets = (
           Country: rowCountry(g.rows[0]) ? nameOf(rowCountry(g.rows[0])) : "Not specified",
           City: g.rows[0].influencer_city || "Not specified",
           "Country data": srcLabel(g.rows[0].influencer_country_source),
-      "Country data": srcLabel(g.rows[0].influencer_country_source),
           "Unique deliverables": g.deliverables,
           "Platform publications": g.publications,
           TikTok: pc.tiktok || 0, Instagram: pc.instagram || 0, Facebook: pc.facebook || 0,
