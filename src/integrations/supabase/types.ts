@@ -1396,6 +1396,10 @@ export type Database = {
           reviewed_by: string | null
           reviewer_label: string | null
           status: string
+          stream_duration: number | null
+          stream_status: string | null
+          stream_thumbnail_url: string | null
+          stream_uid: string | null
           updated_at: string
         }
         Insert: {
@@ -1419,6 +1423,10 @@ export type Database = {
           reviewed_by?: string | null
           reviewer_label?: string | null
           status?: string
+          stream_duration?: number | null
+          stream_status?: string | null
+          stream_thumbnail_url?: string | null
+          stream_uid?: string | null
           updated_at?: string
         }
         Update: {
@@ -1442,6 +1450,10 @@ export type Database = {
           reviewed_by?: string | null
           reviewer_label?: string | null
           status?: string
+          stream_duration?: number | null
+          stream_status?: string | null
+          stream_thumbnail_url?: string | null
+          stream_uid?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3527,6 +3539,8 @@ export type Database = {
           review_note: string
           reviewed_at: string
           status: string
+          stream_status: string
+          stream_thumbnail_url: string
         }[]
       }
       get_invoice_by_token: { Args: { _token: string }; Returns: Json }
@@ -3656,20 +3670,36 @@ export type Database = {
         }
         Returns: Json
       }
-      submit_creator_draft: {
-        Args: {
-          _brief_token: string
-          _caption?: string
-          _creator_note?: string
-          _file_name: string
-          _file_path: string
-          _file_size?: number
-          _mime_type?: string
-          _platform?: string
-          _poster_path?: string
-        }
-        Returns: string
-      }
+      submit_creator_draft:
+        | {
+            Args: {
+              _brief_token: string
+              _caption?: string
+              _creator_note?: string
+              _file_name: string
+              _file_path: string
+              _file_size?: number
+              _mime_type?: string
+              _platform?: string
+              _poster_path?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _brief_token: string
+              _caption?: string
+              _creator_note?: string
+              _file_name: string
+              _file_path: string
+              _file_size?: number
+              _mime_type?: string
+              _platform?: string
+              _poster_path?: string
+              _stream_uid?: string
+            }
+            Returns: string
+          }
       update_brief_status: {
         Args: { _status: string; _token: string }
         Returns: undefined
