@@ -122,6 +122,12 @@ export const byMonth = (rows: PublicationRow[]) =>
   groupBy(rows, (r) => monthKey(r.posted_at), (r) => monthLabel(monthKey(r.posted_at)))
     .sort((a, b) => a.key.localeCompare(b.key));
 
+/** Country of a publication — the creator's, falling back to the campaign market. */
+export const rowCountry = (r: PublicationRow) => r.influencer_country || r.campaign_country || "";
+
+export const byCountry = (rows: PublicationRow[], nameOf: (c: string) => string) =>
+  groupBy(rows, (r) => rowCountry(r) || "unknown", (r) => (rowCountry(r) ? nameOf(rowCountry(r)) : "Not specified"));
+
 export const byDeliverable = (rows: PublicationRow[]) =>
   groupBy(rows, deliverableKey, (r) => r.deliverable_title || r.caption?.slice(0, 60) || "Untitled deliverable");
 
