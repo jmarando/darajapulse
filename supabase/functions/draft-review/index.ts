@@ -148,7 +148,8 @@ Deno.serve(async (req) => {
       poster_path: undefined,
       creator_name: d.influencers?.full_name ?? null,
       creator_handle: d.influencers?.handle ?? null,
-      video_url: byPath.get(d.file_path) ?? null,
+      video_url: null,
+      has_video: Boolean(d.file_path),
       poster_url: d.poster_path ? byPath.get(d.poster_path) ?? null : null,
     }));
 
