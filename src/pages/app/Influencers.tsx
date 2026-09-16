@@ -245,6 +245,12 @@ const Influencers = () => {
           placeholder="All countries" items={countryItems(usedCountries)} />
         <Combobox allValue={ALL} value={city} onChange={setCity}
           placeholder="All cities" items={cityItems(usedCities)} />
+        {unconfirmed > 0 && (
+          <Button size="sm" variant={unconfirmedOnly ? "default" : "outline"} onClick={() => setUnconfirmedOnly(v => !v)}
+            title="Countries carried over from the old Kenya default — open a creator and save their country to confirm it">
+            Country not confirmed ({unconfirmed})
+          </Button>
+        )}
         <div className="flex items-center gap-1">
           {([["recent", "Recently added"], ["followers", "Followers"], ["name", "Name"]] as const).map(([k, label]) => (
             <Button key={k} size="sm" variant={sort === k ? "default" : "outline"} onClick={() => setSort(k as any)}>{label}</Button>
