@@ -80,6 +80,7 @@ const Influencers = () => {
   const [sort, setSort] = useState<"recent" | "followers" | "name">("recent");
   const [country, setCountry] = useState(ALL);
   const [city, setCity] = useState(ALL);
+  const [unconfirmedOnly, setUnconfirmedOnly] = useState(false);
   const { countries, nameOf, citiesOf } = useGeo();
 
   const load = async () => {
@@ -151,7 +152,10 @@ const Influencers = () => {
   const usedCities = [...new Set(rows
     .filter(r => country === ALL || country === UNKNOWN ? true : r.country_code === country)
     .map(r => r.city).filter(Boolean))] as string[];
+  // Countries carried over from the old "Kenya" default have never been confirmed.
+  const unconfirmed = rows.filter(r => r.country_code && r.country_source !== "verified").length;
   const filtered = rows
+    .filter(r => !unconfirmedOnly || (r.country_code && r.country_source !== "verified"))
     .filter(r => matchesGeo({ country: r.country_code, city: r.city }, country, city, ALL))
     .filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()) || (r.city ?? "").toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => {
