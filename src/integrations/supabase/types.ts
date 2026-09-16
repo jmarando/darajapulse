@@ -1382,7 +1382,7 @@ export type Database = {
           created_at: string
           creator_note: string | null
           file_name: string | null
-          file_path: string
+          file_path: string | null
           file_size: number | null
           id: string
           influencer_id: string | null
@@ -1409,7 +1409,7 @@ export type Database = {
           created_at?: string
           creator_note?: string | null
           file_name?: string | null
-          file_path: string
+          file_path?: string | null
           file_size?: number | null
           id?: string
           influencer_id?: string | null
@@ -1436,7 +1436,7 @@ export type Database = {
           created_at?: string
           creator_note?: string | null
           file_name?: string | null
-          file_path?: string
+          file_path?: string | null
           file_size?: number | null
           id?: string
           influencer_id?: string | null

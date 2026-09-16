@@ -1,0 +1,1 @@
+ALTER TABLE public.creator_drafts ALTER COLUMN file_path DROP NOT NULL;
