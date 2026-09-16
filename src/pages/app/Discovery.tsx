@@ -474,6 +474,11 @@ const Discovery = () => {
             {niches.map(n => <SelectItem key={n} value={n} className="capitalize">{n}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Combobox className="w-[150px] md:w-[150px]" allValue={ALL} value={country}
+          onChange={(v) => { setCountry(v); setCity(ALL); }}
+          placeholder="All countries" items={countryItems(countries)} />
+        <Combobox className="w-[150px] md:w-[150px]" allValue={ALL} value={city} onChange={setCity}
+          placeholder="All cities" items={cityItems(cityOptions)} />
         <Select value={String(minFollowers)} onValueChange={v => setMinFollowers(Number(v))}>
           <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
           <SelectContent>
