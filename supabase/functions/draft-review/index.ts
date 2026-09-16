@@ -98,6 +98,25 @@ Deno.serve(async (req) => {
 
     }
 
+    if (action === "sign") {
+      // One video at a time, on demand: signing every video on list load was slow and wasteful.
+      const draftId = String(body?.draft_id || "");
+      const download = body?.download ? String(body.download).slice(0, 200) : null;
+      if (!draftId) return json({ error: "draft_id required" }, 400);
+      const { data: draft } = await admin
+        .from("creator_drafts")
+        .select("id, file_path")
+        .eq("id", draftId)
+        .eq("campaign_id", link.campaign_id)
+        .maybeSingle();
+      if (!draft?.file_path) return json({ error: "Video unavailable" }, 404);
+      const { data: signed, error: sErr } = await admin.storage
+        .from("creator-drafts")
+        .createSignedUrl(draft.file_path, 60 * 60 * 6, download ? { download } : undefined);
+      if (sErr || !signed?.signedUrl) return json({ error: "Video unavailable" }, 400);
+      return json({ url: signed.signedUrl });
+    }
+
     // list
     const { data: campaign } = await admin
       .from("campaigns")
