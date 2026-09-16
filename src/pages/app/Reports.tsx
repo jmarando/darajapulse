@@ -155,8 +155,13 @@ const Reports = () => {
       contentTypes: [...new Set(rows.map((r) => r.deliverable_content_type).filter(Boolean))] as string[],
       delStatuses: [...new Set(rows.map((r) => r.deliverable_status).filter(Boolean))] as string[],
       campStatuses: [...new Set(rows.map((r) => r.campaign_status).filter(Boolean))] as string[],
+      // Countries/cities present in the data the user can actually see.
+      countries: countries.filter((c) => rows.some((r) => rowCountry(r) === c.code)),
+      cities: [...new Set(rows
+        .filter((r) => country === ALL || country === UNKNOWN || rowCountry(r) === country)
+        .map((r) => r.influencer_city).filter(Boolean))] as string[],
     };
-  }, [rows, client, campaign]);
+  }, [rows, client, campaign, countries, country]);
 
   const filtered = useMemo(() => rows.filter((r) => {
     if (client !== ALL && r.client_id !== client) return false;
@@ -167,11 +172,18 @@ const Reports = () => {
     if (contentType !== ALL && r.deliverable_content_type !== contentType) return false;
     if (delStatus !== ALL && r.deliverable_status !== delStatus) return false;
     if (campStatus !== ALL && r.campaign_status !== campStatus) return false;
+    if (country !== ALL) {
+      const c = rowCountry(r);
+      if (country === UNKNOWN ? !!c : c !== country) return false;
+    }
+    if (city !== ALL) {
+      if (city === UNKNOWN ? !!r.influencer_city : r.influencer_city !== city) return false;
+    }
     const at = r.posted_at ? r.posted_at.slice(0, 10) : "";
     if (from && (!at || at < from)) return false;
     if (to && (!at || at > to)) return false;
     return true;
-  }), [rows, client, campaign, creator, platform, month, contentType, delStatus, campStatus, from, to]);
+  }), [rows, client, campaign, creator, platform, month, contentType, delStatus, campStatus, country, city, from, to]);
 
   const totals = useMemo(() => totalsFor(filtered), [filtered]);
   const platforms = useMemo(() => byPlatform(filtered), [filtered]);
