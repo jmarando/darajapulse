@@ -143,11 +143,13 @@ const Discovery = () => {
     });
   }, [queryMatches, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
 
-  const activeFiltersCount = [platformFilter !== "all", nicheFilter !== "all", !!minFollowers, verifiedOnly, hasContact].filter(Boolean).length;
+  const activeFiltersCount = [platformFilter !== "all", nicheFilter !== "all", !!minFollowers, verifiedOnly, hasContact, country !== ALL, city !== ALL].filter(Boolean).length;
 
   const clearDiscoveryFilters = () => {
     setPlatformFilter("all");
     setNicheFilter("all");
+    setCountry(ALL);
+    setCity(ALL);
     setMinFollowers(0);
     setVerifiedOnly(false);
     setHasContact(false);
