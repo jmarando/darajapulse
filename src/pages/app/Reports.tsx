@@ -367,7 +367,7 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} />
-                    <Line type="monotone" dataKey="views" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="views" stroke={C_ACCENT} strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -380,7 +380,7 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} />
-                    <Line type="monotone" dataKey="engagement" stroke="hsl(var(--accent-foreground))" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="engagement" stroke={C_HIGHLIGHT} strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -393,8 +393,8 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="name" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} /><Legend />
-                    <Bar dataKey="views" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="engagement" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="engagement" fill={C_INK} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -407,8 +407,8 @@ const Reports = () => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} allowDecimals={false} />
                     <Tooltip /><Legend />
-                    <Bar dataKey="deliverables" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="publications" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="deliverables" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="publications" fill={C_INK} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -423,7 +423,7 @@ const Reports = () => {
                   <XAxis dataKey="name" fontSize={11} interval={0} angle={-25} textAnchor="end" height={60} />
                   <YAxis fontSize={11} tickFormatter={fmtShort} />
                   <Tooltip formatter={(v: any) => fmtNum(Number(v))} />
-                  <Bar dataKey="views" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
