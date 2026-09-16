@@ -26,6 +26,7 @@ type Draft = {
   creator_name: string | null;
   creator_handle: string | null;
   video_url: string | null;
+  has_video?: boolean;
   poster_url: string | null;
 };
 
@@ -56,6 +57,15 @@ const PublicDraftReview = () => {
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [token]);
+
+  /** Ask the server for a signed URL for one video, only when it is needed. */
+  const signOne = async (draftId: string, download?: string): Promise<string | null> => {
+    const { data: res, error: err } = await supabase.functions.invoke("draft-review", {
+      body: { token, action: "sign", draft_id: draftId, download: download ?? null },
+    });
+    if (err || (res as any)?.error || !(res as any)?.url) return null;
+    return (res as any).url as string;
+  };
 
   const decide = async (d: Draft, decision: "approved" | "changes_requested") => {
     const note = (notes[d.id] || "").trim();
