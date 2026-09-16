@@ -204,7 +204,14 @@ Deno.serve(async (req) => {
     (sourcePerInfluencer[id] ??= []).push(source);
   };
 
-  await Promise.all(targets.map(async (r: any) => {
+  // Scraper providers cap concurrent jobs (Apify: 32) and memory, so fire a few at a
+  // time instead of one job per profile — otherwise most requests are rejected and
+  // those creators silently keep stale follower numbers.
+  const CONCURRENCY = 5;
+  const deadline = Date.now() + 110_000;
+  let skippedForTime = 0;
+
+  const refreshOne = async (r: any) => {
     const id = r.id as string;
     const platform = (r.primary_platform || "").toLowerCase();
 
