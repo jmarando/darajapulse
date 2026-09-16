@@ -27,6 +27,8 @@ type Draft = {
   creator_handle: string | null;
   video_url: string | null;
   has_video?: boolean;
+  has_stream?: boolean;
+  stream_status?: string | null;
   poster_url: string | null;
 };
 
@@ -65,6 +67,15 @@ const PublicDraftReview = () => {
     });
     if (err || (res as any)?.error || !(res as any)?.url) return null;
     return (res as any).url as string;
+  };
+
+  /** Stream-hosted drafts: mint player / thumbnail / download URLs on demand. */
+  const streamSign = async (draftId: string): Promise<{ status: "processing" | "ready"; embedUrl?: string; posterUrl?: string; downloadUrl?: string } | null> => {
+    const { data: res, error } = await supabase.functions.invoke("stream-sign", {
+      body: { draft_id: draftId, link_token: token },
+    });
+    if (error || (res as any)?.error) return null;
+    return res as any;
   };
 
   const decide = async (d: Draft, decision: "approved" | "changes_requested") => {
@@ -141,7 +152,12 @@ const PublicDraftReview = () => {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {rows.slice(0, visible).map((d) => (
               <Card key={d.id} className="p-0 overflow-hidden flex flex-col">
-                <DraftVideo getUrl={() => signOne(d.id)} poster={d.poster_url} label={d.creator_name} />
+                <DraftVideo
+                  getUrl={d.has_stream ? undefined : () => signOne(d.id)}
+                  getStream={d.has_stream ? () => streamSign(d.id) : undefined}
+                  poster={d.poster_url}
+                  label={d.creator_name}
+                />
 
                 <div className="p-4 space-y-3 flex-1 flex flex-col">
                   <div className="flex items-start justify-between gap-2">
@@ -173,6 +189,11 @@ const PublicDraftReview = () => {
                     className="h-9 w-full"
                     onClick={async () => {
                       const name = d.file_name || `${d.creator_name || "video"}.mp4`;
+                      if (d.has_stream) {
+                        const s = await streamSign(d.id);
+                        if (!s?.downloadUrl) return toast.error("Video unavailable");
+                        return downloadFile(s.downloadUrl, name);
+                      }
                       const u = await signOne(d.id, name);
                       if (!u) return toast.error("Video unavailable");
                       downloadFile(u, name);
