@@ -515,7 +515,7 @@ const Reports = () => {
           <Card><CardContent className="p-0 overflow-x-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Influencer</TableHead><TableHead className="text-right">Deliverables</TableHead>
+                <TableHead>Influencer</TableHead><TableHead>Location</TableHead><TableHead className="text-right">Deliverables</TableHead>
                 <TableHead className="text-right">Publications</TableHead><TableHead className="text-right">TikTok</TableHead>
                 <TableHead className="text-right">Instagram</TableHead><TableHead className="text-right">Facebook</TableHead>
                 <TableHead className="text-right">Other</TableHead><TableHead className="text-right">Views</TableHead>
@@ -532,6 +532,9 @@ const Reports = () => {
                     <>
                       <TableRow key={c.key} className="cursor-pointer" onClick={() => setOpenMonth(openMonth === c.key ? null : c.key)}>
                         <TableCell className="font-medium">{c.label}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {[c.rows[0].influencer_city, rowCountry(c.rows[0]) ? nameOf(rowCountry(c.rows[0])) : ""].filter(Boolean).join(", ") || "Not specified"}
+                        </TableCell>
                         <TableCell className="text-right">{c.deliverables}</TableCell>
                         <TableCell className="text-right">{c.publications}</TableCell>
                         <TableCell className="text-right">{pc.tiktok || 0}</TableCell>
