@@ -333,6 +333,8 @@ const Discovery = () => {
     });
   })();
   const openProfiles = openPerson?.profiles || (openCreator ? [openCreator] : []);
+  // Portfolio shows every known account, including ones that are no longer reachable.
+  const portfolioProfiles = openPerson ? [...openPerson.profiles, ...openPerson.unavailable] : openProfiles;
 
   const lookupCreator = async (rawQuery = q) => {
     const trimmed = rawQuery.trim();
@@ -532,6 +534,22 @@ const Discovery = () => {
           {matches.length > 0 && <Button variant="ghost" onClick={() => setMatches([])}>Clear ranking</Button>}
         </div>
       </Card>
+
+      {/* People vs individual social accounts */}
+      <div className="mb-4 inline-flex rounded-xl bg-muted/60 p-1 gap-1" role="tablist" aria-label="Discovery view">
+        {([["people", "People"], ["profiles", "Social profiles"]] as const).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={viewMode === v}
+            onClick={() => setViewMode(v)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === v ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* Filters */}
       <div className="flex gap-2 mb-4 flex-wrap items-center">
