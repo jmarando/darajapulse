@@ -2089,6 +2089,7 @@ const CampaignDetail = () => {
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={autoFetchAll}><Sparkles className="w-3 h-3 mr-1" /> Auto-fetch all</Button>
+            <Button variant="outline" size="sm" onClick={refreshMissingFigures}><Sparkles className="w-3 h-3 mr-1" /> Refresh missing figures</Button>
 
             <Dialog open={postOpen} onOpenChange={setPostOpen}>
               <DialogTrigger asChild><Button size="sm" className="bg-primary" disabled={ci.length === 0}><Plus className="w-3 h-3 mr-1" /> Add post</Button></DialogTrigger>
