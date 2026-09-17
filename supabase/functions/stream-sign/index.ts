@@ -1,6 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { customerCodeFrom, signStreamToken, streamApi } from "../_shared/stream.ts";
+import { customerCodeFrom, signStreamToken, streamApi, withStreamToken } from "../_shared/stream.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
         list.map(async (r: any) => {
           if (!okCampaigns.has(r.campaign_id)) return;
           const token = await signStreamToken(r.stream_uid);
-          posters[r.id] = token ? `${r.stream_thumbnail_url}?token=${token}` : r.stream_thumbnail_url;
+          posters[r.id] = withStreamToken(r.stream_thumbnail_url, r.stream_uid, token);
+
         }),
       );
       return json({ posters });
