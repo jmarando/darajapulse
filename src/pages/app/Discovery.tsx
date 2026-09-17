@@ -587,7 +587,12 @@ const Discovery = () => {
         </Select>
         <label className="flex items-center gap-2 text-sm"><Switch checked={verifiedOnly} onCheckedChange={setVerifiedOnly} /> Verified</label>
         <label className="flex items-center gap-2 text-sm"><Switch checked={hasContact} onCheckedChange={setHasContact} /> Has contact</label>
-        <div className="text-sm text-muted-foreground ml-auto">{ordered.length} people · {rows.length} profiles</div>
+        <label className="flex items-center gap-2 text-sm" title="Accounts we've confirmed are deleted, suspended or missing are hidden by default.">
+          <Switch checked={includeUnavailable} onCheckedChange={setIncludeUnavailable} /> Include unavailable
+        </label>
+        <div className="text-sm text-muted-foreground ml-auto">
+          {ordered.length} {ordered.length === 1 ? "person" : "people"} · {filtered.length} {includeUnavailable ? "profiles" : "active profiles"}
+        </div>
       </div>
 
       {loading ? (
@@ -627,7 +632,50 @@ const Discovery = () => {
             </Button>
           </Card>
         )}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {viewMode === "profiles" && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map(pr => {
+              const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+              const st = statusInfo(pr.profile_status);
+              const dead = st.tone === "unavailable" || !pr.profile_url;
+              return (
+                <Card key={pr.id} className="p-5 rounded-2xl flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-display text-lg truncate">{pr.full_name}</h3>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                        <Icon className="w-3 h-3" /><span className="capitalize">{pr.platform}</span> · @{pr.handle}
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      title={st.message}
+                      className={`text-[10px] shrink-0 ${st.tone === "active" ? "text-success border-success/40" : st.tone === "pending" ? "text-muted-foreground" : "text-destructive border-destructive/40"}`}
+                    >
+                      {st.label}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {fmtCompact(pr.follower_count)} followers · {Number(pr.engagement_rate || 0).toFixed(1)}% engagement
+                  </div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />{[pr.city, nameOf(pr.country_code)].filter(Boolean).join(", ") || "—"}
+                  </div>
+                  <div className="flex gap-1.5 mt-auto pt-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(pr)}>Details</Button>
+                    {dead ? (
+                      <Button variant="ghost" size="sm" disabled title={st.message}>Profile unavailable</Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" asChild><a href={pr.profile_url} target="_blank" rel="noreferrer"><ExternalLink className="w-3 h-3" /></a></Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => addToRoster(pr)} title="Add to influencer roster"><Plus className="w-3 h-3" /></Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+        <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${viewMode === "profiles" ? "hidden" : ""}`}>
 
           {ordered.map(p => {
             const match = personMatch(p);
