@@ -1,4 +1,4 @@
-# Clean up duplicate creators and broken profile links
+# Part A — Clean up duplicate creators and broken profile links
 
 Discovery currently holds 2,456 profile records. Two problems show up on the cards:
 
