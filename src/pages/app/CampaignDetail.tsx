@@ -422,7 +422,7 @@ const CampaignDetail = () => {
 
   // Paid per-post lookup, used only for posts still showing no figures.
   const refreshMissingFigures = async () => {
-    const missing = posts.filter((p: any) => !Number(p.latest?.views || 0));
+    const missing = posts.filter((p: any) => !Number(latestByPost.get(p.id)?.views || 0));
     if (!missing.length) return toast.info("Every post already has figures");
     if (!window.confirm(`${missing.length} post${missing.length === 1 ? "" : "s"} have no figures. Checking them uses about ${missing.length} paid credit${missing.length === 1 ? "" : "s"}. Continue?`)) return;
     toast.loading(`Checking ${missing.length} posts…`, { id: "pf-missing" });
