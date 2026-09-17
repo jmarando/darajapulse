@@ -89,6 +89,18 @@ function toHslTriplet(input: string): string | null {
   return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+function foregroundForColor(input: string): string {
+  const el = document.createElement("div");
+  el.style.color = input;
+  document.body.appendChild(el);
+  const rgb = getComputedStyle(el).color;
+  document.body.removeChild(el);
+  const values = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!values) return "36 30% 97%";
+  const luminance = (0.2126 * Number(values[1]) + 0.7152 * Number(values[2]) + 0.0722 * Number(values[3])) / 255;
+  return luminance > 0.58 ? "20 14% 10%" : "36 30% 97%";
+}
+
 type Ctx = { tenant: TenantInfo | null; loading: boolean; scoped: boolean };
 const TenantCtx = createContext<Ctx>({ tenant: null, loading: false, scoped: false });
 
@@ -127,10 +139,13 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
       if (hsl) {
         const root = document.documentElement;
         root.style.setProperty("--accent", hsl);
+        root.style.setProperty("--accent-foreground", foregroundForColor(tenant.primary_color));
+        root.style.setProperty("--highlight", hsl);
         root.style.setProperty("--ring", hsl);
         root.style.setProperty("--sidebar-primary", hsl);
+        root.style.setProperty("--sidebar-primary-foreground", foregroundForColor(tenant.primary_color));
         root.style.setProperty("--sidebar-ring", hsl);
-        root.style.setProperty("--gradient-warm", `linear-gradient(135deg, hsl(${hsl}), hsl(${hsl} / 0.8))`);
+        root.style.setProperty("--gradient-warm", `linear-gradient(135deg, hsl(${hsl}), hsl(${hsl} / 0.78))`);
       }
     }
   }, [tenant]);

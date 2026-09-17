@@ -119,6 +119,7 @@ const TopBar = ({ user }: any) => {
 
 const AppShell = () => {
   const { user, loading, signOut, isAgency, isClient, roles } = useAuth();
+  const { tenant } = useTenant();
   const isAdmin = roles.includes("agency_admin");
   const isSuper = roles.includes("super_admin" as any);
   const navigate = useNavigate();
@@ -164,7 +165,7 @@ const AppShell = () => {
               <Button variant="ghost" size="icon" className="h-9 w-9"><Menu className="w-5 h-5" /></Button>
             </SheetTrigger>
           </Sheet>
-          <img src={logo} alt="Daraja Pulse" className="h-8 w-auto" />
+          <img src={tenant?.logo_url || logo} alt={tenant?.display_name || tenant?.name || "Daraja Pulse"} className="h-8 w-auto" />
         </header>
         <TopBar user={user} />
         <main className="min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden">
