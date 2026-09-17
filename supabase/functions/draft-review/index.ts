@@ -153,7 +153,8 @@ Deno.serve(async (req) => {
         .filter((d: any) => d.stream_uid && d.stream_thumbnail_url)
         .map(async (d: any) => {
           const t = await signStreamToken(d.stream_uid);
-          streamPosters.set(d.id, t ? `${d.stream_thumbnail_url}?token=${t}` : d.stream_thumbnail_url);
+          streamPosters.set(d.id, withStreamToken(d.stream_thumbnail_url, d.stream_uid, t));
+
         }),
     );
 
