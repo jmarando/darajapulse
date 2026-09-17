@@ -294,7 +294,7 @@ const Discovery = () => {
       .filter(p => p.matchedPlatforms.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableRows, filtered, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
-  }, [filtered]);
+  
 
   const ordered = useMemo(() => {
     if (!matches.length) return people;
