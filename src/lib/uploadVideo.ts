@@ -128,9 +128,10 @@ const startStreamUpload = ({
     const upload = new tus.Upload(file, {
       endpoint: uploadUrl,
       retryDelays: [0, 2000, 5000, 10000, 20000, 30000],
-      // Cloudflare tus requires chunk sizes in 256KiB multiples; 64MiB keeps
-      // the number of round trips (Nairobi → edge) low without huge memory use.
-      chunkSize: 64 * 1024 * 1024,
+      // Cloudflare tus requires chunk sizes in 256KiB multiples. 10MiB keeps a
+      // dropped mobile connection cheap to recover from (at most 10MB re-sent).
+      chunkSize: 10 * 1024 * 1024,
+
       uploadDataDuringCreation: true,
       removeFingerprintOnSuccess: true,
       metadata: {
