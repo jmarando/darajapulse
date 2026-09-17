@@ -1671,21 +1671,13 @@ export type Database = {
           full_name: string
           handle: string
           id: string
-          link_checked_at: string | null
-          link_reason: string | null
-          link_status: string
           niche: string[] | null
           notes: string | null
-          person_key: string | null
           platform: string
-          profile_status: string
           profile_url: string | null
           region: string | null
           shows: string[] | null
           source: string
-          source_profile_url: string | null
-          status_checked_at: string | null
-          status_note: string | null
           updated_at: string
           verified_at: string | null
           works_for: string[] | null
@@ -1705,21 +1697,13 @@ export type Database = {
           full_name: string
           handle: string
           id?: string
-          link_checked_at?: string | null
-          link_reason?: string | null
-          link_status?: string
           niche?: string[] | null
           notes?: string | null
-          person_key?: string | null
           platform: string
-          profile_status?: string
           profile_url?: string | null
           region?: string | null
           shows?: string[] | null
           source?: string
-          source_profile_url?: string | null
-          status_checked_at?: string | null
-          status_note?: string | null
           updated_at?: string
           verified_at?: string | null
           works_for?: string[] | null
@@ -1739,21 +1723,13 @@ export type Database = {
           full_name?: string
           handle?: string
           id?: string
-          link_checked_at?: string | null
-          link_reason?: string | null
-          link_status?: string
           niche?: string[] | null
           notes?: string | null
-          person_key?: string | null
           platform?: string
-          profile_status?: string
           profile_url?: string | null
           region?: string | null
           shows?: string[] | null
           source?: string
-          source_profile_url?: string | null
-          status_checked_at?: string | null
-          status_note?: string | null
           updated_at?: string
           verified_at?: string | null
           works_for?: string[] | null
