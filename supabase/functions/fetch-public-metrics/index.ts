@@ -723,8 +723,18 @@ Deno.serve(async (req) => {
 
 
 
+    if (sc.used > 0) {
+      await supabase.from("scraper_credit_log").insert({
+        provider: "scrapecreators",
+        credits: sc.used,
+        credits_remaining: sc.remaining,
+        campaign_id: campaign_id ?? null,
+        context: post_id ? "single_post" : "campaign_refresh",
+      });
+    }
+
     const ok = succeeded;
-    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
+    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback", credits_used: sc.used, credits_remaining: sc.remaining, credits_capped: sc.capped }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
