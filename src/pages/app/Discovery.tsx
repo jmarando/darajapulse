@@ -862,7 +862,10 @@ const Discovery = () => {
                 <SheetTitle className="flex items-center gap-2">{openCreator.full_name} {openCreator.verified_at && <BadgeCheck className="w-4 h-4 text-success" />}</SheetTitle>
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   @{openCreator.handle} · {openCreator.platform}
-                  {openCreator.profile_url && <a href={openCreator.profile_url} target="_blank" rel="noreferrer" className="text-accent inline-flex items-center gap-1">profile <ExternalLink className="w-3 h-3" /></a>}
+                  {hasTrustedLink(openCreator)
+                    ? <a href={openCreator.profile_url} target="_blank" rel="noreferrer" className="text-accent inline-flex items-center gap-1">profile <ExternalLink className="w-3 h-3" /></a>
+                    : <span className="italic text-xs">{statusInfo(openCreator).message}</span>}
+
                 </div>
               </SheetHeader>
               <div className="mt-4 space-y-4">
@@ -887,7 +890,7 @@ const Discovery = () => {
                         <h4 className="font-display text-sm">Connected social profiles</h4>
                         {portfolioProfiles.map(pr => {
                           const Icon = PLATFORM_ICON[pr.platform] || Instagram;
-                          const st = statusInfo(pr.profile_status);
+                          const st = statusInfo(pr);
                           return (
                             <div key={pr.id} className="rounded-lg border border-border p-2.5">
                               <div className="flex items-center gap-2">
