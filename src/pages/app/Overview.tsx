@@ -281,14 +281,14 @@ const Overview = () => {
       )}
 
       {/* Bottom row: top performer + recent campaigns */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card className="p-6">
+      <div className="grid min-w-0 lg:grid-cols-2 gap-4">
+        <Card className="min-w-0 p-5 sm:p-6">
           <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Highlights</div>
           {topCampaign ? (
             <Link to={`/app/campaigns/${topCampaign.id}`} className="block p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors group mb-3">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Top campaign</div>
-              <div className="flex items-center justify-between mt-1">
-                <div className="font-display text-xl">{topCampaign.name}</div>
+                <div className="flex min-w-0 items-center justify-between gap-2 mt-1">
+                  <div className="min-w-0 font-display text-xl break-words">{topCampaign.name}</div>
                 <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="text-sm text-accent mt-1">{fmt(topCampaign.views)} views</div>
@@ -299,8 +299,8 @@ const Overview = () => {
           {topCreator ? (
             <Link to={`/app/campaigns/${topCreator.campaign_id}`} className="block p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors group">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Top performing post</div>
-              <div className="flex items-center justify-between mt-1">
-                <div className="font-display text-xl">{topCreator.influencers?.full_name || topCreator.influencers?.handle || "—"}</div>
+                <div className="flex min-w-0 items-center justify-between gap-2 mt-1">
+                  <div className="min-w-0 font-display text-xl break-words">{topCreator.influencers?.full_name || topCreator.influencers?.handle || "—"}</div>
                 <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="text-sm text-muted-foreground mt-1">
@@ -312,7 +312,7 @@ const Overview = () => {
           )}
         </Card>
 
-        <Card className="p-6">
+        <Card className="min-w-0 p-5 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Recent campaigns</div>
             <Link to="/app/campaigns" className="text-xs text-accent hover:underline">View all</Link>
@@ -320,7 +320,7 @@ const Overview = () => {
           <div className="space-y-2">
             {recentCampaigns.length === 0 && <div className="text-sm text-muted-foreground">No campaigns yet.</div>}
             {recentCampaigns.map((c: any) => (
-              <Link key={c.id} to={`/app/campaigns/${c.id}`} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary/60 transition-colors group">
+              <Link key={c.id} to={`/app/campaigns/${c.id}`} className="flex min-w-0 items-center justify-between gap-2 p-3 rounded-lg hover:bg-secondary/60 transition-colors group">
                 <div className="min-w-0 flex-1">
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{c.clients?.name || "—"}</div>
                   <div className="font-display text-base truncate">{c.name}</div>
