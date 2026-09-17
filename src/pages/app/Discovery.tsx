@@ -658,8 +658,9 @@ const Discovery = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map(pr => {
               const Icon = PLATFORM_ICON[pr.platform] || Instagram;
-              const st = statusInfo(pr.profile_status);
-              const dead = st.tone === "unavailable" || !pr.profile_url;
+              const st = statusInfo(pr);
+              const dead = st.tone === "unavailable" || !hasTrustedLink(pr);
+
               return (
                 <Card key={pr.id} className="p-5 rounded-2xl flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-2">
@@ -686,7 +687,8 @@ const Discovery = () => {
                   <div className="flex gap-1.5 mt-auto pt-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(pr)}>Details</Button>
                     {dead ? (
-                      <Button variant="ghost" size="sm" disabled title={st.message}>Profile unavailable</Button>
+                      <Button variant="ghost" size="sm" disabled title={st.message}>{st.label === "Needs verification" ? "Needs verification" : "Profile link unavailable"}</Button>
+
                     ) : (
                       <Button variant="ghost" size="sm" asChild><a href={pr.profile_url} target="_blank" rel="noreferrer"><ExternalLink className="w-3 h-3" /></a></Button>
                     )}
@@ -762,8 +764,9 @@ const Discovery = () => {
                   <div className="flex flex-wrap gap-1.5">
                     {p.profiles.map(pr => {
                       const Icon = PLATFORM_ICON[pr.platform] || Instagram;
-                      const st = statusInfo(pr.profile_status);
-                      const dead = st.tone === "unavailable" || !pr.profile_url;
+                      const st = statusInfo(pr);
+                      const dead = st.tone === "unavailable" || !hasTrustedLink(pr);
+
                       return (
                         <a
                           key={pr.id}
