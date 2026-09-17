@@ -136,23 +136,25 @@ const Overview = () => {
   const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares) / totals.views) * 100 : 0;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="w-full min-w-0 max-w-7xl mx-auto px-4 py-6 sm:p-8">
+      <header className="mb-8 flex min-w-0 flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0 max-w-full">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Agency console</div>
-          <h1 className="font-display text-4xl font-semibold mt-1">
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold mt-1 break-words">
             {greeting()}{firstName ? `, ${firstName}` : ""}.
           </h1>
           <p className="text-muted-foreground mt-1">Here's where your campaigns stand today.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:w-auto sm:items-center">
           <Button variant="outline" size="sm" onClick={() => setCompact(!compact)} title="Toggle compact mode">
             {compact ? <LayoutGrid className="w-4 h-4 mr-1" /> : <Rows3 className="w-4 h-4 mr-1" />}
             {compact ? "Comfortable" : "Compact"}
           </Button>
-          <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-9 text-xs w-[150px]" aria-label="From" />
-          <span className="text-xs text-muted-foreground">→</span>
-          <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-9 text-xs w-[150px]" aria-label="To" />
+          <div className="col-span-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:contents">
+            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-9 min-w-0 w-full text-xs sm:w-[150px]" aria-label="From" />
+            <span className="text-xs text-muted-foreground">→</span>
+            <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-9 min-w-0 w-full text-xs sm:w-[150px]" aria-label="To" />
+          </div>
           <Button variant="ghost" size="sm" onClick={() => { setFrom(twoWeeksAgo); setTo(today); }}>Reset</Button>
         </div>
       </header>
@@ -279,14 +281,14 @@ const Overview = () => {
       )}
 
       {/* Bottom row: top performer + recent campaigns */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card className="p-6">
+      <div className="grid min-w-0 lg:grid-cols-2 gap-4">
+        <Card className="min-w-0 p-5 sm:p-6">
           <div className="text-xs uppercase tracking-widest text-muted-foreground mb-4">Highlights</div>
           {topCampaign ? (
             <Link to={`/app/campaigns/${topCampaign.id}`} className="block p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors group mb-3">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Top campaign</div>
-              <div className="flex items-center justify-between mt-1">
-                <div className="font-display text-xl">{topCampaign.name}</div>
+                <div className="flex min-w-0 items-center justify-between gap-2 mt-1">
+                  <div className="min-w-0 font-display text-xl break-words">{topCampaign.name}</div>
                 <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="text-sm text-accent mt-1">{fmt(topCampaign.views)} views</div>
@@ -297,8 +299,8 @@ const Overview = () => {
           {topCreator ? (
             <Link to={`/app/campaigns/${topCreator.campaign_id}`} className="block p-4 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors group">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Top performing post</div>
-              <div className="flex items-center justify-between mt-1">
-                <div className="font-display text-xl">{topCreator.influencers?.full_name || topCreator.influencers?.handle || "—"}</div>
+                <div className="flex min-w-0 items-center justify-between gap-2 mt-1">
+                  <div className="min-w-0 font-display text-xl break-words">{topCreator.influencers?.full_name || topCreator.influencers?.handle || "—"}</div>
                 <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="text-sm text-muted-foreground mt-1">
@@ -310,7 +312,7 @@ const Overview = () => {
           )}
         </Card>
 
-        <Card className="p-6">
+        <Card className="min-w-0 p-5 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Recent campaigns</div>
             <Link to="/app/campaigns" className="text-xs text-accent hover:underline">View all</Link>
@@ -318,7 +320,7 @@ const Overview = () => {
           <div className="space-y-2">
             {recentCampaigns.length === 0 && <div className="text-sm text-muted-foreground">No campaigns yet.</div>}
             {recentCampaigns.map((c: any) => (
-              <Link key={c.id} to={`/app/campaigns/${c.id}`} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary/60 transition-colors group">
+              <Link key={c.id} to={`/app/campaigns/${c.id}`} className="flex min-w-0 items-center justify-between gap-2 p-3 rounded-lg hover:bg-secondary/60 transition-colors group">
                 <div className="min-w-0 flex-1">
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{c.clients?.name || "—"}</div>
                   <div className="font-display text-base truncate">{c.name}</div>
