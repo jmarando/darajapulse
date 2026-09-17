@@ -80,15 +80,15 @@ export const AgencyTeamPicker = ({ scope, title = "Agency team" }: Props) => {
   const available = agencyUsers.filter((u) => !taken.has(u.id));
 
   return (
-    <div className="border rounded-md p-3 space-y-3 bg-secondary/30">
+    <div className="min-w-0 border rounded-md p-3 space-y-3 bg-secondary/30">
       <div className="flex items-center gap-2 text-sm font-medium">
         <UserPlus2 className="w-4 h-4" /> {title}
       </div>
       <p className="text-xs text-muted-foreground">Internal only — clients never see this.</p>
 
-      <div className="flex gap-2">
+      <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto]">
         <Select value={pickedUser} onValueChange={setPickedUser}>
-          <SelectTrigger className="flex-1"><SelectValue placeholder={available.length ? "Pick a teammate" : "No more teammates"} /></SelectTrigger>
+          <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={available.length ? "Pick a teammate" : "No more teammates"} /></SelectTrigger>
           <SelectContent>
             {available.map((u) => (
               <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
@@ -96,12 +96,12 @@ export const AgencyTeamPicker = ({ scope, title = "Agency team" }: Props) => {
           </SelectContent>
         </Select>
         <Select value={pickedRole} onValueChange={setPickedRole}>
-          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
           <SelectContent>
             {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button size="sm" onClick={add} disabled={!pickedUser} className="bg-primary">Assign</Button>
+        <Button size="sm" onClick={add} disabled={!pickedUser} className="w-full bg-primary sm:w-auto">Assign</Button>
       </div>
 
       {rows.length === 0 ? (
@@ -109,23 +109,23 @@ export const AgencyTeamPicker = ({ scope, title = "Agency team" }: Props) => {
       ) : (
         <div className="space-y-2">
           {rows.map((r) => (
-            <div key={r.id} className="flex items-center justify-between border rounded-md px-3 py-2 bg-background">
+            <div key={r.id} className="flex min-w-0 flex-col items-stretch gap-2 border rounded-md px-3 py-2 bg-background sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <div className="text-sm font-medium truncate">{r.profile?.full_name || r.profile?.email || "Unknown teammate"}</div>
                 {r.profile?.email && r.profile?.full_name && (
                   <div className="text-[10px] text-muted-foreground truncate">{r.profile.email}</div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <Select value={r.team_role} onValueChange={(v) => updateRole(r.id, v)}>
-                  <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-8 min-w-0 flex-1 text-xs sm:w-36 sm:flex-none"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {ROLES.map((ro) => <SelectItem key={ro.value} value={ro.value}>{ro.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <button onClick={() => remove(r.id)} className="text-muted-foreground hover:text-destructive">
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(r.id)} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" aria-label="Remove teammate">
                   <X className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             </div>
           ))}

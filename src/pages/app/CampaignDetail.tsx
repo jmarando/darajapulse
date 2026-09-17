@@ -701,7 +701,7 @@ const CampaignDetail = () => {
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto">
+    <div className="w-full min-w-0 max-w-7xl mx-auto overflow-x-hidden p-4 sm:p-8">
       <Link to="/app/campaigns" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
         <ArrowLeft className="w-4 h-4 mr-1" /> All campaigns
       </Link>
@@ -709,13 +709,13 @@ const CampaignDetail = () => {
       {/* Hero */}
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 md:gap-6">
-          <div className="min-w-0 flex-1 flex items-start gap-4">
+          <div className="min-w-0 flex-1 flex items-start gap-3 sm:gap-4">
             <div className="relative shrink-0">
               <div className="absolute -inset-2 bg-gradient-to-tr from-primary to-accent rounded-2xl blur-md opacity-15" />
               {c.clients?.logo_url ? (
-                <img src={c.clients.logo_url} alt={`${c.clients?.name} logo`} className="relative w-20 h-20 rounded-2xl object-contain bg-white border border-border p-2 shadow-sm" />
+                <img src={c.clients.logo_url} alt={`${c.clients?.name} logo`} className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-contain bg-card border border-border p-2 shadow-sm" />
               ) : (
-                <div className="relative w-20 h-20 rounded-2xl bg-white border border-border flex items-center justify-center font-display text-2xl shadow-sm">
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-card border border-border flex items-center justify-center font-display text-2xl shadow-sm">
                   {c.clients?.name?.slice(0, 2).toUpperCase()}
                 </div>
               )}
@@ -738,7 +738,7 @@ const CampaignDetail = () => {
                     load();
                   }}
                 >
-                  <SelectTrigger className="h-7 w-[200px] text-xs"><SelectValue placeholder="No brief linked" /></SelectTrigger>
+                  <SelectTrigger className="h-7 min-w-0 w-[min(200px,55vw)] text-xs"><SelectValue placeholder="No brief linked" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">No brief linked</SelectItem>
                     {briefTemplates.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}
@@ -823,13 +823,13 @@ const CampaignDetail = () => {
                 { l: "Fees committed", v: rosterTotals.fees > 0 ? fmtKes(rosterTotals.fees) : "—", icon: Wallet, sub: `${rosterTotals.deliv} deliverable${rosterTotals.deliv === 1 ? "" : "s"}` },
               ]
           ).map((s, i) => (
-            <div key={i} className="bg-card p-5">
+            <div key={i} className="min-w-0 bg-card p-4 sm:p-5">
               <div className="flex items-center justify-between">
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.l}</div>
                 <s.icon className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
-              <div className="font-display text-2xl mt-2">{s.v}</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{s.sub}</div>
+              <div className="font-display text-xl sm:text-2xl mt-2 break-words">{s.v}</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1 break-words">{s.sub}</div>
             </div>
           ))}
         </div>
@@ -837,8 +837,9 @@ const CampaignDetail = () => {
 
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6 h-auto gap-1 rounded-xl border bg-muted/40 p-1.5 shadow-sm">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 max-w-full">
+        <div className="mb-6 w-full max-w-full overflow-x-auto pb-1">
+        <TabsList className="h-auto w-max min-w-full justify-start gap-1 rounded-lg border bg-muted/40 p-1.5 shadow-sm">
           <TabsTrigger
             value="overview"
             className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
@@ -886,12 +887,13 @@ const CampaignDetail = () => {
             Share &amp; wrap
           </TabsTrigger>
         </TabsList>
+        </div>
 
         <TabsContent value="overview" className="space-y-6 mt-0">
 
       {/* Agency team on this campaign */}
       {c?.id && (
-        <Card className="p-5">
+        <Card className="min-w-0 p-4 sm:p-5">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Agency team on this campaign</div>
           <AgencyTeamPicker scope={{ type: "campaign", campaign_id: c.id }} title="Who's running this campaign" />
         </Card>
