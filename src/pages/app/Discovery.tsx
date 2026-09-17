@@ -34,6 +34,7 @@ type Creator = {
   niche?: string[]; city?: string; region?: string; country_code?: string | null; follower_count: number; engagement_rate: number;
   bio?: string; avatar_url?: string; ai_confidence?: number; verified_at?: string | null; notes?: string;
   profile_status?: string | null; status_checked_at?: string | null; status_note?: string | null; person_key?: string | null;
+  link_status?: string | null; link_reason?: string | null; link_checked_at?: string | null;
 };
 type Contact = { id: string; creator_id: string; kind: string; value: string; label?: string; is_public: boolean };
 
@@ -41,10 +42,23 @@ type Contact = { id: string; creator_id: string; kind: string; value: string; la
 // a scraper outage must never make a real creator disappear from Discovery.
 const UNAVAILABLE_STATUSES = new Set(["not_found", "deleted", "suspended", "archived"]);
 const CONFIRMED_ACTIVE = new Set(["active", "verified_active"]);
+// Records whose stored link cannot be trusted (source data was inconsistent).
+// They are never shown as active and their link is never opened — we do not
+// guess a replacement URL for them.
+const BAD_LINK_STATUSES = new Set(["platform_mismatch", "missing_url", "invalid_url"]);
+const hasTrustedLink = (c: Creator) =>
+  !BAD_LINK_STATUSES.has((c.link_status || "unvalidated").toLowerCase()) && !!c.profile_url;
 
 type StatusTone = "active" | "pending" | "unavailable";
-const statusInfo = (s?: string | null): { label: string; tone: StatusTone; message: string } => {
-  const v = (s || "active").toLowerCase();
+const statusInfo = (c: Creator | { profile_status?: string | null; link_status?: string | null }): { label: string; tone: StatusTone; message: string } => {
+  const link = (c.link_status || "unvalidated").toLowerCase();
+  if (link === "platform_mismatch") {
+    return { label: "Needs verification", tone: "unavailable", message: "Profile data needs verification — the account details from the source do not match this platform." };
+  }
+  if (link === "missing_url" || link === "invalid_url") {
+    return { label: "Profile link unavailable", tone: "unavailable", message: "No usable profile link was supplied for this record." };
+  }
+  const v = (c.profile_status || "active").toLowerCase();
   if (UNAVAILABLE_STATUSES.has(v)) {
     return {
       label: v === "not_found" ? "Profile unavailable" : v === "deleted" ? "Account deleted" : v === "suspended" ? "Account suspended" : "Archived",
@@ -56,10 +70,12 @@ const statusInfo = (s?: string | null): { label: string; tone: StatusTone; messa
   return {
     label: "Verification pending",
     tone: "pending",
-    message: "We couldn't verify this account right now. The last available information is retained.",
+    message: "Unable to verify currently — the last available information is retained.",
   };
 };
-const isAvailable = (c: Creator) => !UNAVAILABLE_STATUSES.has((c.profile_status || "active").toLowerCase());
+const isAvailable = (c: Creator) =>
+  !UNAVAILABLE_STATUSES.has((c.profile_status || "active").toLowerCase()) && hasTrustedLink(c);
+
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—");
 
 const Stat = ({ label, value, suffix }: { label: string; value: string; suffix?: string }) => (
