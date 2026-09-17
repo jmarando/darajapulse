@@ -33,8 +33,34 @@ type Creator = {
   id: string; full_name: string; handle: string; platform: string; profile_url?: string;
   niche?: string[]; city?: string; region?: string; country_code?: string | null; follower_count: number; engagement_rate: number;
   bio?: string; avatar_url?: string; ai_confidence?: number; verified_at?: string | null; notes?: string;
+  profile_status?: string | null; status_checked_at?: string | null; status_note?: string | null; person_key?: string | null;
 };
 type Contact = { id: string; creator_id: string; kind: string; value: string; label?: string; is_public: boolean };
+
+// An account we have evidence is gone. Everything else keeps its last known state —
+// a scraper outage must never make a real creator disappear from Discovery.
+const UNAVAILABLE_STATUSES = new Set(["not_found", "deleted", "suspended", "archived"]);
+const CONFIRMED_ACTIVE = new Set(["active", "verified_active"]);
+
+type StatusTone = "active" | "pending" | "unavailable";
+const statusInfo = (s?: string | null): { label: string; tone: StatusTone; message: string } => {
+  const v = (s || "active").toLowerCase();
+  if (UNAVAILABLE_STATUSES.has(v)) {
+    return {
+      label: v === "not_found" ? "Profile unavailable" : v === "deleted" ? "Account deleted" : v === "suspended" ? "Account suspended" : "Archived",
+      tone: "unavailable",
+      message: "This account could not be found or is no longer publicly available.",
+    };
+  }
+  if (CONFIRMED_ACTIVE.has(v)) return { label: v === "verified_active" ? "Verified active" : "Active", tone: "active", message: "Account is live and publicly available." };
+  return {
+    label: "Verification pending",
+    tone: "pending",
+    message: "We couldn't verify this account right now. The last available information is retained.",
+  };
+};
+const isAvailable = (c: Creator) => !UNAVAILABLE_STATUSES.has((c.profile_status || "active").toLowerCase());
+const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—");
 
 const Stat = ({ label, value, suffix }: { label: string; value: string; suffix?: string }) => (
   <div className="flex flex-col gap-1">
@@ -56,6 +82,8 @@ const Discovery = () => {
   const [minFollowers, setMinFollowers] = useState<number>(0);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [hasContact, setHasContact] = useState(false);
+  const [viewMode, setViewMode] = useState<"people" | "profiles">("people");
+  const [includeUnavailable, setIncludeUnavailable] = useState(false);
   const [contactsByCreator, setContactsByCreator] = useState<Record<string, Contact[]>>({});
   const [lookupSearching, setLookupSearching] = useState(false);
   const [country, setCountry] = useState(ALL);
@@ -132,16 +160,28 @@ const Discovery = () => {
     });
   }, [rows, q, contactsByCreator]);
 
+  // Rows that count as available today (unless the user opts to include gone accounts).
+  const availableRows = useMemo(
+    () => queryMatches.filter(r => includeUnavailable || isAvailable(r)),
+    [queryMatches, includeUnavailable],
+  );
+
+  const passesNonPlatform = (r: Creator) => {
+    if (nicheFilter !== "all" && !(r.niche || []).includes(nicheFilter)) return false;
+    if (minFollowers && (r.follower_count || 0) < minFollowers) return false;
+    if (verifiedOnly && !r.verified_at) return false;
+    if (hasContact && !(contactsByCreator[r.id]?.length)) return false;
+    return true;
+  };
+
+  // One row per social profile — used by Profiles view and to decide which people match.
   const filtered = useMemo(() => {
-    return queryMatches.filter(r => {
+    return availableRows.filter(r => {
       if (platformFilter !== "all" && r.platform !== platformFilter) return false;
-      if (nicheFilter !== "all" && !(r.niche || []).includes(nicheFilter)) return false;
-      if (minFollowers && (r.follower_count || 0) < minFollowers) return false;
-      if (verifiedOnly && !r.verified_at) return false;
-      if (hasContact && !(contactsByCreator[r.id]?.length)) return false;
-      return true;
+      return passesNonPlatform(r);
     });
-  }, [queryMatches, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableRows, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
 
   const activeFiltersCount = [platformFilter !== "all", nicheFilter !== "all", !!minFollowers, verifiedOnly, hasContact, country !== ALL, city !== ALL].filter(Boolean).length;
 
@@ -156,8 +196,19 @@ const Discovery = () => {
   };
 
   // Group rows that are clearly the same person across platforms / handle variants.
-  const normalizeName = (s: string) =>
-    (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean).slice(0, 3).join(" ");
+  const STRIP_PREFIX = /^(dj|deejay|mc|dr|prof|mr|mrs|ms|the|official)\s+/;
+  const normalizeName = (s: string) => {
+    let t = (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
+    while (STRIP_PREFIX.test(t)) t = t.replace(STRIP_PREFIX, "");
+    return t.split(" ").filter(Boolean).slice(0, 3).join(" ");
+  };
+  // Handles are only used to join profiles when they are distinctive enough.
+  const normalizeHandle = (h?: string) => {
+    const t = (h || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+      .replace(/^(dj|deejay|mc|official|its|im|the)/, "")
+      .replace(/(official|ke|tv|hq|_)$/, "");
+    return t.length >= 6 ? t : "";
+  };
 
   type Person = {
     key: string;
@@ -170,40 +221,80 @@ const Discovery = () => {
     ai_confidence: number;
     follower_total: number;
     engagement_avg: number;
-    profiles: Creator[];          // one per platform/handle
-    primary: Creator;              // best profile (most followers)
+    profiles: Creator[];            // available profiles, best first
+    unavailable: Creator[];         // kept for the portfolio view only
+    primary: Creator;               // best profile (most followers)
     all_ids: string[];
+    matchedPlatforms: string[];     // platforms that matched the current filters
   };
 
   const people = useMemo<Person[]>(() => {
+    const matchedIds = new Set(filtered.map(r => r.id));
+    // Union-find so a person links through an explicit person_key, a matching
+    // name, or a distinctive shared handle — never on a loose name alone.
+    const parent = new Map<string, string>();
+    const find = (x: string): string => {
+      const p = parent.get(x);
+      if (!p || p === x) { parent.set(x, x); return x; }
+      const r = find(p); parent.set(x, r); return r;
+    };
+    const union = (a: string, b: string) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+
+    const pool = availableRows.filter(passesNonPlatform);
+    pool.forEach(r => find(r.id));
+    const byKey = new Map<string, string>();
+    const link = (key: string, id: string) => {
+      const prev = byKey.get(key);
+      if (prev) union(prev, id); else byKey.set(key, id);
+    };
+    pool.forEach(r => {
+      if (r.person_key) link(`pk:${r.person_key}`, r.id);
+      else {
+        const n = normalizeName(r.full_name);
+        if (n) link(`n:${n}`, r.id);
+        const h = normalizeHandle(r.handle);
+        if (h) link(`h:${h}`, r.id);
+      }
+    });
+
     const map = new Map<string, Creator[]>();
-    for (const r of filtered) {
-      const k = normalizeName(r.full_name) || `id:${r.id}`;
+    for (const r of pool) {
+      const k = find(r.id);
       (map.get(k) || map.set(k, []).get(k)!).push(r);
     }
-    return Array.from(map.entries()).map(([key, list]) => {
-      // Dedupe profiles within a person by (platform, handle).
-      const seen = new Set<string>();
-      const profiles = list.filter(p => {
-        const k = `${p.platform}::${(p.handle || "").toLowerCase()}`;
-        if (seen.has(k)) return false; seen.add(k); return true;
-      }).sort((a, b) => (b.follower_count || 0) - (a.follower_count || 0));
-      const primary = profiles[0];
-      const niches = Array.from(new Set(profiles.flatMap(p => p.niche || []))).sort();
-      const follower_total = profiles.reduce((s, p) => s + (p.follower_count || 0), 0);
-      const eng = profiles.filter(p => p.engagement_rate);
-      const engagement_avg = eng.length ? eng.reduce((s, p) => s + Number(p.engagement_rate || 0), 0) / eng.length : 0;
-      return {
-        key, full_name: primary.full_name, city: profiles.find(p => p.city)?.city,
-        country_code: profiles.find(p => p.country_code)?.country_code ?? null,
-        bio: profiles.find(p => p.bio)?.bio, niches,
-        verified_at: profiles.find(p => p.verified_at)?.verified_at ?? null,
-        ai_confidence: Math.max(...profiles.map(p => p.ai_confidence || 0)),
-        follower_total, engagement_avg, profiles, primary,
-        all_ids: profiles.map(p => p.id),
-      };
-    });
-  }, [filtered]);
+
+    return Array.from(map.entries())
+      .map(([key, list]) => {
+        // Dedupe profiles within a person by (platform, handle).
+        const seen = new Set<string>();
+        const all = list.filter(p => {
+          const k = `${p.platform}::${(p.handle || "").toLowerCase()}`;
+          if (seen.has(k)) return false; seen.add(k); return true;
+        }).sort((a, b) => (b.follower_count || 0) - (a.follower_count || 0));
+        const profiles = all.filter(isAvailable);
+        const unavailable = all.filter(p => !isAvailable(p));
+        const shown = profiles.length ? profiles : all;
+        const primary = shown[0];
+        const niches = Array.from(new Set(shown.flatMap(p => p.niche || []))).sort();
+        const follower_total = shown.reduce((s, p) => s + (p.follower_count || 0), 0);
+        const eng = shown.filter(p => p.engagement_rate);
+        const engagement_avg = eng.length ? eng.reduce((s, p) => s + Number(p.engagement_rate || 0), 0) / eng.length : 0;
+        return {
+          key, full_name: primary.full_name, city: shown.find(p => p.city)?.city,
+          country_code: shown.find(p => p.country_code)?.country_code ?? null,
+          bio: shown.find(p => p.bio)?.bio, niches,
+          verified_at: shown.find(p => p.verified_at)?.verified_at ?? null,
+          ai_confidence: Math.max(...shown.map(p => p.ai_confidence || 0)),
+          follower_total, engagement_avg, profiles: shown, unavailable, primary,
+          all_ids: all.map(p => p.id),
+          matchedPlatforms: Array.from(new Set(all.filter(p => matchedIds.has(p.id)).map(p => p.platform))),
+        } as Person;
+      })
+      // A person only shows when at least one of their profiles matches the filters.
+      .filter(p => p.matchedPlatforms.length > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableRows, filtered, nicheFilter, minFollowers, verifiedOnly, hasContact, contactsByCreator]);
+  
 
   const ordered = useMemo(() => {
     if (!matches.length) return people;
@@ -242,6 +333,8 @@ const Discovery = () => {
     });
   })();
   const openProfiles = openPerson?.profiles || (openCreator ? [openCreator] : []);
+  // Portfolio shows every known account, including ones that are no longer reachable.
+  const portfolioProfiles = openPerson ? [...openPerson.profiles, ...openPerson.unavailable] : openProfiles;
 
   const lookupCreator = async (rawQuery = q) => {
     const trimmed = rawQuery.trim();
@@ -442,6 +535,22 @@ const Discovery = () => {
         </div>
       </Card>
 
+      {/* People vs individual social accounts */}
+      <div className="mb-4 inline-flex rounded-xl bg-muted/60 p-1 gap-1" role="tablist" aria-label="Discovery view">
+        {([["people", "People"], ["profiles", "Social profiles"]] as const).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={viewMode === v}
+            onClick={() => setViewMode(v)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${viewMode === v ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="flex gap-2 mb-4 flex-wrap items-center">
         <div className="relative flex-1 min-w-[200px] max-w-md">
@@ -496,7 +605,12 @@ const Discovery = () => {
         </Select>
         <label className="flex items-center gap-2 text-sm"><Switch checked={verifiedOnly} onCheckedChange={setVerifiedOnly} /> Verified</label>
         <label className="flex items-center gap-2 text-sm"><Switch checked={hasContact} onCheckedChange={setHasContact} /> Has contact</label>
-        <div className="text-sm text-muted-foreground ml-auto">{ordered.length} people · {rows.length} profiles</div>
+        <label className="flex items-center gap-2 text-sm" title="Accounts we've confirmed are deleted, suspended or missing are hidden by default.">
+          <Switch checked={includeUnavailable} onCheckedChange={setIncludeUnavailable} /> Include unavailable
+        </label>
+        <div className="text-sm text-muted-foreground ml-auto">
+          {ordered.length} {ordered.length === 1 ? "person" : "people"} · {filtered.length} {includeUnavailable ? "profiles" : "active profiles"}
+        </div>
       </div>
 
       {loading ? (
@@ -536,7 +650,50 @@ const Discovery = () => {
             </Button>
           </Card>
         )}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {viewMode === "profiles" && (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map(pr => {
+              const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+              const st = statusInfo(pr.profile_status);
+              const dead = st.tone === "unavailable" || !pr.profile_url;
+              return (
+                <Card key={pr.id} className="p-5 rounded-2xl flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-display text-lg truncate">{pr.full_name}</h3>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                        <Icon className="w-3 h-3" /><span className="capitalize">{pr.platform}</span> · @{pr.handle}
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      title={st.message}
+                      className={`text-[10px] shrink-0 ${st.tone === "active" ? "text-success border-success/40" : st.tone === "pending" ? "text-muted-foreground" : "text-destructive border-destructive/40"}`}
+                    >
+                      {st.label}
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {fmtCompact(pr.follower_count)} followers · {Number(pr.engagement_rate || 0).toFixed(1)}% engagement
+                  </div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />{[pr.city, nameOf(pr.country_code)].filter(Boolean).join(", ") || "—"}
+                  </div>
+                  <div className="flex gap-1.5 mt-auto pt-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(pr)}>Details</Button>
+                    {dead ? (
+                      <Button variant="ghost" size="sm" disabled title={st.message}>Profile unavailable</Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" asChild><a href={pr.profile_url} target="_blank" rel="noreferrer"><ExternalLink className="w-3 h-3" /></a></Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => addToRoster(pr)} title="Add to influencer roster"><Plus className="w-3 h-3" /></Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+        <div className={`grid sm:grid-cols-2 lg:grid-cols-3 gap-6 ${viewMode === "profiles" ? "hidden" : ""}`}>
 
           {ordered.map(p => {
             const match = personMatch(p);
@@ -591,26 +748,38 @@ const Discovery = () => {
                     {p.full_name}
                   </h2>
 
+                  {platformFilter !== "all" && p.profiles.length > 1 && (
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      Matched: <span className="capitalize font-medium text-foreground/80">{p.matchedPlatforms.join(", ")}</span>
+                      {p.profiles.some(pr => !p.matchedPlatforms.includes(pr.platform)) &&
+                        <> · also on <span className="capitalize">{Array.from(new Set(p.profiles.map(pr => pr.platform).filter(pl => !p.matchedPlatforms.includes(pl)))).join(", ")}</span></>}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-1.5">
                     {p.profiles.map(pr => {
                       const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+                      const st = statusInfo(pr.profile_status);
+                      const dead = st.tone === "unavailable" || !pr.profile_url;
                       return (
                         <a
                           key={pr.id}
                           href={pr.profile_url || "#"}
                           target="_blank"
                           rel="noreferrer"
-                          onClick={e => { if (!pr.profile_url) e.preventDefault(); }}
-                          className="inline-flex items-center gap-1.5 text-[11px] bg-secondary hover:bg-secondary/70 rounded-lg px-2 py-1 transition-colors max-w-full"
-                          title={`@${pr.handle} · ${fmtCompact(pr.follower_count)} on ${pr.platform}`}
+                          onClick={e => { if (dead) e.preventDefault(); }}
+                          className={`inline-flex items-center gap-1.5 text-[11px] rounded-lg px-2 py-1 transition-colors max-w-full ${dead ? "bg-muted text-muted-foreground cursor-default" : "bg-secondary hover:bg-secondary/70"}`}
+                          title={dead ? `@${pr.handle} · ${st.label} — ${st.message}` : `@${pr.handle} · ${fmtCompact(pr.follower_count)} on ${pr.platform}`}
                         >
                           <Icon className="w-3 h-3 shrink-0 text-foreground/70" />
                           <span className="truncate max-w-[90px] font-semibold text-foreground/80">@{pr.handle}</span>
-                          <span className="text-muted-foreground tabular-nums">{fmtCompact(pr.follower_count)}</span>
+                          <span className="text-muted-foreground tabular-nums">{dead ? st.label : fmtCompact(pr.follower_count)}</span>
                         </a>
                       );
                     })}
                   </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    {p.profiles.filter(isAvailable).length} connected profile{p.profiles.filter(isAvailable).length === 1 ? "" : "s"}
+                  </p>
                 </div>
 
                 {/* Niches + contacts */}
@@ -654,7 +823,7 @@ const Discovery = () => {
                   <Divider />
                   <Stat label="Avg Eng" value={p.engagement_avg.toFixed(1)} suffix="%" />
                   <Divider />
-                  <Stat label="Profiles" value={String(p.profiles.length)} />
+                  <Stat label="Active profiles" value={String(p.profiles.filter(isAvailable).length)} />
                 </div>
 
                 {/* Actions */}
@@ -706,22 +875,39 @@ const Discovery = () => {
                     {!openCreator.verified_at && <Button size="sm" variant="ghost" onClick={() => verifyCreator(openCreator.id)}><BadgeCheck className="w-3 h-3 mr-1" /> Mark verified</Button>}
                   </div>
                   <div className="space-y-2">
-                    {openProfiles.length > 1 && (
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {openProfiles.map(pr => {
+                    {portfolioProfiles.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        <h4 className="font-display text-sm">Connected social profiles</h4>
+                        {portfolioProfiles.map(pr => {
                           const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+                          const st = statusInfo(pr.profile_status);
                           return (
-                            <a
-                              key={pr.id}
-                              href={pr.profile_url || "#"}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={e => { if (!pr.profile_url) e.preventDefault(); }}
-                              className="inline-flex items-center gap-1.5 text-[11px] bg-secondary hover:bg-secondary/70 rounded-lg px-2 py-1 transition-colors max-w-full"
-                            >
-                              <Icon className="w-3 h-3 shrink-0" />
-                              @{pr.handle}
-                            </a>
+                            <div key={pr.id} className="rounded-lg border border-border p-2.5">
+                              <div className="flex items-center gap-2">
+                                <Icon className="w-3.5 h-3.5 shrink-0 text-foreground/70" />
+                                <span className="text-sm font-medium capitalize">{pr.platform}</span>
+                                <Badge
+                                  variant="outline"
+                                  title={st.message}
+                                  className={`ml-auto text-[10px] ${st.tone === "active" ? "text-success border-success/40" : st.tone === "pending" ? "text-muted-foreground" : "text-destructive border-destructive/40"}`}
+                                >
+                                  {st.label}
+                                </Badge>
+                              </div>
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                @{pr.handle} · {fmtCompact(pr.follower_count)} followers · {Number(pr.engagement_rate || 0).toFixed(1)}% engagement
+                              </div>
+                              <div className="mt-1 flex items-center justify-between gap-2">
+                                <span className="text-[11px] text-muted-foreground">Last checked {fmtDate(pr.status_checked_at)}</span>
+                                {st.tone !== "unavailable" && pr.profile_url ? (
+                                  <a href={pr.profile_url} target="_blank" rel="noreferrer" className="text-xs text-accent inline-flex items-center gap-1">
+                                    View profile <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                ) : (
+                                  <span className="text-[11px] text-muted-foreground italic">{st.tone === "unavailable" ? st.message : "Link unavailable"}</span>
+                                )}
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
