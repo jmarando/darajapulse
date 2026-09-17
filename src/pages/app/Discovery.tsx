@@ -34,6 +34,7 @@ type Creator = {
   niche?: string[]; city?: string; region?: string; country_code?: string | null; follower_count: number; engagement_rate: number;
   bio?: string; avatar_url?: string; ai_confidence?: number; verified_at?: string | null; notes?: string;
   profile_status?: string | null; status_checked_at?: string | null; status_note?: string | null; person_key?: string | null;
+  link_status?: string | null; link_reason?: string | null; link_checked_at?: string | null;
 };
 type Contact = { id: string; creator_id: string; kind: string; value: string; label?: string; is_public: boolean };
 
@@ -41,10 +42,23 @@ type Contact = { id: string; creator_id: string; kind: string; value: string; la
 // a scraper outage must never make a real creator disappear from Discovery.
 const UNAVAILABLE_STATUSES = new Set(["not_found", "deleted", "suspended", "archived"]);
 const CONFIRMED_ACTIVE = new Set(["active", "verified_active"]);
+// Records whose stored link cannot be trusted (source data was inconsistent).
+// They are never shown as active and their link is never opened — we do not
+// guess a replacement URL for them.
+const BAD_LINK_STATUSES = new Set(["platform_mismatch", "missing_url", "invalid_url"]);
+const hasTrustedLink = (c: Creator) =>
+  !BAD_LINK_STATUSES.has((c.link_status || "unvalidated").toLowerCase()) && !!c.profile_url;
 
 type StatusTone = "active" | "pending" | "unavailable";
-const statusInfo = (s?: string | null): { label: string; tone: StatusTone; message: string } => {
-  const v = (s || "active").toLowerCase();
+const statusInfo = (c: Creator | { profile_status?: string | null; link_status?: string | null }): { label: string; tone: StatusTone; message: string } => {
+  const link = (c.link_status || "unvalidated").toLowerCase();
+  if (link === "platform_mismatch") {
+    return { label: "Needs verification", tone: "unavailable", message: "Profile data needs verification — the account details from the source do not match this platform." };
+  }
+  if (link === "missing_url" || link === "invalid_url") {
+    return { label: "Profile link unavailable", tone: "unavailable", message: "No usable profile link was supplied for this record." };
+  }
+  const v = (c.profile_status || "active").toLowerCase();
   if (UNAVAILABLE_STATUSES.has(v)) {
     return {
       label: v === "not_found" ? "Profile unavailable" : v === "deleted" ? "Account deleted" : v === "suspended" ? "Account suspended" : "Archived",
@@ -56,10 +70,12 @@ const statusInfo = (s?: string | null): { label: string; tone: StatusTone; messa
   return {
     label: "Verification pending",
     tone: "pending",
-    message: "We couldn't verify this account right now. The last available information is retained.",
+    message: "Unable to verify currently — the last available information is retained.",
   };
 };
-const isAvailable = (c: Creator) => !UNAVAILABLE_STATUSES.has((c.profile_status || "active").toLowerCase());
+const isAvailable = (c: Creator) =>
+  !UNAVAILABLE_STATUSES.has((c.profile_status || "active").toLowerCase()) && hasTrustedLink(c);
+
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—");
 
 const Stat = ({ label, value, suffix }: { label: string; value: string; suffix?: string }) => (
@@ -195,20 +211,12 @@ const Discovery = () => {
     setHasContact(false);
   };
 
-  // Group rows that are clearly the same person across platforms / handle variants.
-  const STRIP_PREFIX = /^(dj|deejay|mc|dr|prof|mr|mrs|ms|the|official)\s+/;
-  const normalizeName = (s: string) => {
-    let t = (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
-    while (STRIP_PREFIX.test(t)) t = t.replace(STRIP_PREFIX, "");
-    return t.split(" ").filter(Boolean).slice(0, 3).join(" ");
-  };
-  // Handles are only used to join profiles when they are distinctive enough.
-  const normalizeHandle = (h?: string) => {
-    const t = (h || "").toLowerCase().replace(/[^a-z0-9]/g, "")
-      .replace(/^(dj|deejay|mc|official|its|im|the)/, "")
-      .replace(/(official|ke|tv|hq|_)$/, "");
-    return t.length >= 6 ? t : "";
-  };
+  // These are third-party discovery records, so profiles are only grouped into one
+  // person when there is reliable evidence: an explicit person_key set by the source
+  // or confirmed by a user, or the exact same identifier on the same platform.
+  // Similar names, similar handles, same city or similar follower counts are NOT
+  // evidence and never merge two records.
+
 
   type Person = {
     key: string;
@@ -230,8 +238,8 @@ const Discovery = () => {
 
   const people = useMemo<Person[]>(() => {
     const matchedIds = new Set(filtered.map(r => r.id));
-    // Union-find so a person links through an explicit person_key, a matching
-    // name, or a distinctive shared handle — never on a loose name alone.
+    // Union-find, but the only join evidence accepted is an explicit person_key
+    // or an identical handle on the same platform (the same account recorded twice).
     const parent = new Map<string, string>();
     const find = (x: string): string => {
       const p = parent.get(x);
@@ -249,13 +257,9 @@ const Discovery = () => {
     };
     pool.forEach(r => {
       if (r.person_key) link(`pk:${r.person_key}`, r.id);
-      else {
-        const n = normalizeName(r.full_name);
-        if (n) link(`n:${n}`, r.id);
-        const h = normalizeHandle(r.handle);
-        if (h) link(`h:${h}`, r.id);
-      }
+      else link(`ph:${r.platform}:${(r.handle || r.id).toLowerCase()}`, r.id);
     });
+
 
     const map = new Map<string, Creator[]>();
     for (const r of pool) {
@@ -654,8 +658,9 @@ const Discovery = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map(pr => {
               const Icon = PLATFORM_ICON[pr.platform] || Instagram;
-              const st = statusInfo(pr.profile_status);
-              const dead = st.tone === "unavailable" || !pr.profile_url;
+              const st = statusInfo(pr);
+              const dead = st.tone === "unavailable" || !hasTrustedLink(pr);
+
               return (
                 <Card key={pr.id} className="p-5 rounded-2xl flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-2">
@@ -682,7 +687,8 @@ const Discovery = () => {
                   <div className="flex gap-1.5 mt-auto pt-2">
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(pr)}>Details</Button>
                     {dead ? (
-                      <Button variant="ghost" size="sm" disabled title={st.message}>Profile unavailable</Button>
+                      <Button variant="ghost" size="sm" disabled title={st.message}>{st.label === "Needs verification" ? "Needs verification" : "Profile link unavailable"}</Button>
+
                     ) : (
                       <Button variant="ghost" size="sm" asChild><a href={pr.profile_url} target="_blank" rel="noreferrer"><ExternalLink className="w-3 h-3" /></a></Button>
                     )}
@@ -758,8 +764,9 @@ const Discovery = () => {
                   <div className="flex flex-wrap gap-1.5">
                     {p.profiles.map(pr => {
                       const Icon = PLATFORM_ICON[pr.platform] || Instagram;
-                      const st = statusInfo(pr.profile_status);
-                      const dead = st.tone === "unavailable" || !pr.profile_url;
+                      const st = statusInfo(pr);
+                      const dead = st.tone === "unavailable" || !hasTrustedLink(pr);
+
                       return (
                         <a
                           key={pr.id}
@@ -855,7 +862,10 @@ const Discovery = () => {
                 <SheetTitle className="flex items-center gap-2">{openCreator.full_name} {openCreator.verified_at && <BadgeCheck className="w-4 h-4 text-success" />}</SheetTitle>
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   @{openCreator.handle} · {openCreator.platform}
-                  {openCreator.profile_url && <a href={openCreator.profile_url} target="_blank" rel="noreferrer" className="text-accent inline-flex items-center gap-1">profile <ExternalLink className="w-3 h-3" /></a>}
+                  {hasTrustedLink(openCreator)
+                    ? <a href={openCreator.profile_url} target="_blank" rel="noreferrer" className="text-accent inline-flex items-center gap-1">profile <ExternalLink className="w-3 h-3" /></a>
+                    : <span className="italic text-xs">{statusInfo(openCreator).message}</span>}
+
                 </div>
               </SheetHeader>
               <div className="mt-4 space-y-4">
@@ -880,7 +890,7 @@ const Discovery = () => {
                         <h4 className="font-display text-sm">Connected social profiles</h4>
                         {portfolioProfiles.map(pr => {
                           const Icon = PLATFORM_ICON[pr.platform] || Instagram;
-                          const st = statusInfo(pr.profile_status);
+                          const st = statusInfo(pr);
                           return (
                             <div key={pr.id} className="rounded-lg border border-border p-2.5">
                               <div className="flex items-center gap-2">
@@ -899,13 +909,14 @@ const Discovery = () => {
                               </div>
                               <div className="mt-1 flex items-center justify-between gap-2">
                                 <span className="text-[11px] text-muted-foreground">Last checked {fmtDate(pr.status_checked_at)}</span>
-                                {st.tone !== "unavailable" && pr.profile_url ? (
+                                {st.tone !== "unavailable" && hasTrustedLink(pr) ? (
                                   <a href={pr.profile_url} target="_blank" rel="noreferrer" className="text-xs text-accent inline-flex items-center gap-1">
                                     View profile <ExternalLink className="w-3 h-3" />
                                   </a>
                                 ) : (
-                                  <span className="text-[11px] text-muted-foreground italic">{st.tone === "unavailable" ? st.message : "Link unavailable"}</span>
+                                  <span className="text-[11px] text-muted-foreground italic">{st.message}</span>
                                 )}
+
                               </div>
                             </div>
                           );

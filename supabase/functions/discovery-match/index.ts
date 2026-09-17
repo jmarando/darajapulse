@@ -31,9 +31,13 @@ Deno.serve(async (req) => {
       .from("discovery_creators")
       .select("id, full_name, handle, platform, niche, follower_count, engagement_rate, city, bio")
       .in("platform", platforms)
+      // Only records whose platform/link pair passed validation may be recommended.
+      .not("link_status", "in", "(platform_mismatch,missing_url,invalid_url)")
+      .or("profile_status.is.null,profile_status.not.in.(not_found,deleted,suspended,archived)")
       .gte("follower_count", minF)
       .lte("follower_count", maxF)
       .limit(250);
+
     if (error) throw error;
     if (!candidates?.length) {
       return new Response(JSON.stringify({ matches: [], reason: "no candidates" }), {
