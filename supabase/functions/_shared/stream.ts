@@ -112,3 +112,10 @@ export const customerCodeFrom = (...urls: (string | null | undefined)[]): string
   }
   return null;
 };
+
+/**
+ * Cloudflare accepts signed tokens in the URL PATH (in place of the video UID),
+ * not as a ?token= query parameter. Swap the UID for the token.
+ */
+export const withStreamToken = (url: string, uid: string, token: string | null): string =>
+  token ? url.replace(`/${uid}/`, `/${token}/`).replace(new RegExp(`/${uid}$`), `/${token}`) : url;
