@@ -269,7 +269,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
               <DraftVideo
                 getUrl={d.stream_uid ? undefined : () => signUrl(d)}
                 getStream={d.stream_uid ? () => streamSign(d) : undefined}
-                poster={d.poster_path ? posters[d.poster_path] : null}
+                poster={streamPosters[d.id] ?? (d.poster_path ? posters[d.poster_path] : null)}
                 label={d.influencers?.full_name}
               />
 
@@ -305,9 +305,15 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
                     const name = d.file_name || `${d.influencers?.full_name || "draft"}.mp4`;
                     if (d.stream_uid) {
                       const s = await streamSign(d);
-                      if (!s?.downloadUrl) return toast.error("Video unavailable");
-                      return downloadFile(s.downloadUrl, name);
+                      if (s?.downloadUrl) return downloadFile(s.downloadUrl, name);
+                      // Cloudflare builds the MP4 copy on first request.
+                      return toast.info(
+                        s?.status === "processing"
+                          ? "Still converting — try the download again shortly."
+                          : "Preparing the download copy — try again in about a minute.",
+                      );
                     }
+
                     const u = await signDownloadUrl(d, name);
                     if (!u) return toast.error("Video unavailable");
                     downloadFile(u, name);
