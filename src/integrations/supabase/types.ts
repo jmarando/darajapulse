@@ -1673,11 +1673,15 @@ export type Database = {
           id: string
           niche: string[] | null
           notes: string | null
+          person_key: string | null
           platform: string
+          profile_status: string
           profile_url: string | null
           region: string | null
           shows: string[] | null
           source: string
+          status_checked_at: string | null
+          status_note: string | null
           updated_at: string
           verified_at: string | null
           works_for: string[] | null
@@ -1699,11 +1703,15 @@ export type Database = {
           id?: string
           niche?: string[] | null
           notes?: string | null
+          person_key?: string | null
           platform: string
+          profile_status?: string
           profile_url?: string | null
           region?: string | null
           shows?: string[] | null
           source?: string
+          status_checked_at?: string | null
+          status_note?: string | null
           updated_at?: string
           verified_at?: string | null
           works_for?: string[] | null
@@ -1725,11 +1733,15 @@ export type Database = {
           id?: string
           niche?: string[] | null
           notes?: string | null
+          person_key?: string | null
           platform?: string
+          profile_status?: string
           profile_url?: string | null
           region?: string | null
           shows?: string[] | null
           source?: string
+          status_checked_at?: string | null
+          status_note?: string | null
           updated_at?: string
           verified_at?: string | null
           works_for?: string[] | null
