@@ -34,5 +34,37 @@ Nothing gets deleted automatically, and no handle is invented.
 
 ## Out of scope
 
-- Automatically re-scraping Instagram to discover correct handles (the scraping account is still suspended for unpaid invoices).
+- Bulk re-scraping Instagram to discover correct handles.
 - Deleting any profile records.
+
+# Part B — Use the new ScrapeCreators credits sparingly
+
+You have 100 free credits with ScrapeCreators. Each post checked costs roughly one credit, so this covers about one careful pass over the most important posts — not an automatic background refresh.
+
+**Where the gaps are right now (posts with no view count recorded):**
+
+| Campaign | Posts missing views |
+| --- | --- |
+| Royco KE Q3 Nano | 61 |
+| Pakakumi Aug–Oct | 35 |
+| Phase 1 | 19 |
+| OMO Mother's Day | 5 |
+| Royco KE Q3 Main | 1 |
+
+That's 121 gaps against 100 credits, so the refresh must be targeted rather than blanket.
+
+**How it will work**
+
+1. You save the ScrapeCreators key in the secure form (I'll open it once you approve).
+2. It becomes a third source for post metrics, tried only when the current sources return nothing — it never runs ahead of them and never runs on the twice-daily automatic schedule.
+3. A hard credit ceiling is enforced in code: a running count of calls, a per-run cap, and a total cap you set (default 90, leaving 10 spare). When the cap is reached the run stops and reports it, rather than silently burning the rest.
+4. A "Refresh missing figures with ScrapeCreators" action on a campaign page runs it for that campaign's zero-view posts only, shows how many credits it will use before starting, and reports credits used and figures recovered afterwards.
+5. My suggested first pass: Royco KE Q3 Nano (61) then OMO and Royco KE Q3 Main (6) — about 67 credits, leaving a reserve. Pakakumi and Phase 1 wait for the permanent fix.
+
+**Technical outline**
+
+- New secret `SCRAPECREATORS_API_KEY`; new `supabase/functions/_shared/scrapecreators.ts` with per-platform post lookups and a shared response parser into the existing metric shape.
+- `fetch-public-metrics/index.ts`: add as a last-resort provider behind an explicit `use_scrapecreators: true` request flag (off for scheduled runs), with `max_credits` in the request body and a returned `credits_used`.
+- Credit accounting persisted in a small `scraper_credit_log` table (provider, credits, run context, timestamp) so the remaining balance survives across runs; RLS restricted to agency staff, GRANTs included.
+- Campaign detail gets the manual action, wired to the existing metrics-refresh invoke path.
+- No change to the Apify/Ensemble ordering for everything else; Apify stays suspended until its invoices are settled.
