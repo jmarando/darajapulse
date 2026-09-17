@@ -211,20 +211,12 @@ const Discovery = () => {
     setHasContact(false);
   };
 
-  // Group rows that are clearly the same person across platforms / handle variants.
-  const STRIP_PREFIX = /^(dj|deejay|mc|dr|prof|mr|mrs|ms|the|official)\s+/;
-  const normalizeName = (s: string) => {
-    let t = (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
-    while (STRIP_PREFIX.test(t)) t = t.replace(STRIP_PREFIX, "");
-    return t.split(" ").filter(Boolean).slice(0, 3).join(" ");
-  };
-  // Handles are only used to join profiles when they are distinctive enough.
-  const normalizeHandle = (h?: string) => {
-    const t = (h || "").toLowerCase().replace(/[^a-z0-9]/g, "")
-      .replace(/^(dj|deejay|mc|official|its|im|the)/, "")
-      .replace(/(official|ke|tv|hq|_)$/, "");
-    return t.length >= 6 ? t : "";
-  };
+  // These are third-party discovery records, so profiles are only grouped into one
+  // person when there is reliable evidence: an explicit person_key set by the source
+  // or confirmed by a user, or the exact same identifier on the same platform.
+  // Similar names, similar handles, same city or similar follower counts are NOT
+  // evidence and never merge two records.
+
 
   type Person = {
     key: string;
