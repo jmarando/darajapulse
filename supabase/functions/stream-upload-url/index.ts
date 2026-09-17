@@ -32,12 +32,17 @@ Deno.serve(async (req) => {
     if (!ci) return json({ error: "invalid link" }, 404);
 
     // tus-style creation: returns a one-time upload URL our tus client can PATCH to.
+    // maxdurationseconds also reserves billable storage, so keep it close to real clip
+    // length (10 min) instead of the previous hour.
+    // requiresignedurls locks playback to tokens minted by stream-sign.
     const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
     const meta = [
       `name ${b64(fileName)}`,
       `brief_token ${b64(briefToken)}`,
-      `maxdurationseconds ${b64("3600")}`,
+      `maxdurationseconds ${b64("600")}`,
+      `requiresignedurls`,
     ].join(",");
+
 
 
     const cfRes = await fetch(
