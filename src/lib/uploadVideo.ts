@@ -110,6 +110,10 @@ const startUpload = ({
  * Upload to Cloudflare Stream via a one-time tus URL minted by our backend
  * (stream-upload-url). Stream converts the video, generates the thumbnail and
  * serves it from African edge locations — no poster capture needed.
+ *
+ * The minted URL IS the tus upload URL, so we pass it as `uploadUrl` (not
+ * `endpoint`): a retry then HEADs for the current offset and continues from
+ * there instead of creating a second, half-paid-for video in Stream.
  */
 const startStreamUpload = ({
   uploadUrl,
@@ -126,13 +130,12 @@ const startStreamUpload = ({
     const report = trackProgress(onProgress);
 
     const upload = new tus.Upload(file, {
-      endpoint: uploadUrl,
+      uploadUrl,
       retryDelays: [0, 2000, 5000, 10000, 20000, 30000],
       // Cloudflare tus requires chunk sizes in 256KiB multiples. 10MiB keeps a
       // dropped mobile connection cheap to recover from (at most 10MB re-sent).
       chunkSize: 10 * 1024 * 1024,
-
-      uploadDataDuringCreation: true,
+      uploadDataDuringCreation: false,
       removeFingerprintOnSuccess: true,
       metadata: {
         filename: file.name,
@@ -144,12 +147,9 @@ const startStreamUpload = ({
     });
 
     onUpload(upload);
-
-    upload.findPreviousUploads().then((prev) => {
-      if (prev.length) upload.resumeFromPreviousUpload(prev[0]);
-      upload.start();
-    });
+    upload.start();
   });
+
 
 const isConflict = (err: unknown) => {
   const msg = String((err as Error)?.message ?? err);
