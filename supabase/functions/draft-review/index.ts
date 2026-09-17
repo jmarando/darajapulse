@@ -142,18 +142,32 @@ Deno.serve(async (req) => {
       if (s?.path && s?.signedUrl) byPath.set(s.path, s.signedUrl);
     }
 
+    // Stream drafts carry a server-generated thumbnail; sign it so the tile is a
+    // real still instead of a black box (playback stays token-locked).
+    const streamPosters = new Map<string, string>();
+    await Promise.all(
+      (drafts ?? [])
+        .filter((d: any) => d.stream_uid && d.stream_thumbnail_url)
+        .map(async (d: any) => {
+          const t = await signStreamToken(d.stream_uid);
+          streamPosters.set(d.id, t ? `${d.stream_thumbnail_url}?token=${t}` : d.stream_thumbnail_url);
+        }),
+    );
+
     const items = (drafts ?? []).map((d: any) => ({
       ...d,
       file_path: undefined,
       poster_path: undefined,
       stream_uid: undefined,
+      stream_thumbnail_url: undefined,
       creator_name: d.influencers?.full_name ?? null,
       creator_handle: d.influencers?.handle ?? null,
       video_url: null,
       has_video: Boolean(d.file_path || d.stream_uid),
       has_stream: Boolean(d.stream_uid),
-      poster_url: d.poster_path ? byPath.get(d.poster_path) ?? null : null,
+      poster_url: streamPosters.get(d.id) ?? (d.poster_path ? byPath.get(d.poster_path) ?? null : null),
     }));
+
 
 
     return json({
