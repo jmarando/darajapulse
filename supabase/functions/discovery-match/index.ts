@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       .in("platform", platforms)
       // Only records whose platform/link pair passed validation may be recommended.
       .not("link_status", "in", "(platform_mismatch,missing_url,invalid_url)")
-      .not("profile_status", "in", "(not_found,deleted,suspended,archived)")
+      .or("profile_status.is.null,profile_status.not.in.(not_found,deleted,suspended,archived)")
       .gte("follower_count", minF)
       .lte("follower_count", maxF)
       .limit(250);
