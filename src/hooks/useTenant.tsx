@@ -132,7 +132,8 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         link.rel = "icon";
         document.head.appendChild(link);
       }
-      link.href = tenant.logo_url;
+      link.type = tenant.slug === "yellow" ? "image/svg+xml" : "image/png";
+      link.href = tenant.slug === "yellow" ? "/yellow-favicon.svg" : tenant.logo_url;
     }
     if (tenant.primary_color) {
       const hsl = toHslTriplet(tenant.primary_color);
