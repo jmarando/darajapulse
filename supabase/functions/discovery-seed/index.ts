@@ -1,7 +1,9 @@
-// Seed the Kenya influencer roster across platforms using Lovable AI.
-// Iterates niche x platform combinations, asks Gemini for known creators,
+// Seed the East Africa influencer roster across platforms using Lovable AI.
+// Iterates country x niche x platform combinations, asks Gemini for known creators,
 // and upserts into discovery_creators (idempotent on platform+handle).
+// Country defaults to Kenya for backward compatibility.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { COUNTRY_PLAYBOOKS, playbook } from "../_shared/discovery-countries.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,8 +71,11 @@ type Creator = {
   confidence?: number;
 };
 
-async function askGemini(niche: string, platform: string): Promise<Creator[]> {
-  const prompt = `List up to 25 well-known KENYAN ${platform} creators, personalities or public figures in the "${niche}" niche.
+async function askGemini(niche: string, platform: string, code: string): Promise<Creator[]> {
+  const pb = playbook(code) ?? COUNTRY_PLAYBOOKS.KE;
+  const cityList = pb.cities.slice(0, 5).join("/");
+  const prompt = `List up to 25 well-known ${pb.demonym.toUpperCase()} (${pb.name}) ${platform} creators, personalities or public figures in the "${niche}" niche.
+They must be based in ${pb.name} — do not include creators from neighbouring countries.
 Include veteran/legacy media names (e.g. long-serving TV anchors and radio hosts) as well as newer creators — do not skip household names just because they are "traditional media".
 Return strictly a JSON array. Each item must have:
 - full_name (string)
@@ -78,11 +83,11 @@ Return strictly a JSON array. Each item must have:
 - profile_url (string, full https URL to their ${platform} profile)
 - follower_estimate (integer)
 - engagement_estimate (number, percent, e.g. 3.5)
-- city (string, e.g. Nairobi/Mombasa/Kisumu or empty)
+- city (string, e.g. ${cityList} or empty)
 - bio (string, max 140 chars)
 - public_email (string or empty — only if widely listed in their bio/linktree)
-- public_phone (string or empty — Kenyan format if publicly listed)
-- audience_demo (object: { age_bands: {"18-24": %, "25-34": %, "35-44": %, "45+": %}, gender: {"female": %, "male": %}, top_cities: ["Nairobi","Mombasa",...], estimated: true })
+- public_phone (string or empty — ${pb.name} format ${pb.phonePrefix} if publicly listed)
+- audience_demo (object: { age_bands: {"18-24": %, "25-34": %, "35-44": %, "45+": %}, gender: {"female": %, "male": %}, top_cities: ${JSON.stringify(pb.cities.slice(0, 4))}, estimated: true })
 - confidence (0..1 — how sure you are this creator exists and matches the niche)
 Only include real, well-known creators. If you are unsure, omit. Return ONLY the JSON array, no prose.`;
 
@@ -119,10 +124,15 @@ Only include real, well-known creators. If you are unsure, omit. Return ONLY the
   }
 }
 
-async function runSeed(platforms: string[], niches: string[], concurrency: number) {
+async function runSeed(platforms: string[], niches: string[] | null, concurrency: number, countries: string[]) {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-  const jobs: { platform: string; niche: string }[] = [];
-  for (const p of platforms) for (const n of niches) jobs.push({ platform: p, niche: n });
+  const jobs: { platform: string; niche: string; country: string }[] = [];
+  for (const code of countries) {
+    const pb = playbook(code);
+    if (!pb) continue;
+    const list = niches ?? pb.niches;
+    for (const p of platforms) for (const n of list) jobs.push({ platform: p, niche: n, country: pb.code });
+  }
 
   let inserted = 0, updated = 0, errors = 0;
   console.log(`[discovery-seed] starting ${jobs.length} jobs (concurrency=${concurrency})`);
@@ -131,8 +141,9 @@ async function runSeed(platforms: string[], niches: string[], concurrency: numbe
     const slice = jobs.slice(i, i + concurrency);
     const results = await Promise.all(slice.map(async (j) => {
       try {
-        const creators = await askGemini(j.niche, j.platform);
+        const creators = await askGemini(j.niche, j.platform, j.country);
         if (!creators.length) return { ins: 0, upd: 0 };
+        const pb = playbook(j.country)!;
         const rows = creators
           .filter(c => c.full_name && c.handle)
           .map(c => ({
@@ -141,7 +152,9 @@ async function runSeed(platforms: string[], niches: string[], concurrency: numbe
             platform: j.platform,
             profile_url: c.profile_url ?? null,
             niche: [j.niche],
-            region: "Kenya",
+            region: pb.name,
+            country_code: pb.code,
+            country_source: "ai_estimated" as const,
             city: c.city || null,
             follower_count: Number(c.follower_estimate) || 0,
             engagement_rate: Number(c.engagement_estimate) || 0,
@@ -152,11 +165,12 @@ async function runSeed(platforms: string[], niches: string[], concurrency: numbe
             demo_source: c.audience_demo ? "ai_estimated" : null,
           }));
 
+
         let ins = 0, upd = 0;
         for (const row of rows) {
           const { data: existing } = await supabase
             .from("discovery_creators")
-            .select("id, niche, verified_at, ai_confidence, audience_demo")
+            .select("id, niche, verified_at, ai_confidence, audience_demo, country_code")
             .eq("platform", row.platform).eq("handle", row.handle).maybeSingle();
           if (existing) {
             const mergedNiche = Array.from(new Set([...(existing.niche || []), j.niche]));
@@ -167,6 +181,11 @@ async function runSeed(platforms: string[], niches: string[], concurrency: numbe
             if (!existing.audience_demo && row.audience_demo) {
               patch.audience_demo = row.audience_demo;
               patch.demo_source = "ai_estimated";
+            }
+            // Only fill a missing country — never overwrite a recorded one.
+            if (!existing.country_code) {
+              patch.country_code = row.country_code;
+              patch.country_source = "ai_estimated";
             }
             await supabase.from("discovery_creators").update(patch).eq("id", existing.id);
             upd++;
@@ -211,19 +230,29 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const platforms: string[] = body.platforms ?? PLATFORMS;
-    const niches: string[] = body.niches ?? NICHES;
+    const countries: string[] = (body.countries?.length ? body.countries : ["KE"])
+      .map((c: string) => String(c).toUpperCase())
+      .filter((c: string) => !!COUNTRY_PLAYBOOKS[c]);
+    if (!countries.length) {
+      return new Response(JSON.stringify({ error: "No supported country selected (Kenya, Uganda, Tanzania, Zambia)." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // Kenya keeps its long hand-tuned niche list; other countries use their playbook niches.
+    const niches: string[] | null = body.niches?.length
+      ? body.niches
+      : (countries.length === 1 && countries[0] === "KE" ? NICHES : null);
     const concurrency = Number(body.concurrency ?? 6);
-    const jobCount = platforms.length * niches.length;
+    const jobCount = countries.reduce((sum, c) => sum + platforms.length * (niches ?? playbook(c)?.niches ?? []).length, 0);
 
     // Run in background to avoid 150s idle timeout — seeding can take many minutes.
     // @ts-ignore - EdgeRuntime is available in Supabase edge runtime
-    EdgeRuntime.waitUntil(runSeed(platforms, niches, concurrency));
+    EdgeRuntime.waitUntil(runSeed(platforms, niches, concurrency, countries));
 
     return new Response(JSON.stringify({
       ok: true,
       status: "started",
       total_jobs: jobCount,
-      message: "Seeding started in background. Check the Discovery roster in a few minutes; refresh the page to see new creators appear.",
+      countries,
+      message: `AI suggestions started for ${countries.join(", ")}. Refresh the Discovery roster in a few minutes to see new creators.`,
     }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("seed fatal", e);

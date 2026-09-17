@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck, Phone, Mail, MessageCircle, Tv } from "lucide-react";
+import { Search, Sparkles, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, ShieldCheck, ExternalLink, Plus, Trash2, Loader2, Wand2, BadgeCheck, Phone, Mail, MessageCircle, Tv, Radar } from "lucide-react";
 import { toast } from "sonner";
 import ShowsTab from "./ShowsTab";
 import { Combobox } from "@/components/ui/combobox";
@@ -71,6 +71,7 @@ const Discovery = () => {
   // Drawer
   const [openCreator, setOpenCreator] = useState<Creator | null>(null);
   const [seeding, setSeeding] = useState(false);
+  const [harvesting, setHarvesting] = useState(false);
 
   // Country/city are applied in the database query so results stay accurate
   // even when a market has more profiles than one page can hold.
@@ -275,21 +276,43 @@ const Discovery = () => {
     await lookupCreator(trimmed);
   };
 
+  // Discovery works across East Africa. Actions apply to the country chosen in the
+  // filter, or to all supported countries when no country is selected.
+  const HARVEST_COUNTRIES = ["KE", "UG", "TZ"];
+  const targetCountries = country !== ALL && country !== UNKNOWN && HARVEST_COUNTRIES.includes(country)
+    ? [country] : HARVEST_COUNTRIES;
+  const targetLabel = targetCountries.map(nameOf).join(", ");
+
+  const pollRoster = () => { setTimeout(load, 30_000); setTimeout(load, 90_000); setTimeout(load, 180_000); };
+
   const runSeed = async () => {
-    if (!confirm("Generate more suggested Kenyan creators across all platforms? This runs in the background for several minutes.")) return;
+    if (!confirm(`Ask AI for more well-known creators in ${targetLabel}? This runs in the background for several minutes.`)) return;
     setSeeding(true);
-    const t = toast.loading("Starting background seed…");
+    const t = toast.loading("Starting AI suggestions…");
     try {
-      const { data, error } = await supabase.functions.invoke("discovery-seed", { body: {} });
+      const { data, error } = await supabase.functions.invoke("discovery-seed", { body: { countries: targetCountries } });
       if (error) throw error;
-      toast.success(data?.message || "Seeding started. Refresh in a few minutes to see new creators.", { id: t, duration: 8000 });
-      // Poll the roster a few times so new rows appear without a manual refresh.
-      setTimeout(load, 30_000);
-      setTimeout(load, 90_000);
-      setTimeout(load, 180_000);
+      toast.success(data?.message || "Started. Refresh in a few minutes to see new creators.", { id: t, duration: 8000 });
+      pollRoster();
     } catch (e: any) {
-      toast.error(e.message || "Seed failed", { id: t });
+      toast.error(e.message || "AI suggestions failed", { id: t });
     } finally { setSeeding(false); }
+  };
+
+  const runHarvest = async () => {
+    if (!confirm(`Harvest real creators from TikTok and Instagram in ${targetLabel}?\n\nThis spends up to 400 scraping credits (about $0.40–0.75) and runs in the background.`)) return;
+    setHarvesting(true);
+    const t = toast.loading("Starting harvest…");
+    try {
+      const { data, error } = await supabase.functions.invoke("discovery-harvest", {
+        body: { countries: targetCountries, max_credits: 400 },
+      });
+      if (error) throw error;
+      toast.success(data?.message || "Harvest started. New creators appear over the next few minutes.", { id: t, duration: 8000 });
+      pollRoster();
+    } catch (e: any) {
+      toast.error(e.message || "Harvest failed", { id: t });
+    } finally { setHarvesting(false); }
   };
 
   const runMatch = async () => {
@@ -348,7 +371,7 @@ const Discovery = () => {
         <div>
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Discovery</div>
           <h1 className="font-display text-4xl font-semibold mt-1">Find creators</h1>
-          <p className="text-sm text-muted-foreground mt-1">Kenyan creators and industry contacts across Instagram, TikTok, YouTube, X, Facebook and direct WhatsApp/phone. Verify before outreach.</p>
+          <p className="text-sm text-muted-foreground mt-1">Creators and industry contacts across Kenya, Uganda and Tanzania — Instagram, TikTok, YouTube, X, Facebook and direct WhatsApp/phone. Verify before outreach.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={async () => {
@@ -365,7 +388,11 @@ const Discovery = () => {
           </Button>
           <Button variant="outline" onClick={runSeed} disabled={seeding}>
             {seeding ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-            {rows.length ? "Top up roster" : "Seed Kenya roster"}
+            AI suggest {targetLabel}
+          </Button>
+          <Button onClick={runHarvest} disabled={harvesting}>
+            {harvesting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Radar className="w-4 h-4 mr-2" />}
+            Harvest {targetLabel}
           </Button>
         </div>
       </div>
@@ -505,7 +532,7 @@ const Discovery = () => {
         <Card className="p-16 text-center">
           <Sparkles className="w-10 h-10 mx-auto text-muted-foreground" />
           <h3 className="font-display text-2xl mt-4">No creators yet</h3>
-          <p className="text-muted-foreground mt-2 text-sm">Click <strong>Seed Kenya roster</strong> to brainstorm ~1,000 creators.</p>
+          <p className="text-muted-foreground mt-2 text-sm">Click <strong>Harvest</strong> to pull real creators from TikTok and Instagram, or <strong>AI suggest</strong> for well-known names.</p>
         </Card>
       ) : (
         <>
