@@ -1671,13 +1671,21 @@ export type Database = {
           full_name: string
           handle: string
           id: string
+          link_checked_at: string | null
+          link_reason: string | null
+          link_status: string
           niche: string[] | null
           notes: string | null
+          person_key: string | null
           platform: string
+          profile_status: string
           profile_url: string | null
           region: string | null
           shows: string[] | null
           source: string
+          source_profile_url: string | null
+          status_checked_at: string | null
+          status_note: string | null
           updated_at: string
           verified_at: string | null
           works_for: string[] | null
@@ -1697,13 +1705,21 @@ export type Database = {
           full_name: string
           handle: string
           id?: string
+          link_checked_at?: string | null
+          link_reason?: string | null
+          link_status?: string
           niche?: string[] | null
           notes?: string | null
+          person_key?: string | null
           platform: string
+          profile_status?: string
           profile_url?: string | null
           region?: string | null
           shows?: string[] | null
           source?: string
+          source_profile_url?: string | null
+          status_checked_at?: string | null
+          status_note?: string | null
           updated_at?: string
           verified_at?: string | null
           works_for?: string[] | null
@@ -1723,13 +1739,21 @@ export type Database = {
           full_name?: string
           handle?: string
           id?: string
+          link_checked_at?: string | null
+          link_reason?: string | null
+          link_status?: string
           niche?: string[] | null
           notes?: string | null
+          person_key?: string | null
           platform?: string
+          profile_status?: string
           profile_url?: string | null
           region?: string | null
           shows?: string[] | null
           source?: string
+          source_profile_url?: string | null
+          status_checked_at?: string | null
+          status_note?: string | null
           updated_at?: string
           verified_at?: string | null
           works_for?: string[] | null
@@ -1743,6 +1767,57 @@ export type Database = {
             referencedColumns: ["code"]
           },
         ]
+      }
+      discovery_harvest_runs: {
+        Row: {
+          candidates_seen: number
+          countries: string[]
+          created_at: string
+          credits_remaining: number | null
+          credits_used: number
+          error: string | null
+          finished_at: string | null
+          id: string
+          inserted_count: number
+          mode: string
+          notes: string | null
+          per_country: Json
+          started_by: string | null
+          updated_count: number
+        }
+        Insert: {
+          candidates_seen?: number
+          countries?: string[]
+          created_at?: string
+          credits_remaining?: number | null
+          credits_used?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          inserted_count?: number
+          mode: string
+          notes?: string | null
+          per_country?: Json
+          started_by?: string | null
+          updated_count?: number
+        }
+        Update: {
+          candidates_seen?: number
+          countries?: string[]
+          created_at?: string
+          credits_remaining?: number | null
+          credits_used?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          inserted_count?: number
+          mode?: string
+          notes?: string | null
+          per_country?: Json
+          started_by?: string | null
+          updated_count?: number
+        }
+        Relationships: []
       }
       discovery_searches: {
         Row: {
@@ -3779,7 +3854,14 @@ export type Database = {
         | "live"
         | "reporting"
         | "closed"
-      geo_source: "defaulted" | "inferred_campaign" | "imported" | "verified"
+      geo_source:
+        | "defaulted"
+        | "inferred_campaign"
+        | "imported"
+        | "verified"
+        | "platform_region"
+        | "inferred_hashtag"
+        | "ai_estimated"
       inventory_kind: "owned_account" | "influencer" | "ad_slot" | "bundle"
       payout_status: "pending" | "processing" | "paid" | "failed"
       platform: "tiktok" | "instagram" | "youtube" | "twitter" | "facebook"
@@ -3932,7 +4014,15 @@ export const Constants = {
         "reporting",
         "closed",
       ],
-      geo_source: ["defaulted", "inferred_campaign", "imported", "verified"],
+      geo_source: [
+        "defaulted",
+        "inferred_campaign",
+        "imported",
+        "verified",
+        "platform_region",
+        "inferred_hashtag",
+        "ai_estimated",
+      ],
       inventory_kind: ["owned_account", "influencer", "ad_slot", "bundle"],
       payout_status: ["pending", "processing", "paid", "failed"],
       platform: ["tiktok", "instagram", "youtube", "twitter", "facebook"],
