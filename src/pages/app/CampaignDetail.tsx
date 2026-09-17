@@ -420,6 +420,34 @@ const CampaignDetail = () => {
     load();
   };
 
+  // Paid per-post lookup, used only for posts still showing no figures.
+  const refreshMissingFigures = async () => {
+    const missing = posts.filter((p: any) => !Number(latestByPost.get(p.id)?.views || 0));
+    if (!missing.length) return toast.info("Every post already has figures");
+    if (!window.confirm(`${missing.length} post${missing.length === 1 ? "" : "s"} have no figures. Checking them uses about ${missing.length} paid credit${missing.length === 1 ? "" : "s"}. Continue?`)) return;
+    toast.loading(`Checking ${missing.length} posts…`, { id: "pf-missing" });
+    let ok = 0;
+    let credits = 0;
+    let remaining: number | null = null;
+    let capped = false;
+    for (const p of missing) {
+      const { data, error } = await supabase.functions.invoke("fetch-public-metrics", {
+        body: { post_id: p.id, use_scrapecreators: true, max_credits: 5 },
+      });
+      if (error) continue;
+      ok += data?.ok ?? 0;
+      credits += data?.credits_used ?? 0;
+      if (data?.credits_remaining != null) remaining = data.credits_remaining;
+      if (data?.credits_capped) capped = true;
+      toast.loading(`Checking… ${ok} recovered, ${credits} credits used`, { id: "pf-missing" });
+    }
+    toast.success(
+      `Recovered figures for ${ok} of ${missing.length} posts · ${credits} credits used${remaining != null ? ` · ${remaining} left` : ""}${capped ? " · stopped at the run limit" : ""}`,
+      { id: "pf-missing" },
+    );
+    load();
+  };
+
 
   const generateLink = async () => {
     // If a link already exists for this campaign, just reuse it.
@@ -2089,6 +2117,7 @@ const CampaignDetail = () => {
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={autoFetchAll}><Sparkles className="w-3 h-3 mr-1" /> Auto-fetch all</Button>
+            <Button variant="outline" size="sm" onClick={refreshMissingFigures}><Sparkles className="w-3 h-3 mr-1" /> Refresh missing figures</Button>
 
             <Dialog open={postOpen} onOpenChange={setPostOpen}>
               <DialogTrigger asChild><Button size="sm" className="bg-primary" disabled={ci.length === 0}><Plus className="w-3 h-3 mr-1" /> Add post</Button></DialogTrigger>

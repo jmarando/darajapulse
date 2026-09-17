@@ -3041,6 +3041,44 @@ export type Database = {
         }
         Relationships: []
       }
+      scraper_credit_log: {
+        Row: {
+          campaign_id: string | null
+          context: string | null
+          created_at: string
+          credits: number
+          credits_remaining: number | null
+          id: string
+          provider: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          context?: string | null
+          created_at?: string
+          credits?: number
+          credits_remaining?: number | null
+          id?: string
+          provider: string
+        }
+        Update: {
+          campaign_id?: string | null
+          context?: string | null
+          created_at?: string
+          credits?: number
+          credits_remaining?: number | null
+          id?: string
+          provider?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scraper_credit_log_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       show_contacts: {
         Row: {
           created_at: string

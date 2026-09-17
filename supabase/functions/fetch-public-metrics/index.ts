@@ -5,6 +5,11 @@
 //   Ensemble returns nothing.
 // Per-post status is returned so the UI can surface "couldn't fetch — retry / enter manually".
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { scrapeCreatorsPost, SCRAPECREATORS_ENABLED } from "../_shared/scrapecreators.ts";
+
+// Per-invocation ScrapeCreators credit accounting. Credits are a paid, finite
+// pool, so a run may never exceed the budget the caller asked for.
+const sc = { enabled: false, budget: 0, used: 0, remaining: null as number | null, capped: false };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -554,6 +559,29 @@ async function scrape(platform: string, rawUrl: string) {
     }
   }
 
+  // ScrapeCreators — paid per-post fallback, only when explicitly enabled for the
+  // run and still inside the credit budget.
+  if (sc.enabled && SCRAPECREATORS_ENABLED) {
+    if (sc.used >= sc.budget) {
+      sc.capped = true;
+    } else {
+      const plat = isTikTok ? "tiktok" : isInsta ? "instagram" : isYouTube ? "youtube" : isFacebook ? "facebook" : null;
+      if (plat) {
+        try {
+          const res = await scrapeCreatorsPost(plat, url);
+          sc.used += Math.max(1, res.creditsCharged || 0);
+          if (res.creditsRemaining != null) sc.remaining = res.creditsRemaining;
+          const s: any = res.stats ?? {};
+          const hasSignal = ["views", "likes", "comments", "shares", "saves"].some((k) => Number(s?.[k] || 0) > 0);
+          if (hasSignal) return { stats: res.stats, thumb: res.thumb, caption: res.caption, postedAt: res.postedAt };
+          console.error(`ScrapeCreators returned no metric signal for ${platform}`);
+        } catch (e) {
+          console.error(`ScrapeCreators failed for ${platform}:`, (e as Error).message);
+        }
+      }
+    }
+  }
+
   if (isTikTok) return await scrapeTikTokHtml(url);
   if (isYouTube) return await scrapeYouTubeHtml(url);
   if (isInsta) throw new Error("Instagram fetch failed — Apify returned nothing and Ensemble fallback is unavailable");
@@ -599,7 +627,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const { campaign_id, post_id, stale, max, offset, chain } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number; chain?: number };
+    const { campaign_id, post_id, stale, max, offset, chain, use_scrapecreators, max_credits } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number; chain?: number; use_scrapecreators?: boolean; max_credits?: number };
+    // Never on the scheduled (stale) path — paid credits are spent only on an
+    // explicit manual request, and never beyond the run's budget.
+    sc.enabled = !!use_scrapecreators && !stale && SCRAPECREATORS_ENABLED;
+    sc.budget = Math.max(0, Math.min(Number(max_credits ?? 60), 500));
+    sc.used = 0;
+    sc.capped = false;
+    sc.remaining = null;
     const chainDepth = Math.max(0, Number(chain ?? 0));
     const MAX_CHAIN = 40;
     let q = supabase
@@ -688,8 +723,18 @@ Deno.serve(async (req) => {
 
 
 
+    if (sc.used > 0) {
+      await supabase.from("scraper_credit_log").insert({
+        provider: "scrapecreators",
+        credits: sc.used,
+        credits_remaining: sc.remaining,
+        campaign_id: campaign_id ?? null,
+        context: post_id ? "single_post" : "campaign_refresh",
+      });
+    }
+
     const ok = succeeded;
-    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback" }), {
+    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback", credits_used: sc.used, credits_remaining: sc.remaining, credits_capped: sc.capped }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
