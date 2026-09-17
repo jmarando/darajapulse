@@ -682,26 +682,38 @@ const Discovery = () => {
                     {p.full_name}
                   </h2>
 
+                  {platformFilter !== "all" && p.profiles.length > 1 && (
+                    <p className="text-[11px] text-muted-foreground mb-2">
+                      Matched: <span className="capitalize font-medium text-foreground/80">{p.matchedPlatforms.join(", ")}</span>
+                      {p.profiles.some(pr => !p.matchedPlatforms.includes(pr.platform)) &&
+                        <> · also on <span className="capitalize">{Array.from(new Set(p.profiles.map(pr => pr.platform).filter(pl => !p.matchedPlatforms.includes(pl)))).join(", ")}</span></>}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-1.5">
                     {p.profiles.map(pr => {
                       const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+                      const st = statusInfo(pr.profile_status);
+                      const dead = st.tone === "unavailable" || !pr.profile_url;
                       return (
                         <a
                           key={pr.id}
                           href={pr.profile_url || "#"}
                           target="_blank"
                           rel="noreferrer"
-                          onClick={e => { if (!pr.profile_url) e.preventDefault(); }}
-                          className="inline-flex items-center gap-1.5 text-[11px] bg-secondary hover:bg-secondary/70 rounded-lg px-2 py-1 transition-colors max-w-full"
-                          title={`@${pr.handle} · ${fmtCompact(pr.follower_count)} on ${pr.platform}`}
+                          onClick={e => { if (dead) e.preventDefault(); }}
+                          className={`inline-flex items-center gap-1.5 text-[11px] rounded-lg px-2 py-1 transition-colors max-w-full ${dead ? "bg-muted text-muted-foreground cursor-default" : "bg-secondary hover:bg-secondary/70"}`}
+                          title={dead ? `@${pr.handle} · ${st.label} — ${st.message}` : `@${pr.handle} · ${fmtCompact(pr.follower_count)} on ${pr.platform}`}
                         >
                           <Icon className="w-3 h-3 shrink-0 text-foreground/70" />
                           <span className="truncate max-w-[90px] font-semibold text-foreground/80">@{pr.handle}</span>
-                          <span className="text-muted-foreground tabular-nums">{fmtCompact(pr.follower_count)}</span>
+                          <span className="text-muted-foreground tabular-nums">{dead ? st.label : fmtCompact(pr.follower_count)}</span>
                         </a>
                       );
                     })}
                   </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    {p.profiles.filter(isAvailable).length} connected profile{p.profiles.filter(isAvailable).length === 1 ? "" : "s"}
+                  </p>
                 </div>
 
                 {/* Niches + contacts */}
@@ -745,7 +757,7 @@ const Discovery = () => {
                   <Divider />
                   <Stat label="Avg Eng" value={p.engagement_avg.toFixed(1)} suffix="%" />
                   <Divider />
-                  <Stat label="Profiles" value={String(p.profiles.length)} />
+                  <Stat label="Active profiles" value={String(p.profiles.filter(isAvailable).length)} />
                 </div>
 
                 {/* Actions */}
@@ -797,22 +809,39 @@ const Discovery = () => {
                     {!openCreator.verified_at && <Button size="sm" variant="ghost" onClick={() => verifyCreator(openCreator.id)}><BadgeCheck className="w-3 h-3 mr-1" /> Mark verified</Button>}
                   </div>
                   <div className="space-y-2">
-                    {openProfiles.length > 1 && (
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {openProfiles.map(pr => {
+                    {portfolioProfiles.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        <h4 className="font-display text-sm">Connected social profiles</h4>
+                        {portfolioProfiles.map(pr => {
                           const Icon = PLATFORM_ICON[pr.platform] || Instagram;
+                          const st = statusInfo(pr.profile_status);
                           return (
-                            <a
-                              key={pr.id}
-                              href={pr.profile_url || "#"}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={e => { if (!pr.profile_url) e.preventDefault(); }}
-                              className="inline-flex items-center gap-1.5 text-[11px] bg-secondary hover:bg-secondary/70 rounded-lg px-2 py-1 transition-colors max-w-full"
-                            >
-                              <Icon className="w-3 h-3 shrink-0" />
-                              @{pr.handle}
-                            </a>
+                            <div key={pr.id} className="rounded-lg border border-border p-2.5">
+                              <div className="flex items-center gap-2">
+                                <Icon className="w-3.5 h-3.5 shrink-0 text-foreground/70" />
+                                <span className="text-sm font-medium capitalize">{pr.platform}</span>
+                                <Badge
+                                  variant="outline"
+                                  title={st.message}
+                                  className={`ml-auto text-[10px] ${st.tone === "active" ? "text-success border-success/40" : st.tone === "pending" ? "text-muted-foreground" : "text-destructive border-destructive/40"}`}
+                                >
+                                  {st.label}
+                                </Badge>
+                              </div>
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                @{pr.handle} · {fmtCompact(pr.follower_count)} followers · {Number(pr.engagement_rate || 0).toFixed(1)}% engagement
+                              </div>
+                              <div className="mt-1 flex items-center justify-between gap-2">
+                                <span className="text-[11px] text-muted-foreground">Last checked {fmtDate(pr.status_checked_at)}</span>
+                                {st.tone !== "unavailable" && pr.profile_url ? (
+                                  <a href={pr.profile_url} target="_blank" rel="noreferrer" className="text-xs text-accent inline-flex items-center gap-1">
+                                    View profile <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                ) : (
+                                  <span className="text-[11px] text-muted-foreground italic">{st.tone === "unavailable" ? st.message : "Link unavailable"}</span>
+                                )}
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
