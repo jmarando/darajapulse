@@ -1,0 +1,1 @@
+GRANT SELECT ON public.clients TO anon;
