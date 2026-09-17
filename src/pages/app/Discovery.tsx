@@ -238,8 +238,8 @@ const Discovery = () => {
 
   const people = useMemo<Person[]>(() => {
     const matchedIds = new Set(filtered.map(r => r.id));
-    // Union-find so a person links through an explicit person_key, a matching
-    // name, or a distinctive shared handle — never on a loose name alone.
+    // Union-find, but the only join evidence accepted is an explicit person_key
+    // or an identical handle on the same platform (the same account recorded twice).
     const parent = new Map<string, string>();
     const find = (x: string): string => {
       const p = parent.get(x);
@@ -257,13 +257,9 @@ const Discovery = () => {
     };
     pool.forEach(r => {
       if (r.person_key) link(`pk:${r.person_key}`, r.id);
-      else {
-        const n = normalizeName(r.full_name);
-        if (n) link(`n:${n}`, r.id);
-        const h = normalizeHandle(r.handle);
-        if (h) link(`h:${h}`, r.id);
-      }
+      else link(`ph:${r.platform}:${(r.handle || r.id).toLowerCase()}`, r.id);
     });
+
 
     const map = new Map<string, Creator[]>();
     for (const r of pool) {
