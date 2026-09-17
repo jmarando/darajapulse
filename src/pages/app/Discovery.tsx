@@ -909,13 +909,14 @@ const Discovery = () => {
                               </div>
                               <div className="mt-1 flex items-center justify-between gap-2">
                                 <span className="text-[11px] text-muted-foreground">Last checked {fmtDate(pr.status_checked_at)}</span>
-                                {st.tone !== "unavailable" && pr.profile_url ? (
+                                {st.tone !== "unavailable" && hasTrustedLink(pr) ? (
                                   <a href={pr.profile_url} target="_blank" rel="noreferrer" className="text-xs text-accent inline-flex items-center gap-1">
                                     View profile <ExternalLink className="w-3 h-3" />
                                   </a>
                                 ) : (
-                                  <span className="text-[11px] text-muted-foreground italic">{st.tone === "unavailable" ? st.message : "Link unavailable"}</span>
+                                  <span className="text-[11px] text-muted-foreground italic">{st.message}</span>
                                 )}
+
                               </div>
                             </div>
                           );
