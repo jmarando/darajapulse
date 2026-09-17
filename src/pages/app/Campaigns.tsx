@@ -168,14 +168,14 @@ const Campaigns = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex justify-between items-end mb-8">
-        <div>
+    <div className="w-full min-w-0 max-w-7xl mx-auto px-4 py-6 sm:p-8">
+      <div className="flex min-w-0 flex-wrap justify-between items-end gap-4 mb-8">
+        <div className="min-w-0">
           
-          <h1 className="font-display text-4xl font-semibold mt-1">Campaigns</h1>
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold mt-1 break-words">Campaigns</h1>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button className="bg-primary" disabled={clients.length === 0}><Plus className="w-4 h-4 mr-2" /> New campaign</Button></DialogTrigger>
+          <DialogTrigger asChild><Button className="bg-primary shrink-0" disabled={clients.length === 0}><Plus className="w-4 h-4 mr-2" /> New campaign</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle className="font-display text-2xl">New campaign</DialogTitle></DialogHeader>
             <form onSubmit={submit} className="space-y-3">
@@ -215,21 +215,21 @@ const Campaigns = () => {
           <h3 className="font-display text-2xl mt-4">No campaigns yet</h3>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid min-w-0 md:grid-cols-2 gap-6">
           {rows.map(r => {
             const isLive = r.status === "live";
             const cp = contestPerf[r.id];
             const hasContest = !!cp?.contests;
             return (
-            <Link key={r.id} to={`/app/campaigns/${r.id}`} className="group">
-              <Card className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-0 shadow-sm hover:shadow-elegant hover:-translate-y-1 transition-all duration-500 h-full flex flex-col">
+            <Link key={r.id} to={`/app/campaigns/${r.id}`} className="group min-w-0">
+              <Card className="relative min-w-0 overflow-hidden rounded-lg border border-border bg-card p-0 shadow-sm hover:shadow-elegant hover:-translate-y-1 transition-all duration-500 h-full flex flex-col">
                 {/* Header */}
-                <div className="p-7 pb-5">
+                <div className="min-w-0 p-5 pb-4 sm:p-7 sm:pb-5">
                   <div className="flex justify-between items-start mb-6 gap-3">
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="relative shrink-0">
                         <div className="absolute -inset-1.5 bg-gradient-to-tr from-primary to-accent rounded-2xl blur-md opacity-15 group-hover:opacity-35 transition-opacity" />
-                        <div className="relative w-16 h-16 rounded-xl bg-white border border-border flex items-center justify-center p-2 shadow-sm overflow-hidden">
+                        <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-card border border-border flex items-center justify-center p-2 shadow-sm overflow-hidden">
                           {r.clients?.logo_url ? (
                             <img src={r.clients.logo_url} alt={`${r.clients?.name} logo`} className="max-w-full max-h-full object-contain" loading="lazy" />
                           ) : (
@@ -292,7 +292,7 @@ const Campaigns = () => {
                 </div>
 
                 {/* KPI strip */}
-                <div className="mx-5 mb-5 rounded-2xl bg-foreground text-background p-6 flex items-center justify-between shadow-lg mt-auto">
+                  <div className="mx-4 mb-4 rounded-lg bg-foreground text-background px-4 py-5 sm:mx-5 sm:mb-5 sm:p-6 flex items-center justify-between gap-3 shadow-lg mt-auto">
                   {hasContest ? (
                     <>
                       <Stat label="Creators" value={fmtNum(cp.contestants)} />
