@@ -143,10 +143,17 @@ export const CreatorDraftStep = ({
       setBusy(false);
       setProgress(null);
       abortRef.current = null;
+      // A stale/expired upload link can't be resumed — forget it so the next
+      // attempt mints a fresh one.
+      if (streamUrl && /404|410|expired|not found/i.test(String(err?.message ?? err))) {
+        try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
+      }
       return toast.error(
         "Upload stopped — check your connection and tap Send again. It will continue from where it stopped."
       );
     }
+    try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
+
 
     const { error } = await supabase.rpc("submit_creator_draft" as any, {
       _brief_token: briefToken,
