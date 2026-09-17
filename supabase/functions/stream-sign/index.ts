@@ -142,15 +142,17 @@ Deno.serve(async (req) => {
       signStreamToken(draft.stream_uid),
       signStreamToken(draft.stream_uid, true),
     ]);
+    const origin = `https://customer-${code}.cloudflarestream.com`;
     if (downloadReady) {
-      downloadUrl = `${base}/downloads/default.mp4${dlToken ? `?token=${dlToken}` : ""}`;
+      downloadUrl = `${origin}/${dlToken ?? draft.stream_uid}/downloads/default.mp4`;
     }
 
     return json({
       status: "ready",
       duration: video?.duration ?? draft.stream_duration ?? null,
-      embedUrl: `${base}/iframe${token ? `?token=${token}` : ""}`,
-      posterUrl: `${thumbBase}${token ? `?token=${token}` : ""}`,
+      embedUrl: `${origin}/${token ?? draft.stream_uid}/iframe`,
+      posterUrl: withStreamToken(thumbBase, draft.stream_uid, token),
+
       downloadUrl,
       downloadStatus: downloadReady ? "ready" : "preparing",
     });

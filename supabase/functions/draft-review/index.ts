@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
-import { signStreamToken } from "../_shared/stream.ts";
+import { signStreamToken, withStreamToken } from "../_shared/stream.ts";
+
 
 
 const json = (body: unknown, status = 200) =>
