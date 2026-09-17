@@ -136,23 +136,25 @@ const Overview = () => {
   const er = totals.views > 0 ? ((totals.likes + totals.comments + totals.shares) / totals.views) * 100 : 0;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="w-full min-w-0 max-w-7xl mx-auto px-4 py-6 sm:p-8">
+      <header className="mb-8 flex min-w-0 flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0 max-w-full">
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Agency console</div>
-          <h1 className="font-display text-4xl font-semibold mt-1">
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold mt-1 break-words">
             {greeting()}{firstName ? `, ${firstName}` : ""}.
           </h1>
           <p className="text-muted-foreground mt-1">Here's where your campaigns stand today.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:w-auto sm:items-center">
           <Button variant="outline" size="sm" onClick={() => setCompact(!compact)} title="Toggle compact mode">
             {compact ? <LayoutGrid className="w-4 h-4 mr-1" /> : <Rows3 className="w-4 h-4 mr-1" />}
             {compact ? "Comfortable" : "Compact"}
           </Button>
-          <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-9 text-xs w-[150px]" aria-label="From" />
-          <span className="text-xs text-muted-foreground">→</span>
-          <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-9 text-xs w-[150px]" aria-label="To" />
+          <div className="col-span-2 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:contents">
+            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-9 min-w-0 w-full text-xs sm:w-[150px]" aria-label="From" />
+            <span className="text-xs text-muted-foreground">→</span>
+            <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-9 min-w-0 w-full text-xs sm:w-[150px]" aria-label="To" />
+          </div>
           <Button variant="ghost" size="sm" onClick={() => { setFrom(twoWeeksAgo); setTo(today); }}>Reset</Button>
         </div>
       </header>
