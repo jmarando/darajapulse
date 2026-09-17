@@ -5,6 +5,11 @@
 //   Ensemble returns nothing.
 // Per-post status is returned so the UI can surface "couldn't fetch — retry / enter manually".
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { scrapeCreatorsPost, SCRAPECREATORS_ENABLED } from "../_shared/scrapecreators.ts";
+
+// Per-invocation ScrapeCreators credit accounting. Credits are a paid, finite
+// pool, so a run may never exceed the budget the caller asked for.
+const sc = { enabled: false, budget: 0, used: 0, remaining: null as number | null, capped: false };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
