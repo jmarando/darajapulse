@@ -68,19 +68,41 @@ export const CreatorDraftStep = ({
     // Preferred pipeline: Cloudflare Stream — adaptive playback, server-generated
     // thumbnail and delivery from African edge locations. If it isn't configured
     // yet (or errors before the upload starts), fall back to storage.
+    //
+    // The minted upload link is remembered for this exact file, so tapping Send
+    // again after a dropped network resumes the same upload instead of starting
+    // a fresh one (which would also leave an unused video behind in Stream).
     let streamUid: string | null = null;
     let streamUrl: string | null = null;
+    const resumeKey = `stream-upload:${briefToken}:${stamp}:${safe}`;
     try {
-      const { data: up, error: upErr } = await supabase.functions.invoke("stream-upload-url", {
-        body: { brief_token: briefToken, file_name: file.name, file_size: file.size },
-      });
-      if (!upErr && (up as any)?.uploadUrl && (up as any)?.uid) {
-        streamUid = (up as any).uid as string;
-        streamUrl = (up as any).uploadUrl as string;
+      const cached = JSON.parse(localStorage.getItem(resumeKey) || "null");
+      if (cached?.uploadUrl && cached?.uid && Date.now() - (cached.at ?? 0) < 6 * 3600 * 1000) {
+        streamUid = cached.uid;
+        streamUrl = cached.uploadUrl;
+      }
+    } catch {
+      /* ignore unreadable cache */
+    }
+    try {
+      if (!streamUrl) {
+        const { data: up, error: upErr } = await supabase.functions.invoke("stream-upload-url", {
+          body: { brief_token: briefToken, file_name: file.name, file_size: file.size },
+        });
+        if (!upErr && (up as any)?.uploadUrl && (up as any)?.uid) {
+          streamUid = (up as any).uid as string;
+          streamUrl = (up as any).uploadUrl as string;
+          try {
+            localStorage.setItem(resumeKey, JSON.stringify({ uid: streamUid, uploadUrl: streamUrl, at: Date.now() }));
+          } catch {
+            /* storage full / private mode */
+          }
+        }
       }
     } catch {
       /* fall back below */
     }
+
 
     let posterPath: string | null = null;
     let storedPath = path;
@@ -121,10 +143,17 @@ export const CreatorDraftStep = ({
       setBusy(false);
       setProgress(null);
       abortRef.current = null;
+      // A stale/expired upload link can't be resumed — forget it so the next
+      // attempt mints a fresh one.
+      if (streamUrl && /404|410|expired|not found/i.test(String(err?.message ?? err))) {
+        try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
+      }
       return toast.error(
         "Upload stopped — check your connection and tap Send again. It will continue from where it stopped."
       );
     }
+    try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
+
 
     const { error } = await supabase.rpc("submit_creator_draft" as any, {
       _brief_token: briefToken,

@@ -43,6 +43,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [posters, setPosters] = useState<Record<string, string>>({});
+  const [streamPosters, setStreamPosters] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<(typeof TABS)[number][0]>("pending");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -69,9 +70,18 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       for (const s of (signed as any[]) ?? []) if (s?.path && s?.signedUrl) map[s.path] = s.signedUrl;
       setPosters(map);
     }
+    // Stream videos have a server-made thumbnail — fetch them all in one call
+    // so tiles show the real frame without anyone tapping play.
+    const streamIds = list.filter((d) => d.stream_uid).map((d) => d.id);
+    if (streamIds.length) {
+      const { data: res } = await supabase.functions.invoke("stream-sign", { body: { draft_ids: streamIds } });
+      const p = (res as any)?.posters;
+      if (p && typeof p === "object") setStreamPosters(p as Record<string, string>);
+    }
     setRequired(Boolean((camp as any)?.require_draft_approval));
     setReviewLink((link as any)?.token ? `${publicOrigin()}/d/${(link as any).token}` : null);
   };
+
 
   /** Signs a video URL only when it is actually needed (play / download). */
   const signUrl = async (d: Draft): Promise<string | null> => {
@@ -259,7 +269,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
               <DraftVideo
                 getUrl={d.stream_uid ? undefined : () => signUrl(d)}
                 getStream={d.stream_uid ? () => streamSign(d) : undefined}
-                poster={d.poster_path ? posters[d.poster_path] : null}
+                poster={streamPosters[d.id] ?? (d.poster_path ? posters[d.poster_path] : null)}
                 label={d.influencers?.full_name}
               />
 
@@ -295,9 +305,15 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
                     const name = d.file_name || `${d.influencers?.full_name || "draft"}.mp4`;
                     if (d.stream_uid) {
                       const s = await streamSign(d);
-                      if (!s?.downloadUrl) return toast.error("Video unavailable");
-                      return downloadFile(s.downloadUrl, name);
+                      if (s?.downloadUrl) return downloadFile(s.downloadUrl, name);
+                      // Cloudflare builds the MP4 copy on first request.
+                      return toast.info(
+                        s?.status === "processing"
+                          ? "Still converting — try the download again shortly."
+                          : "Preparing the download copy — try again in about a minute.",
+                      );
                     }
+
                     const u = await signDownloadUrl(d, name);
                     if (!u) return toast.error("Video unavailable");
                     downloadFile(u, name);

@@ -191,8 +191,13 @@ const PublicDraftReview = () => {
                       const name = d.file_name || `${d.creator_name || "video"}.mp4`;
                       if (d.has_stream) {
                         const s = await streamSign(d.id);
-                        if (!s?.downloadUrl) return toast.error("Video unavailable");
-                        return downloadFile(s.downloadUrl, name);
+                        if (s?.downloadUrl) return downloadFile(s.downloadUrl, name);
+                        return toast.info(
+                          s?.status === "processing"
+                            ? "Still converting — try the download again shortly."
+                            : "Preparing the download copy — try again in about a minute.",
+                        );
+
                       }
                       const u = await signOne(d.id, name);
                       if (!u) return toast.error("Video unavailable");

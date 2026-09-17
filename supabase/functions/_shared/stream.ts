@@ -38,30 +38,45 @@ const b64urlBytes = (bytes: Uint8Array) => {
 };
 
 /**
- * Signed playback token (HS256 JWT) for a Stream video.
+ * Signed playback token (RS256 JWT, Cloudflare Stream signing key) for a video.
+ * STREAM_SIGNING_KEY holds the base64-encoded JWK returned by /stream/keys.
  * Returns null when the signing key has not been provisioned yet —
  * callers fall back to plain (unguessable-UID) URLs in that case.
  */
 export async function signStreamToken(uid: string, download = false): Promise<string | null> {
-  const key = Deno.env.get("STREAM_SIGNING_KEY");
+  const keyB64 = Deno.env.get("STREAM_SIGNING_KEY");
   const kid = Deno.env.get("STREAM_SIGNING_KEY_ID");
-  if (!key || !kid) return null;
-  const enc = new TextEncoder();
-  const b = (o: unknown) => b64urlBytes(enc.encode(JSON.stringify(o)));
-  const header = b({ alg: "HS256", kid });
-  const claims: Record<string, unknown> = { sub: uid, exp: Math.floor(Date.now() / 1000) + 6 * 3600 };
-  if (download) claims.downloadables = ["mp4"];
-  const payload = b(claims);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(key),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, enc.encode(`${header}.${payload}`)));
-  return `${header}.${payload}.${b64urlBytes(sig)}`;
+  if (!keyB64 || !kid) return null;
+  try {
+    const jwk = JSON.parse(atob(keyB64));
+    const enc = new TextEncoder();
+    const b = (o: unknown) => b64urlBytes(enc.encode(JSON.stringify(o)));
+    const header = b({ alg: "RS256", kid });
+    const claims: Record<string, unknown> = {
+      sub: uid,
+      kid,
+      exp: Math.floor(Date.now() / 1000) + 6 * 3600,
+      nbf: Math.floor(Date.now() / 1000) - 60,
+    };
+    if (download) claims.downloadable = true;
+    const payload = b(claims);
+    const cryptoKey = await crypto.subtle.importKey(
+      "jwk",
+      { kty: jwk.kty, n: jwk.n, e: jwk.e, d: jwk.d, p: jwk.p, q: jwk.q, dp: jwk.dp, dq: jwk.dq, qi: jwk.qi, alg: "RS256", ext: true },
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const sig = new Uint8Array(
+      await crypto.subtle.sign("RSASSA-PKCS1-v1_5", cryptoKey, enc.encode(`${header}.${payload}`)),
+    );
+    return `${header}.${payload}.${b64urlBytes(sig)}`;
+  } catch (e) {
+    console.error("signStreamToken failed", e);
+    return null;
+  }
 }
+
 
 /** Verify Cloudflare's Webhook-Signature header (t=...,v1=...). */
 export async function verifyWebhookSignature(body: string, header: string | null): Promise<boolean> {
@@ -97,3 +112,10 @@ export const customerCodeFrom = (...urls: (string | null | undefined)[]): string
   }
   return null;
 };
+
+/**
+ * Cloudflare accepts signed tokens in the URL PATH (in place of the video UID),
+ * not as a ?token= query parameter. Swap the UID for the token.
+ */
+export const withStreamToken = (url: string, uid: string, token: string | null): string =>
+  token ? url.replace(`/${uid}/`, `/${token}/`).replace(new RegExp(`/${uid}$`), `/${token}`) : url;
