@@ -627,7 +627,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const { campaign_id, post_id, stale, max, offset, chain } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number; chain?: number };
+    const { campaign_id, post_id, stale, max, offset, chain, use_scrapecreators, max_credits } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number; chain?: number; use_scrapecreators?: boolean; max_credits?: number };
+    // Never on the scheduled (stale) path — paid credits are spent only on an
+    // explicit manual request, and never beyond the run's budget.
+    sc.enabled = !!use_scrapecreators && !stale && SCRAPECREATORS_ENABLED;
+    sc.budget = Math.max(0, Math.min(Number(max_credits ?? 60), 500));
+    sc.used = 0;
+    sc.capped = false;
+    sc.remaining = null;
     const chainDepth = Math.max(0, Number(chain ?? 0));
     const MAX_CHAIN = 40;
     let q = supabase
