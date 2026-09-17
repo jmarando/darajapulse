@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, Circle, Building2, Megaphone, Users, X, Sparkles } from "lucide-react";
+import { useTenant } from "@/hooks/useTenant";
 
 const DISMISS_KEY = "onboarding_dismissed_v1";
 
@@ -18,6 +19,7 @@ interface Step {
 }
 
 const OnboardingChecklist = () => {
+  const { tenant } = useTenant();
   const [steps, setSteps] = useState<Step[] | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [agencyName, setAgencyName] = useState<string>("");
@@ -28,7 +30,10 @@ const OnboardingChecklist = () => {
       return;
     }
     (async () => {
-      const { data: ag } = await (supabase.from("agencies") as any).select("name,logo_url").limit(1).maybeSingle();
+      const agencyQuery = (supabase.from("agencies") as any).select("name,logo_url");
+      const { data: ag } = tenant?.id
+        ? await agencyQuery.eq("id", tenant.id).maybeSingle()
+        : await agencyQuery.limit(1).maybeSingle();
       const hasLogo = !!ag?.logo_url;
       setAgencyName(ag?.name ?? "");
       const { count: clientCount } = await (supabase.from("clients") as any).select("id", { count: "exact", head: true });
@@ -42,7 +47,7 @@ const OnboardingChecklist = () => {
         { id: "team", title: "Invite your team", body: "Bring account managers in so you're not solo.", done: (teamCount ?? 0) > 1, icon: Users, to: "/app/team", cta: "Invite team" },
       ]);
     })();
-  }, []);
+  }, [tenant?.id]);
 
   if (dismissed || !steps) return null;
   const completed = steps.filter(s => s.done).length;
