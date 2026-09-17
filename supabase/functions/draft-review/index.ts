@@ -1,5 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { signStreamToken } from "../_shared/stream.ts";
+
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -126,7 +128,7 @@ Deno.serve(async (req) => {
 
     const { data: drafts } = await admin
       .from("creator_drafts")
-      .select("id, file_path, poster_path, file_name, mime_type, file_size, platform, caption, creator_note, status, review_note, reviewer_label, reviewed_at, created_at, post_url, stream_uid, stream_status, influencers(full_name, handle, avatar_url)")
+      .select("id, file_path, poster_path, file_name, mime_type, file_size, platform, caption, creator_note, status, review_note, reviewer_label, reviewed_at, created_at, post_url, stream_uid, stream_status, stream_thumbnail_url, influencers(full_name, handle, avatar_url)")
       .eq("campaign_id", link.campaign_id)
       .order("created_at", { ascending: false });
 

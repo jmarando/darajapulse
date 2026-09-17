@@ -43,6 +43,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [posters, setPosters] = useState<Record<string, string>>({});
+  const [streamPosters, setStreamPosters] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<(typeof TABS)[number][0]>("pending");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -69,9 +70,18 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       for (const s of (signed as any[]) ?? []) if (s?.path && s?.signedUrl) map[s.path] = s.signedUrl;
       setPosters(map);
     }
+    // Stream videos have a server-made thumbnail — fetch them all in one call
+    // so tiles show the real frame without anyone tapping play.
+    const streamIds = list.filter((d) => d.stream_uid).map((d) => d.id);
+    if (streamIds.length) {
+      const { data: res } = await supabase.functions.invoke("stream-sign", { body: { draft_ids: streamIds } });
+      const p = (res as any)?.posters;
+      if (p && typeof p === "object") setStreamPosters(p as Record<string, string>);
+    }
     setRequired(Boolean((camp as any)?.require_draft_approval));
     setReviewLink((link as any)?.token ? `${publicOrigin()}/d/${(link as any).token}` : null);
   };
+
 
   /** Signs a video URL only when it is actually needed (play / download). */
   const signUrl = async (d: Draft): Promise<string | null> => {
