@@ -15,6 +15,22 @@ Deno.serve(async (req) => {
     if (!streamConfigured()) return json({ error: "Video service is not configured yet." }, 503);
 
     const body = await req.json().catch(() => ({}));
+
+    // Failure beacon from the creator's browser — logged so uploads that die in the
+    // browser (blocked networks, dead links) can be audited instead of guessed at.
+    if (String(body?.action ?? "") === "report") {
+      console.error("creator upload failed", {
+        stage: body?.stage,
+        uid: body?.uid ?? null,
+        file: String(body?.file_name ?? "").slice(0, 120),
+        size: Number(body?.file_size ?? 0),
+        brief: String(body?.brief_token ?? "").slice(0, 8),
+        message: String(body?.message ?? "").slice(0, 500),
+        ua: String(body?.ua ?? "").slice(0, 200),
+      });
+      return json({ ok: true });
+    }
+
     const briefToken = String(body?.brief_token ?? "").trim();
     const fileName = String(body?.file_name ?? "video.mp4").slice(0, 200);
     const fileSize = Number(body?.file_size ?? 0);
