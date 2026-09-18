@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -254,6 +254,19 @@ const Discovery = () => {
     const score = (p: Person) => Math.max(0, ...p.all_ids.map(id => scoreById.get(id) ?? 0));
     return [...people].sort((a, b) => score(b) - score(a));
   }, [people, matches]);
+
+  // Everyone stays searchable; cards are drawn in batches as you scroll so the
+  // page stays quick with thousands of profiles.
+  const BATCH = 60;
+  const [visibleCount, setVisibleCount] = useState(BATCH);
+  useEffect(() => { setVisibleCount(BATCH); }, [q, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, country, city]);
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    const io = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) setVisibleCount(c => c + BATCH);
+    }, { rootMargin: "600px" });
+    io.observe(node);
+  }, []);
 
   const personMatch = (p: Person) => {
     let best: { creator_id: string; score: number; reason: string; angle: string } | undefined;
@@ -607,7 +620,7 @@ const Discovery = () => {
         )}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
-          {ordered.map(p => {
+          {ordered.slice(0, visibleCount).map(p => {
             const match = personMatch(p);
             const contacts = personContacts(p);
             return (
@@ -742,6 +755,14 @@ const Discovery = () => {
             );
           })}
         </div>
+        {ordered.length > visibleCount && (
+          <div ref={sentinelRef} className="py-8 text-center text-sm text-muted-foreground">
+            Showing {visibleCount} of {ordered.length} — scroll for more
+            <div className="mt-3">
+              <Button variant="outline" size="sm" onClick={() => setVisibleCount(ordered.length)}>Show all {ordered.length}</Button>
+            </div>
+          </div>
+        )}
         </>
       )}
 
