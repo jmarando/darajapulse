@@ -74,20 +74,47 @@ const Discovery = () => {
   const [harvesting, setHarvesting] = useState(false);
 
   // Country/city are applied in the database query so results stay accurate
-  // even when a market has more profiles than one page can hold.
+  // even when a market has more profiles than one page can hold. The backend
+  // never returns more than 1000 rows per request, so we page through.
+  const PAGE = 1000;
+  const MAX_ROWS = 8000;
+
   const load = async () => {
     setLoading(true);
-    let query = supabase.from("discovery_creators").select("*").order("follower_count", { ascending: false }).limit(2000);
-    if (country === UNKNOWN) query = query.is("country_code", null);
-    else if (country !== ALL) query = query.eq("country_code", country);
-    if (city === UNKNOWN) query = query.is("city", null);
-    else if (city !== ALL) query = query.eq("city", city);
-    const { data, error } = await query;
-    if (error) toast.error(error.message);
-    setRows((data as any) ?? []);
-    const { data: cs } = await supabase.from("discovery_contacts").select("*");
+    const all: any[] = [];
+    for (let from = 0; from < MAX_ROWS; from += PAGE) {
+      let query = supabase
+        .from("discovery_creators")
+        .select("*")
+        .order("follower_count", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (country === UNKNOWN) query = query.is("country_code", null);
+      else if (country !== ALL) query = query.eq("country_code", country);
+      if (city === UNKNOWN) query = query.is("city", null);
+      else if (city !== ALL) query = query.eq("city", city);
+      const { data, error } = await query;
+      if (error) { toast.error(error.message); break; }
+      const page = (data as any[]) ?? [];
+      all.push(...page);
+      if (page.length < PAGE) break;
+    }
+    setRows(all as any);
+
+    const contacts: any[] = [];
+    for (let from = 0; from < MAX_ROWS; from += PAGE) {
+      const { data, error } = await supabase
+        .from("discovery_contacts")
+        .select("*")
+        .order("creator_id", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) break;
+      const page = (data as any[]) ?? [];
+      contacts.push(...page);
+      if (page.length < PAGE) break;
+    }
     const grouped: Record<string, Contact[]> = {};
-    (cs ?? []).forEach((c: any) => { (grouped[c.creator_id] ||= []).push(c); });
+    contacts.forEach((c: any) => { (grouped[c.creator_id] ||= []).push(c); });
     setContactsByCreator(grouped);
     setLoading(false);
   };
@@ -96,12 +123,27 @@ const Discovery = () => {
   // City choices for the chosen country come from the recorded profiles themselves.
   useEffect(() => {
     (async () => {
-      let q2 = supabase.from("discovery_creators").select("city").not("city", "is", null).limit(3000);
-      if (country !== ALL && country !== UNKNOWN) q2 = q2.eq("country_code", country);
-      const { data } = await q2;
-      setCityOptions([...new Set(((data as any[]) ?? []).map((r) => r.city).filter(Boolean))] as string[]);
+      const seen = new Set<string>();
+      for (let from = 0; from < MAX_ROWS; from += PAGE) {
+        let q2 = supabase
+          .from("discovery_creators")
+          .select("city")
+          .not("city", "is", null)
+          .order("city", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (country !== ALL && country !== UNKNOWN) q2 = q2.eq("country_code", country);
+        const { data, error } = await q2;
+        if (error) break;
+        const page = (data as any[]) ?? [];
+        page.forEach((r) => r.city && seen.add(r.city));
+        if (page.length < PAGE) break;
+      }
+      setCityOptions([...seen]);
     })();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [country]);
+
+
 
   const niches = useMemo(() => {
     const s = new Set<string>();
