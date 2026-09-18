@@ -106,48 +106,81 @@ export const CreatorDraftStep = ({
 
     let posterPath: string | null = null;
     let storedPath = path;
+
+    // Storage route — also the automatic fallback when Cloudflare can't be reached.
+    const uploadToStorage = async () => {
+      try {
+        const poster = await capturePoster(file);
+        if (poster) {
+          // No upsert: anonymous creators cannot read existing objects, and asking storage
+          // to overwrite makes it check that permission and reject the upload outright.
+          posterPath = `${briefToken}/${stamp}-${Date.now()}-poster.jpg`;
+          const { error: pErr } = await supabase.storage
+            .from("creator-drafts")
+            .upload(posterPath, poster, { contentType: "image/jpeg", cacheControl: "31536000" });
+          if (pErr) posterPath = null;
+        }
+      } catch {
+        posterPath = null;
+      }
+
+      const { promise, abort } = uploadResumable({
+        bucket: "creator-drafts",
+        path,
+        file,
+        onProgress: setProgress,
+      });
+      abortRef.current = abort;
+      storedPath = await promise;
+      abortRef.current = null;
+    };
+
+    // Tell us why an upload died, so failures can be audited instead of guessed at.
+    const report = (stage: string, err: unknown) => {
+      try {
+        supabase.functions.invoke("stream-upload-url", {
+          body: {
+            action: "report",
+            brief_token: briefToken,
+            file_name: file.name,
+            file_size: file.size,
+            stage,
+            uid: streamUid,
+            message: String((err as Error)?.message ?? err).slice(0, 500),
+            ua: navigator.userAgent.slice(0, 200),
+          },
+        });
+      } catch {
+        /* reporting must never block the creator */
+      }
+    };
+
     try {
       if (streamUrl && streamUid) {
-        const { promise, abort } = uploadStream({ uploadUrl: streamUrl, file, onProgress: setProgress });
-        abortRef.current = abort;
-        await promise;
-        abortRef.current = null;
-      } else {
-        // Poster first: it is tiny and lets reviewers see the video without downloading it.
         try {
-          const poster = await capturePoster(file);
-          if (poster) {
-            // No upsert: anonymous creators cannot read existing objects, and asking storage
-            // to overwrite makes it check that permission and reject the upload outright.
-            posterPath = `${briefToken}/${stamp}-${Date.now()}-poster.jpg`;
-            const { error: pErr } = await supabase.storage
-              .from("creator-drafts")
-              .upload(posterPath, poster, { contentType: "image/jpeg", cacheControl: "31536000" });
-            if (pErr) posterPath = null;
-          }
-        } catch {
-          posterPath = null;
+          const { promise, abort } = uploadStream({ uploadUrl: streamUrl, file, onProgress: setProgress });
+          abortRef.current = abort;
+          await promise;
+          abortRef.current = null;
+        } catch (streamErr) {
+          // Cloudflare unreachable / link dead / blocked by the network: don't lose
+          // the creator's work — fall back to our own storage automatically.
+          abortRef.current = null;
+          report("stream", streamErr);
+          try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
+          streamUid = null;
+          setProgress({ percent: 0, uploaded: 0, total: file.size, speed: 0, eta: null });
+          await uploadToStorage();
         }
-
-        const { promise, abort } = uploadResumable({
-          bucket: "creator-drafts",
-          path,
-          file,
-          onProgress: setProgress,
-        });
-        abortRef.current = abort;
-        storedPath = await promise;
-        abortRef.current = null;
+      } else {
+        await uploadToStorage();
       }
     } catch (err: any) {
       setBusy(false);
       setProgress(null);
       abortRef.current = null;
-      // A stale/expired upload link can't be resumed — forget it so the next
-      // attempt mints a fresh one.
-      if (streamUrl && /404|410|expired|not found/i.test(String(err?.message ?? err))) {
-        try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
-      }
+      report("storage", err);
+      try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
       return toast.error(
         "Upload stopped — check your connection and tap Send again. It will continue from where it stopped."
       );

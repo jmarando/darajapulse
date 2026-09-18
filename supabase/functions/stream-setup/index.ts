@@ -81,6 +81,29 @@ Deno.serve(async (req) => {
     });
   }
 
+  if (action === "audit") {
+    // Recent uploads with their real state — pending uploads that never finished,
+    // and conversion errors (duration cap, unsupported codec) show up here.
+    const { ok, data } = await streamApi("/stream?per_page=60");
+    if (!ok) return json({ ok: false, errors: data?.errors ?? data }, 502);
+    const rows = (data?.result ?? []).map((v: any) => ({
+      uid: v.uid,
+      created: v.created,
+      name: v?.meta?.name ?? null,
+      size: v.size,
+      duration: v.duration,
+      state: v?.status?.state ?? null,
+      step: v?.status?.pctComplete ?? null,
+      errorCode: v?.status?.errorReasonCode ?? null,
+      errorText: v?.status?.errorReasonText ?? null,
+      uploadExpiry: v.uploadExpiry ?? null,
+      maxDurationSeconds: v.maxDurationSeconds ?? null,
+    }));
+    const byState: Record<string, number> = {};
+    for (const r of rows) byState[String(r.state)] = (byState[String(r.state)] ?? 0) + 1;
+    return json({ ok: true, byState, rows });
+  }
+
   if (action === "webhook") {
     const url = String((body as any)?.url ?? "");
     if (!/^https:\/\//.test(url)) return json({ error: "https url required" }, 400);

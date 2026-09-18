@@ -131,12 +131,20 @@ const startStreamUpload = ({
 
     const upload = new tus.Upload(file, {
       uploadUrl,
-      retryDelays: [0, 2000, 5000, 10000, 20000, 30000],
-      // Cloudflare tus requires chunk sizes in 256KiB multiples. 10MiB keeps a
-      // dropped mobile connection cheap to recover from (at most 10MB re-sent).
-      chunkSize: 10 * 1024 * 1024,
+      retryDelays: [0, 1000, 3000, 6000, 10000, 15000, 20000, 30000],
+      // Cloudflare tus requires chunk sizes in 256KiB multiples. 5MiB survives
+      // flaky mobile data far better than 10MiB: a dropped connection re-sends
+      // less, and proxies that time out long PATCH bodies are less likely to cut in.
+      chunkSize: 5 * 1024 * 1024,
       uploadDataDuringCreation: false,
       removeFingerprintOnSuccess: true,
+      // Network blips on mobile surface as a null response — keep retrying those
+      // instead of failing the whole upload at 0%.
+      onShouldRetry: (err: any) => {
+        const status = err?.originalResponse?.getStatus?.() ?? 0;
+        if (status === 403 || status === 404 || status === 410 || status === 413) return false;
+        return true;
+      },
       metadata: {
         filename: file.name,
         filetype: file.type || "video/mp4",
