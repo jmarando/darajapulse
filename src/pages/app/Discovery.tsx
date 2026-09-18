@@ -755,6 +755,14 @@ const Discovery = () => {
             );
           })}
         </div>
+        {ordered.length > visibleCount && (
+          <div ref={sentinelRef} className="py-8 text-center text-sm text-muted-foreground">
+            Showing {visibleCount} of {ordered.length} — scroll for more
+            <div className="mt-3">
+              <Button variant="outline" size="sm" onClick={() => setVisibleCount(ordered.length)}>Show all {ordered.length}</Button>
+            </div>
+          </div>
+        )}
         </>
       )}
 
