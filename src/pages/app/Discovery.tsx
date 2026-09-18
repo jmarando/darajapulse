@@ -255,6 +255,19 @@ const Discovery = () => {
     return [...people].sort((a, b) => score(b) - score(a));
   }, [people, matches]);
 
+  // Everyone stays searchable; cards are drawn in batches as you scroll so the
+  // page stays quick with thousands of profiles.
+  const BATCH = 60;
+  const [visibleCount, setVisibleCount] = useState(BATCH);
+  useEffect(() => { setVisibleCount(BATCH); }, [q, platformFilter, nicheFilter, minFollowers, verifiedOnly, hasContact, country, city]);
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    const io = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) setVisibleCount(c => c + BATCH);
+    }, { rootMargin: "600px" });
+    io.observe(node);
+  }, []);
+
   const personMatch = (p: Person) => {
     let best: { creator_id: string; score: number; reason: string; angle: string } | undefined;
     for (const id of p.all_ids) {
