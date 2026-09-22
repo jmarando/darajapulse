@@ -242,7 +242,12 @@ Deno.serve(async (req) => {
         engagement_avg: rates.length ? rates.reduce((sum: number, n: number) => sum + n, 0) / rates.length : 0,
         profiles: person.profiles.sort((a: any, b: any) => b.follower_count - a.follower_count),
         niches: person.niches.slice(0, 8),
-        contacts: person.contacts.slice(0, 6),
+        contacts: [...person.contacts]
+          .sort((a: Contact, b: Contact) => {
+            const rank = (c: Contact) => (c.kind === "phone" || c.kind === "whatsapp" ? 0 : c.kind === "email" || c.kind === "manager_email" ? 1 : 2);
+            return rank(a) - rank(b);
+          })
+          .slice(0, 12),
       };
     });
 
