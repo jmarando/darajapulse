@@ -381,12 +381,16 @@ Deno.serve(async (req) => {
       const result = await findByName(body.query.trim());
       return new Response(JSON.stringify(result), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const maxCredits = Math.max(10, Math.min(2000, Number(body.max_credits ?? 200)));
+    const limit = Math.max(1, Math.min(2000, Number(body.limit ?? 400)));
+    const contactsOnly = body.contacts_only !== false;
     // @ts-ignore EdgeRuntime is provided by Supabase
-    EdgeRuntime.waitUntil(runEnrich());
+    EdgeRuntime.waitUntil(runEnrich({ maxCredits, limit, contactsOnly }));
     return new Response(JSON.stringify({
       ok: true,
       status: "started",
-      message: "Enriching socials and contacts in background. Refresh the page in a few minutes.",
+      max_credits: maxCredits,
+      message: `Looking up public profiles for contacts (up to ${maxCredits} credits). Refresh in a few minutes.`,
     }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
