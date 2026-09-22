@@ -204,14 +204,18 @@ Deno.serve(async (req) => {
     const ids = pagePeople.flatMap((person: any) => person.profiles.map((p: any) => p.id));
 
     const contactsByCreator: Record<string, Contact[]> = {};
-    if (ids.length) {
+    // Chunked: a single .in() with hundreds of ids overflows the request URL (400 Bad Request).
+    const ID_CHUNK = 100;
+    for (let start = 0; start < ids.length; start += ID_CHUNK) {
+      const slice = ids.slice(start, start + ID_CHUNK);
+      if (!slice.length) continue;
       const { data: contacts, error: contactError } = await supabase
         .from("discovery_contacts")
         .select("creator_id, kind, value, label")
-        .in("creator_id", ids)
+        .in("creator_id", slice)
         .eq("is_public", true)
         .in("kind", [...ALLOWED_CONTACT_KINDS])
-        .limit(ids.length * 8);
+        .limit(slice.length * 8);
       if (contactError) throw contactError;
       for (const contact of contacts ?? []) {
         const safe = publicContact(contact);
