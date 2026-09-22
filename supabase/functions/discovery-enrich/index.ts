@@ -6,6 +6,7 @@
 //    publicly listed email or phone (bio/linktree/agency page) and insert them as
 //    public discovery_contacts.
 import { apifyProfileStats } from "../_shared/apify-profile.ts";
+import { scrapeCreatorsProfile, SCRAPECREATORS_ENABLED } from "../_shared/scrapecreators.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
