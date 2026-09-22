@@ -262,6 +262,13 @@ async function edFacebook(url: string) {
 
 // ----- Apify fallback (Instagram / Facebook / TikTok) -----
 const APIFY = Deno.env.get("APIFY_API_TOKEN") ?? "";
+// Circuit breakers: both fallbacks are account-suspended today. The first hard
+// failure disables them for the rest of the invocation so we don't burn seconds
+// per post retrying a provider we know is dead.
+const dead = { apify: false, ensemble: false };
+function markDead(which: "apify" | "ensemble", msg: string) {
+  if (/outstanding invoices|platform-feature-disabled|Subscription expired|493|401|403/i.test(msg)) dead[which] = true;
+}
 const APIFY_ACTORS: Record<string, string> = {
   instagram: "apify~instagram-scraper",
   facebook: "apify~facebook-posts-scraper",
@@ -551,7 +558,7 @@ async function scrape(platform: string, rawUrl: string) {
   }
 
   // Apify fallback for IG / TikTok / Facebook (account currently suspended).
-  if (APIFY && (isInsta || isFacebook || isTikTok)) {
+  if (APIFY && !dead.apify && (isInsta || isFacebook || isTikTok)) {
     try {
       const res = await apifyFetch(isInsta ? "instagram" : isFacebook ? "facebook" : "tiktok", url);
       const s: any = (res as any)?.stats ?? {};
@@ -559,17 +566,22 @@ async function scrape(platform: string, rawUrl: string) {
       if (hasSignal) return res;
       console.error(`Apify returned no metric signal for ${platform}, falling back to Ensemble`);
     } catch (e) {
-      console.error(`Apify failed for ${platform}:`, (e as Error).message);
+      const msg = (e as Error).message;
+      markDead("apify", msg);
+      console.error(`Apify failed for ${platform}:`, msg);
     }
   }
 
   // Ensemble fallback (and primary for YouTube)
-  if (ENSEMBLE_TOKEN) {
+  if (ENSEMBLE_TOKEN && !dead.ensemble) {
     try {
       if (isTikTok) {
         try { return await edTikTok(url); }
         catch (e) {
-          console.error("Ensemble tt/post/info failed, trying author feed:", (e as Error).message);
+          const msg = (e as Error).message;
+          markDead("ensemble", msg);
+          console.error("Ensemble tt/post/info failed, trying author feed:", msg);
+          if (dead.ensemble) throw e;
           return await edTikTokViaUser(url);
         }
       }
@@ -577,7 +589,9 @@ async function scrape(platform: string, rawUrl: string) {
       if (isYouTube) return await edYouTube(url);
       if (isFacebook) return await edFacebook(url);
     } catch (e) {
-      console.error(`Ensemble failed for ${platform}:`, (e as Error).message);
+      const msg = (e as Error).message;
+      markDead("ensemble", msg);
+      console.error(`Ensemble failed for ${platform}:`, msg);
     }
   }
 
