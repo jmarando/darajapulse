@@ -262,6 +262,13 @@ async function edFacebook(url: string) {
 
 // ----- Apify fallback (Instagram / Facebook / TikTok) -----
 const APIFY = Deno.env.get("APIFY_API_TOKEN") ?? "";
+// Circuit breakers: both fallbacks are account-suspended today. The first hard
+// failure disables them for the rest of the invocation so we don't burn seconds
+// per post retrying a provider we know is dead.
+const dead = { apify: false, ensemble: false };
+function markDead(which: "apify" | "ensemble", msg: string) {
+  if (/outstanding invoices|platform-feature-disabled|Subscription expired|493|401|403/i.test(msg)) dead[which] = true;
+}
 const APIFY_ACTORS: Record<string, string> = {
   instagram: "apify~instagram-scraper",
   facebook: "apify~facebook-posts-scraper",
