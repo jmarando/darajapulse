@@ -27,12 +27,15 @@ Deno.serve(async (req) => {
     const [minF, maxF] = TIER_BANDS[tier] || TIER_BANDS.any;
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { data: candidates, error } = await supabase
+    let query = supabase
       .from("discovery_creators")
-      .select("id, full_name, handle, platform, niche, follower_count, engagement_rate, city, bio")
+      .select("id, full_name, handle, platform, niche, follower_count, engagement_rate, city, bio, country_code")
       .in("platform", platforms)
       .gte("follower_count", minF)
-      .lte("follower_count", maxF)
+      .lte("follower_count", maxF);
+    if (brief.country_code) query = query.eq("country_code", brief.country_code);
+    const { data: candidates, error } = await query
+      .order("follower_count", { ascending: false })
       .limit(250);
     if (error) throw error;
     if (!candidates?.length) {
