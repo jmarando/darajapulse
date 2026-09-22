@@ -230,7 +230,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const people = [...peopleMap.values()].map((person) => {
+    const people = pagePeople.map((person: any) => {
       const rates = person.profiles.map((p: any) => Number(p.engagement_rate) || 0).filter((n: number) => n > 0);
       return {
         ...person,
