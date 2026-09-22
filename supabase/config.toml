@@ -61,6 +61,9 @@ verify_jwt = false
 [functions.public-discovery-showcase]
 verify_jwt = false
 
+[functions.discovery-match]
+verify_jwt = false
+
 [functions.resend-inbound]
 verify_jwt = false
 
