@@ -261,8 +261,8 @@ Deno.serve(async (req) => {
 
     return json({
       people,
-      returned_profiles: creatorRows.length,
-      next_offset: offset + limit < filteredRows.length ? offset + limit : null,
+      returned_profiles: pagePeople.reduce((sum: number, p: any) => sum + p.profiles.length, 0),
+      next_offset: offset + limit < allPeople.length ? offset + limit : null,
       stats: {
         profiles: filteredRows.length,
         people: peopleKeys.size,
