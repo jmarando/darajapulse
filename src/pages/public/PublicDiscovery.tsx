@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import DemoRequestDialog from "@/components/DemoRequestDialog";
 import PublicFooter from "@/components/PublicFooter";
-import { ExternalLink, Instagram, Loader2, Mail, MapPin, Music2, Search, ShieldCheck, Sparkles, Users, Youtube, Twitter, Facebook, ArrowRight, Calendar, LockKeyhole } from "lucide-react";
+import { ExternalLink, Instagram, Loader2, Mail, MapPin, Music2, Phone, Search, ShieldCheck, Sparkles, Users, Youtube, Twitter, Facebook, ArrowRight, Calendar, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/darajapulse-logo-1024.png";
 
