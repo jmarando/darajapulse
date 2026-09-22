@@ -61,9 +61,12 @@ const PROFILE_PATHS: Record<string, { path: string; param: string }> = {
   youtube: { path: "/v1/youtube/channel", param: "handle" },
 };
 
+/** Set once the provider reports an empty balance, so a run stops instead of hammering. */
+export let SC_OUT_OF_CREDITS = false;
+
 export async function scrapeCreatorsProfile(platform: string, handle: string): Promise<ScrapedProfile | null> {
   const cfg = PROFILE_PATHS[platform];
-  if (!cfg || !SC_KEY || !handle) return null;
+  if (!cfg || !SC_KEY || !handle || SC_OUT_OF_CREDITS) return null;
   const qs = new URLSearchParams({ [cfg.param]: handle.replace(/^@/, "") }).toString();
   try {
     const r = await fetch(`${BASE}${cfg.path}?${qs}`, { headers: { "x-api-key": SC_KEY, Accept: "application/json" } });
