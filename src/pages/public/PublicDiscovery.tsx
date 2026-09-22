@@ -241,6 +241,10 @@ export default function PublicDiscovery() {
           </div>
         </section>
 
+        <BriefMatcher onBook={() => setDemoOpen(true)} />
+
+
+
         <section id="directory" className="mx-auto max-w-screen-2xl px-4 py-10 md:px-6 lg:px-16">
           <div className="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
             <div>
