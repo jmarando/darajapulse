@@ -151,6 +151,115 @@ function CreatorCard({ person, onOpen }: { person: Person; onOpen: () => void })
   );
 }
 
+type Match = {
+  creator_id: string;
+  score: number;
+  reason?: string;
+  angle?: string;
+  full_name?: string | null;
+  handle?: string | null;
+  platform?: string | null;
+  follower_count?: number | null;
+  city?: string | null;
+};
+
+function BriefMatcher({ onBook }: { onBook: () => void }) {
+  const [brief, setBrief] = useState("");
+  const [tier, setTier] = useState("any");
+  const [running, setRunning] = useState(false);
+  const [matches, setMatches] = useState<Match[] | null>(null);
+
+  const run = async () => {
+    const goal = brief.trim();
+    if (goal.length < 15) { toast.error("Add a bit more detail about the campaign."); return; }
+    setRunning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("discovery-match", {
+        body: { goal, brief: goal.slice(0, 2000), budget_tier: tier, source: "public_discovery" },
+      });
+      if (error) throw error;
+      const list = ((data as any)?.matches ?? []) as Match[];
+      setMatches(list);
+      if (!list.length) toast.message("No strong matches yet — try describing the audience or product more specifically.");
+    } catch (e: any) {
+      toast.error(e?.message || "Matching is busy right now, try again shortly.");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <section id="brief-match" className="border-y border-border bg-secondary/40">
+      <div className="mx-auto max-w-screen-2xl px-4 py-12 md:px-6 lg:px-16">
+        <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">AI brief matching</div>
+            <h2 className="mt-1 font-display text-3xl font-semibold">Describe your campaign, get a creator shortlist</h2>
+            <p className="mt-3 max-w-xl text-muted-foreground">
+              Paste your brief — product, audience, market and tone. The matcher reads every profile in Discovery and returns the creators that genuinely fit, with the reason and a content angle for each.
+            </p>
+            <textarea
+              value={brief}
+              onChange={(e) => setBrief(e.target.value.slice(0, 2000))}
+              rows={6}
+              placeholder="e.g. Launching a new cooking oil in Nairobi. We want everyday home cooks and food creators who make recipe videos in Swahili and English, mid-size audiences, warm family tone."
+              className="mt-5 w-full rounded-lg border border-border bg-background p-4 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Select value={tier} onValueChange={setTier}>
+                <SelectTrigger className="sm:w-56"><SelectValue placeholder="Audience size" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any audience size</SelectItem>
+                  <SelectItem value="nano">Nano (1K–10K)</SelectItem>
+                  <SelectItem value="micro">Micro (10K–100K)</SelectItem>
+                  <SelectItem value="mid">Mid (100K–500K)</SelectItem>
+                  <SelectItem value="macro">Macro (500K+)</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={run} disabled={running} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                {running ? <><Loader2 className="mr-2 size-4 animate-spin" /> Matching…</> : <><Sparkles className="mr-2 size-4" /> Match creators</>}
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            {running ? (
+              <div className="flex min-h-[260px] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 size-5 animate-spin" /> Reading your brief…</div>
+            ) : !matches ? (
+              <div className="flex min-h-[260px] flex-col items-center justify-center text-center text-muted-foreground">
+                <Sparkles className="mb-3 size-6" />
+                <p className="max-w-sm text-sm">Your shortlist appears here — ranked, with a fit score, the reason and a suggested content angle.</p>
+              </div>
+            ) : matches.length === 0 ? (
+              <div className="flex min-h-[260px] items-center justify-center text-center text-sm text-muted-foreground">No strong matches for that brief yet. Try adding the market, product category and audience.</div>
+            ) : (
+              <div className="space-y-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{matches.length} suggested creators</div>
+                <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+                  {matches.map((m) => (
+                    <div key={m.creator_id} className="rounded-md border border-border bg-background p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold">{m.full_name || `@${m.handle}`}</div>
+                          <div className="truncate text-xs text-muted-foreground">@{m.handle} · {m.platform}{m.city ? ` · ${m.city}` : ""} · {fmtCompact(Number(m.follower_count) || 0)} followers</div>
+                        </div>
+                        <Badge variant="outline" className="shrink-0">{Math.round(Number(m.score) || 0)}% fit</Badge>
+                      </div>
+                      {m.reason ? <p className="mt-2 text-sm text-muted-foreground">{m.reason}</p> : null}
+                      {m.angle ? <p className="mt-1 text-xs"><span className="font-semibold">Angle:</span> {m.angle}</p> : null}
+                    </div>
+                  ))}
+                </div>
+                <Button variant="outline" className="w-full" onClick={onBook}>Talk through this shortlist</Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function PublicDiscovery() {
   const [demoOpen, setDemoOpen] = useState(false);
   const [people, setPeople] = useState<Person[]>([]);
