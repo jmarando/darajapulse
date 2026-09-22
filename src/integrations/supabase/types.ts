@@ -3669,6 +3669,32 @@ export type Database = {
           title: string
         }[]
       }
+      get_public_discovery_showcase: {
+        Args: {
+          _city?: string
+          _country_code?: string
+          _limit?: number
+          _offset?: number
+        }
+        Returns: {
+          avatar_url: string
+          bio: string
+          city: string
+          country_code: string
+          engagement_rate: number
+          follower_count: number
+          full_name: string
+          handle: string
+          id: string
+          niche: string[]
+          person_key: string
+          platform: string
+          profile_url: string
+          public_contacts: Json
+          verified_at: string
+        }[]
+      }
+      get_public_discovery_showcase_stats: { Args: never; Returns: Json }
       get_public_storefront: { Args: { _agency_slug: string }; Returns: Json }
       get_report_link_campaign: { Args: { _token: string }; Returns: string }
       get_tenant_by_host: { Args: { _host: string }; Returns: Json }
