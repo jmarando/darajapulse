@@ -113,24 +113,33 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    let query = supabase
-      .from("discovery_creators")
-      .select("id, full_name, handle, platform, profile_url, niche, city, country_code, follower_count, engagement_rate, bio, avatar_url, verified_at, person_key")
-      .eq("profile_status", "active")
-      .neq("link_status", "broken")
-      .in("platform", [...ALLOWED_PLATFORMS])
-      .order("follower_count", { ascending: false, nullsFirst: false })
-      .order("full_name", { ascending: true })
-      .limit(MAX_OFFSET);
+    const BATCH = 1000;
+    const rows: CreatorRow[] = [];
+    for (let start = 0; start < MAX_OFFSET; start += BATCH) {
+      let query = supabase
+        .from("discovery_creators")
+        .select("id, full_name, handle, platform, profile_url, niche, city, country_code, follower_count, engagement_rate, bio, avatar_url, verified_at, person_key")
+        .eq("profile_status", "active")
+        .neq("link_status", "broken")
+        .in("platform", [...ALLOWED_PLATFORMS])
+        .order("follower_count", { ascending: false, nullsFirst: false })
+        .order("full_name", { ascending: true })
+        .order("id", { ascending: true })
+        .range(start, start + BATCH - 1);
 
-    if (country) query = query.eq("country_code", country);
-    if (city) query = query.eq("city", city);
-    if (platform && ALLOWED_PLATFORMS.has(platform)) query = query.eq("platform", platform);
+      if (country) query = query.eq("country_code", country);
+      if (city) query = query.eq("city", city);
+      if (platform && ALLOWED_PLATFORMS.has(platform)) query = query.eq("platform", platform);
 
-    const { data: rows, error } = await query;
-    if (error) throw error;
+      const { data: batch, error } = await query;
+      if (error) throw error;
+      const list = (batch ?? []) as CreatorRow[];
+      rows.push(...list);
+      if (list.length < BATCH) break;
+    }
+
     const terms = search ? normalize(search).split(" ").filter(Boolean) : [];
-    const filteredRows = ((rows ?? []) as CreatorRow[]).filter((row) => {
+    const filteredRows = rows.filter((row) => {
       const rowNiches = (row.niche ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean);
       if (niche && !rowNiches.includes(niche)) return false;
       if (terms.length) {
@@ -147,29 +156,11 @@ Deno.serve(async (req) => {
       }
       return true;
     });
-    const creatorRows = filteredRows.slice(offset, offset + limit);
-    const ids = creatorRows.map((row) => row.id);
 
-    const contactsByCreator: Record<string, Contact[]> = {};
-    if (ids.length) {
-      const { data: contacts, error: contactError } = await supabase
-        .from("discovery_contacts")
-        .select("creator_id, kind, value, label")
-        .in("creator_id", ids)
-        .eq("is_public", true)
-        .in("kind", [...ALLOWED_CONTACT_KINDS])
-        .limit(ids.length * 8);
-      if (contactError) throw contactError;
-      for (const contact of contacts ?? []) {
-        const safe = publicContact(contact);
-        if (!safe) continue;
-        const id = String((contact as any).creator_id);
-        (contactsByCreator[id] ||= []).push(safe);
-      }
-    }
-
+    // Group every matching profile into people first, then paginate by person
+    // so the page count matches the number of creators shown.
     const peopleMap = new Map<string, any>();
-    for (const row of creatorRows) {
+    for (const row of filteredRows) {
       const key = personKey(row);
       const current = peopleMap.get(key) ?? {
         key,
@@ -205,11 +196,38 @@ Deno.serve(async (req) => {
         const clean = String(niche).trim().toLowerCase();
         if (clean && !current.niches.includes(clean)) current.niches.push(clean);
       }
-      for (const contact of contactsByCreator[row.id] ?? []) {
-        const exists = current.contacts.some((c: Contact) => c.kind === contact.kind && c.value.toLowerCase() === contact.value.toLowerCase());
-        if (!exists) current.contacts.push(contact);
-      }
       peopleMap.set(key, current);
+    }
+
+    const allPeople = [...peopleMap.values()].sort((a, b) => b.follower_total - a.follower_total);
+    const pagePeople = allPeople.slice(offset, offset + limit);
+    const ids = pagePeople.flatMap((person: any) => person.profiles.map((p: any) => p.id));
+
+    const contactsByCreator: Record<string, Contact[]> = {};
+    if (ids.length) {
+      const { data: contacts, error: contactError } = await supabase
+        .from("discovery_contacts")
+        .select("creator_id, kind, value, label")
+        .in("creator_id", ids)
+        .eq("is_public", true)
+        .in("kind", [...ALLOWED_CONTACT_KINDS])
+        .limit(ids.length * 8);
+      if (contactError) throw contactError;
+      for (const contact of contacts ?? []) {
+        const safe = publicContact(contact);
+        if (!safe) continue;
+        const id = String((contact as any).creator_id);
+        (contactsByCreator[id] ||= []).push(safe);
+      }
+    }
+
+    for (const person of pagePeople as any[]) {
+      for (const profile of person.profiles) {
+        for (const contact of contactsByCreator[profile.id] ?? []) {
+          const exists = person.contacts.some((c: Contact) => c.kind === contact.kind && c.value.toLowerCase() === contact.value.toLowerCase());
+          if (!exists) person.contacts.push(contact);
+        }
+      }
     }
 
     const people = [...peopleMap.values()].map((person) => {
