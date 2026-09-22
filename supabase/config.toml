@@ -58,6 +58,9 @@ verify_jwt = false
 [functions.storefront-match]
 verify_jwt = false
 
+[functions.public-discovery-showcase]
+verify_jwt = false
+
 [functions.resend-inbound]
 verify_jwt = false
 

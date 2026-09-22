@@ -6,13 +6,30 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-type Props = { open: boolean; onOpenChange: (v: boolean) => void };
+type Props = {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  source?: string;
+  title?: string;
+  description?: string;
+  defaultMessage?: string;
+};
 
-export default function DemoRequestDialog({ open, onOpenChange }: Props) {
+const emptyForm = (message = "") => ({ name: "", email: "", company: "", role: "", message });
+
+export default function DemoRequestDialog({
+  open,
+  onOpenChange,
+  source = "website",
+  title = "Request a demo",
+  description = "Tell us a little about your work. We'll reach out within one business day.",
+  defaultMessage = "",
+}: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", company: "", role: "", message: "" });
+  const [form, setForm] = useState(() => emptyForm(defaultMessage));
 
   const update = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -32,7 +49,7 @@ export default function DemoRequestDialog({ open, onOpenChange }: Props) {
         company: form.company || null,
         role: form.role || null,
         message: form.message || null,
-        source: "website",
+        source,
       });
       if (insertErr) throw insertErr;
 
@@ -56,7 +73,7 @@ export default function DemoRequestDialog({ open, onOpenChange }: Props) {
 
   function close(v: boolean) {
     onOpenChange(v);
-    if (!v) setTimeout(() => { setDone(false); setForm({ name: "", email: "", company: "", role: "", message: "" }); }, 200);
+    if (!v) setTimeout(() => { setDone(false); setForm(emptyForm(defaultMessage)); }, 200);
   }
 
   return (
@@ -71,9 +88,9 @@ export default function DemoRequestDialog({ open, onOpenChange }: Props) {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle className="font-display text-2xl">Request a demo</DialogTitle>
+              <DialogTitle className="font-display text-2xl">{title}</DialogTitle>
               <DialogDescription>
-                Tell us a little about your work. We'll reach out within one business day.
+                {description}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={submit} className="space-y-4 pt-2">
@@ -99,13 +116,13 @@ export default function DemoRequestDialog({ open, onOpenChange }: Props) {
                 <Label htmlFor="message">What are you trying to do?</Label>
                 <Textarea id="message" value={form.message} onChange={update("message")} rows={3} placeholder="A few campaigns, contest ideas, creator markets you care about…" />
               </div>
-              <button
+              <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-accent text-accent-foreground px-6 py-3 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-2 hover:brightness-110 disabled:opacity-60 transition-[filter,scale] active:scale-[0.96]"
+                className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
               >
                 {submitting ? <><Loader2 className="size-4 animate-spin" /> Sending…</> : "Send request"}
-              </button>
+              </Button>
             </form>
           </>
         )}

@@ -57,6 +57,7 @@ import PublicInvoice from "./pages/PublicInvoice";
 import PayInvoice from "./pages/PayInvoice";
 import Inventory from "./pages/app/Inventory";
 import OAuthConsent from "./pages/OAuthConsent";
+import PublicDiscovery from "./pages/public/PublicDiscovery";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
             <Route path="/landing/cinematic" element={<LandingCinematic />} />
             <Route path="/landing/dashboard" element={<LandingDashboard />} />
             <Route path="/landing/bento" element={<LandingBento />} />
+            <Route path="/discovery" element={<PublicDiscovery />} />
             <Route path="/r/:token" element={<PublicReport />} />
             <Route path="/rc/:token" element={<PublicContestReport />} />
             <Route path="/p/:token" element={<PublicPlan />} />
