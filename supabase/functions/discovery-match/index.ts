@@ -97,6 +97,14 @@ Return STRICT JSON: {"matches":[{"creator_id":"uuid","score":0-100,"reason":"one
         const mentionsOther = [...allHandles, ...allNames].some(h => h && h !== ownHandle && h !== ownName && lower.includes(h));
         return {
           ...m,
+          // Enrich so callers (including the public showcase) can render the creator.
+          full_name: c.full_name,
+          handle: c.handle,
+          platform: c.platform,
+          follower_count: c.follower_count,
+          engagement_rate: c.engagement_rate,
+          city: c.city,
+          niche: c.niche,
           reason: mentionsOther ? `Fits the brief on niche and audience (@${c.handle}).` : reason,
         };
       });
