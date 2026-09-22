@@ -69,7 +69,8 @@ function sanitizeBio(value: string | null): string | null {
   if (!value) return null;
   const cleaned = value
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "")
-    .replace(/(?:\+?254|0)[\s().-]?[17]\d[\s().-]?\d{3}[\s().-]?\d{3}/g, "")
+    .replace(/(?:\+?254|0)[\s().-]?[17](?:[\s().-]?\d){8}/g, "")
+    .replace(/\b(?:for\s+)?(?:biz|business|call|whatsapp|wa)\b\s*[:\-]?\s*$/i, "")
     .replace(/\s{2,}/g, " ")
     .replace(/\s+([,.;:!?])/g, "$1")
     .trim();
