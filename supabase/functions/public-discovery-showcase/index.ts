@@ -10,7 +10,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const MAX_LIMIT = 500;
 const MAX_OFFSET = 8_000;
 const ALLOWED_PLATFORMS = new Set(["instagram", "tiktok", "youtube", "twitter", "facebook", "whatsapp"]);
-const ALLOWED_CONTACT_KINDS = new Set(["link", "email", "manager_email"]);
+const ALLOWED_CONTACT_KINDS = new Set(["link", "email", "manager_email", "phone", "whatsapp"]);
 
 type Contact = { kind: string; value: string; label?: string | null };
 
@@ -91,6 +91,7 @@ function publicContact(contact: any): Contact | null {
   if (!ALLOWED_CONTACT_KINDS.has(kind) || !value) return null;
   if (kind === "link" && !/^https?:\/\//i.test(value)) return null;
   if ((kind === "email" || kind === "manager_email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return null;
+  if ((kind === "phone" || kind === "whatsapp") && !/^\+?[0-9][0-9\s().-]{6,19}$/.test(value)) return null;
   return { kind, value, label: contact?.label ?? null };
 }
 
