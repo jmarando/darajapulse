@@ -282,7 +282,7 @@ async function fillContacts(supabase: any, opts: { maxCredits: number; limit: nu
   let scanned = 0;
   for (const c of candidates ?? []) {
     if (hasEmail.has(c.id) && hasPhone.has(c.id)) continue;
-    if (scBudget.used >= scBudget.cap) break;
+    if (scBudget.used >= scBudget.cap || SC_OUT_OF_CREDITS) break;
     scanned++;
     const profileContacts = await fetchProfileContacts(c.platform, c.handle, c.bio);
     if (profileContacts.avatarUrl || (profileContacts.bio && profileContacts.bio !== c.bio)) {
