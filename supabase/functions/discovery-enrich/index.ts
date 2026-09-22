@@ -103,7 +103,17 @@ function extractContacts(payload: any, fallbackBio?: string | null) {
 
 async function fetchProfileContacts(platform: string, handle: string, fallbackBio?: string | null) {
   if (!handle) return extractContacts(null, fallbackBio);
-  // Apify first — it returns the richest public profile payload (bio, links, contact info).
+  // ScrapeCreators first — current default provider for public profile payloads.
+  if (SCRAPECREATORS_ENABLED && scBudget.used < scBudget.cap) {
+    const sc = await scrapeCreatorsProfile(platform, handle);
+    if (sc) {
+      scBudget.used += sc.creditsCharged;
+      if (sc.creditsRemaining != null) scBudget.remaining = sc.creditsRemaining;
+      const fromSc = extractContacts(sc.raw, fallbackBio);
+      if (fromSc.emails.length || fromSc.phones.length || fromSc.bio) return fromSc;
+    }
+  }
+  // Apify fallback (suspended account → usually a no-op).
   const apify = await apifyProfileStats(platform, handle);
   if (apify?.raw) {
     const fromApify = extractContacts(apify.raw, fallbackBio);
