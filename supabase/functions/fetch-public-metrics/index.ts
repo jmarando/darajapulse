@@ -735,7 +735,7 @@ Deno.serve(async (req) => {
     }
 
     const ok = succeeded;
-    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback", credits_used: sc.used, credits_remaining: sc.remaining, credits_capped: sc.capped }), {
+    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: sc.enabled ? "scrapecreators" : APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback", credits_used: sc.used, credits_remaining: sc.remaining, credits_capped: sc.capped }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
