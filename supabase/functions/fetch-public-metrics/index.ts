@@ -528,7 +528,29 @@ async function scrape(platform: string, rawUrl: string) {
   const isYouTube = p === "youtube" || /youtu\.?be/.test(url);
   const isFacebook = p === "facebook" || /facebook\.com|fb\.watch/.test(url);
 
-  // Apify is the primary provider for IG / TikTok / Facebook (paid account).
+  // ScrapeCreators is the primary provider (paid per-post, credit-budgeted).
+  if (sc.enabled && SCRAPECREATORS_ENABLED) {
+    if (sc.used >= sc.budget) {
+      sc.capped = true;
+    } else {
+      const plat = isTikTok ? "tiktok" : isInsta ? "instagram" : isYouTube ? "youtube" : isFacebook ? "facebook" : null;
+      if (plat) {
+        try {
+          const res = await scrapeCreatorsPost(plat, url);
+          sc.used += Math.max(1, res.creditsCharged || 0);
+          if (res.creditsRemaining != null) sc.remaining = res.creditsRemaining;
+          const s: any = res.stats ?? {};
+          const hasSignal = ["views", "likes", "comments", "shares", "saves"].some((k) => Number(s?.[k] || 0) > 0);
+          if (hasSignal) return { stats: res.stats, thumb: res.thumb, caption: res.caption, postedAt: res.postedAt };
+          console.error(`ScrapeCreators returned no metric signal for ${platform}`);
+        } catch (e) {
+          console.error(`ScrapeCreators failed for ${platform}:`, (e as Error).message);
+        }
+      }
+    }
+  }
+
+  // Apify fallback for IG / TikTok / Facebook (account currently suspended).
   if (APIFY && (isInsta || isFacebook || isTikTok)) {
     try {
       const res = await apifyFetch(isInsta ? "instagram" : isFacebook ? "facebook" : "tiktok", url);
@@ -559,28 +581,6 @@ async function scrape(platform: string, rawUrl: string) {
     }
   }
 
-  // ScrapeCreators — paid per-post fallback, only when explicitly enabled for the
-  // run and still inside the credit budget.
-  if (sc.enabled && SCRAPECREATORS_ENABLED) {
-    if (sc.used >= sc.budget) {
-      sc.capped = true;
-    } else {
-      const plat = isTikTok ? "tiktok" : isInsta ? "instagram" : isYouTube ? "youtube" : isFacebook ? "facebook" : null;
-      if (plat) {
-        try {
-          const res = await scrapeCreatorsPost(plat, url);
-          sc.used += Math.max(1, res.creditsCharged || 0);
-          if (res.creditsRemaining != null) sc.remaining = res.creditsRemaining;
-          const s: any = res.stats ?? {};
-          const hasSignal = ["views", "likes", "comments", "shares", "saves"].some((k) => Number(s?.[k] || 0) > 0);
-          if (hasSignal) return { stats: res.stats, thumb: res.thumb, caption: res.caption, postedAt: res.postedAt };
-          console.error(`ScrapeCreators returned no metric signal for ${platform}`);
-        } catch (e) {
-          console.error(`ScrapeCreators failed for ${platform}:`, (e as Error).message);
-        }
-      }
-    }
-  }
 
   if (isTikTok) return await scrapeTikTokHtml(url);
   if (isYouTube) return await scrapeYouTubeHtml(url);
@@ -628,10 +628,11 @@ Deno.serve(async (req) => {
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const { campaign_id, post_id, stale, max, offset, chain, use_scrapecreators, max_credits } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number; chain?: number; use_scrapecreators?: boolean; max_credits?: number };
-    // Never on the scheduled (stale) path — paid credits are spent only on an
-    // explicit manual request, and never beyond the run's budget.
-    sc.enabled = !!use_scrapecreators && !stale && SCRAPECREATORS_ENABLED;
-    sc.budget = Math.max(0, Math.min(Number(max_credits ?? 60), 500));
+    // ScrapeCreators is the default provider now; pass use_scrapecreators:false
+    // to force the legacy Apify/Ensemble path.
+    sc.enabled = use_scrapecreators !== false && SCRAPECREATORS_ENABLED;
+    sc.budget = Math.max(0, Math.min(Number(max_credits ?? (stale ? 40 : 120)), 500));
+
     sc.used = 0;
     sc.capped = false;
     sc.remaining = null;
@@ -734,7 +735,7 @@ Deno.serve(async (req) => {
     }
 
     const ok = succeeded;
-    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback", credits_used: sc.used, credits_remaining: sc.remaining, credits_capped: sc.capped }), {
+    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: sc.enabled ? "scrapecreators" : APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback", credits_used: sc.used, credits_remaining: sc.remaining, credits_capped: sc.capped }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
