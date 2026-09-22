@@ -528,7 +528,29 @@ async function scrape(platform: string, rawUrl: string) {
   const isYouTube = p === "youtube" || /youtu\.?be/.test(url);
   const isFacebook = p === "facebook" || /facebook\.com|fb\.watch/.test(url);
 
-  // Apify is the primary provider for IG / TikTok / Facebook (paid account).
+  // ScrapeCreators is the primary provider (paid per-post, credit-budgeted).
+  if (sc.enabled && SCRAPECREATORS_ENABLED) {
+    if (sc.used >= sc.budget) {
+      sc.capped = true;
+    } else {
+      const plat = isTikTok ? "tiktok" : isInsta ? "instagram" : isYouTube ? "youtube" : isFacebook ? "facebook" : null;
+      if (plat) {
+        try {
+          const res = await scrapeCreatorsPost(plat, url);
+          sc.used += Math.max(1, res.creditsCharged || 0);
+          if (res.creditsRemaining != null) sc.remaining = res.creditsRemaining;
+          const s: any = res.stats ?? {};
+          const hasSignal = ["views", "likes", "comments", "shares", "saves"].some((k) => Number(s?.[k] || 0) > 0);
+          if (hasSignal) return { stats: res.stats, thumb: res.thumb, caption: res.caption, postedAt: res.postedAt };
+          console.error(`ScrapeCreators returned no metric signal for ${platform}`);
+        } catch (e) {
+          console.error(`ScrapeCreators failed for ${platform}:`, (e as Error).message);
+        }
+      }
+    }
+  }
+
+  // Apify fallback for IG / TikTok / Facebook (account currently suspended).
   if (APIFY && (isInsta || isFacebook || isTikTok)) {
     try {
       const res = await apifyFetch(isInsta ? "instagram" : isFacebook ? "facebook" : "tiktok", url);
@@ -559,28 +581,6 @@ async function scrape(platform: string, rawUrl: string) {
     }
   }
 
-  // ScrapeCreators — paid per-post fallback, only when explicitly enabled for the
-  // run and still inside the credit budget.
-  if (sc.enabled && SCRAPECREATORS_ENABLED) {
-    if (sc.used >= sc.budget) {
-      sc.capped = true;
-    } else {
-      const plat = isTikTok ? "tiktok" : isInsta ? "instagram" : isYouTube ? "youtube" : isFacebook ? "facebook" : null;
-      if (plat) {
-        try {
-          const res = await scrapeCreatorsPost(plat, url);
-          sc.used += Math.max(1, res.creditsCharged || 0);
-          if (res.creditsRemaining != null) sc.remaining = res.creditsRemaining;
-          const s: any = res.stats ?? {};
-          const hasSignal = ["views", "likes", "comments", "shares", "saves"].some((k) => Number(s?.[k] || 0) > 0);
-          if (hasSignal) return { stats: res.stats, thumb: res.thumb, caption: res.caption, postedAt: res.postedAt };
-          console.error(`ScrapeCreators returned no metric signal for ${platform}`);
-        } catch (e) {
-          console.error(`ScrapeCreators failed for ${platform}:`, (e as Error).message);
-        }
-      }
-    }
-  }
 
   if (isTikTok) return await scrapeTikTokHtml(url);
   if (isYouTube) return await scrapeYouTubeHtml(url);
