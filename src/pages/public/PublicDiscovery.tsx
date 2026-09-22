@@ -465,22 +465,29 @@ export default function PublicDiscovery() {
                 </div>
                 {openPerson.contacts.length ? (
                   <div>
-                    <h3 className="mb-2 font-display text-lg font-semibold">Public links</h3>
+                    <h3 className="mb-2 font-display text-lg font-semibold">Contact &amp; links</h3>
                     <div className="space-y-2">
                       {openPerson.contacts.map((contact) => {
                         const isEmail = contact.kind === "email" || contact.kind === "manager_email";
-                        const Icon = isEmail ? Mail : ExternalLink;
-                        const href = isEmail ? `mailto:${contact.value}` : contact.value;
+                        const isPhone = contact.kind === "phone" || contact.kind === "whatsapp";
+                        const Icon = isEmail ? Mail : isPhone ? Phone : ExternalLink;
+                        const href = isEmail
+                          ? `mailto:${contact.value}`
+                          : isPhone
+                            ? `tel:${contact.value.replace(/[^\d+]/g, "")}`
+                            : contact.value;
+                        const text = isEmail || isPhone ? contact.value : contact.label || contact.value;
                         return (
-                          <a key={`${contact.kind}-${contact.value}`} href={href} target={isEmail ? undefined : "_blank"} rel="noreferrer" className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary">
+                          <a key={`${contact.kind}-${contact.value}`} href={href} target={isEmail || isPhone ? undefined : "_blank"} rel="noreferrer" className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary">
                             <Icon className="size-4 text-muted-foreground" />
-                            <span className="min-w-0 flex-1 truncate">{contact.label || contact.value}</span>
+                            <span className="min-w-0 flex-1 truncate">{text}</span>
                           </a>
                         );
                       })}
                     </div>
                   </div>
                 ) : null}
+
                 <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => setDemoOpen(true)}>Discuss this creator mix</Button>
               </div>
             </>
