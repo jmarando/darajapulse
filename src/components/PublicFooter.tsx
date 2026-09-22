@@ -17,9 +17,9 @@ const PublicFooter = () => (
       <div className="md:col-span-3">
         <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mb-3">Product</div>
         <ul className="space-y-2">
+          <li><Link to="/" className="hover:text-accent transition-colors">Home</Link></li>
           <li><Link to="/auth" className="hover:text-accent transition-colors">Sign in</Link></li>
-          <li><Link to="/auth" className="hover:text-accent transition-colors">Get started</Link></li>
-          <li><Link to="/landing" className="hover:text-accent transition-colors">Explore</Link></li>
+          <li><Link to="/discovery" className="hover:text-accent transition-colors">Creator Discovery</Link></li>
         </ul>
       </div>
 

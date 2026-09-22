@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import DemoRequestDialog from "@/components/DemoRequestDialog";
 import PublicFooter from "@/components/PublicFooter";
-import { Compass, ExternalLink, Instagram, Loader2, Mail, MapPin, Music2, Search, ShieldCheck, Sparkles, Users, Youtube, Twitter, Facebook, ArrowRight, Calendar, LockKeyhole } from "lucide-react";
+import { ExternalLink, Instagram, Loader2, Mail, MapPin, Music2, Search, ShieldCheck, Sparkles, Users, Youtube, Twitter, Facebook, ArrowRight, Calendar, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/darajapulse-logo-1024.png";
 
@@ -64,6 +64,9 @@ function Header({ onBook }: { onBook: () => void }) {
           <span className="hidden font-display text-lg font-semibold sm:inline">Daraja Pulse</span>
         </Link>
         <div className="flex items-center gap-2">
+          <Link to="/" className="hidden rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex">
+            Home
+          </Link>
           <Link to="/auth" className="hidden rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:inline-flex">
             Sign in
           </Link>
@@ -212,7 +215,6 @@ export default function PublicDiscovery() {
         <section className="border-b border-border bg-gradient-paper">
           <div className="mx-auto grid max-w-screen-2xl gap-10 px-4 py-12 md:px-6 md:py-16 lg:grid-cols-[1fr_0.9fr] lg:px-16 lg:py-20">
             <div className="flex flex-col justify-center">
-              <Badge variant="outline" className="mb-5 w-fit border-accent/30 bg-accent/10 text-accent"><Compass className="mr-1 size-3" /> Public Discovery showcase</Badge>
               <h1 className="max-w-4xl font-display text-4xl font-semibold leading-tight md:text-6xl">
                 Explore East Africa’s creator landscape.
               </h1>
