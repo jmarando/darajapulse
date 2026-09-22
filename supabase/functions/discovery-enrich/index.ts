@@ -6,6 +6,7 @@
 //    publicly listed email or phone (bio/linktree/agency page) and insert them as
 //    public discovery_contacts.
 import { apifyProfileStats } from "../_shared/apify-profile.ts";
+import { scrapeCreatorsProfile, SCRAPECREATORS_ENABLED, SC_OUT_OF_CREDITS } from "../_shared/scrapecreators.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -102,7 +103,17 @@ function extractContacts(payload: any, fallbackBio?: string | null) {
 
 async function fetchProfileContacts(platform: string, handle: string, fallbackBio?: string | null) {
   if (!handle) return extractContacts(null, fallbackBio);
-  // Apify first — it returns the richest public profile payload (bio, links, contact info).
+  // ScrapeCreators first — current default provider for public profile payloads.
+  if (SCRAPECREATORS_ENABLED && scBudget.used < scBudget.cap) {
+    const sc = await scrapeCreatorsProfile(platform, handle);
+    if (sc) {
+      scBudget.used += sc.creditsCharged;
+      if (sc.creditsRemaining != null) scBudget.remaining = sc.creditsRemaining;
+      const fromSc = extractContacts(sc.raw, fallbackBio);
+      if (fromSc.emails.length || fromSc.phones.length || fromSc.bio) return fromSc;
+    }
+  }
+  // Apify fallback (suspended account → usually a no-op).
   const apify = await apifyProfileStats(platform, handle);
   if (apify?.raw) {
     const fromApify = extractContacts(apify.raw, fallbackBio);
@@ -141,8 +152,13 @@ async function insertContact(supabase: any, creatorId: string, kind: string, val
   return !error;
 }
 
-async function runEnrich() {
+const scBudget = { cap: 0, used: 0, remaining: null as number | null };
+
+async function runEnrich(opts: { maxCredits: number; limit: number; contactsOnly: boolean }) {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+  scBudget.cap = opts.maxCredits; scBudget.used = 0; scBudget.remaining = null;
+  if (opts.contactsOnly) return await fillContacts(supabase, opts);
+
 
   // ----- 1) Promote whatsapp-only contacts to full creators with socials -----
   const { data: waRows } = await supabase
@@ -240,11 +256,17 @@ Only include socials you are confident exist for THIS exact person. If unsure, r
   }
 
   // ----- 2) Fill in email/phone where missing -----
+  const added = await fillContacts(supabase, opts);
+  console.log(`[discovery-enrich] DONE promoted=${promoted} contacts_added=${added}`);
+}
+
+async function fillContacts(supabase: any, opts: { maxCredits: number; limit: number }) {
   const { data: candidates } = await supabase
     .from("discovery_creators")
     .select("id, full_name, handle, platform, city, bio")
-    .neq("platform", "whatsapp")
-    .limit(500);
+    .in("platform", ["instagram", "tiktok", "youtube"])
+    .order("follower_count", { ascending: false })
+    .limit(opts.limit);
 
   const { data: have } = await supabase
     .from("discovery_contacts")
@@ -257,8 +279,11 @@ Only include socials you are confident exist for THIS exact person. If unsure, r
   });
 
   let contactsAdded = 0;
+  let scanned = 0;
   for (const c of candidates ?? []) {
     if (hasEmail.has(c.id) && hasPhone.has(c.id)) continue;
+    if (scBudget.used >= scBudget.cap || SC_OUT_OF_CREDITS) break;
+    scanned++;
     const profileContacts = await fetchProfileContacts(c.platform, c.handle, c.bio);
     if (profileContacts.avatarUrl || (profileContacts.bio && profileContacts.bio !== c.bio)) {
       await supabase
@@ -279,27 +304,20 @@ Only include socials you are confident exist for THIS exact person. If unsure, r
       if (await insertContact(supabase, c.id, "phone", phone, "from profile", true)) contactsAdded++;
       hasPhone.add(c.id);
     }
-    if (hasEmail.has(c.id) && hasPhone.has(c.id)) continue;
-
-    const parsed = await ai(
-      `For Kenyan ${c.platform} creator @${c.handle} ("${c.full_name}"), return strict JSON:
-{"email":"only if publicly listed in bio/linktree/agency, else empty",
- "manager_email":"only if publicly listed, else empty",
- "phone":"Kenyan format only if publicly listed, else empty"}
-Never invent. If unsure, return empty strings.`
-    );
-    if (!parsed) continue;
-    if (!hasEmail.has(c.id)) {
-      if (await insertContact(supabase, c.id, "email", String(parsed.email || ""), "from bio", true)) contactsAdded++;
-      if (await insertContact(supabase, c.id, "manager_email", String(parsed.manager_email || ""), "from bio", true)) contactsAdded++;
-    }
-    if (!hasPhone.has(c.id)) {
-      if (await insertContact(supabase, c.id, "phone", String(parsed.phone || ""), "from bio", true)) contactsAdded++;
-    }
   }
 
-  console.log(`[discovery-enrich] DONE promoted=${promoted} contacts_added=${contactsAdded}`);
+  if (scBudget.used > 0) {
+    await supabase.from("scraper_credit_log").insert({
+      provider: "scrapecreators",
+      credits: scBudget.used,
+      credits_remaining: scBudget.remaining,
+      context: `discovery-enrich contacts (${scanned} profiles)`,
+    });
+  }
+  console.log(`[discovery-enrich] contacts scanned=${scanned} added=${contactsAdded} credits=${scBudget.used} remaining=${scBudget.remaining}`);
+  return contactsAdded;
 }
+
 
 async function findByName(query: string) {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -363,12 +381,16 @@ Deno.serve(async (req) => {
       const result = await findByName(body.query.trim());
       return new Response(JSON.stringify(result), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    const maxCredits = Math.max(10, Math.min(2000, Number(body.max_credits ?? 200)));
+    const limit = Math.max(1, Math.min(2000, Number(body.limit ?? 400)));
+    const contactsOnly = body.contacts_only !== false;
     // @ts-ignore EdgeRuntime is provided by Supabase
-    EdgeRuntime.waitUntil(runEnrich());
+    EdgeRuntime.waitUntil(runEnrich({ maxCredits, limit, contactsOnly }));
     return new Response(JSON.stringify({
       ok: true,
       status: "started",
-      message: "Enriching socials and contacts in background. Refresh the page in a few minutes.",
+      max_credits: maxCredits,
+      message: `Looking up public profiles for contacts (up to ${maxCredits} credits). Refresh in a few minutes.`,
     }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
