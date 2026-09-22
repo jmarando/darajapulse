@@ -48,6 +48,44 @@ async function call(path: string, url: string): Promise<any> {
   return json;
 }
 
+// ---- Public profile lookup (bio, business email/phone, avatar, followers) ----
+export type ScrapedProfile = {
+  raw: any;
+  creditsCharged: number;
+  creditsRemaining: number | null;
+};
+
+const PROFILE_PATHS: Record<string, { path: string; param: string }> = {
+  instagram: { path: "/v1/instagram/profile", param: "handle" },
+  tiktok: { path: "/v1/tiktok/profile", param: "handle" },
+  youtube: { path: "/v1/youtube/channel", param: "handle" },
+};
+
+export async function scrapeCreatorsProfile(platform: string, handle: string): Promise<ScrapedProfile | null> {
+  const cfg = PROFILE_PATHS[platform];
+  if (!cfg || !SC_KEY || !handle) return null;
+  const qs = new URLSearchParams({ [cfg.param]: handle.replace(/^@/, "") }).toString();
+  try {
+    const r = await fetch(`${BASE}${cfg.path}?${qs}`, { headers: { "x-api-key": SC_KEY, Accept: "application/json" } });
+    const text = await r.text();
+    let json: any;
+    try { json = JSON.parse(text); } catch { console.error(`SC profile non-JSON ${cfg.path} ${r.status}: ${text.slice(0, 160)}`); return null; }
+    if (!r.ok || json?.success === false) {
+      console.error(`SC profile ${cfg.path} ${r.status}: ${String(json?.message ?? json?.error ?? "failed").slice(0, 160)}`);
+      return null; // failed lookups are not charged
+    }
+    return {
+      raw: json,
+      creditsCharged: Math.max(1, num(json?.credits_charged) || 1),
+      creditsRemaining: json?.credits_remaining != null ? num(json.credits_remaining) : null,
+    };
+  } catch (e) {
+    console.error(`SC profile ${cfg.path} threw:`, (e as Error).message);
+    return null;
+  }
+}
+
+
 async function tiktok(url: string): Promise<ScrapedPost> {
   const j = await call("/v2/tiktok/video", url);
   const d = j?.aweme_detail ?? {};
