@@ -10,7 +10,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const MAX_LIMIT = 500;
 const MAX_OFFSET = 8_000;
 const ALLOWED_PLATFORMS = new Set(["instagram", "tiktok", "youtube", "twitter", "facebook", "whatsapp"]);
-const ALLOWED_CONTACT_KINDS = new Set(["link", "email", "manager_email"]);
+const ALLOWED_CONTACT_KINDS = new Set(["link", "email", "manager_email", "phone", "whatsapp"]);
 
 type Contact = { kind: string; value: string; label?: string | null };
 
@@ -91,6 +91,7 @@ function publicContact(contact: any): Contact | null {
   if (!ALLOWED_CONTACT_KINDS.has(kind) || !value) return null;
   if (kind === "link" && !/^https?:\/\//i.test(value)) return null;
   if ((kind === "email" || kind === "manager_email") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return null;
+  if ((kind === "phone" || kind === "whatsapp") && !/^\+?[0-9][0-9\s().-]{6,19}$/.test(value)) return null;
   return { kind, value, label: contact?.label ?? null };
 }
 
@@ -241,7 +242,12 @@ Deno.serve(async (req) => {
         engagement_avg: rates.length ? rates.reduce((sum: number, n: number) => sum + n, 0) / rates.length : 0,
         profiles: person.profiles.sort((a: any, b: any) => b.follower_count - a.follower_count),
         niches: person.niches.slice(0, 8),
-        contacts: person.contacts.slice(0, 6),
+        contacts: [...person.contacts]
+          .sort((a: Contact, b: Contact) => {
+            const rank = (c: Contact) => (c.kind === "phone" || c.kind === "whatsapp" ? 0 : c.kind === "email" || c.kind === "manager_email" ? 1 : 2);
+            return rank(a) - rank(b);
+          })
+          .slice(0, 12),
       };
     });
 
