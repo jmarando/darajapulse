@@ -166,6 +166,7 @@ type Match = {
 function BriefMatcher({ onBook }: { onBook: () => void }) {
   const [brief, setBrief] = useState("");
   const [tier, setTier] = useState("any");
+  const [market, setMarket] = useState(ALL);
   const [running, setRunning] = useState(false);
   const [matches, setMatches] = useState<Match[] | null>(null);
 
@@ -175,7 +176,7 @@ function BriefMatcher({ onBook }: { onBook: () => void }) {
     setRunning(true);
     try {
       const { data, error } = await supabase.functions.invoke("discovery-match", {
-        body: { goal, brief: goal.slice(0, 2000), budget_tier: tier, source: "public_discovery" },
+        body: { goal, brief: goal.slice(0, 2000), budget_tier: tier, country_code: market === ALL ? null : market, source: "public_discovery" },
       });
       if (error) throw error;
       const list = ((data as any)?.matches ?? []) as Match[];
@@ -214,6 +215,15 @@ function BriefMatcher({ onBook }: { onBook: () => void }) {
                   <SelectItem value="micro">Micro (10K–100K)</SelectItem>
                   <SelectItem value="mid">Mid (100K–500K)</SelectItem>
                   <SelectItem value="macro">Macro (500K+)</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={market} onValueChange={setMarket}>
+                <SelectTrigger className="sm:w-44"><SelectValue placeholder="Market" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All markets</SelectItem>
+                  <SelectItem value="KE">Kenya</SelectItem>
+                  <SelectItem value="UG">Uganda</SelectItem>
+                  <SelectItem value="TZ">Tanzania</SelectItem>
                 </SelectContent>
               </Select>
               <Button onClick={run} disabled={running} className="bg-accent text-accent-foreground hover:bg-accent/90">
