@@ -152,8 +152,13 @@ async function insertContact(supabase: any, creatorId: string, kind: string, val
   return !error;
 }
 
-async function runEnrich() {
+const scBudget = { cap: 0, used: 0, remaining: null as number | null };
+
+async function runEnrich(opts: { maxCredits: number; limit: number; contactsOnly: boolean }) {
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+  scBudget.cap = opts.maxCredits; scBudget.used = 0; scBudget.remaining = null;
+  if (opts.contactsOnly) return await fillContacts(supabase, opts);
+
 
   // ----- 1) Promote whatsapp-only contacts to full creators with socials -----
   const { data: waRows } = await supabase
