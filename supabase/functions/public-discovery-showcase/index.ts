@@ -62,6 +62,14 @@ function cleanOffset(value: unknown): number {
   return Math.min(Math.max(Math.round(n), 0), MAX_OFFSET);
 }
 
+const normalize = (value: string) => value
+  .toLowerCase()
+  .normalize("NFKD")
+  .replace(/^@+/, "")
+  .replace(/[^a-z0-9]+/g, " ")
+  .replace(/\s+/g, " ")
+  .trim();
+
 const personKey = (row: CreatorRow) =>
   row.person_key?.trim() || row.full_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || row.id;
 
@@ -95,6 +103,9 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const country = cleanCountry(body?.country);
     const city = cleanString(body?.city, 80);
+    const platform = cleanString(body?.platform, 32)?.toLowerCase() ?? null;
+    const niche = cleanString(body?.niche, 80)?.toLowerCase() ?? null;
+    const search = cleanString(body?.q, 160);
     const limit = cleanLimit(body?.limit);
     const offset = cleanOffset(body?.offset);
 
@@ -110,14 +121,33 @@ Deno.serve(async (req) => {
       .in("platform", [...ALLOWED_PLATFORMS])
       .order("follower_count", { ascending: false, nullsFirst: false })
       .order("full_name", { ascending: true })
-      .range(offset, offset + limit - 1);
+      .limit(MAX_OFFSET);
 
     if (country) query = query.eq("country_code", country);
     if (city) query = query.eq("city", city);
+    if (platform && ALLOWED_PLATFORMS.has(platform)) query = query.eq("platform", platform);
 
     const { data: rows, error } = await query;
     if (error) throw error;
-    const creatorRows = (rows ?? []) as CreatorRow[];
+    const terms = search ? normalize(search).split(" ").filter(Boolean) : [];
+    const filteredRows = ((rows ?? []) as CreatorRow[]).filter((row) => {
+      const rowNiches = (row.niche ?? []).map((value) => String(value).trim().toLowerCase()).filter(Boolean);
+      if (niche && !rowNiches.includes(niche)) return false;
+      if (terms.length) {
+        const hay = normalize([
+          row.full_name,
+          row.handle,
+          row.platform,
+          row.city,
+          row.country_code,
+          row.bio,
+          ...rowNiches,
+        ].filter(Boolean).join(" "));
+        if (!terms.every((term) => hay.includes(term))) return false;
+      }
+      return true;
+    });
+    const creatorRows = filteredRows.slice(offset, offset + limit);
     const ids = creatorRows.map((row) => row.id);
 
     const contactsByCreator: Record<string, Contact[]> = {};
@@ -193,22 +223,13 @@ Deno.serve(async (req) => {
       };
     });
 
-    const { data: statsRows, error: statsError } = await supabase
-      .from("discovery_creators")
-      .select("platform, country_code, city, niche, follower_count, person_key, full_name, id")
-      .eq("profile_status", "active")
-      .neq("link_status", "broken")
-      .in("platform", [...ALLOWED_PLATFORMS])
-      .limit(8_000);
-    if (statsError) throw statsError;
-
     const platforms: Record<string, number> = {};
     const countries: Record<string, number> = {};
     const cities = new Set<string>();
     const niches = new Set<string>();
     const peopleKeys = new Set<string>();
     let totalFollowers = 0;
-    for (const row of (statsRows ?? []) as any[]) {
+    for (const row of filteredRows as any[]) {
       platforms[row.platform] = (platforms[row.platform] ?? 0) + 1;
       if (row.country_code) countries[row.country_code] = (countries[row.country_code] ?? 0) + 1;
       if (row.city) cities.add(row.city);
@@ -223,9 +244,9 @@ Deno.serve(async (req) => {
     return json({
       people,
       returned_profiles: creatorRows.length,
-      next_offset: creatorRows.length === limit ? offset + limit : null,
+      next_offset: offset + limit < filteredRows.length ? offset + limit : null,
       stats: {
-        profiles: statsRows?.length ?? 0,
+        profiles: filteredRows.length,
         people: peopleKeys.size,
         total_followers: totalFollowers,
         platforms,

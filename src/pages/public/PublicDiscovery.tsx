@@ -169,6 +169,9 @@ export default function PublicDiscovery() {
         body: {
           country: country === ALL ? null : country,
           city: city === ALL ? null : city,
+          platform: platform === ALL ? null : platform,
+          niche: niche === ALL ? null : niche,
+          q: q.trim() || null,
           limit: PAGE,
           offset,
         },
@@ -186,33 +189,18 @@ export default function PublicDiscovery() {
   };
 
   useEffect(() => { setCity(ALL); }, [country]);
-  useEffect(() => { void load(false, 0); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [country, city]);
+  useEffect(() => {
+    const t = window.setTimeout(() => { void load(false, 0); }, 250);
+    return () => window.clearTimeout(t);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [country, city, platform, niche, q]);
 
   const countries = useMemo(() => Object.keys(stats?.countries ?? {}).sort(), [stats]);
   const cities = useMemo(() => (stats?.cities ?? []).filter((value) => value && value.trim()).sort(), [stats]);
   const niches = useMemo(() => (stats?.niches ?? []).filter(Boolean).slice(0, 80), [stats]);
   const platforms = useMemo(() => Object.keys(stats?.platforms ?? {}).sort(), [stats]);
 
-  const filtered = useMemo(() => {
-    const terms = normalize(q).split(" ").filter(Boolean);
-    return people.filter((person) => {
-      if (platform !== ALL && !person.profiles.some((profile) => profile.platform === platform)) return false;
-      if (niche !== ALL && !person.niches.includes(niche)) return false;
-      if (terms.length) {
-        const hay = normalize([
-          person.full_name,
-          person.city,
-          countryName(person.country_code),
-          person.bio,
-          ...person.niches,
-          ...person.profiles.map((profile) => `${profile.platform} ${profile.handle}`),
-          ...person.contacts.map((contact) => contact.value),
-        ].filter(Boolean).join(" "));
-        if (!terms.every((term) => hay.includes(term))) return false;
-      }
-      return true;
-    });
-  }, [people, q, platform, niche]);
+  const filtered = people;
 
   const activeFilters = [country !== ALL, city !== ALL, platform !== ALL, niche !== ALL, !!q.trim()].filter(Boolean).length;
   const clearFilters = () => { setQ(""); setCountry(ALL); setCity(ALL); setPlatform(ALL); setNiche(ALL); };
