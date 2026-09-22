@@ -65,6 +65,17 @@ function cleanOffset(value: unknown): number {
 const personKey = (row: CreatorRow) =>
   row.person_key?.trim() || row.full_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || row.id;
 
+function sanitizeBio(value: string | null): string | null {
+  if (!value) return null;
+  const cleaned = value
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "")
+    .replace(/(?:\+?254|0)[\s().-]?[17]\d[\s().-]?\d{3}[\s().-]?\d{3}/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim();
+  return cleaned || null;
+}
+
 function publicContact(contact: any): Contact | null {
   const kind = String(contact?.kind ?? "");
   const value = String(contact?.value ?? "").trim();
@@ -134,7 +145,7 @@ Deno.serve(async (req) => {
         full_name: row.full_name,
         city: row.city,
         country_code: row.country_code,
-        bio: row.bio,
+        bio: sanitizeBio(row.bio),
         avatar_url: row.avatar_url,
         verified_at: row.verified_at,
         niches: [] as string[],
@@ -155,7 +166,7 @@ Deno.serve(async (req) => {
         engagement_rate: Number(row.engagement_rate) || 0,
       });
       if (!current.avatar_url && row.avatar_url) current.avatar_url = row.avatar_url;
-      if (!current.bio && row.bio) current.bio = row.bio;
+      if (!current.bio) current.bio = sanitizeBio(row.bio);
       if (!current.verified_at && row.verified_at) current.verified_at = row.verified_at;
       if (!current.city && row.city) current.city = row.city;
       if (!current.country_code && row.country_code) current.country_code = row.country_code;
