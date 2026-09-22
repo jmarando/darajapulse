@@ -74,6 +74,7 @@ export async function scrapeCreatorsProfile(platform: string, handle: string): P
     let json: any;
     try { json = JSON.parse(text); } catch { console.error(`SC profile non-JSON ${cfg.path} ${r.status}: ${text.slice(0, 160)}`); return null; }
     if (!r.ok || json?.success === false) {
+      if (r.status === 402) SC_OUT_OF_CREDITS = true;
       console.error(`SC profile ${cfg.path} ${r.status}: ${String(json?.message ?? json?.error ?? "failed").slice(0, 160)}`);
       return null; // failed lookups are not charged
     }
