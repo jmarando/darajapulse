@@ -130,7 +130,7 @@ function CreatorCard({ person, onOpen }: { person: Person; onOpen: () => void })
         </div>
         {person.niches.length ? (
           <div className="mt-4 flex flex-wrap gap-1">
-            {person.niches.slice(0, 4).map((niche) => <Badge key={niche} variant="outline" className="h-5 px-1.5 py-0 text-[10px] capitalize">{niche}</Badge>)}
+            {person.niches.slice(0, 4).map((item) => <Badge key={item} variant="outline" className="h-5 px-1.5 py-0 text-[10px] capitalize">{item}</Badge>)}
             {person.niches.length > 4 ? <span className="self-center text-[10px] text-muted-foreground">+{person.niches.length - 4}</span> : null}
           </div>
         ) : null}
