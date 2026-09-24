@@ -752,7 +752,7 @@ const CampaignDetail = () => {
             <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{c.clients?.name}</div>
             <h1 className="font-display text-3xl md:text-[2.5rem] font-semibold mt-1 break-words leading-[1.1] tracking-tight">{c.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-sm text-muted-foreground">
-              {(c.hashtag || c.brief_templates?.hashtag) && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(c.hashtag || c.brief_templates?.hashtag).replace(/^#/, "")}</span>}
+              {(c.hashtag || c.brief_templates?.hashtag) && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(c.hashtag || c.brief_templates?.hashtag || "").replace(/^#/, "")}</span>}
               {c.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />Budget KES {Number(c.budget_kes).toLocaleString()}</span>}
               <span className="inline-flex items-center gap-2">
                 <span className="text-[10px] uppercase tracking-widest">Brief</span>

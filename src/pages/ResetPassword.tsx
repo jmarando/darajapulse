@@ -5,6 +5,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import logo from "@/assets/logo-pulse-mark.png";
@@ -99,7 +100,7 @@ const ResetPassword = () => {
             <p className="text-sm text-muted-foreground">Validating reset link…</p>
           ) : (
             <form onSubmit={submit} className="space-y-4">
-              <div><Label>New password</Label><Input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} /></div>
+              <div><Label>New password</Label><PasswordInput required minLength={6} value={password} onChange={e => setPassword(e.target.value)} /></div>
               <Button type="submit" className="w-full bg-primary" disabled={busy}>{busy ? "…" : "Update password"}</Button>
             </form>
           )}

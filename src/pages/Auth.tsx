@@ -5,6 +5,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -90,7 +91,7 @@ const Auth = () => {
             <div>
               <form onSubmit={signIn} className="space-y-4">
                 <div><Label>Email</Label><Input type="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
-                <div><Label>Password</Label><Input type="password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
+                <div><Label>Password</Label><PasswordInput required value={password} onChange={e => setPassword(e.target.value)} /></div>
                 <Button type="submit" className="w-full bg-primary" disabled={busy}>{busy ? "…" : "Sign in"}</Button>
                 <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => setMode("forgot")}>Forgot password?</button>
               </form>
