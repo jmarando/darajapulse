@@ -339,7 +339,9 @@ async function runHarvest(opts: {
     }
   }
 
-  if (rest.length) {
+  const leftCredits = opts.maxCredits - budget.used;
+  if (rest.length && leftCredits < 10) console.log(`[discovery-harvest] total budget spent; skipping ${rest.join(",")}`);
+  if (rest.length && leftCredits >= 10) {
     await fetch(`${SUPABASE_URL}/functions/v1/discovery-harvest`, {
       method: "POST",
       headers: {
@@ -351,7 +353,7 @@ async function runHarvest(opts: {
       body: JSON.stringify({
         countries: rest,
         modes: opts.modes,
-        max_credits: opts.maxCredits,
+        max_credits: leftCredits,
         min_followers: opts.minFollowers,
         min_plays: opts.minPlays,
         include_instagram: opts.includeInstagram,
@@ -403,7 +405,7 @@ Deno.serve(async (req) => {
       mode: modes.join("+") + (includeInstagram ? "+instagram" : ""),
       countries: [countries[0]],
       started_by: uid,
-      notes: `cap ${maxCredits} credits per country · min ${minFollowers} followers`,
+      notes: `cap ${maxCredits} credits total (remaining) · min ${minFollowers} followers`,
     }).select("id").single();
     if (runErr) throw new Error(runErr.message);
 
@@ -421,7 +423,7 @@ Deno.serve(async (req) => {
       run_id: run.id,
       countries,
       max_credits: maxCredits,
-      message: `Harvest started for ${countries.join(", ")} — up to ${maxCredits} credits per country. New creators appear over the next few minutes.`,
+      message: `Harvest started for ${countries.join(", ")} — up to ${maxCredits} credits in total. New creators appear over the next few minutes.`,
     }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("harvest error", e);
