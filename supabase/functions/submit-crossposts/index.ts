@@ -13,6 +13,7 @@ const BodySchema = z.object({
   submitter_name: z.string().max(160).optional().default(""),
   submitter_email: z.string().email().max(320).or(z.literal("")).optional().default(""),
   links: z.array(LinkSchema).min(1).max(5),
+  attach_to_post_url: z.string().url().max(2000).nullable().optional(),
 });
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -41,6 +42,49 @@ Deno.serve(async (req) => {
   if (!contestByToken) return json({ error: "This submission link is no longer active." }, 404);
   const { data: existingLinks } = await admin.from("contest_entries").select("post_url").eq("contest_id", contestByToken.id).in("post_url", body.links.map((link) => link.post_url));
   if ((existingLinks ?? []).length) return json({ error: "One or more of these links were already submitted." }, 409);
+
+  // Attach mode: add platforms to a video the creator already posted (approved draft already used).
+  if (body.attach_to_post_url) {
+    if (!body.brief_token) return json({ error: "Open this page from your personal link to add platforms." }, 400);
+    const { data: ci } = await admin.from("campaign_influencers").select("id, influencer_id").eq("brief_token", body.brief_token).maybeSingle();
+    if (!ci) return json({ error: "Creator link not recognised." }, 404);
+    const { data: base } = await admin.from("contest_entries")
+      .select("id, contest_id, influencer_id, handle, submitter_name, submitter_email, source, status, full_name, creative_group_id, platform")
+      .eq("contest_id", contestByToken.id).eq("post_url", body.attach_to_post_url).eq("influencer_id", ci.influencer_id).maybeSingle();
+    if (!base) return json({ error: "We couldn't find that original post on your account." }, 404);
+    const { data: siblings } = base.creative_group_id
+      ? await admin.from("contest_entries").select("platform").eq("creative_group_id", base.creative_group_id)
+      : { data: [{ platform: base.platform }] };
+    const used = new Set((siblings ?? []).map((s: any) => s.platform));
+    const clash = body.links.find((l) => used.has(l.platform));
+    if (clash) return json({ error: `This video already has a ${clash.platform} link.` }, 409);
+    const { data: contest } = await admin.from("contests").select("campaign_id").eq("id", base.contest_id).maybeSingle();
+    const groupId = base.creative_group_id || crypto.randomUUID();
+    if (!base.creative_group_id) {
+      await admin.from("contest_entries").update({ creative_group_id: groupId }).eq("id", base.id);
+      if (contest?.campaign_id) await admin.from("posts").update({ creative_group_id: groupId }).eq("campaign_id", contest.campaign_id).eq("post_url", body.attach_to_post_url);
+    }
+    const results: any[] = [];
+    for (const link of body.links) {
+      const { data: entry, error: entryError } = await admin.from("contest_entries").insert({
+        contest_id: base.contest_id, influencer_id: base.influencer_id, platform: link.platform, post_url: link.post_url,
+        handle: base.handle, submitter_name: base.submitter_name, submitter_email: base.submitter_email,
+        source: base.source, status: base.status, full_name: base.full_name, creative_group_id: groupId,
+      }).select("id").single();
+      if (entryError) return json({ error: entryError.message }, 400);
+      let postId: string | null = null;
+      if (base.status === "approved" && contest?.campaign_id && base.influencer_id) {
+        const { data: post, error: postError } = await admin.from("posts").insert({
+          campaign_id: contest.campaign_id, influencer_id: base.influencer_id, platform: link.platform,
+          post_url: link.post_url, status: "live", creative_group_id: groupId,
+        }).select("id").single();
+        if (postError) return json({ error: postError.message }, 400);
+        postId = post?.id ?? null;
+      }
+      results.push({ entry_id: entry.id, post_id: postId, ...link });
+    }
+    return json({ creative_group_id: groupId, results, post_ids: results.map((r) => r.post_id).filter(Boolean) });
+  }
 
   const first = body.links[0];
   const { data: firstResult, error: firstError } = await admin.rpc("submit_contest_entry", {
