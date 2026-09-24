@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (error) return json({ error: error.message }, 400);
 
-      // Let the creator know the outcome (non-blocking).
+      let notification: "queued" | "missing_email" | "failed" = "missing_email";
       try {
         const influencerId = (updated as any)?.influencer_id;
         if (influencerId) {
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
           ]);
           const email = (inf as any)?.email;
           if (email) {
-            await admin.functions.invoke("send-transactional-email", {
+            const { data: emailResult, error: emailError } = await admin.functions.invoke("send-transactional-email", {
               body: {
                 templateName: "royco-draft-decision",
                 recipientEmail: email,
@@ -93,11 +93,14 @@ Deno.serve(async (req) => {
                 },
               },
             });
+            notification = !emailError && (emailResult as any)?.success ? "queued" : "failed";
           }
         }
-      } catch (_) { /* ignore notification failures */ }
+      } catch (_) {
+        notification = "failed";
+      }
 
-      return json({ ok: true });
+      return json({ ok: true, notification });
 
     }
 
