@@ -61,7 +61,7 @@ const PublicPlan = () => {
 
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground mb-6">
           {(campaign.hashtag || brief?.hashtag) && (
-            <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(campaign.hashtag || brief?.hashtag).replace(/^#/, "")}</span>
+            <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(campaign.hashtag || brief?.hashtag || "").replace(/^#/, "")}</span>
           )}
           <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" />{roster.length} creators</span>
           <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {totals.fees.toLocaleString()} fees</span>
