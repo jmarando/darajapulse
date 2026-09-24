@@ -65,6 +65,9 @@ const PublicContestSubmit = () => {
   const draftsRequired = !!draftState?.required;
   const draftApproved = !!draftState?.approved_available;
   const drafts = (draftState?.drafts ?? []) as any[];
+  const postedDrafts = drafts.filter((d) => d.status === "approved" && d.post_url);
+  const [attachTo, setAttachTo] = useState("");
+  const [attachUrl, setAttachUrl] = useState("");
   // Land the creator on the step that's actually actionable.
   useEffect(() => { if (draftApproved) setStep(2); }, [draftApproved]);
 
@@ -109,6 +112,24 @@ const PublicContestSubmit = () => {
     const postIds = ((data as any)?.post_ids ?? []) as string[];
     postIds.forEach((postId) => supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } }).catch(() => {}));
     setSubmitted(true);
+  };
+
+  const submitAttach = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = attachTo || postedDrafts[0]?.post_url;
+    const p = detectPlatform(attachUrl);
+    if (!target) return toast.error("Pick the video first");
+    if (!p) return toast.error("That doesn't look like a TikTok, Instagram, Facebook, YouTube or X link");
+    setLoading(true);
+    const { data, error } = await supabase.functions.invoke("submit-crossposts", { body: {
+      token, brief_token: creatorToken, attach_to_post_url: target,
+      links: [{ post_url: attachUrl.trim(), platform: p }],
+    }});
+    setLoading(false);
+    if (error || (data as any)?.error) return toast.error(typeof (data as any)?.error === "string" ? (data as any).error : "Could not add link");
+    ((data as any)?.post_ids ?? []).forEach((postId: string) => supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } }).catch(() => {}));
+    setAttachUrl("");
+    toast.success("Link added to that video");
   };
 
   if (!contest) return <div className="p-12 text-center text-muted-foreground">Loading…</div>;
@@ -237,16 +258,40 @@ const PublicContestSubmit = () => {
         {creatorToken && draftsRequired && step === 1 ? (
           <CreatorDraftStep briefToken={creatorToken} drafts={drafts as any} onUploaded={loadDrafts} />
         ) : creatorToken && draftsRequired && !draftApproved ? (
+          <>
+          {postedDrafts.length > 0 && (
+            <Card className="p-5 sm:p-6 mb-4">
+              <h2 className="font-display text-xl">Add another platform to a posted video</h2>
+              <p className="text-xs text-muted-foreground mt-1">Already shared this video on TikTok? Add its Instagram, Facebook or YouTube link here. It still counts as one video.</p>
+              <form onSubmit={submitAttach} className="space-y-3 mt-4">
+                <div>
+                  <Label className="text-sm">Which video?</Label>
+                  <select value={attachTo} onChange={(e) => setAttachTo(e.target.value)} className="mt-1.5 w-full h-11 rounded-md border border-input bg-background px-3 text-sm">
+                    {postedDrafts.map((d: any) => <option key={d.id} value={d.post_url}>{d.post_url}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-sm">New platform link</Label>
+                  <Input inputMode="url" value={attachUrl} onChange={(e) => setAttachUrl(e.target.value)} placeholder="Paste the other platform link…" className="h-12 text-base mt-1.5" />
+                  {detectPlatform(attachUrl) && <p className="text-xs text-success mt-1">Detected: {detectPlatform(attachUrl)}</p>}
+                </div>
+                <Button type="submit" disabled={loading} className="w-full h-12">{loading ? "Submitting…" : "Add link"}</Button>
+              </form>
+            </Card>
+          )}
           <Card className="p-6 text-center border-accent/40 bg-accent/5">
             <FileVideo className="w-10 h-10 text-accent mx-auto mb-3" />
-            <h2 className="font-display text-2xl">Get your video approved first</h2>
+            <h2 className="font-display text-2xl">{postedDrafts.length ? "Next video needs approval" : "Get your video approved first"}</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              {drafts.length
+              {postedDrafts.length
+                ? "For a brand-new video, upload it in step 1 and share its link once approved."
+                : drafts.length
                 ? "Your video is with the team. As soon as it's approved you can post it and come back here to share the live link."
                 : "Upload your MP4 in step 1. Once the team approves it, post it and drop the live link here."}
             </p>
             <Button size="lg" className="mt-5 h-12" onClick={() => setStep(1)}>Go to step 1</Button>
           </Card>
+          </>
         ) : (
         <Card className="p-5 sm:p-6">
 
