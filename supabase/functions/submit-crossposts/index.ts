@@ -37,6 +37,11 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  const { data: contestByToken } = await admin.from("contests").select("id").eq("submission_token", body.token).eq("is_active", true).maybeSingle();
+  if (!contestByToken) return json({ error: "This submission link is no longer active." }, 404);
+  const { data: existingLinks } = await admin.from("contest_entries").select("post_url").eq("contest_id", contestByToken.id).in("post_url", body.links.map((link) => link.post_url));
+  if ((existingLinks ?? []).length) return json({ error: "One or more of these links were already submitted." }, 409);
+
   const first = body.links[0];
   const { data: firstResult, error: firstError } = await admin.rpc("submit_contest_entry", {
     _token: body.token,
