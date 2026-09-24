@@ -43,6 +43,8 @@ const PublicBrief = () => {
   if (!b) return <div className="p-10 text-center"><h1 className="font-display text-2xl">Brief not found</h1><p className="text-muted-foreground mt-2">This invite link is invalid or has been revoked.</p></div>;
 
   const final = ["confirmed","declined"].includes(b.status);
+  const creatorName = String(b.influencer?.full_name || b.influencer?.handle || "Creator").trim();
+  const creatorFirstName = creatorName.split(/\s+/)[0] || "Creator";
 
   const paymentSteps: Array<{ icon: any; label: string; desc: string }> = [];
 
@@ -86,10 +88,10 @@ const PublicBrief = () => {
       <div className="max-w-3xl mx-auto p-6 md:p-10">
         <div className="inline-flex items-center gap-2">
           <span className="inline-block w-8 h-px bg-accent" />
-          <span className="text-[10px] uppercase tracking-widest text-accent font-medium">For {b.influencer.full_name?.split(" ")[0]}</span>
+          <span className="text-[10px] uppercase tracking-widest text-accent font-medium">For {creatorFirstName}</span>
         </div>
         <h1 className="font-display text-4xl md:text-5xl font-semibold mt-3">{b.campaign.name}</h1>
-        <p className="text-muted-foreground mt-3">Hi {b.influencer.full_name?.split(" ")[0]}, you've been invited to collaborate{platforms.length > 1 ? ` across ${platforms.map(p => PLATFORM_LABEL[p] || p).join(" & ")}` : ""}.</p>
+        <p className="text-muted-foreground mt-3">Hi {creatorFirstName}, you've been invited to collaborate{platforms.length > 1 ? ` across ${platforms.map(p => PLATFORM_LABEL[p] || p).join(" & ")}` : ""}.</p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border rounded-lg overflow-hidden mt-8 border border-border">
           <div className="bg-card p-4">
@@ -242,7 +244,7 @@ const PublicBrief = () => {
         )}
 
         {/* Contract — must be signed before any post can be submitted */}
-        <ContractSign token={String(b.brief_token || token)} creatorName={b.influencer?.full_name} onSigned={load} />
+        <ContractSign token={String(b.brief_token || token)} creatorName={creatorName} onSigned={load} />
 
         {/* Personal submission link — how the creator sends us their post */}
         {b.submission_token && (
