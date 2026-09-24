@@ -14,7 +14,7 @@ type Props = {
   posts: any[];
   metrics: any[];
   whtPercent: number;
-  onRefreshMetrics: () => Promise<void>;
+  onRefreshMetrics: () => Promise<unknown>;
 };
 
 export const contractGrossForViews = (views: number) => {
