@@ -639,9 +639,9 @@ const CampaignDetail = () => {
   const rosterTotals = useMemo(() => {
     const fees = ci.reduce((a, x) => a + Number(x.fee_kes || 0), 0);
     const deliv = ci.reduce((a, x) => a + Number(x.deliverables_count || 0), 0);
-    const confirmed = ci.filter(x => ["confirmed","live","completed"].includes(x.status)).length;
+    const confirmed = ci.filter(x => signedCi.has(x.id)).length;
     return { fees, deliv, confirmed };
-  }, [ci]);
+  }, [ci, signedCi]);
 
   // Countries actually present on this campaign's roster, most common first.
   const rosterCountries = useMemo(() => {
@@ -853,7 +853,7 @@ const CampaignDetail = () => {
             : [
                 { l: "Views", v: metricsLoaded ? fmt(totals.views) : "—", icon: Eye, sub: `${posts.length} post${posts.length === 1 ? "" : "s"}` },
                 { l: "Engagement", v: metricsLoaded ? `${totals.er.toFixed(1)}%` : "—", icon: BarChart3, sub: metricsLoaded ? `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` : "loading…" },
-                { l: "Creators", v: `${rosterTotals.confirmed}/${ci.length}`, icon: Users, sub: "confirmed" },
+                { l: "Creators", v: `${rosterTotals.confirmed}/${ci.length}`, icon: Users, sub: "signed" },
                 { l: "Fees committed", v: rosterTotals.fees > 0 ? fmtKes(rosterTotals.fees) : "—", icon: Wallet, sub: `${rosterTotals.deliv} deliverable${rosterTotals.deliv === 1 ? "" : "s"}` },
               ]
           ).map((s, i) => (
