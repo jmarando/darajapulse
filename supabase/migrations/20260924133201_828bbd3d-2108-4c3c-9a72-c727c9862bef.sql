@@ -1,0 +1,2 @@
+REVOKE ALL ON FUNCTION public.submit_crossposted_entries(text,jsonb,text,text,text,text) FROM anon, authenticated, service_role;
+DROP FUNCTION public.submit_crossposted_entries(text,jsonb,text,text,text,text);

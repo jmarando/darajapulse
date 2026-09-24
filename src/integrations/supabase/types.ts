@@ -3819,17 +3819,6 @@ export type Database = {
             }
             Returns: string
           }
-      submit_crossposted_entries: {
-        Args: {
-          _brief_token?: string
-          _handle: string
-          _links: Json
-          _submitter_email: string
-          _submitter_name: string
-          _token: string
-        }
-        Returns: Json
-      }
       update_brief_status: {
         Args: { _status: string; _token: string }
         Returns: undefined
