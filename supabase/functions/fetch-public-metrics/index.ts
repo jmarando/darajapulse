@@ -267,7 +267,7 @@ const APIFY = Deno.env.get("APIFY_API_TOKEN") ?? "";
 // per post retrying a provider we know is dead.
 const dead = { apify: false, ensemble: false };
 function markDead(which: "apify" | "ensemble", msg: string) {
-  if (/outstanding invoices|platform-feature-disabled|Subscription expired|493|401|403/i.test(msg)) dead[which] = true;
+  if (/outstanding invoices|platform-feature-disabled|Subscription expired|\b(?:493|401|403)\b(?=[: ])/i.test(msg)) dead[which] = true;
 }
 const APIFY_ACTORS: Record<string, string> = {
   instagram: "apify~instagram-scraper",
@@ -581,7 +581,6 @@ async function scrape(platform: string, rawUrl: string) {
           const msg = (e as Error).message;
           markDead("ensemble", msg);
           console.error("Ensemble tt/post/info failed, trying author feed:", msg);
-          if (dead.ensemble) throw e;
           return await edTikTokViaUser(url);
         }
       }
@@ -648,6 +647,7 @@ Deno.serve(async (req) => {
     sc.budget = Math.max(0, Math.min(Number(max_credits ?? (stale ? 40 : 120)), 500));
 
     sc.used = 0;
+    dead.apify = false; dead.ensemble = false;
     sc.capped = false;
     sc.remaining = null;
     const chainDepth = Math.max(0, Number(chain ?? 0));
