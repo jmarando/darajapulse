@@ -71,6 +71,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "rec
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, DEFAULT_PLATFORMS, type Breakdown } from "@/components/DeliverablesEditor";
 import { EditCreatorDialog } from "@/components/EditCreatorDialog";
+import CampaignPayments from "@/components/CampaignPayments";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
 import { buildAudience } from "@/lib/audience";
@@ -236,7 +237,7 @@ const CampaignDetail = () => {
         contestIds.length
           ? supabase
               .from("contest_entries")
-              .select("id,full_name,handle,submitter_name,submitter_email,platform,post_url,status,source,views,likes,comments,shares,saves,created_at,posted_at")
+              .select("id,full_name,handle,submitter_name,submitter_email,platform,post_url,status,source,views,likes,comments,shares,saves,created_at,posted_at,creative_group_id")
               .in("contest_id", contestIds)
           : Promise.resolve({ data: [] as any[] }),
       ]);
@@ -613,8 +614,13 @@ const CampaignDetail = () => {
   // Raw post counts per creator (regardless of whether metrics were fetched yet)
   const postsCountByInfluencer = useMemo(() => {
     const map = new Map<string, number>();
+    const seen = new Set<string>();
     for (const p of posts) {
       if (!p.influencer_id) continue;
+      const groupKey = p.creative_group_id || p.deliverable_id || p.id;
+      const seenKey = `${p.influencer_id}:${groupKey}`;
+      if (seen.has(seenKey)) continue;
+      seen.add(seenKey);
       map.set(p.influencer_id, (map.get(p.influencer_id) ?? 0) + 1);
     }
     return map;
@@ -633,9 +639,9 @@ const CampaignDetail = () => {
   const rosterTotals = useMemo(() => {
     const fees = ci.reduce((a, x) => a + Number(x.fee_kes || 0), 0);
     const deliv = ci.reduce((a, x) => a + Number(x.deliverables_count || 0), 0);
-    const confirmed = ci.filter(x => ["confirmed","live","completed"].includes(x.status)).length;
+    const confirmed = ci.filter(x => signedCi.has(x.id)).length;
     return { fees, deliv, confirmed };
-  }, [ci]);
+  }, [ci, signedCi]);
 
   // Countries actually present on this campaign's roster, most common first.
   const rosterCountries = useMemo(() => {
@@ -847,7 +853,7 @@ const CampaignDetail = () => {
             : [
                 { l: "Views", v: metricsLoaded ? fmt(totals.views) : "—", icon: Eye, sub: `${posts.length} post${posts.length === 1 ? "" : "s"}` },
                 { l: "Engagement", v: metricsLoaded ? `${totals.er.toFixed(1)}%` : "—", icon: BarChart3, sub: metricsLoaded ? `${fmt(totals.likes + totals.comments + totals.shares + totals.saves)} interactions` : "loading…" },
-                { l: "Creators", v: `${rosterTotals.confirmed}/${ci.length}`, icon: Users, sub: "confirmed" },
+                { l: "Creators", v: `${rosterTotals.confirmed}/${ci.length}`, icon: Users, sub: "signed" },
                 { l: "Fees committed", v: rosterTotals.fees > 0 ? fmtKes(rosterTotals.fees) : "—", icon: Wallet, sub: `${rosterTotals.deliv} deliverable${rosterTotals.deliv === 1 ? "" : "s"}` },
               ]
           ).map((s, i) => (
@@ -901,6 +907,12 @@ const CampaignDetail = () => {
           >
             Submissions
             <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary">{contestEntries.length}</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="payments"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Payments
           </TabsTrigger>
           <TabsTrigger
             value="emails"
@@ -2310,6 +2322,19 @@ const CampaignDetail = () => {
             submissionToken={submissionToken}
             campaignName={c?.name}
             onRefresh={load}
+          />
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-6 mt-0">
+          <CampaignPayments
+            campaignId={id!}
+            campaignName={c?.name ?? "Campaign"}
+            roster={ci}
+            signatures={signatures}
+            posts={posts}
+            metrics={metrics}
+            whtPercent={Number(c?.wht_percent || 0)}
+            onRefreshMetrics={autoFetchAll}
           />
         </TabsContent>
 

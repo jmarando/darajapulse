@@ -22,6 +22,7 @@ type Entry = {
   comments?: number | null;
   created_at?: string | null;
   posted_at?: string | null;
+  creative_group_id?: string | null;
 };
 
 const csvCell = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -192,7 +193,10 @@ export const SubmissionsSection = ({
                       <div className="font-medium truncate max-w-[220px]">{e.full_name || e.submitter_name || "—"}</div>
                       {e.handle && <div className="text-xs text-muted-foreground truncate max-w-[220px]">@{String(e.handle).replace(/^@/, "")}</div>}
                     </td>
-                    <td className="px-4 py-2 capitalize">{e.platform || "—"}</td>
+                    <td className="px-4 py-2 capitalize">
+                      {e.platform || "—"}
+                      {e.creative_group_id && <div className="text-[10px] text-muted-foreground mt-0.5">Cross-post group</div>}
+                    </td>
                     <td className="px-4 py-2">
                       {e.post_url ? (
                         <a href={e.post_url} target="_blank" rel="noreferrer" className="text-accent inline-flex items-center gap-1 text-xs break-all max-w-[280px]">

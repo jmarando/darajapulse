@@ -895,6 +895,7 @@ export type Database = {
           comments: number | null
           contest_id: string
           created_at: string
+          creative_group_id: string | null
           cross_posts: Json
           external_registration_id: string | null
           facebook_handle: string | null
@@ -929,6 +930,7 @@ export type Database = {
           comments?: number | null
           contest_id: string
           created_at?: string
+          creative_group_id?: string | null
           cross_posts?: Json
           external_registration_id?: string | null
           facebook_handle?: string | null
@@ -963,6 +965,7 @@ export type Database = {
           comments?: number | null
           contest_id?: string
           created_at?: string
+          creative_group_id?: string | null
           cross_posts?: Json
           external_registration_id?: string | null
           facebook_handle?: string | null
@@ -2911,6 +2914,7 @@ export type Database = {
           campaign_id: string
           caption: string | null
           created_at: string
+          creative_group_id: string | null
           deliverable_id: string | null
           id: string
           influencer_id: string
@@ -2925,6 +2929,7 @@ export type Database = {
           campaign_id: string
           caption?: string | null
           created_at?: string
+          creative_group_id?: string | null
           deliverable_id?: string | null
           id?: string
           influencer_id: string
@@ -2939,6 +2944,7 @@ export type Database = {
           campaign_id?: string
           caption?: string | null
           created_at?: string
+          creative_group_id?: string | null
           deliverable_id?: string | null
           id?: string
           influencer_id?: string
