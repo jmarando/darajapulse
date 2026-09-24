@@ -71,6 +71,7 @@ import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "rec
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, DEFAULT_PLATFORMS, type Breakdown } from "@/components/DeliverablesEditor";
 import { EditCreatorDialog } from "@/components/EditCreatorDialog";
+import CampaignPayments from "@/components/CampaignPayments";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
 import { buildAudience } from "@/lib/audience";
@@ -613,13 +614,13 @@ const CampaignDetail = () => {
   // Raw post counts per creator (regardless of whether metrics were fetched yet)
   const postsCountByInfluencer = useMemo(() => {
     const map = new Map<string, number>();
+    const seen = new Set<string>();
     for (const p of posts) {
       if (!p.influencer_id) continue;
       const groupKey = p.creative_group_id || p.deliverable_id || p.id;
       const seenKey = `${p.influencer_id}:${groupKey}`;
-      if ((map as any)._seen?.has(seenKey)) continue;
-      if (!(map as any)._seen) (map as any)._seen = new Set<string>();
-      (map as any)._seen.add(seenKey);
+      if (seen.has(seenKey)) continue;
+      seen.add(seenKey);
       map.set(p.influencer_id, (map.get(p.influencer_id) ?? 0) + 1);
     }
     return map;
@@ -906,6 +907,12 @@ const CampaignDetail = () => {
           >
             Submissions
             <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary">{contestEntries.length}</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="payments"
+            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+          >
+            Payments
           </TabsTrigger>
           <TabsTrigger
             value="emails"
@@ -2315,6 +2322,19 @@ const CampaignDetail = () => {
             submissionToken={submissionToken}
             campaignName={c?.name}
             onRefresh={load}
+          />
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-6 mt-0">
+          <CampaignPayments
+            campaignId={id!}
+            campaignName={c?.name ?? "Campaign"}
+            roster={ci}
+            signatures={signatures}
+            posts={posts}
+            metrics={metrics}
+            whtPercent={Number(c?.wht_percent || 0)}
+            onRefreshMetrics={autoFetchAll}
           />
         </TabsContent>
 

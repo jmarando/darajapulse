@@ -85,7 +85,7 @@ const CampaignPayments = ({ campaignId, campaignName, roster, signatures, posts,
   const coverage = useMemo(() => {
     const current = posts.filter((post) => {
       const captured = latestByPost.get(post.id)?.captured_at;
-      return captured && Date.now() - new Date(captured).getTime() <= 24 * 86_400_000;
+      return captured && Date.now() - new Date(captured).getTime() <= 86_400_000;
     }).length;
     const never = posts.filter((post) => !latestByPost.has(post.id)).length;
     const latest = [...latestByPost.values()].sort((a, b) => +new Date(b.captured_at) - +new Date(a.captured_at))[0]?.captured_at;
