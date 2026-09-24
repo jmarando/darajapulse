@@ -236,7 +236,7 @@ const CampaignDetail = () => {
         contestIds.length
           ? supabase
               .from("contest_entries")
-              .select("id,full_name,handle,submitter_name,submitter_email,platform,post_url,status,source,views,likes,comments,shares,saves,created_at,posted_at")
+              .select("id,full_name,handle,submitter_name,submitter_email,platform,post_url,status,source,views,likes,comments,shares,saves,created_at,posted_at,creative_group_id")
               .in("contest_id", contestIds)
           : Promise.resolve({ data: [] as any[] }),
       ]);
@@ -615,6 +615,11 @@ const CampaignDetail = () => {
     const map = new Map<string, number>();
     for (const p of posts) {
       if (!p.influencer_id) continue;
+      const groupKey = p.creative_group_id || p.deliverable_id || p.id;
+      const seenKey = `${p.influencer_id}:${groupKey}`;
+      if ((map as any)._seen?.has(seenKey)) continue;
+      if (!(map as any)._seen) (map as any)._seen = new Set<string>();
+      (map as any)._seen.add(seenKey);
       map.set(p.influencer_id, (map.get(p.influencer_id) ?? 0) + 1);
     }
     return map;

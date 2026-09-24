@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Sparkles, CheckCircle2, BadgeCheck, FileSignature, FileVideo } from "lucide-react";
+import { Sparkles, CheckCircle2, BadgeCheck, FileSignature, FileVideo, Plus, X } from "lucide-react";
 import CreatorDraftStep from "@/components/CreatorDraftStep";
 import { toast } from "sonner";
 
@@ -37,6 +37,7 @@ const PublicContestSubmit = () => {
   const [again, setAgain] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
   const [form, setForm] = useState({ post_url: "", submitter_email: params.get("e") ?? "", handle: params.get("h") ?? "" });
+  const [crossPostUrls, setCrossPostUrls] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -90,23 +91,23 @@ const PublicContestSubmit = () => {
     if (!platform) return toast.error("That doesn't look like a TikTok, Instagram, Facebook, YouTube or X link");
     if (creator && !confirmed) return toast.error("Please confirm the post meets the brief");
     setLoading(true);
-    const { data, error } = await supabase.rpc("submit_contest_entry", {
-      _token: token!,
-      _platform: platform,
-      _post_url: form.post_url,
-      _handle: creator ? clean(creator.handle) : form.handle,
-      _submitter_name: creator ? creator.full_name ?? "" : "",
-      _submitter_email: form.submitter_email,
-      _brief_token: creatorToken,
-    });
+    const links = [form.post_url, ...crossPostUrls].filter(Boolean).map((post_url) => ({ post_url, platform: detectPlatform(post_url) }));
+    if (links.some((link) => !link.platform)) { setLoading(false); return toast.error("Check each link is from a supported platform"); }
+    if (new Set(links.map((link) => link.platform)).size !== links.length) { setLoading(false); return toast.error("Add only one link per platform for the same video"); }
+    const { data, error } = await supabase.functions.invoke("submit-crossposts", { body: {
+      token,
+      links,
+      handle: creator ? clean(creator.handle) : form.handle,
+      submitter_name: creator ? creator.full_name ?? "" : "",
+      submitter_email: form.submitter_email,
+      brief_token: creatorToken,
+    }});
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error || (data as any)?.error) return toast.error(typeof (data as any)?.error === "string" ? (data as any).error : error?.message || "Could not submit links");
     // Identified creators get their post registered on the campaign — kick off
     // the metrics pull immediately so the roster updates without waiting for cron.
-    const postId = (data as any)?.post_id;
-    if (postId) {
-      supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } }).catch(() => {});
-    }
+    const postIds = ((data as any)?.post_ids ?? []) as string[];
+    postIds.forEach((postId) => supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } }).catch(() => {}));
     setSubmitted(true);
   };
 
@@ -130,6 +131,7 @@ const PublicContestSubmit = () => {
             className="mt-6"
             onClick={() => {
               setForm({ ...form, post_url: "" });
+              setCrossPostUrls([]);
               setConfirmed(false);
               setSubmitted(false);
               setAgain(again + 1);
@@ -268,10 +270,18 @@ const PublicContestSubmit = () => {
                   "Open your post, tap Share → Copy link, then paste here. We pick up the platform automatically."
                 )}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Cross-posted the same video? Submit one link now, then paste the next platform's link here again — each
-                one counts separately.
-              </p>
+              {crossPostUrls.map((url, index) => (
+                <div key={index} className="flex gap-2 mt-2">
+                  <Input value={url} onChange={(e) => setCrossPostUrls((current) => current.map((item, i) => i === index ? e.target.value : item))} placeholder="Paste another platform link…" className="h-11" />
+                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" aria-label="Remove platform link" onClick={() => setCrossPostUrls((current) => current.filter((_, i) => i !== index))}><X className="w-4 h-4" /></Button>
+                </div>
+              ))}
+              {crossPostUrls.length < 4 && (
+                <Button type="button" variant="ghost" size="sm" className="mt-2" onClick={() => setCrossPostUrls((current) => [...current, ""])}>
+                  <Plus className="w-4 h-4 mr-1.5" /> Add another platform for this video
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">Each platform keeps its own statistics, while this video counts once toward your deliverables.</p>
             </div>
 
             {creator ? (

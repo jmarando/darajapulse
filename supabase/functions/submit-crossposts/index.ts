@@ -89,14 +89,14 @@ Deno.serve(async (req) => {
 
     let postId: string | null = null;
     if (firstEntry.status === "approved" && contest?.campaign_id && firstEntry.influencer_id) {
-      const { data: post, error: postError } = await admin.from("posts").upsert({
+      const { data: post, error: postError } = await admin.from("posts").insert({
         campaign_id: contest.campaign_id,
         influencer_id: firstEntry.influencer_id,
         platform: link.platform,
         post_url: link.post_url,
         status: "live",
         creative_group_id: groupId,
-      }, { onConflict: "campaign_id,influencer_id,post_url" }).select("id").single();
+      }).select("id").single();
       if (postError) return json({ error: postError.message }, 400);
       postId = post?.id ?? null;
     }
