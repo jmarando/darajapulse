@@ -89,7 +89,14 @@ const PublicDraftReview = () => {
     });
     setBusy(null);
     if (err || (res as any)?.error) return toast.error((res as any)?.error || "Something went wrong");
-    toast.success(decision === "approved" ? "Approved" : "Sent back to the creator");
+    const notification = (res as any)?.notification;
+    if (notification === "queued") {
+      toast.success(decision === "approved" ? "Approved — creator email queued" : "Sent back — creator email queued");
+    } else if (notification === "missing_email") {
+      toast.warning(decision === "approved" ? "Approved, but this creator has no email address" : "Changes saved, but this creator has no email address");
+    } else {
+      toast.error(decision === "approved" ? "Approved, but the creator email could not be queued" : "Changes saved, but the creator email could not be queued");
+    }
     load();
   };
 

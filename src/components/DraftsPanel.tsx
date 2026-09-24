@@ -124,10 +124,10 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     decision: "approved" | "changes_requested",
     note: string,
     reviewer: string,
-  ) => {
+  ): Promise<"queued" | "missing_email" | "failed"> => {
     try {
       const influencerId = (d as any).influencer_id as string | null;
-      if (!influencerId) return;
+      if (!influencerId) return "missing_email";
       const [{ data: inf }, { data: camp }, { data: ci }] = await Promise.all([
         supabase.from("influencers").select("full_name, email").eq("id", influencerId).maybeSingle(),
         supabase.from("campaigns").select("name, hashtag").eq("id", campaignId).maybeSingle(),
@@ -139,8 +139,8 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
           .maybeSingle(),
       ]);
       const email = (inf as any)?.email as string | undefined;
-      if (!email) return;
-      await supabase.functions.invoke("send-transactional-email", {
+      if (!email) return "missing_email";
+      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
         body: {
           templateName: "royco-draft-decision",
           recipientEmail: email,
@@ -160,8 +160,9 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
           },
         },
       });
+      return !error && (data as any)?.success ? "queued" : "failed";
     } catch {
-      /* non-blocking */
+      return "failed";
     }
   };
 
@@ -183,8 +184,14 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       .eq("id", d.id);
     setBusy(null);
     if (error) return toast.error(error.message);
-    await notifyCreator(d, decision, note, user?.email ?? "the team");
-    toast.success(decision === "approved" ? "Approved — the creator has been emailed and can post" : "Sent back for changes — the creator has been emailed");
+    const notification = await notifyCreator(d, decision, note, user?.email ?? "the team");
+    if (notification === "queued") {
+      toast.success(decision === "approved" ? "Approved — creator email queued" : "Changes requested — creator email queued");
+    } else if (notification === "missing_email") {
+      toast.warning(decision === "approved" ? "Approved, but this creator has no email address" : "Changes saved, but this creator has no email address");
+    } else {
+      toast.error(decision === "approved" ? "Approved, but the creator email could not be queued" : "Changes saved, but the creator email could not be queued");
+    }
     load();
   };
 
