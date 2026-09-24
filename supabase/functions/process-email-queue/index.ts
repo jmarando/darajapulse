@@ -7,76 +7,6 @@ const DEFAULT_SEND_DELAY_MS = 200
 const DEFAULT_AUTH_TTL_MINUTES = 15
 const DEFAULT_TRANSACTIONAL_TTL_MINUTES = 60
 
-// ---- Resend delivery path -------------------------------------------------
-// When RESEND_API_KEY is present we deliver through the Resend connector
-// gateway instead of the Lovable managed send path.
-const RESEND_GATEWAY_URL = 'https://connector-gateway.lovable.dev/resend'
-
-class ResendSendError extends Error {
-  status: number
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
-
-// Only senders on domains verified in Resend may be used.
-const VERIFIED_SENDER_DOMAINS = ['darajapulse.com', 'mail.darajapulse.com']
-const DEFAULT_FROM = 'Daraja Pulse <notifications@darajapulse.com>'
-
-function resolveFrom(requested?: string): string {
-  if (!requested) return DEFAULT_FROM
-  const match = requested.match(/<([^>]+)>/) || requested.match(/([^\s<>]+@[^\s<>]+)/)
-  const address = match?.[1]?.trim().toLowerCase()
-  const domain = address?.split('@')[1]
-  if (!domain || !VERIFIED_SENDER_DOMAINS.includes(domain)) {
-    console.warn('Unverified sender requested — falling back to default', { requested })
-    return DEFAULT_FROM
-  }
-  return requested
-}
-
-async function sendViaResend(payload: {
-  to: string
-  subject: string
-  html?: string
-  text?: string
-  from?: string
-  reply_to?: string
-}): Promise<void> {
-  const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')
-  const resendApiKey = Deno.env.get('RESEND_API_KEY')
-  if (!lovableApiKey || !resendApiKey) {
-    throw new Error('Resend credentials are not configured')
-  }
-
-  const from = resolveFrom(payload.from)
-  const replyTo = payload.reply_to || Deno.env.get('RESEND_REPLY_TO') || undefined
-
-  const res = await fetch(`${RESEND_GATEWAY_URL}/emails`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${lovableApiKey}`,
-      'X-Connection-Api-Key': resendApiKey,
-    },
-    body: JSON.stringify({
-      from,
-      to: [payload.to],
-      subject: payload.subject,
-      ...(payload.html ? { html: payload.html } : {}),
-      ...(payload.text ? { text: payload.text } : {}),
-      ...(replyTo ? { reply_to: replyTo } : {}),
-    }),
-  })
-
-  if (!res.ok) {
-    const body = await res.text()
-    console.error(`Resend send failed [${res.status}]: ${body}`)
-    throw new ResendSendError(res.status, `Resend ${res.status}: ${body}`.slice(0, 1000))
-  }
-}
-
 // Check if an error is a rate-limit (429) response.
 // Uses EmailAPIError.status when available (email-js >=0.x with structured errors),
 // falls back to parsing the error message for older versions.
@@ -144,7 +74,7 @@ async function moveToDlq(
     payload,
   })
   if (error) {
-    console.error('Failed to move message to DLQ', { queue, msg_id: msg.msg_id, reason, error })
+    console.error('Failed to move message to DLQ', { queue, msg_id: msg.msg_id, reason, code: error.code, message: error.message })
   }
 }
 
@@ -214,7 +144,7 @@ Deno.serve(async (req) => {
     })
 
     if (readError) {
-      console.error('Failed to read email batch', { queue, error: readError })
+      console.error('Failed to read email batch', { queue, code: readError.code, message: readError.message })
       continue
     }
 
@@ -245,7 +175,8 @@ Deno.serve(async (req) => {
       if (failedRowsError) {
         console.error('Failed to load failed-attempt counters', {
           queue,
-          error: failedRowsError,
+          code: failedRowsError.code,
+          message: failedRowsError.message,
         })
       } else {
         for (const row of failedRows ?? []) {
@@ -312,41 +243,33 @@ Deno.serve(async (req) => {
             message_id: msg.msg_id,
           })
           if (dupDelError) {
-            console.error('Failed to delete duplicate message from queue', { queue, msg_id: msg.msg_id, error: dupDelError })
+            console.error('Failed to delete duplicate message from queue', { queue, msg_id: msg.msg_id, code: dupDelError.code, message: dupDelError.message })
           }
           continue
         }
       }
 
       try {
-        if (Deno.env.get('RESEND_API_KEY')) {
-          await sendViaResend({
-            to: payload.to as string,
-            subject: payload.subject as string,
-            html: payload.html as string | undefined,
-            text: payload.text as string | undefined,
-            from: payload.from as string | undefined,
-            reply_to: payload.reply_to as string | undefined,
-          })
-        } else {
-          await sendLovableEmail(
-            {
-              run_id: payload.run_id,
-              to: payload.to,
-              from: payload.from,
-              sender_domain: payload.sender_domain,
-              subject: payload.subject,
-              html: payload.html,
-              text: payload.text,
-              purpose: payload.purpose,
-              label: payload.label,
-              idempotency_key: payload.idempotency_key,
-              unsubscribe_token: payload.unsubscribe_token,
-              message_id: payload.message_id,
-            },
-            { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
-          )
-        }
+        await sendLovableEmail(
+          {
+            run_id: payload.run_id,
+            to: payload.to,
+            from: payload.from,
+            sender_domain: payload.sender_domain,
+            subject: payload.subject,
+            html: payload.html,
+            text: payload.text,
+            purpose: payload.purpose,
+            label: payload.label,
+            idempotency_key: payload.idempotency_key,
+            unsubscribe_token: payload.unsubscribe_token,
+            message_id: payload.message_id,
+          },
+          // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
+          // falls back to the default Lovable API endpoint (https://api.lovable.dev).
+          // Set LOVABLE_SEND_URL as a Supabase secret to override (e.g. for local dev).
+          { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
+        )
 
         // Log success
         await supabase.from('email_send_log').insert({
@@ -362,7 +285,7 @@ Deno.serve(async (req) => {
           message_id: msg.msg_id,
         })
         if (delError) {
-          console.error('Failed to delete sent message from queue', { queue, msg_id: msg.msg_id, error: delError })
+          console.error('Failed to delete sent message from queue', { queue, msg_id: msg.msg_id, code: delError.code, message: delError.message })
         }
         totalProcessed++
       } catch (error) {
