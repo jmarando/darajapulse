@@ -20,6 +20,7 @@ import { template as roycoKickoffInvite } from './royco-kickoff-invite.tsx'
 import { template as roycoLastTraining } from './royco-last-training.tsx'
 import { template as roycoBriefLive } from './royco-brief-live.tsx'
 import { template as roycoDraftDecision } from './royco-draft-decision.tsx'
+import { template as omoBriefLive } from './omo-brief-live.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'contest-daily-summary': contestDailySummary,
@@ -33,4 +34,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'royco-last-training': roycoLastTraining,
   'royco-brief-live': roycoBriefLive,
   'royco-draft-decision': roycoDraftDecision,
+  'omo-brief-live': omoBriefLive,
 }
