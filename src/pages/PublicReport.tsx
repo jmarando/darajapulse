@@ -76,7 +76,7 @@ const PublicReport = () => {
       return { ...p, metrics: peak, history: list };
     });
     setPosts(grouped);
-    const INFLUENCER_PUBLIC_COLS = "id, full_name, handle, primary_platform, niche, region, follower_count, engagement_rate, avg_cpm_kes, audience_kenya_pct, authenticity_score, avatar_url, alt_handles, demo_source";
+    const INFLUENCER_PUBLIC_COLS = "id, full_name, handle, primary_platform, niche, region, follower_count, engagement_rate, avg_cpm_kes, audience_kenya_pct, authenticity_score, avatar_url, alt_handles";
     const ENTRY_PUBLIC_COLS = "id, contest_id, influencer_id, platform, post_url, handle, caption, thumbnail_url, posted_at, views, likes, comments, shares, saves, score, round_number, status, source, submitter_name, full_name, instagram_handle, tiktok_handle, facebook_handle, cross_posts, metadata, created_at";
     const { data: ci } = await supabase.from("campaign_influencers").select(`*, influencers(${INFLUENCER_PUBLIC_COLS})`).eq("campaign_id", link.campaign_id);
     setInfluencers(ci ?? []);
