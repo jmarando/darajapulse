@@ -101,7 +101,7 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
   }, [posts, latestByPost]);
 
   const finalize = async (row: typeof rows[number]) => {
-    if (row.provisional) return toast.error(fixedFee ? "All agreed videos must be approved before finalising the full payment." : "Refresh all of this creator’s post statistics before finalising payment.");
+    if (row.provisional) return toast.error(fixedFee ? "All agreed videos must be approved and posted before finalising the full payment." : "Refresh all of this creator’s post statistics before finalising payment.");
     setBusy(row.item.id);
     const { error } = await supabase.from("payouts").insert({
       campaign_id: campaignId,
@@ -161,7 +161,7 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-border text-[10px] uppercase tracking-widest text-muted-foreground">
-             <th className="px-4 py-3 text-left">Creator</th><th className="px-3 py-3 text-left">{fixedFee ? "Agreement" : "Best reel"}</th><th className="px-3 py-3 text-right">{fixedFee ? "Approved / due" : "Views / reach"}</th><th className="px-3 py-3 text-right">Gross</th><th className="px-3 py-3 text-right">WHT</th><th className="px-3 py-3 text-right">Net</th><th className="px-4 py-3 text-right">Payment</th>
+              <th className="px-4 py-3 text-left">Creator</th><th className="px-3 py-3 text-left">{fixedFee ? "Agreement" : "Best reel"}</th><th className="px-3 py-3 text-right">{fixedFee ? "Posted / due" : "Views / reach"}</th><th className="px-3 py-3 text-right">Gross</th><th className="px-3 py-3 text-right">WHT</th><th className="px-3 py-3 text-right">Net</th><th className="px-4 py-3 text-right">Payment</th>
           </tr></thead>
           <tbody>{rows.map((row) => <tr key={row.item.id} className="border-b border-border last:border-0">
              <td className="px-4 py-3"><div className="font-medium">{row.item.influencers?.full_name}</div><div className="text-xs text-muted-foreground">{fixedFee ? `${row.creatorPosts.length} publication(s)` : `${row.creatorPosts.length} publication${row.creatorPosts.length === 1 ? "" : "s"}`}</div></td>
