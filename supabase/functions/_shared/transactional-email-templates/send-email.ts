@@ -11,9 +11,9 @@ const SITE_NAME = "Daraja Pulse"
 // SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
 // It MUST match the subdomain delegated to Lovable's nameservers. NEVER use the root domain.
 const SENDER_DOMAIN = "notify.darajapulse.com"
-// FROM_DOMAIN is the domain shown in the From: header (e.g., "example.com").
-// Can be the root domain when display_from_root is enabled — this is cosmetic only.
-const FROM_DOMAIN = "darajapulse.com"
+// The current sending route requires the visible From address to use the
+// delegated sender domain as well.
+const FROM_DOMAIN = "notify.darajapulse.com"
 
 export type SendTemplateEmailResult =
   | { sent: true }

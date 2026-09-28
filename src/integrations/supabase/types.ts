@@ -3565,20 +3565,11 @@ export type Database = {
         Args: { _from: string; _to: string }
         Returns: Json
       }
-      delete_email: {
-        Args: { message_id: number; queue_name: string }
-        Returns: boolean
-      }
       detach_post_to_own_deliverable: {
         Args: { _post_id: string }
         Returns: string
       }
-      email_queue_dispatch: { Args: never; Returns: undefined }
       enforce_billing_status: { Args: never; Returns: undefined }
-      enqueue_email: {
-        Args: { payload: Json; queue_name: string }
-        Returns: number
-      }
       get_agency_team: {
         Args: never
         Returns: {
@@ -3698,23 +3689,6 @@ export type Database = {
       merge_posts_into_deliverable: {
         Args: { _post_ids: string[]; _target_deliverable_id?: string }
         Returns: string
-      }
-      move_to_dlq: {
-        Args: {
-          dlq_name: string
-          message_id: number
-          payload: Json
-          source_queue: string
-        }
-        Returns: number
-      }
-      read_email_batch: {
-        Args: { batch_size: number; queue_name: string; vt: number }
-        Returns: {
-          message: Json
-          msg_id: number
-          read_ct: number
-        }[]
       }
       refresh_deliverable_suggestions: {
         Args: { _campaign_id: string }

@@ -57,7 +57,9 @@ export async function sendAppEmail(input: AppEmailInput): Promise<AppEmailResult
   const subject = typeof template.subject === 'function' ? template.subject(data) : template.subject
 
   const rawFrom = (input.from || '').trim()
-  const from = rawFrom && domainOf(rawFrom).endsWith('darajapulse.com') ? rawFrom : `${SITE_NAME} <noreply@${FROM_DOMAIN}>`
+  // The managed sender accepts only the delegated sending subdomain. The old
+  // root-domain check also admitted @darajapulse.com, which the API rejects.
+  const from = rawFrom && domainOf(rawFrom) === SENDER_DOMAIN ? rawFrom : `${SITE_NAME} <noreply@${FROM_DOMAIN}>`
   const rawReply = (input.replyTo || '').trim()
   const replyTo = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rawReply) ? rawReply : undefined
 
