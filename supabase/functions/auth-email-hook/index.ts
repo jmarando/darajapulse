@@ -18,7 +18,7 @@ const corsHeaders = {
 const SITE_NAME = "Daraja Pulse"
 const SENDER_DOMAIN = "notify.darajapulse.com"
 const ROOT_DOMAIN = "darajapulse.com"
-const FROM_DOMAIN = "darajapulse.com"
+const FROM_DOMAIN = "notify.darajapulse.com"
 const SITE_URL = `https://${ROOT_DOMAIN}`
 
 // Template mapping for preview mode
