@@ -67,7 +67,7 @@ const OmoBriefLive = ({
           </Section>
           <Hr style={bar} />
           <Section style={bodyPad}>
-            <Heading style={h1}>Karibu {greeting_name}, here's everything you need to start</Heading>
+            <Heading style={h1}>Hello {greeting_name}, here's everything you need to start</Heading>
             <Text style={text}>
               Welcome to the <strong>{campaign_name}</strong>. Your personal brief page is open: the creative brief,
               your agreement to sign, and your own link for submitting each video.
