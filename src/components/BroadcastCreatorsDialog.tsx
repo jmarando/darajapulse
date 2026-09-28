@@ -71,7 +71,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
   // Brief-live tab state
   const [blFirstPost, setBlFirstPost] = useState("");
   const [blNote, setBlNote] = useState("");
-  const [blAudience, setBlAudience] = useState<"rsvp" | "all" | "pick">("all");
+  const [blAudience, setBlAudience] = useState<"rsvp" | "all" | "pick">("rsvp");
   const [blPicked, setBlPicked] = useState("");
   const [blPreviewHtml, setBlPreviewHtml] = useState<string | null>(null);
   const [blPreviewSubject, setBlPreviewSubject] = useState("");
@@ -93,7 +93,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
       const e = (r.email || "").trim().toLowerCase();
       if (e && !byEmail.has(e)) byEmail.set(e, r);
     });
-    return clean.map((e) => ({
+      return clean.map((e) => ({
       email: e,
       name: byEmail.get(e)?.name ?? null,
       briefToken: byEmail.get(e)?.briefToken ?? null,
@@ -431,9 +431,11 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
   const blSendTest = async () => {
     const to = blTestEmail.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
+    if (!blRecipients[0] || !blBriefUrl(blRecipients[0].briefToken) || !token) return toast.error("Choose a creator with a personal brief and submission link first.");
+    if (brand.kind === "omo" && (blRecipients[0].fee == null || !blRecipients[0].videos)) return toast.error("This creator needs a contract fee and video count first.");
     setBlTesting(true);
     try {
-      const sample = blRecipients[0] ?? { name: "Test", briefToken: "sample-token" };
+      const sample = blRecipients[0];
       const { error } = await supabase.functions.invoke("send-transactional-email", {
         body: {
            templateName: brand.briefTemplate,
@@ -458,6 +460,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     if (missing) {
       return toast.error(`${missing} creator(s) have no personal brief link. Add their links before sending.`);
     }
+    if (!token) return toast.error("This campaign has no active submission link yet.");
     if (brand.kind === "omo" && blRecipients.some((r) => r.fee == null || !r.videos)) return toast.error("Each OMO creator needs a fee and video count before sending.");
     setBlSending(true);
     setBlProgress({ done: 0, total: blRecipients.length });
