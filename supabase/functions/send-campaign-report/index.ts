@@ -1,5 +1,5 @@
 // send-campaign-report
-// Aggregates campaign/contest data and dispatches a branded email via send-transactional-email.
+// Aggregates campaign/contest data and dispatches a branded email via the managed app email helper.
 // Body: { campaign_id, report_type, contest_id?, test_email?, recipient_email? }
 //   - test_email   : send only to that address with a [TEST] marker
 //   - recipient_email : (internal, called by scheduler) send to one recipient

@@ -142,7 +142,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       const email = (inf as any)?.email as string | undefined;
       if (!email) return "missing_email";
       const brand = resolveCampaignBrand((camp as any)?.name ?? "", (camp as any)?.clients?.name);
-      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+      const { data, error } = await supabase.functions.invoke("app-email", {
         body: {
           templateName: brand.decisionTemplate,
           recipientEmail: email,

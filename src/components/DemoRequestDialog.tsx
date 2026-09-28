@@ -55,7 +55,7 @@ export default function DemoRequestDialog({
 
       // Fire-and-forget notification email; don't block the success state on it.
       supabase.functions
-        .invoke("send-transactional-email", {
+        .invoke("app-email", {
           body: {
             templateName: "demo-request",
             recipientEmail: "justin@glab.africa",
