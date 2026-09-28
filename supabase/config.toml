@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.app-email]
 verify_jwt = true
+
+[functions.handle-email-events]
+verify_jwt = false
