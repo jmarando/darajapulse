@@ -26,7 +26,7 @@ const money = (value: number) => `KES ${Math.round(value).toLocaleString()}`;
 const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signatures, posts, metrics, whtPercent, onRefreshMetrics }: Props) => {
   const fixedFee = resolveCampaignBrand(campaignName, clientName).kind === "omo";
   const [payouts, setPayouts] = useState<any[]>([]);
-  const [approvedDrafts, setApprovedDrafts] = useState<{ id: string; influencer_id: string | null }[]>([]);
+  const [approvedDrafts, setApprovedDrafts] = useState<{ id: string; influencer_id: string | null; post_url: string | null }[]>([]);
   const [draftsReady, setDraftsReady] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -40,7 +40,7 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
     if (!fixedFee) return;
     let active = true;
     setDraftsReady(false);
-    supabase.from("creator_drafts").select("id, influencer_id").eq("campaign_id", campaignId).eq("status", "approved")
+    supabase.from("creator_drafts").select("id, influencer_id, post_url").eq("campaign_id", campaignId).eq("status", "approved")
       .then(({ data, error }) => {
         if (!active) return;
         if (error) toast.error("Could not load approved videos: " + error.message);
@@ -73,7 +73,7 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
     const bestPerformance = Math.max(Number(bestMetric?.views || 0), Number(bestMetric?.reach || 0));
     const agreedFee = Number(item.fee_kes);
     const target = Number(item.deliverables_count);
-    const approvedCount = approvedDrafts.filter((draft) => draft.influencer_id === item.influencer_id).length;
+    const approvedCount = approvedDrafts.filter((draft) => draft.influencer_id === item.influencer_id && draft.post_url).length;
     const validAgreement = Number.isFinite(agreedFee) && agreedFee > 0 && Number.isInteger(target) && target > 0;
     const credited = validAgreement ? Math.min(approvedCount, target) : 0;
     const gross = fixedFee ? (validAgreement ? Math.round((agreedFee * credited / target) * 100) / 100 : 0) : contractGrossForViews(bestPerformance);
@@ -141,18 +141,18 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
   return <div className="space-y-5">
     <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
       <div className="bg-card p-4"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Signed creators</div><div className="font-display text-2xl mt-1">{rows.length}</div></div>
-      <div className="bg-card p-4"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Projected gross</div><div className="font-display text-2xl mt-1">{money(totals.gross)}</div></div>
+        <div className="bg-card p-4"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">{fixedFee ? "Earned gross" : "Projected gross"}</div><div className="font-display text-2xl mt-1">{money(totals.gross)}</div></div>
       <div className="bg-card p-4"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Withholding tax</div><div className="font-display text-2xl mt-1">{money(totals.wht)}</div></div>
-      <div className="bg-card p-4"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Projected net</div><div className="font-display text-2xl mt-1">{money(totals.net)}</div></div>
+        <div className="bg-card p-4"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">{fixedFee ? "Earned net" : "Projected net"}</div><div className="font-display text-2xl mt-1">{money(totals.net)}</div></div>
     </div>
 
     <Card className="p-5 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Statistics health</div>
-        {fixedFee ? <><div className="text-sm mt-1">{approvedDrafts.length} approved videos</div><p className="text-xs text-muted-foreground mt-1">Each creator earns their agreed fee in equal parts per approved video, up to their agreed number of Reels. 5% withholding applies. Full payment can be finalised once all videos are approved.</p></> : <><div className="text-sm mt-1">{coverage.current} current · {coverage.never} never synced · latest {coverage.latest ? new Date(coverage.latest).toLocaleString() : "unavailable"}</div><p className="text-xs text-muted-foreground mt-1">Payments use each creator’s single best reel by views or reach. Cross-posted platforms are not added together.</p></>}
+         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{fixedFee ? "Delivery status" : "Statistics health"}</div>
+        {fixedFee ? <><div className="text-sm mt-1">{approvedDrafts.filter((draft) => draft.post_url).length} approved, posted videos</div><p className="text-xs text-muted-foreground mt-1">Each creator earns their agreed fee in equal parts per approved and posted video, up to their agreed number of Reels. 5% withholding applies. Full payment can be finalised once all videos are delivered.</p></> : <><div className="text-sm mt-1">{coverage.current} current · {coverage.never} never synced · latest {coverage.latest ? new Date(coverage.latest).toLocaleString() : "unavailable"}</div><p className="text-xs text-muted-foreground mt-1">Payments use each creator’s single best reel by views or reach. Cross-posted platforms are not added together.</p></>}
       </div>
       <div className="flex gap-2">
-        {fixedFee ? <Button variant="outline" size="sm" onClick={() => { setDraftsReady(false); supabase.from("creator_drafts").select("id, influencer_id").eq("campaign_id", campaignId).eq("status", "approved").then(({ data, error }) => { if (error) toast.error(error.message); else { setApprovedDrafts(data ?? []); setDraftsReady(true); } }); }}><RefreshCw className="w-4 h-4 mr-2" /> Refresh approvals</Button> : <Button variant="outline" size="sm" onClick={() => void onRefreshMetrics()}><RefreshCw className="w-4 h-4 mr-2" /> Refresh statistics</Button>}
+        {fixedFee ? <Button variant="outline" size="sm" onClick={() => { setDraftsReady(false); supabase.from("creator_drafts").select("id, influencer_id, post_url").eq("campaign_id", campaignId).eq("status", "approved").then(({ data, error }) => { if (error) toast.error(error.message); else { setApprovedDrafts(data ?? []); setDraftsReady(true); } }); }}><RefreshCw className="w-4 h-4 mr-2" /> Refresh deliveries</Button> : <Button variant="outline" size="sm" onClick={() => void onRefreshMetrics()}><RefreshCw className="w-4 h-4 mr-2" /> Refresh statistics</Button>}
         <Button variant="outline" size="sm" onClick={exportCsv}><Download className="w-4 h-4 mr-2" /> Export CSV</Button>
       </div>
     </Card>

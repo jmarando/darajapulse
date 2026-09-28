@@ -51,7 +51,7 @@ const OmoBriefLive = ({
   hashtag = '#FearlessCleanUp',
   videos = 4,
   fee,
-  first_post_by = 'the first week of October',
+  first_post_by,
   rsvp_email,
   custom_note,
 }: Props) => (
@@ -94,7 +94,7 @@ const OmoBriefLive = ({
             <Text style={text}>
               {videos} Reels over the campaign, cross-posted on your active platforms plus stories, tagging OMO and using{' '}
               <strong>{hashtag}</strong>. Every video must be approved before it goes live and stay up for the whole
-              campaign. Aim to submit your first video by <strong>{first_post_by}</strong>.
+              campaign.{first_post_by ? <> Aim to submit your first video by <strong>{first_post_by}</strong>.</> : null}
             </Text>
             <Text style={h2}>How you get paid</Text>
             <Text style={text}>
