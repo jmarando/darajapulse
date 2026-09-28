@@ -5,7 +5,7 @@ describe("campaign email brand resolution", () => {
   it("routes OMO separately from its Unilever sister brand", () => {
     const omo = resolveCampaignBrand("OMO Q4 Nano Influencer Campaign", "Unilever - OMO");
     expect(omo.briefTemplate).toBe("omo-brief-live");
-    expect(omo.from).toContain("omo@darajapulse.com");
+    expect(omo.from).toContain("omo@notify.darajapulse.com");
     expect(omo.replyTo).toBe("omo@reply.darajapulse.com");
     expect(omo.accent).toBe("#0033A0");
   });
@@ -18,7 +18,7 @@ describe("campaign email brand resolution", () => {
     const brand = resolveCampaignBrand("Finance Q4", "PesaLink");
     expect(brand.briefTemplate).toBe("campaign-brief-live");
     expect(brand.decisionTemplate).toBe("campaign-draft-decision");
-    expect(brand.from).toContain("campaigns@darajapulse.com");
+    expect(brand.from).toContain("campaigns@notify.darajapulse.com");
     expect(brand.name).toBe("PesaLink");
   });
 });
