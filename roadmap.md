@@ -5,3 +5,5 @@
 - [x] Verify and expose metric refresh coverage
 - [x] Add contract-scale Payments tab with finalization and CSV
 - [x] Validate build, tests, and key browser flows
+- [x] Route campaign invitations and draft decisions by brand without changing ongoing campaigns
+- [x] Calculate OMO contracted fees by approved videos instead of Royco's view tiers

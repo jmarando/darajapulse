@@ -12,6 +12,7 @@ interface Props {
   fee?: string
   first_post_by?: string
   rsvp_email?: string
+  custom_note?: string
 }
 
 const BLUE = '#0033A0'
@@ -50,8 +51,9 @@ const OmoBriefLive = ({
   hashtag = '#FearlessCleanUp',
   videos = 4,
   fee,
-  first_post_by = 'the first week of October',
+  first_post_by,
   rsvp_email,
+  custom_note,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -65,7 +67,7 @@ const OmoBriefLive = ({
           </Section>
           <Hr style={bar} />
           <Section style={bodyPad}>
-            <Heading style={h1}>Karibu {greeting_name}, here's everything you need to start</Heading>
+            <Heading style={h1}>Hello {greeting_name}, here's everything you need to start</Heading>
             <Text style={text}>
               Welcome to the <strong>{campaign_name}</strong>. Your personal brief page is open: the creative brief,
               your agreement to sign, and your own link for submitting each video.
@@ -92,7 +94,7 @@ const OmoBriefLive = ({
             <Text style={text}>
               {videos} Reels over the campaign, cross-posted on your active platforms plus stories, tagging OMO and using{' '}
               <strong>{hashtag}</strong>. Every video must be approved before it goes live and stay up for the whole
-              campaign. Aim to submit your first video by <strong>{first_post_by}</strong>.
+              campaign.{first_post_by ? <> Aim to submit your first video by <strong>{first_post_by}</strong>.</> : null}
             </Text>
             <Text style={h2}>How you get paid</Text>
             <Text style={text}>
@@ -100,6 +102,7 @@ const OmoBriefLive = ({
               paid per approved and posted video, less 5% withholding tax. Payment follows your E-TIMS invoice and
               campaign report.
             </Text>
+            {custom_note ? <Text style={text}>{custom_note}</Text> : null}
             <Hr style={{ border: 'none', borderTop: `1px solid ${BORDER}`, margin: '24px 0 16px' }} />
             <Text style={small}>
               Stuck on anything? Just reply to this email{rsvp_email ? <> (it reaches the team at <strong>{rsvp_email}</strong>)</> : null} and we'll help.

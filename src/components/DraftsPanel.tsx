@@ -11,6 +11,7 @@ import { Check, Copy, Download, ExternalLink, FileVideo, MessageSquareWarning, R
 import { toast } from "sonner";
 import { downloadFile } from "@/lib/downloadFile";
 import { DraftVideo } from "@/components/DraftVideo";
+import { resolveCampaignBrand } from "../../supabase/functions/_shared/campaign-brand";
 
 
 type Draft = {
@@ -130,7 +131,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       if (!influencerId) return "missing_email";
       const [{ data: inf }, { data: camp }, { data: ci }] = await Promise.all([
         supabase.from("influencers").select("full_name, email").eq("id", influencerId).maybeSingle(),
-        supabase.from("campaigns").select("name, hashtag").eq("id", campaignId).maybeSingle(),
+        supabase.from("campaigns").select("name, hashtag, clients(name)").eq("id", campaignId).maybeSingle(),
         supabase
           .from("campaign_influencers")
           .select("brief_token")
@@ -140,16 +141,20 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       ]);
       const email = (inf as any)?.email as string | undefined;
       if (!email) return "missing_email";
+      const brand = resolveCampaignBrand((camp as any)?.name ?? "", (camp as any)?.clients?.name);
       const { data, error } = await supabase.functions.invoke("send-transactional-email", {
         body: {
-          templateName: "royco-draft-decision",
+          templateName: brand.decisionTemplate,
           recipientEmail: email,
-          from: "Royco x Daraja Pulse <royco@reply.darajapulse.com>",
-          replyTo: "royco@reply.darajapulse.com",
+          from: brand.from,
+          replyTo: brand.replyTo,
           idempotencyKey: `draftdecision-${d.id}-${decision}-${Date.now()}`,
           templateData: {
             greeting_name: ((inf as any)?.full_name || "").split(" ")[0] || "there",
             campaign_name: (camp as any)?.name || undefined,
+            brand_name: brand.name,
+            accent: brand.accent,
+            secondary: brand.secondary,
             decision,
             review_note: note || undefined,
             reviewer_label: reviewer,

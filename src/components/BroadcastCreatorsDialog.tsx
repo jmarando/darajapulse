@@ -10,15 +10,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Mail, Send, Sparkles, Loader2, Eye, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { resolveCampaignBrand } from "../../supabase/functions/_shared/campaign-brand";
 
-// Sender identity for Royco creator comms. Must stay on the verified darajapulse.com domain.
-const ROYCO_FROM = "Royco x Daraja Pulse <royco@darajapulse.com>";
-
-type Recipient = { email: string; name?: string | null; briefToken?: string | null; influencerId?: string | null };
+type Recipient = { email: string; name?: string | null; briefToken?: string | null; influencerId?: string | null; fee?: number | null; videos?: number | null };
 
 type Props = {
   campaignId: string;
   campaignName: string;
+  clientName?: string | null;
   emails: string[];
   recipients?: Recipient[];
   hashtag?: string | null;
@@ -28,7 +27,9 @@ type Props = {
 
 const BATCH = 80;
 
-export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, recipients, hashtag, briefBase }: Props) => {
+export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, emails, recipients, hashtag, briefBase }: Props) => {
+  const brand = resolveCampaignBrand(campaignName, clientName);
+  const isRoyco = brand.kind === "royco";
 
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -36,20 +37,20 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [body, setBody] = useState("");
 
   // Kick-off invite state
-  const [meetingDay, setMeetingDay] = useState("Tuesday 26 August");
-  const [meetingTime, setMeetingTime] = useState("5:00 – 6:30 PM EAT");
-  const [meetingLink, setMeetingLink] = useState("https://teams.microsoft.com/meet/336068736223252?p=zyx6Rhg5jNTRIqUmUq");
+  const [meetingDay, setMeetingDay] = useState("");
+  const [meetingTime, setMeetingTime] = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
   const [note, setNote] = useState("");
 
   // Last-chance training state
-  const [ltDay, setLtDay] = useState("Friday 28 August");
-  const [ltTime, setLtTime] = useState("11:00 AM EAT");
-  const [ltLink, setLtLink] = useState("https://teams.microsoft.com/meet/393508750581228?p=5nHcEwHC3C0WzsfW1v");
+  const [ltDay, setLtDay] = useState("");
+  const [ltTime, setLtTime] = useState("");
+  const [ltLink, setLtLink] = useState("");
   const [ltNote, setLtNote] = useState("");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
-  const [replyTo, setReplyTo] = useState("royco@reply.darajapulse.com");
+  const replyTo = brand.replyTo;
 
   // Preview + test send (kick-off tab)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -68,7 +69,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const [ltProgress, setLtProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Brief-live tab state
-  const [blFirstPost, setBlFirstPost] = useState("Sunday 7 September");
+  const [blFirstPost, setBlFirstPost] = useState("");
   const [blNote, setBlNote] = useState("");
   const [blAudience, setBlAudience] = useState<"rsvp" | "all" | "pick">("rsvp");
   const [blPicked, setBlPicked] = useState("");
@@ -92,10 +93,12 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
       const e = (r.email || "").trim().toLowerCase();
       if (e && !byEmail.has(e)) byEmail.set(e, r);
     });
-    return clean.map((e) => ({
+      return clean.map((e) => ({
       email: e,
       name: byEmail.get(e)?.name ?? null,
       briefToken: byEmail.get(e)?.briefToken ?? null,
+        fee: byEmail.get(e)?.fee ?? null,
+        videos: byEmail.get(e)?.videos ?? null,
     }));
   }, [clean, recipients]);
 
@@ -129,7 +132,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     if (blAudience === "rsvp") return namedRecipients.filter((r) => rsvpYes.has(r.email));
     if (blAudience === "pick") {
       const known = new Map(namedRecipients.map((r) => [r.email, r]));
-      return blPickedEmails.map((e) => known.get(e) ?? { email: e, name: null, briefToken: null });
+      return blPickedEmails.map((e) => known.get(e)).filter((r): r is (typeof namedRecipients)[number] => Boolean(r));
     }
     return namedRecipients;
   }, [blAudience, namedRecipients, rsvpYes, blPickedEmails]);
@@ -162,7 +165,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   useEffect(() => {
     if (!open || body) return;
     setBody(
-      `Hi,\n\nQuick update on ${campaignName}.\n\n• Post 4 videos a month${hashtag ? `, always using ${hashtag}` : ""}.\n• After each post goes live, submit the link here so it's tracked:\n${submitUrl || "(submission link)"}\n\nAsante,\nDaraja Pulse`
+      `Hi,\n\nQuick update on ${campaignName}.\n\nPlease check your personal agreement for your deliverables and submit approved live links here:\n${submitUrl || "(submission link)"}\n\nAsante,\nDaraja Pulse`
     );
   }, [open, submitUrl, campaignName, hashtag, body]);
 
@@ -259,8 +262,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
         body: {
           templateName: "royco-kickoff-invite",
           recipientEmail: to,
-          from: ROYCO_FROM,
-          replyTo: replyTo.trim() || undefined,
+           from: brand.from,
+           replyTo: replyTo,
           idempotencyKey: `kickoff-test-${campaignId}-${to}-${Date.now()}`,
           templateData: templateData("Test"),
         },
@@ -288,8 +291,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
           body: {
             templateName: "royco-kickoff-invite",
             recipientEmail: r.email,
-            from: ROYCO_FROM,
-            replyTo: replyTo.trim() || undefined,
+             from: brand.from,
+             replyTo: replyTo,
             idempotencyKey: `kickoff-${campaignId}-${r.email}`,
             templateData: {
               greeting_name: (r.name || "").split(" ")[0] || "there",
@@ -339,8 +342,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
         body: {
           templateName: "royco-last-training",
           recipientEmail: to,
-          from: ROYCO_FROM,
-          replyTo: replyTo.trim() || undefined,
+           from: brand.from,
+           replyTo: replyTo,
           idempotencyKey: `lasttraining-test-${campaignId}-${to}-${Date.now()}`,
           templateData: ltTemplateData("Test"),
         },
@@ -368,8 +371,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
           body: {
             templateName: "royco-last-training",
             recipientEmail: r.email,
-            from: ROYCO_FROM,
-            replyTo: replyTo.trim() || undefined,
+             from: brand.from,
+             replyTo: replyTo,
             idempotencyKey: `lasttraining-${campaignId}-${r.email}`,
             templateData: ltTemplateData(r.name),
           },
@@ -393,9 +396,14 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const blSubmitUrl = (briefToken?: string | null) =>
     token ? `${publicOrigin()}/c/${token}${briefToken ? `?k=${briefToken}` : ""}` : undefined;
 
-  const blTemplateData = (r: { name?: string | null; briefToken?: string | null }) => ({
-    greeting_name: (r.name || "").split(" ")[0] || "there",
+   const blTemplateData = (r: { name?: string | null; briefToken?: string | null; fee?: number | null; videos?: number | null }) => ({
+     greeting_name: (r.name || "").trim().split(/\s+/)[0] || "there",
     campaign_name: campaignName,
+     brand_name: brand.name,
+     accent: brand.accent,
+     secondary: brand.secondary,
+     fee: r.fee != null ? `KES ${Number(r.fee).toLocaleString("en-KE")}` : undefined,
+     videos: r.videos ?? undefined,
     brief_url: blBriefUrl(r.briefToken),
     submit_url: blSubmitUrl(r.briefToken),
     hashtag: hashtag || undefined,
@@ -409,7 +417,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     try {
       const sample = blRecipients[0] ?? { name: "Mary", briefToken: "sample-token" };
       const { data, error } = await supabase.functions.invoke("send-transactional-email", {
-        body: { templateName: "royco-brief-live", preview: true, templateData: blTemplateData(sample) },
+         body: { templateName: brand.briefTemplate, preview: true, templateData: blTemplateData(sample) },
       });
       if (error) throw error;
       setBlPreviewHtml((data as any)?.html ?? null);
@@ -423,15 +431,17 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
   const blSendTest = async () => {
     const to = blTestEmail.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
+    if (!blRecipients[0] || !blBriefUrl(blRecipients[0].briefToken) || !token) return toast.error("Choose a creator with a personal brief and submission link first.");
+    if (brand.kind === "omo" && (blRecipients[0].fee == null || !blRecipients[0].videos)) return toast.error("This creator needs a contract fee and video count first.");
     setBlTesting(true);
     try {
-      const sample = blRecipients[0] ?? { name: "Test", briefToken: "sample-token" };
+      const sample = blRecipients[0];
       const { error } = await supabase.functions.invoke("send-transactional-email", {
         body: {
-          templateName: "royco-brief-live",
+           templateName: brand.briefTemplate,
           recipientEmail: to,
-          from: ROYCO_FROM,
-          replyTo: replyTo.trim() || undefined,
+           from: brand.from,
+           replyTo: replyTo,
           idempotencyKey: `brieflive-test-${campaignId}-${to}-${Date.now()}`,
           templateData: { ...blTemplateData(sample), greeting_name: "Test" },
         },
@@ -448,9 +458,10 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
     if (!blRecipients.length) return;
     const missing = blRecipients.filter((r) => !blBriefUrl(r.briefToken)).length;
     if (missing) {
-      const ok = window.confirm(`${missing} creator(s) have no brief link yet — send anyway without their link?`);
-      if (!ok) return;
+      return toast.error(`${missing} creator(s) have no personal brief link. Add their links before sending.`);
     }
+    if (!token) return toast.error("This campaign has no active submission link yet.");
+    if (brand.kind === "omo" && blRecipients.some((r) => r.fee == null || !r.videos)) return toast.error("Each OMO creator needs a fee and video count before sending.");
     setBlSending(true);
     setBlProgress({ done: 0, total: blRecipients.length });
     // Re-sends to hand-picked addresses must not be de-duplicated against the first send.
@@ -461,11 +472,11 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
       try {
         const { error } = await supabase.functions.invoke("send-transactional-email", {
           body: {
-            templateName: "royco-brief-live",
+             templateName: brand.briefTemplate,
             recipientEmail: r.email,
-            from: ROYCO_FROM,
-            replyTo: replyTo.trim() || undefined,
-            idempotencyKey: `brieflive-${campaignId}-${r.email}${batch}`,
+             from: brand.from,
+             replyTo: replyTo,
+             idempotencyKey: `brieflive-${brand.briefTemplate}-${campaignId}-${r.email}${batch}`,
             templateData: blTemplateData(r),
           },
         });
@@ -521,8 +532,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
         <Tabs defaultValue="brieflive">
           <TabsList className="mb-4">
             <TabsTrigger value="brieflive">Brief &amp; submit</TabsTrigger>
-            <TabsTrigger value="lasttraining">Last training</TabsTrigger>
-            <TabsTrigger value="kickoff">Kick-off invite</TabsTrigger>
+             {isRoyco && <TabsTrigger value="lasttraining">Last training</TabsTrigger>}
+             {isRoyco && <TabsTrigger value="kickoff">Kick-off invite</TabsTrigger>}
             <TabsTrigger value="plain">Plain email</TabsTrigger>
           </TabsList>
 
@@ -535,13 +546,13 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
             <div className="rounded-lg border border-border p-3 space-y-2">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Who gets it</div>
               <div className="flex flex-wrap items-center gap-2">
-                <Button
+                 {isRoyco && <Button
                   size="sm"
                   variant={blAudience === "rsvp" ? "default" : "outline"}
                   onClick={() => setBlAudience("rsvp")}
                 >
                   RSVP'd yes ({namedRecipients.filter((r) => rsvpYes.has(r.email)).length})
-                </Button>
+                 </Button>}
                 <Button
                   size="sm"
                   variant={blAudience === "all" ? "default" : "outline"}
@@ -574,21 +585,21 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
                   </p>
                   {blUnknownPicked.length > 0 && (
                     <p className="text-[11px] text-destructive">
-                      Not on this campaign's roster (they'll get the email without personal links):{" "}
+                       Not on this campaign's roster (not sent):{" "}
                       {blUnknownPicked.join(", ")}
                     </p>
                   )}
                 </div>
-              ) : (
+               ) : blAudience === "rsvp" ? (
                 <p className="text-[11px] text-muted-foreground">
                   "RSVP'd yes" is everyone who replied YES to either training session.
                 </p>
-              )}
+               ) : null}
             </div>
 
             <div>
               <Label>First video submitted by</Label>
-              <Input value={blFirstPost} onChange={(e) => setBlFirstPost(e.target.value)} placeholder="Sunday 7 September" />
+               <Input value={blFirstPost} onChange={(e) => setBlFirstPost(e.target.value)} placeholder="Optional date" />
             </div>
 
             <div>
@@ -634,12 +645,12 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
             </Button>
 
             <p className="text-[11px] text-muted-foreground">
-              Sent from <span className="font-mono">royco@darajapulse.com</span>, replies go to {replyTo || "the reply-to inbox"}.
+               Sent from <span className="font-mono">{brand.from}</span>, replies go to {replyTo}.
             </p>
           </TabsContent>
 
 
-          <TabsContent value="lasttraining" className="space-y-4">
+           {isRoyco && <TabsContent value="lasttraining" className="space-y-4">
             <p className="text-sm text-muted-foreground">
               A Royco-red "last chance" invite for creators who missed the earlier sessions. It tells anyone who already
               attended Wednesday's training they're all set and don't need to join.
@@ -708,11 +719,11 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
             </Button>
 
             <p className="text-[11px] text-muted-foreground">
-              Sent from <span className="font-mono">royco@darajapulse.com</span>, replies go to {replyTo || "the reply-to inbox"}.
+               Sent from <span className="font-mono">{brand.from}</span>, replies go to {replyTo}.
             </p>
-          </TabsContent>
+           </TabsContent>}
 
-          <TabsContent value="kickoff" className="space-y-4">
+           {isRoyco && <TabsContent value="kickoff" className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Sends a branded Royco-red invite from Daraja Pulse — meeting details, what we'll cover, and a short intro to the
               platform for briefing, reporting and payments.
@@ -748,9 +759,9 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
 
             <div>
               <Label>Reply-to address</Label>
-              <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="royco@reply.darajapulse.com" />
+               <Input value={replyTo} readOnly />
               <p className="text-[11px] text-muted-foreground mt-1">
-                Sent from <span className="font-mono">royco@darajapulse.com</span>. Creator replies land in whichever inbox you set here.
+                 Sent from <span className="font-mono">{brand.from}</span>. Creator replies land in the campaign inbox.
                 The invite asks each creator to reply "YES" to confirm — replies show up below and in the Inbox.
               </p>
             </div>
@@ -819,7 +830,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, emails, reci
                 ? `Sending ${progress?.done ?? 0}/${progress?.total ?? 0}`
                 : `Send branded invite to ${namedRecipients.length}`}
             </Button>
-          </TabsContent>
+           </TabsContent>}
 
 
           <TabsContent value="plain" className="space-y-4">
