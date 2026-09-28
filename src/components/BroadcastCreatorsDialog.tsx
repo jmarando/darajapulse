@@ -591,7 +591,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
                 <p className="text-[11px] text-muted-foreground">
                   "RSVP'd yes" is everyone who replied YES to either training session.
                 </p>
-              )}
+               ) : null}
             </div>
 
             <div>
