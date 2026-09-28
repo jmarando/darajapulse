@@ -12,6 +12,7 @@ interface Props {
   fee?: string
   first_post_by?: string
   rsvp_email?: string
+  custom_note?: string
 }
 
 const BLUE = '#0033A0'
@@ -52,6 +53,7 @@ const OmoBriefLive = ({
   fee,
   first_post_by = 'the first week of October',
   rsvp_email,
+  custom_note,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -100,6 +102,7 @@ const OmoBriefLive = ({
               paid per approved and posted video, less 5% withholding tax. Payment follows your E-TIMS invoice and
               campaign report.
             </Text>
+            {custom_note ? <Text style={text}>{custom_note}</Text> : null}
             <Hr style={{ border: 'none', borderTop: `1px solid ${BORDER}`, margin: '24px 0 16px' }} />
             <Text style={small}>
               Stuck on anything? Just reply to this email{rsvp_email ? <> (it reaches the team at <strong>{rsvp_email}</strong>)</> : null} and we'll help.

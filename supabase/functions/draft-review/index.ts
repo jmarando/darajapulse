@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { signStreamToken, withStreamToken } from "../_shared/stream.ts";
+import { resolveCampaignBrand } from "../_shared/campaign-brand.ts";
 
 
 
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
         if (influencerId) {
           const [{ data: inf }, { data: camp }, { data: ci }] = await Promise.all([
             admin.from("influencers").select("full_name, email").eq("id", influencerId).maybeSingle(),
-            admin.from("campaigns").select("name, hashtag").eq("id", link.campaign_id).maybeSingle(),
+             admin.from("campaigns").select("name, hashtag, clients(name)").eq("id", link.campaign_id).maybeSingle(),
             admin
               .from("campaign_influencers")
               .select("brief_token")
@@ -73,16 +74,20 @@ Deno.serve(async (req) => {
           ]);
           const email = (inf as any)?.email;
           if (email) {
+            const brand = resolveCampaignBrand((camp as any)?.name ?? "", (camp as any)?.clients?.name);
             const { data: emailResult, error: emailError } = await admin.functions.invoke("send-transactional-email", {
               body: {
-                templateName: "royco-draft-decision",
+                templateName: brand.decisionTemplate,
                 recipientEmail: email,
-                from: "Royco x Daraja Pulse <royco@reply.darajapulse.com>",
-                replyTo: "royco@reply.darajapulse.com",
+                from: brand.from,
+                replyTo: brand.replyTo,
                 idempotencyKey: `draftdecision-${draftId}-${decision}-${Date.now()}`,
                 templateData: {
                   greeting_name: String((inf as any)?.full_name || "").split(" ")[0] || "there",
                   campaign_name: (camp as any)?.name ?? undefined,
+                  brand_name: brand.name,
+                  accent: brand.accent,
+                  secondary: brand.secondary,
                   decision,
                   review_note: note || undefined,
                   reviewer_label: reviewer || link.label || "Client",
