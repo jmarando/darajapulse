@@ -1621,6 +1621,7 @@ const CampaignDetail = () => {
           <BroadcastCreatorsDialog
             campaignId={id!}
             campaignName={c?.name ?? "Campaign"}
+            clientName={c?.clients?.name}
             hashtag={c?.hashtag}
             briefBase={`${publicOrigin()}${slugPath}/brief`}
             emails={ci.map((x: any) => x.influencers?.email).filter(Boolean)}
@@ -1631,6 +1632,8 @@ const CampaignDetail = () => {
                 name: x.influencers.full_name,
                 briefToken: x.brief_token,
                 influencerId: x.influencer_id,
+                fee: x.fee_kes,
+                videos: x.deliverables_count,
               }))}
           />
 
@@ -2329,6 +2332,7 @@ const CampaignDetail = () => {
           <CampaignPayments
             campaignId={id!}
             campaignName={c?.name ?? "Campaign"}
+            clientName={c?.clients?.name}
             roster={ci}
             signatures={signatures}
             posts={posts}
