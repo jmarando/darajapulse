@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { signStreamToken, withStreamToken } from "../_shared/stream.ts";
 import { resolveCampaignBrand } from "../_shared/campaign-brand.ts";
+import { sendAppEmail } from "../_shared/app-email.ts";
 
 
 
@@ -75,8 +76,7 @@ Deno.serve(async (req) => {
           const email = (inf as any)?.email;
           if (email) {
             const brand = resolveCampaignBrand((camp as any)?.name ?? "", (camp as any)?.clients?.name);
-            const { data: emailResult, error: emailError } = await admin.functions.invoke("send-transactional-email", {
-              body: {
+            const emailResult = await sendAppEmail({
                 templateName: brand.decisionTemplate,
                 recipientEmail: email,
                 from: brand.from,
@@ -96,9 +96,8 @@ Deno.serve(async (req) => {
                     ? `https://darajapulse.com/brief/${(ci as any).brief_token}`
                     : undefined,
                 },
-              },
-            });
-            notification = !emailError && (emailResult as any)?.success ? "queued" : "failed";
+              });
+            notification = emailResult.success ? "queued" : "failed";
           }
         }
       } catch (_) {

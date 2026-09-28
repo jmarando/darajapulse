@@ -6,6 +6,7 @@
 //   - if neither   : fan out to all opted-in recipients for this campaign
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { sendAppEmail } from "../_shared/app-email.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -325,23 +326,12 @@ async function buildCampaignWeekly(supa: any, campaign_id: string) {
 }
 
 async function sendOne(templateName: string, recipient: string, templateData: any, idemPrefix: string) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${SERVICE_KEY}`,
-    },
-    body: JSON.stringify({
-      templateName,
-      recipientEmail: recipient,
-      idempotencyKey: `${idemPrefix}-${recipient}`,
-      templateData,
-    }),
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    console.error('send-transactional-email failed', res.status, text)
-    return { ok: false, status: res.status, error: text }
+  try {
+    const r = await sendAppEmail({ templateName, recipientEmail: recipient, idempotencyKey: `${idemPrefix}-${recipient}`, templateData })
+    if (!r.success) return { ok: false, status: 200, error: r.reason }
+  } catch (e) {
+    console.error('app email send failed', (e as Error)?.message)
+    return { ok: false, status: (e as any)?.status ?? 500, error: String((e as Error)?.message ?? e) }
   }
   return { ok: true }
 }
