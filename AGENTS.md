@@ -1,0 +1,2 @@
+Campaign email brand resolution lives in `supabase/functions/_shared/campaign-brand.ts` and is imported by the dashboard and review function, so both sending paths choose the same template and identity without cross-brand fallback.
+OMO payments use campaign roster fee/count and approved draft IDs, while Royco retains view tiers, because the two contracts have distinct payment rules.
