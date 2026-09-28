@@ -514,7 +514,7 @@ function BillingTab() {
       const invoiceUrl = `${window.location.origin}/invoice/${inv.view_token}`;
       const payUrl = `${window.location.origin}/pay/${inv.view_token}`;
       const results = await Promise.all(recipients.map((email) =>
-        supabase.functions.invoke("send-transactional-email", {
+        supabase.functions.invoke("app-email", {
           body: {
             templateName: "invoice-notification",
             recipientEmail: email,

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { CANONICAL_APP_ORIGIN, setupUrlFrom } from "../_shared/app-url.ts";
+import { sendAppEmail } from "../_shared/app-email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -109,22 +110,15 @@ Deno.serve(async (req) => {
       let welcomeSent = false;
       let welcomeError: string | null = null;
       if (existed) {
-        const mailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-transactional-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": authHeader || `Bearer ${SERVICE_KEY}`,
-            "apikey": SERVICE_KEY,
-          },
-          body: JSON.stringify({
+        try {
+        const r = await sendAppEmail({
             templateName: "workspace-access",
             recipientEmail: cleanEmail,
             idempotencyKey: `workspace-access-${org_id}-${userId}-${requestedRole || kind}`,
             templateData: { org_name: orgName, access_label: requestedRole || (kind === "agency" ? "agency admin" : "brand owner"), sign_in_url: `${origin}/auth` },
-          }),
-        });
-        if (!mailRes.ok) welcomeError = `${mailRes.status}: ${await mailRes.text()}`;
-        else welcomeSent = true;
+          });
+        if (r.success) welcomeSent = true; else welcomeError = r.reason;
+      } catch (mailErr) { welcomeError = String((mailErr as Error)?.message ?? mailErr); }
       }
 
       results.push({ email: cleanEmail, user_id: userId, existed, invited: !existed, welcome_sent: welcomeSent, welcome_error: welcomeError });

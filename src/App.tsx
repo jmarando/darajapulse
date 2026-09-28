@@ -42,7 +42,6 @@ import ConnectYouTube from "./pages/ConnectYouTube";
 import ConnectTwitter from "./pages/ConnectTwitter";
 import ConnectFacebook from "./pages/ConnectFacebook";
 import NotFound from "./pages/NotFound.tsx";
-import Unsubscribe from "./pages/Unsubscribe";
 import DataDeletion from "./pages/DataDeletion";
 import LandingPicker from "./pages/landings/LandingPicker";
 import LandingEditorial from "./pages/landings/LandingEditorial";
@@ -83,7 +82,6 @@ const App = () => (
             <Route path="/rc/:token" element={<PublicContestReport />} />
             <Route path="/p/:token" element={<PublicPlan />} />
             <Route path="/:clientSlug/:campaignSlug/plan/:token" element={<PublicPlan />} />
-            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/data-deletion" element={<DataDeletion />} />

@@ -241,7 +241,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
   const loadPreview = async () => {
     setPreviewing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+      const { data, error } = await supabase.functions.invoke("app-email", {
         body: { templateName: "royco-kickoff-invite", preview: true, templateData: templateData(namedRecipients[0]?.name ?? "Mary") },
       });
       if (error) throw error;
@@ -258,7 +258,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
     setTesting(true);
     try {
-      const { error } = await supabase.functions.invoke("send-transactional-email", {
+      const { error } = await supabase.functions.invoke("app-email", {
         body: {
           templateName: "royco-kickoff-invite",
           recipientEmail: to,
@@ -287,7 +287,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     for (let i = 0; i < namedRecipients.length; i++) {
       const r = namedRecipients[i];
       try {
-        const { error } = await supabase.functions.invoke("send-transactional-email", {
+        const { error } = await supabase.functions.invoke("app-email", {
           body: {
             templateName: "royco-kickoff-invite",
             recipientEmail: r.email,
@@ -321,7 +321,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
   const ltLoadPreview = async () => {
     setLtPreviewing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+      const { data, error } = await supabase.functions.invoke("app-email", {
         body: { templateName: "royco-last-training", preview: true, templateData: ltTemplateData(namedRecipients[0]?.name ?? "Mary") },
       });
       if (error) throw error;
@@ -338,7 +338,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return toast.error("Enter a valid test email address");
     setLtTesting(true);
     try {
-      const { error } = await supabase.functions.invoke("send-transactional-email", {
+      const { error } = await supabase.functions.invoke("app-email", {
         body: {
           templateName: "royco-last-training",
           recipientEmail: to,
@@ -367,7 +367,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     for (let i = 0; i < namedRecipients.length; i++) {
       const r = namedRecipients[i];
       try {
-        const { error } = await supabase.functions.invoke("send-transactional-email", {
+        const { error } = await supabase.functions.invoke("app-email", {
           body: {
             templateName: "royco-last-training",
             recipientEmail: r.email,
@@ -416,7 +416,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     setBlPreviewing(true);
     try {
       const sample = blRecipients[0] ?? { name: "Mary", briefToken: "sample-token" };
-      const { data, error } = await supabase.functions.invoke("send-transactional-email", {
+      const { data, error } = await supabase.functions.invoke("app-email", {
          body: { templateName: brand.briefTemplate, preview: true, templateData: blTemplateData(sample) },
       });
       if (error) throw error;
@@ -436,7 +436,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     setBlTesting(true);
     try {
       const sample = blRecipients[0];
-      const { error } = await supabase.functions.invoke("send-transactional-email", {
+      const { error } = await supabase.functions.invoke("app-email", {
         body: {
            templateName: brand.briefTemplate,
           recipientEmail: to,
@@ -470,7 +470,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     for (let i = 0; i < blRecipients.length; i++) {
       const r = blRecipients[i];
       try {
-        const { error } = await supabase.functions.invoke("send-transactional-email", {
+        const { error } = await supabase.functions.invoke("app-email", {
           body: {
              templateName: brand.briefTemplate,
             recipientEmail: r.email,
