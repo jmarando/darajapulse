@@ -93,7 +93,7 @@ const OmoBriefLive = ({
             <Text style={h2}>What you're delivering</Text>
             <Text style={text}>
               {videos} Reels over the campaign, cross-posted on your active platforms plus stories, tagging OMO and using{' '}
-              <strong>{hashtag}</strong>. Every video must be approved before it goes live and stay up for the whole
+              <strong>{hashtag} #stayunbeatable</strong>. Every video must be approved before it goes live and stay up for the whole
               campaign.{first_post_by ? <> Aim to submit your first video by <strong>{first_post_by}</strong>.</> : null}
             </Text>
             <Text style={h2}>How you get paid</Text>
