@@ -3668,6 +3668,7 @@ export type Database = {
       }
       get_public_storefront: { Args: { _agency_slug: string }; Returns: Json }
       get_report_link_campaign: { Args: { _token: string }; Returns: string }
+      get_report_public_data: { Args: { _token: string }; Returns: Json }
       get_tenant_by_host: { Args: { _host: string }; Returns: Json }
       get_user_access_status: {
         Args: { _ids: string[] }
