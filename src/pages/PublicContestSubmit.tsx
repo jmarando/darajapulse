@@ -106,7 +106,7 @@ const PublicContestSubmit = () => {
       brief_token: creatorToken,
     }});
     setLoading(false);
-    if (error || (data as any)?.error) return toast.error(typeof (data as any)?.error === "string" ? (data as any).error : error?.message || "Could not submit links");
+    if (error || (data as any)?.error) return toast.error(await readFnError(error, data, "Could not submit links"));
     // Identified creators get their post registered on the campaign — kick off
     // the metrics pull immediately so the roster updates without waiting for cron.
     const postIds = ((data as any)?.post_ids ?? []) as string[];
@@ -126,7 +126,7 @@ const PublicContestSubmit = () => {
       links: [{ post_url: attachUrl.trim(), platform: p }],
     }});
     setLoading(false);
-    if (error || (data as any)?.error) return toast.error(typeof (data as any)?.error === "string" ? (data as any).error : "Could not add link");
+    if (error || (data as any)?.error) return toast.error(await readFnError(error, data, "Could not add link"));
     ((data as any)?.post_ids ?? []).forEach((postId: string) => supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } }).catch(() => {}));
     setAttachUrl("");
     toast.success("Link added to that video");
@@ -380,5 +380,16 @@ const PublicContestSubmit = () => {
     </div>
   );
 };
+
+async function readFnError(error: any, data: any, fallback: string): Promise<string> {
+  let body: any = data;
+  if (error?.context && typeof error.context.json === "function") {
+    try { body = await error.context.json(); } catch { /* ignore */ }
+  }
+  const e = body?.error;
+  if (typeof e === "string") return e;
+  if (e && typeof e === "object") return "Please check your links and details, then try again.";
+  return fallback;
+}
 
 export default PublicContestSubmit;

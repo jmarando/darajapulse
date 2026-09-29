@@ -112,6 +112,14 @@ Deno.serve(async (req) => {
   if (firstResult?.post_id) await admin.from("posts").update({ creative_group_id: groupId }).eq("id", firstResult.post_id);
 
   const results = [{ ...firstResult, ...first }];
+  const createdEntries: string[] = [firstEntry.id];
+  const createdPosts: string[] = firstResult?.post_id ? [String(firstResult.post_id)] : [];
+  // Roll back everything saved in this request so the creator can retry cleanly.
+  const fail = async (error: string, status: number) => {
+    if (createdPosts.length) await admin.from("posts").delete().in("id", createdPosts);
+    await admin.from("contest_entries").delete().in("id", createdEntries);
+    return json({ error }, status);
+  };
   for (const link of body.links.slice(1)) {
     const { data: duplicate } = await admin
       .from("contest_entries")
@@ -119,7 +127,7 @@ Deno.serve(async (req) => {
       .eq("contest_id", firstEntry.contest_id)
       .eq("post_url", link.post_url)
       .maybeSingle();
-    if (duplicate) return json({ error: `That ${link.platform} link was already submitted.` }, 409);
+    if (duplicate) return await fail(`That ${link.platform} link was already submitted.`, 409);
 
     const { data: entry, error: entryError } = await admin.from("contest_entries").insert({
       contest_id: firstEntry.contest_id,
@@ -134,7 +142,8 @@ Deno.serve(async (req) => {
       full_name: firstEntry.full_name,
       creative_group_id: groupId,
     }).select("id").single();
-    if (entryError) return json({ error: entryError.message }, 400);
+    if (entryError) return await fail(entryError.message, 400);
+    createdEntries.push(entry.id);
 
     let postId: string | null = null;
     if (firstEntry.status === "approved" && contest?.campaign_id && firstEntry.influencer_id) {
@@ -146,7 +155,8 @@ Deno.serve(async (req) => {
         status: "live",
         creative_group_id: groupId,
       }).select("id").single();
-      if (postError) return json({ error: postError.message }, 400);
+      if (postError) return await fail(postError.message, 400);
+      if (post?.id) createdPosts.push(post.id);
       postId = post?.id ?? null;
     }
     results.push({ entry_id: entry.id, post_id: postId, pending_review: firstEntry.status === "pending", ...link });
