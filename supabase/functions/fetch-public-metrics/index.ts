@@ -721,7 +721,10 @@ Deno.serve(async (req) => {
     // failures stay in the list, so the next run must skip exactly those — skipping
     // by the full processed count would jump over posts never touched.
     const failedThisRun = Math.max(0, processed - succeeded);
-    const nextOffset = start + failedThisRun;
+    // Only stale mode rebuilds a shrinking queue. A campaign/full refresh keeps the
+    // same list every call, so it must advance past everything processed or it
+    // re-scrapes the same posts and burns credits.
+    const nextOffset = stale ? start + failedThisRun : start + processed;
 
     // Cron runs (stale mode) chain themselves until the due queue is empty, so two
     // scheduled runs a day are enough no matter how many posts are due.
