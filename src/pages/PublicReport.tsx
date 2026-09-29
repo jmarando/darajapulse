@@ -76,20 +76,12 @@ const PublicReport = () => {
       return { ...p, metrics: peak, history: list };
     });
     setPosts(grouped);
-    const INFLUENCER_PUBLIC_COLS = "id, full_name, handle, primary_platform, niche, region, follower_count, engagement_rate, avg_cpm_kes, audience_kenya_pct, authenticity_score, avatar_url, alt_handles";
-    const ENTRY_PUBLIC_COLS = "id, contest_id, influencer_id, platform, post_url, handle, caption, thumbnail_url, posted_at, views, likes, comments, shares, saves, score, round_number, status, source, submitter_name, full_name, instagram_handle, tiktok_handle, facebook_handle, cross_posts, metadata, created_at";
-    const { data: ci } = await supabase.from("campaign_influencers").select(`*, influencers(${INFLUENCER_PUBLIC_COLS})`).eq("campaign_id", link.campaign_id);
-    setInfluencers(ci ?? []);
+    // Influencer + contest-entry tables are not readable anonymously; use the token-scoped RPC.
+    const { data: pub } = await (supabase as any).rpc("get_report_public_data", { _token: token });
+    setInfluencers(pub?.influencers ?? []);
     const { data: cts } = await supabase.from("contests").select("*").eq("campaign_id", link.campaign_id).order("created_at", { ascending: false });
     setContests(cts ?? []);
-    const contestIds = (cts ?? []).map((c: any) => c.id);
-    if (contestIds.length) {
-      const { data: ces } = await supabase.from("contest_entries").select(ENTRY_PUBLIC_COLS).in("contest_id", contestIds).order("score", { ascending: false });
-      setContestEntries(ces ?? []);
-
-    } else {
-      setContestEntries([]);
-    }
+    setContestEntries(pub?.entries ?? []);
     setUpdatedAt(new Date());
   };
 
