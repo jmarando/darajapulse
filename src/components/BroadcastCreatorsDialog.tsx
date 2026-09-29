@@ -71,7 +71,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
   // Brief-live tab state
   const [blFirstPost, setBlFirstPost] = useState("");
   const [blNote, setBlNote] = useState("");
-  const [blAudience, setBlAudience] = useState<"rsvp" | "all" | "pick">("rsvp");
+  const [blAudience, setBlAudience] = useState<"rsvp" | "all" | "pick">(isRoyco ? "rsvp" : "all");
   const [blPicked, setBlPicked] = useState("");
   const [blPreviewHtml, setBlPreviewHtml] = useState<string | null>(null);
   const [blPreviewSubject, setBlPreviewSubject] = useState("");
@@ -129,13 +129,13 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
   );
 
   const blRecipients = useMemo(() => {
-    if (blAudience === "rsvp") return namedRecipients.filter((r) => rsvpYes.has(r.email));
+    if (blAudience === "rsvp" && isRoyco) return namedRecipients.filter((r) => rsvpYes.has(r.email));
     if (blAudience === "pick") {
       const known = new Map(namedRecipients.map((r) => [r.email, r]));
       return blPickedEmails.map((e) => known.get(e)).filter((r): r is (typeof namedRecipients)[number] => Boolean(r));
     }
     return namedRecipients;
-  }, [blAudience, namedRecipients, rsvpYes, blPickedEmails]);
+  }, [blAudience, namedRecipients, rsvpYes, blPickedEmails, isRoyco]);
 
   // Addresses entered that aren't on this campaign's roster (no personal brief link).
   const blUnknownPicked = useMemo(
