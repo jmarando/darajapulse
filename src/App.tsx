@@ -79,6 +79,7 @@ const App = () => (
             <Route path="/landing/bento" element={<LandingBento />} />
             <Route path="/discovery" element={<PublicDiscovery />} />
             <Route path="/r/:token" element={<PublicReport />} />
+            <Route path="/payments/:token" element={<PublicPayments />} />
             <Route path="/rc/:token" element={<PublicContestReport />} />
             <Route path="/p/:token" element={<PublicPlan />} />
             <Route path="/:clientSlug/:campaignSlug/plan/:token" element={<PublicPlan />} />
