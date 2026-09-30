@@ -211,16 +211,16 @@ const Overview = () => {
       </div>
 
       {/* Performance + Quick Actions */}
-      <div className="grid lg:grid-cols-[1fr_300px] gap-4 mb-6">
-        <Card className="p-6 rounded-2xl border-border/60">
-          <div className="flex items-center justify-between mb-5">
-            <div>
+      <div className="grid min-w-0 xl:grid-cols-[minmax(0,1fr)_300px] gap-4 mb-6">
+        <Card className="min-w-0 p-6 rounded-2xl border-border/60">
+          <div className="flex min-w-0 flex-wrap items-start justify-between gap-3 mb-5">
+            <div className="min-w-0">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Performance to date</div>
-              <h2 className="font-display text-2xl mt-1">Across all live campaigns</h2>
+              <h2 className="font-display text-2xl mt-1 text-balance">Across all live campaigns</h2>
             </div>
-            <Badge variant="secondary" className="text-sm">{loaded ? `${er.toFixed(2)}% engagement` : "loading…"}</Badge>
+            <Badge variant="secondary" className="max-w-full whitespace-normal text-sm">{loaded ? `${er.toFixed(2)}% engagement` : "loading…"}</Badge>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-3">
             {[
               { i: Eye, l: "Views", v: loaded ? fmt(totals.views) : "—" },
               { i: TrendingUp, l: "Reach", v: loaded ? fmt(totals.reach) : "—" },
@@ -228,16 +228,16 @@ const Overview = () => {
               { i: MessageCircle, l: "Comments", v: loaded ? fmt(totals.comments) : "—" },
               { i: Share2, l: "Shares", v: loaded ? fmt(totals.shares) : "—" },
             ].map(({ i: I, l, v }) => (
-              <div key={l} className="p-4 rounded-xl bg-secondary/60">
+              <div key={l} className="min-w-0 p-4 rounded-xl bg-secondary/60">
                 <I className="w-4 h-4 text-muted-foreground mb-2" />
-                <div className="font-display text-2xl tabular-nums">{v}</div>
+                <div className="font-display text-2xl tabular-nums break-words">{v}</div>
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{l}</div>
               </div>
             ))}
           </div>
         </Card>
 
-        <Card className="p-6 rounded-2xl border-border/60 flex flex-col">
+        <Card className="min-w-0 p-6 rounded-2xl border-border/60 flex flex-col">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Quick actions</div>
           <Link to="/app/campaigns"><Button className="w-full justify-start bg-primary text-primary-foreground hover:bg-primary/90 mb-2 h-10 rounded-lg"><Plus className="w-4 h-4 mr-2" /> New campaign</Button></Link>
           <Link to="/app/briefs"><Button variant="outline" className="w-full justify-start mb-2 h-10 rounded-lg"><FileSignature className="w-4 h-4 mr-2" /> Send brief</Button></Link>
@@ -253,8 +253,8 @@ const Overview = () => {
       </div>
 
       {/* Velocity chart */}
-      <Card className="p-6 mb-6 rounded-2xl border-border/60">
-        <div className="flex items-center justify-between mb-4">
+      <Card className="min-w-0 p-6 mb-6 rounded-2xl border-border/60">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement velocity</div>
             <h2 className="font-display text-2xl mt-1">{from} → {to}</h2>

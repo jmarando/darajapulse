@@ -7,3 +7,4 @@
 - [x] Validate build, tests, and key browser flows
 - [x] Route campaign invitations and draft decisions by brand without changing ongoing campaigns
 - [x] Calculate OMO contracted fees by approved videos instead of Royco's view tiers
+- [x] Keep overview metrics and campaign tabs readable at laptop widths and browser zoom
