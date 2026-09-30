@@ -125,6 +125,24 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
     return { current, never, latest };
   }, [posts, latestByPost]);
 
+  const loadPaymentLink = async () => {
+    const { data, error } = await (supabase as any).from("payment_links").select("*").eq("campaign_id", campaignId).order("created_at", { ascending: true }).limit(1).maybeSingle();
+    if (!error) setPaymentLink(data ?? null);
+  };
+  useEffect(() => { void loadPaymentLink(); }, [campaignId]);
+
+  const generatePaymentLink = async () => {
+    let link = paymentLink;
+    if (!link) {
+      const { data, error } = await (supabase as any).from("payment_links").insert({ campaign_id: campaignId }).select().single();
+      if (error) return toast.error(error.message || "Could not create payments link");
+      link = data;
+      setPaymentLink(link);
+    }
+    try { await navigator.clipboard.writeText(`${publicOrigin()}/payments/${link.token}`); } catch {}
+    toast.success("Payments link ready — copied to clipboard");
+  };
+
   const finalize = async (row: typeof rows[number]) => {
     if (row.provisional) return toast.error(fixedFee ? "All agreed videos must be approved and posted before finalising the full payment." : "Refresh all of this creator’s post statistics before finalising payment.");
     setBusy(row.item.id);
