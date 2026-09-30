@@ -873,7 +873,7 @@ const CampaignDetail = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 max-w-full">
         <div className="mb-6 w-full max-w-full overflow-x-auto pb-1">
-        <TabsList className="h-auto w-max min-w-full justify-start gap-1 rounded-lg border bg-muted/40 p-1.5 shadow-sm">
+        <TabsList className="h-auto w-max min-w-max justify-start gap-1 rounded-lg border bg-muted/40 p-1.5 shadow-sm">
           <TabsTrigger
             value="overview"
             className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
