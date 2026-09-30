@@ -30,6 +30,7 @@ import AdminBilling from "./pages/app/AdminBilling";
 import Admin from "./pages/app/Admin";
 import PublicModeration from "./pages/PublicModeration";
 import PublicReport from "./pages/PublicReport";
+import PublicPayments from "./pages/PublicPayments";
 import PublicPlan from "./pages/PublicPlan";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";

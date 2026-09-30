@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Download, ExternalLink, RefreshCw, Wallet } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, ExternalLink, Link2, RefreshCw, Wallet } from "lucide-react";
+import { publicOrigin } from "@/lib/appUrl";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
