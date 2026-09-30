@@ -180,6 +180,32 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
       </div>
     </Card>
 
+    <div className="flex flex-wrap items-center gap-2">
+      <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+        <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All creators</SelectItem>
+          <SelectItem value="provisional">Provisional only</SelectItem>
+          <SelectItem value="ready">Ready to finalise</SelectItem>
+          <SelectItem value="finalised">Finalised, unpaid</SelectItem>
+          <SelectItem value="paid">Paid</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={sortKey} onValueChange={(value) => setSortKey(value as typeof sortKey)}>
+        <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="name">Sort by name</SelectItem>
+          <SelectItem value="performance">{fixedFee ? "Sort by videos posted" : "Sort by views / reach"}</SelectItem>
+          <SelectItem value="gross">Sort by gross amount</SelectItem>
+          <SelectItem value="net">Sort by net amount</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button variant="outline" size="icon" onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")} title={sortDir === "asc" ? "Ascending" : "Descending"}>
+        {sortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+      </Button>
+      <span className="text-xs text-muted-foreground">{visibleRows.length} of {rows.length} shown</span>
+    </div>
+
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
