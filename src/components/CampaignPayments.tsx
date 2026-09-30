@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Download, ExternalLink, RefreshCw, Wallet } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, ExternalLink, Link2, RefreshCw, Wallet } from "lucide-react";
+import { publicOrigin } from "@/lib/appUrl";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
   const [payouts, setPayouts] = useState<any[]>([]);
   const [approvedDrafts, setApprovedDrafts] = useState<{ id: string; influencer_id: string | null; post_url: string | null }[]>([]);
   const [draftsReady, setDraftsReady] = useState(false);
+  const [paymentLink, setPaymentLink] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<"name" | "performance" | "gross" | "net">("net");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -123,6 +125,24 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
     return { current, never, latest };
   }, [posts, latestByPost]);
 
+  const loadPaymentLink = async () => {
+    const { data, error } = await (supabase as any).from("payment_links").select("*").eq("campaign_id", campaignId).order("created_at", { ascending: true }).limit(1).maybeSingle();
+    if (!error) setPaymentLink(data ?? null);
+  };
+  useEffect(() => { void loadPaymentLink(); }, [campaignId]);
+
+  const generatePaymentLink = async () => {
+    let link = paymentLink;
+    if (!link) {
+      const { data, error } = await (supabase as any).from("payment_links").insert({ campaign_id: campaignId }).select().single();
+      if (error) return toast.error(error.message || "Could not create payments link");
+      link = data;
+      setPaymentLink(link);
+    }
+    try { await navigator.clipboard.writeText(`${publicOrigin()}/payments/${link.token}`); } catch {}
+    toast.success("Payments link ready — copied to clipboard");
+  };
+
   const finalize = async (row: typeof rows[number]) => {
     if (row.provisional) return toast.error(fixedFee ? "All agreed videos must be approved and posted before finalising the full payment." : "Refresh all of this creator’s post statistics before finalising payment.");
     setBusy(row.item.id);
@@ -177,6 +197,7 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
       <div className="flex gap-2">
         {fixedFee ? <Button variant="outline" size="sm" onClick={() => { setDraftsReady(false); supabase.from("creator_drafts").select("id, influencer_id, post_url").eq("campaign_id", campaignId).eq("status", "approved").then(({ data, error }) => { if (error) toast.error(error.message); else { setApprovedDrafts(data ?? []); setDraftsReady(true); } }); }}><RefreshCw className="w-4 h-4 mr-2" /> Refresh deliveries</Button> : <Button variant="outline" size="sm" onClick={() => void onRefreshMetrics()}><RefreshCw className="w-4 h-4 mr-2" /> Refresh statistics</Button>}
         <Button variant="outline" size="sm" onClick={exportCsv}><Download className="w-4 h-4 mr-2" /> Export CSV</Button>
+        <Button variant="outline" size="sm" onClick={() => void generatePaymentLink()}><Link2 className="w-4 h-4 mr-2" /> {paymentLink ? "Copy payments link" : "Create payments link"}</Button>
       </div>
     </Card>
 

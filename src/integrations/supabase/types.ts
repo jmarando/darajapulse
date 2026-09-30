@@ -2693,6 +2693,38 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_links: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          token: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          token?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_kes: number
@@ -3655,6 +3687,8 @@ export type Database = {
       }
       get_invoice_by_token: { Args: { _token: string }; Returns: Json }
       get_my_workspace_subdomain: { Args: never; Returns: string }
+      get_payment_link_campaign: { Args: { _token: string }; Returns: string }
+      get_payments_public_data: { Args: { _token: string }; Returns: Json }
       get_plan_link_campaign: { Args: { _token: string }; Returns: string }
       get_profiles_by_ids: {
         Args: { _ids: string[] }

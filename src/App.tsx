@@ -30,6 +30,7 @@ import AdminBilling from "./pages/app/AdminBilling";
 import Admin from "./pages/app/Admin";
 import PublicModeration from "./pages/PublicModeration";
 import PublicReport from "./pages/PublicReport";
+import PublicPayments from "./pages/PublicPayments";
 import PublicPlan from "./pages/PublicPlan";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="/landing/bento" element={<LandingBento />} />
             <Route path="/discovery" element={<PublicDiscovery />} />
             <Route path="/r/:token" element={<PublicReport />} />
+            <Route path="/payments/:token" element={<PublicPayments />} />
             <Route path="/rc/:token" element={<PublicContestReport />} />
             <Route path="/p/:token" element={<PublicPlan />} />
             <Route path="/:clientSlug/:campaignSlug/plan/:token" element={<PublicPlan />} />
