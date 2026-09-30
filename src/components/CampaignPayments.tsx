@@ -94,6 +94,25 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
     };
   }), [roster, signedIds, posts, latestByPost, whtPercent, payouts, fixedFee, approvedDrafts, draftsReady]);
 
+  const visibleRows = useMemo(() => {
+    const filtered = rows.filter((row) => {
+      if (statusFilter === "all") return true;
+      if (statusFilter === "provisional") return row.provisional;
+      if (statusFilter === "ready") return !row.provisional && !row.payout;
+      if (statusFilter === "finalised") return !!row.payout && row.payout.status !== "paid";
+      return row.payout?.status === "paid";
+    });
+    const value = (row: typeof rows[number]) =>
+      sortKey === "name" ? (row.item.influencers?.full_name ?? "").toLowerCase()
+      : sortKey === "performance" ? (fixedFee ? row.credited : row.bestPerformance)
+      : sortKey === "gross" ? row.gross : row.net;
+    return [...filtered].sort((a, b) => {
+      const va = value(a); const vb = value(b);
+      const cmp = typeof va === "string" ? va.localeCompare(vb as string) : (va as number) - (vb as number);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [rows, sortKey, sortDir, statusFilter, fixedFee]);
+
   const coverage = useMemo(() => {
     const current = posts.filter((post) => {
       const captured = latestByPost.get(post.id)?.captured_at;
