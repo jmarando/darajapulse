@@ -197,6 +197,7 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
       <div className="flex gap-2">
         {fixedFee ? <Button variant="outline" size="sm" onClick={() => { setDraftsReady(false); supabase.from("creator_drafts").select("id, influencer_id, post_url").eq("campaign_id", campaignId).eq("status", "approved").then(({ data, error }) => { if (error) toast.error(error.message); else { setApprovedDrafts(data ?? []); setDraftsReady(true); } }); }}><RefreshCw className="w-4 h-4 mr-2" /> Refresh deliveries</Button> : <Button variant="outline" size="sm" onClick={() => void onRefreshMetrics()}><RefreshCw className="w-4 h-4 mr-2" /> Refresh statistics</Button>}
         <Button variant="outline" size="sm" onClick={exportCsv}><Download className="w-4 h-4 mr-2" /> Export CSV</Button>
+        <Button variant="outline" size="sm" onClick={() => void generatePaymentLink()}><Link2 className="w-4 h-4 mr-2" /> {paymentLink ? "Copy payments link" : "Create payments link"}</Button>
       </div>
     </Card>
 
