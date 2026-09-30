@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, RefreshCw, Wallet } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, ExternalLink, RefreshCw, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { contractGrossForViews } from "@/lib/contractPayment";
@@ -29,6 +30,9 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
   const [approvedDrafts, setApprovedDrafts] = useState<{ id: string; influencer_id: string | null; post_url: string | null }[]>([]);
   const [draftsReady, setDraftsReady] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<"name" | "performance" | "gross" | "net">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [statusFilter, setStatusFilter] = useState<"all" | "provisional" | "ready" | "finalised" | "paid">("all");
 
   const loadPayouts = async () => {
     const { data, error } = await supabase.from("payouts").select("*").eq("campaign_id", campaignId);
@@ -90,6 +94,25 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
     };
   }), [roster, signedIds, posts, latestByPost, whtPercent, payouts, fixedFee, approvedDrafts, draftsReady]);
 
+  const visibleRows = useMemo(() => {
+    const filtered = rows.filter((row) => {
+      if (statusFilter === "all") return true;
+      if (statusFilter === "provisional") return row.provisional;
+      if (statusFilter === "ready") return !row.provisional && !row.payout;
+      if (statusFilter === "finalised") return !!row.payout && row.payout.status !== "paid";
+      return row.payout?.status === "paid";
+    });
+    const value = (row: typeof rows[number]) =>
+      sortKey === "name" ? (row.item.influencers?.full_name ?? "").toLowerCase()
+      : sortKey === "performance" ? (fixedFee ? row.credited : row.bestPerformance)
+      : sortKey === "gross" ? row.gross : row.net;
+    return [...filtered].sort((a, b) => {
+      const va = value(a); const vb = value(b);
+      const cmp = typeof va === "string" ? va.localeCompare(vb as string) : (va as number) - (vb as number);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [rows, sortKey, sortDir, statusFilter, fixedFee]);
+
   const coverage = useMemo(() => {
     const current = posts.filter((post) => {
       const captured = latestByPost.get(post.id)?.captured_at;
@@ -130,8 +153,8 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
 
   const exportCsv = () => {
     const data = fixedFee
-      ? [["Creator", "Agreed fee KES", "Agreed Reels", "Approved Reels", "Earned gross KES", "WHT 5%", "Earned net KES", "Status", "Payment status", "Reference"], ...rows.map((row) => [row.item.influencers?.full_name, row.agreedFee, row.target, row.approvedCount, row.gross, row.wht, row.net, row.provisional ? "Provisional" : "Complete", row.payout?.status ?? "Not finalised", row.payout?.mpesa_ref ?? ""])]
-      : [["Creator", "Best platform", "Best post", "Views / reach", "Gross KES", `WHT ${whtPercent}%`, "Net KES", "Metrics", "Payment status", "Reference"], ...rows.map((row) => [row.item.influencers?.full_name, row.bestPost?.platform, row.bestPost?.post_url, row.bestPerformance, row.gross, row.wht, row.net, row.provisional ? "Provisional" : "Current", row.payout?.status ?? "Not finalised", row.payout?.mpesa_ref ?? ""])];
+      ? [["Creator", "Agreed fee KES", "Agreed Reels", "Approved Reels", "Earned gross KES", "WHT 5%", "Earned net KES", "Status", "Payment status", "Reference"], ...visibleRows.map((row) => [row.item.influencers?.full_name, row.agreedFee, row.target, row.approvedCount, row.gross, row.wht, row.net, row.provisional ? "Provisional" : "Complete", row.payout?.status ?? "Not finalised", row.payout?.mpesa_ref ?? ""])]
+      : [["Creator", "Best platform", "Best post", "Views / reach", "Gross KES", `WHT ${whtPercent}%`, "Net KES", "Metrics", "Payment status", "Reference"], ...visibleRows.map((row) => [row.item.influencers?.full_name, row.bestPost?.platform, row.bestPost?.post_url, row.bestPerformance, row.gross, row.wht, row.net, row.provisional ? "Provisional" : "Current", row.payout?.status ?? "Not finalised", row.payout?.mpesa_ref ?? ""])];
     const url = URL.createObjectURL(new Blob(["\uFEFF" + data.map((line) => line.map(csvCell).join(",")).join("\n")], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${campaignName.replace(/[^a-z0-9]+/gi, "_")}_payments.csv`; anchor.click(); URL.revokeObjectURL(url);
   };
@@ -157,13 +180,39 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
       </div>
     </Card>
 
+    <div className="flex flex-wrap items-center gap-2">
+      <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+        <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All creators</SelectItem>
+          <SelectItem value="provisional">Provisional only</SelectItem>
+          <SelectItem value="ready">Ready to finalise</SelectItem>
+          <SelectItem value="finalised">Finalised, unpaid</SelectItem>
+          <SelectItem value="paid">Paid</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={sortKey} onValueChange={(value) => setSortKey(value as typeof sortKey)}>
+        <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="name">Sort by name</SelectItem>
+          <SelectItem value="performance">{fixedFee ? "Sort by videos posted" : "Sort by views / reach"}</SelectItem>
+          <SelectItem value="gross">Sort by gross amount</SelectItem>
+          <SelectItem value="net">Sort by net amount</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button variant="outline" size="icon" onClick={() => setSortDir(sortDir === "asc" ? "desc" : "asc")} title={sortDir === "asc" ? "Ascending" : "Descending"}>
+        {sortDir === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
+      </Button>
+      <span className="text-xs text-muted-foreground">{visibleRows.length} of {rows.length} shown</span>
+    </div>
+
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-border text-[10px] uppercase tracking-widest text-muted-foreground">
               <th className="px-4 py-3 text-left">Creator</th><th className="px-3 py-3 text-left">{fixedFee ? "Agreement" : "Best reel"}</th><th className="px-3 py-3 text-right">{fixedFee ? "Posted / due" : "Views / reach"}</th><th className="px-3 py-3 text-right">Gross</th><th className="px-3 py-3 text-right">WHT</th><th className="px-3 py-3 text-right">Net</th><th className="px-4 py-3 text-right">Payment</th>
           </tr></thead>
-          <tbody>{rows.map((row) => <tr key={row.item.id} className="border-b border-border last:border-0">
+          <tbody>{visibleRows.map((row) => <tr key={row.item.id} className="border-b border-border last:border-0">
              <td className="px-4 py-3"><div className="font-medium">{row.item.influencers?.full_name}</div><div className="text-xs text-muted-foreground">{fixedFee ? `${row.creatorPosts.length} publication(s)` : `${row.creatorPosts.length} publication${row.creatorPosts.length === 1 ? "" : "s"}`}</div></td>
              <td className="px-3 py-3 capitalize">{fixedFee ? money(row.agreedFee) : row.bestPost ? <a className="inline-flex items-center gap-1 text-accent" href={row.bestPost.post_url} target="_blank" rel="noreferrer">{row.bestPost.platform}<ExternalLink className="w-3 h-3" /></a> : "—"}<div className="mt-1"><Badge variant="outline" className={row.provisional ? "text-highlight border-highlight/40" : "text-success border-success/40"}>{row.provisional ? "Provisional" : fixedFee ? "Complete" : "Current"}</Badge></div></td>
              <td className="px-3 py-3 text-right tabular-nums">{fixedFee ? `${row.credited} / ${row.target || "—"}` : row.bestPerformance.toLocaleString()}</td><td className="px-3 py-3 text-right tabular-nums">{money(row.gross)}</td><td className="px-3 py-3 text-right tabular-nums">{money(row.wht)}</td><td className="px-3 py-3 text-right font-medium tabular-nums">{money(row.net)}</td>
