@@ -30,6 +30,7 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
   const [payouts, setPayouts] = useState<any[]>([]);
   const [approvedDrafts, setApprovedDrafts] = useState<{ id: string; influencer_id: string | null; post_url: string | null }[]>([]);
   const [draftsReady, setDraftsReady] = useState(false);
+  const [paymentLink, setPaymentLink] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<"name" | "performance" | "gross" | "net">("net");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
