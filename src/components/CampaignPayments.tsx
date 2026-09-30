@@ -30,8 +30,8 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
   const [approvedDrafts, setApprovedDrafts] = useState<{ id: string; influencer_id: string | null; post_url: string | null }[]>([]);
   const [draftsReady, setDraftsReady] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<"name" | "performance" | "gross" | "net">("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortKey, setSortKey] = useState<"name" | "performance" | "gross" | "net">("net");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [statusFilter, setStatusFilter] = useState<"all" | "provisional" | "ready" | "finalised" | "paid">("all");
 
   const loadPayouts = async () => {
