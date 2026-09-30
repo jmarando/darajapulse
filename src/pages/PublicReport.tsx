@@ -324,7 +324,7 @@ const PublicReport = () => {
         </div>
 
         {/* Performance band — same style */}
-        <div className="flex min-w-0 flex-wrap gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
+        <div className="grid min-w-0 grid-cols-2 md:grid-cols-4 2xl:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
           {([
             { key: "views", label: "Views", value: fmt(totals.views), icon: Eye },
             { key: "reach", label: "Reach", value: fmt(totals.reach), icon: Radio },
@@ -337,7 +337,7 @@ const PublicReport = () => {
           ] as const).map((s) => {
             const active = metric === s.key;
             return (
-              <Button key={s.key} variant="ghost" type="button" aria-pressed={active} onClick={() => setMetric(s.key as any)} className={`h-auto min-h-24 min-w-0 flex-[1_1_9.5rem] flex-col items-stretch justify-center gap-0 rounded-none bg-card p-4 text-left whitespace-normal hover:bg-secondary/40 hover:text-foreground ${active ? "outline outline-2 -outline-offset-2 outline-accent bg-secondary/30 relative z-10" : ""}`}>
+              <Button key={s.key} variant="ghost" type="button" aria-pressed={active} onClick={() => setMetric(s.key as any)} className={`h-auto min-h-24 min-w-0 flex-col items-stretch justify-center gap-0 rounded-none bg-card p-4 text-left whitespace-normal hover:bg-secondary/40 hover:text-foreground ${active ? "outline outline-2 -outline-offset-2 outline-accent bg-secondary/30 relative z-10" : ""}`}>
                 <div className="flex min-w-0 items-start justify-between gap-2">
                   <div className="min-w-0 break-words text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
                   {s.icon && <s.icon className={`h-3.5 w-3.5 shrink-0 ${active ? "text-accent" : "text-muted-foreground"}`} />}
