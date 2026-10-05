@@ -72,7 +72,7 @@ const PublicPayments = () => {
         payout,
       };
     }).sort((a: any, b: any) => b.net - a.net);
-  }, [data, fixedFee]);
+  }, [data, fixedFee, taxRate]);
 
   const totals = rows.reduce((sum: any, row: any) => ({
     gross: sum.gross + row.gross, wht: sum.wht + row.wht, net: sum.net + row.net,
@@ -80,8 +80,8 @@ const PublicPayments = () => {
 
   const exportCsv = () => {
     const header = fixedFee
-      ? [["Creator", "Agreed fee KES", "Agreed Reels", "Approved Reels", "Earned gross KES", "WHT 5%", "Earned net KES", "Status", "Payment status"]]
-      : [["Creator", "Best platform", "Best post", "Views / reach", "Gross KES", "WHT 5%", "Net KES", "Status", "Payment status"]];
+      ? [["Creator", "Agreed fee KES", "Agreed Reels", "Approved Reels", "Earned gross KES", `WHT ${taxRate}%`, "Earned net KES", "Status", "Payment status"]]
+      : [["Creator", "Best platform", "Best post", "Views / reach", "Gross KES", `WHT ${taxRate}%`, "Net KES", "Status", "Payment status"]];
     const body = rows.map((row: any) => fixedFee
       ? [row.creator.full_name, row.creator.fee_kes, row.target, row.approvedCount, row.gross, row.wht, row.net, row.provisional ? "Provisional" : "Complete", row.payout?.status === "paid" ? "Paid" : row.payout ? "Finalised" : "Not finalised"]
       : [row.creator.full_name, row.bestPost?.platform ?? "", row.bestPost?.post_url ?? "", row.bestPerformance, row.gross, row.wht, row.net, row.provisional ? "Provisional" : "Current", row.payout?.status === "paid" ? "Paid" : row.payout ? "Finalised" : "Not finalised"]);
