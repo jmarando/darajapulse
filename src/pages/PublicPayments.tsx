@@ -34,6 +34,8 @@ const PublicPayments = () => {
 
   const brand = useMemo(() => resolveCampaignBrand(data?.campaign?.name ?? "", data?.campaign?.client_name ?? null), [data]);
   const fixedFee = brand.kind === "omo";
+  const whtPercent = Number(data?.campaign?.wht_percent || 0);
+  const taxRate = fixedFee ? 5 : whtPercent;
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -58,7 +60,7 @@ const PublicPayments = () => {
       const validAgreement = Number.isFinite(agreedFee) && agreedFee > 0 && Number.isInteger(target) && target > 0;
       const credited = validAgreement ? Math.min(approvedCount, target) : 0;
       const gross = fixedFee ? (validAgreement ? Math.round((agreedFee * credited / target) * 100) / 100 : 0) : contractGrossForViews(bestPerformance);
-      const wht = Math.round(gross * 5) / 100;
+      const wht = Math.round(gross * (taxRate / 100) * 100) / 100;
       const latestAt = bestMetric?.captured_at ? new Date(bestMetric.captured_at) : null;
       const missing = creatorPosts.length === 0 || creatorPosts.some((p: any) => !latestByPost.has(p.id));
       const stale = !latestAt || Date.now() - latestAt.getTime() > 7 * 86_400_000;
