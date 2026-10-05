@@ -154,8 +154,8 @@ const PublicPayments = () => {
               </div>
               <p className="text-xs text-muted-foreground mt-3 max-w-2xl">
                 {fixedFee
-                  ? "Each creator earns their agreed fee in equal parts per approved and posted video, up to their agreed number of Reels. 5% withholding tax applies."
-                  : "Payments use each creator's single best-performing reel by views or reach, per the signed agreement. 5% withholding tax applies. Cross-posted platforms are not added together."}
+                  ? `Each creator earns their agreed fee in equal parts per approved and posted video, up to their agreed number of Reels. ${taxRate}% withholding tax applies.`
+                  : `Payments use each creator's single best-performing reel by views or reach, per the signed agreement. ${taxRate}% withholding tax applies. Cross-posted platforms are not added together.`}
               </p>
             </div>
           </div>
