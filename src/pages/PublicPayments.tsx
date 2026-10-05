@@ -34,6 +34,8 @@ const PublicPayments = () => {
 
   const brand = useMemo(() => resolveCampaignBrand(data?.campaign?.name ?? "", data?.campaign?.client_name ?? null), [data]);
   const fixedFee = brand.kind === "omo";
+  const whtPercent = Number(data?.campaign?.wht_percent || 0);
+  const taxRate = fixedFee ? 5 : whtPercent;
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -58,7 +60,7 @@ const PublicPayments = () => {
       const validAgreement = Number.isFinite(agreedFee) && agreedFee > 0 && Number.isInteger(target) && target > 0;
       const credited = validAgreement ? Math.min(approvedCount, target) : 0;
       const gross = fixedFee ? (validAgreement ? Math.round((agreedFee * credited / target) * 100) / 100 : 0) : contractGrossForViews(bestPerformance);
-      const wht = Math.round(gross * 5) / 100;
+      const wht = Math.round(gross * (taxRate / 100) * 100) / 100;
       const latestAt = bestMetric?.captured_at ? new Date(bestMetric.captured_at) : null;
       const missing = creatorPosts.length === 0 || creatorPosts.some((p: any) => !latestByPost.has(p.id));
       const stale = !latestAt || Date.now() - latestAt.getTime() > 7 * 86_400_000;
@@ -70,7 +72,7 @@ const PublicPayments = () => {
         payout,
       };
     }).sort((a: any, b: any) => b.net - a.net);
-  }, [data, fixedFee]);
+  }, [data, fixedFee, taxRate]);
 
   const totals = rows.reduce((sum: any, row: any) => ({
     gross: sum.gross + row.gross, wht: sum.wht + row.wht, net: sum.net + row.net,
@@ -78,8 +80,8 @@ const PublicPayments = () => {
 
   const exportCsv = () => {
     const header = fixedFee
-      ? [["Creator", "Agreed fee KES", "Agreed Reels", "Approved Reels", "Earned gross KES", "WHT 5%", "Earned net KES", "Status", "Payment status"]]
-      : [["Creator", "Best platform", "Best post", "Views / reach", "Gross KES", "WHT 5%", "Net KES", "Status", "Payment status"]];
+      ? [["Creator", "Agreed fee KES", "Agreed Reels", "Approved Reels", "Earned gross KES", `WHT ${taxRate}%`, "Earned net KES", "Status", "Payment status"]]
+      : [["Creator", "Best platform", "Best post", "Views / reach", "Gross KES", `WHT ${taxRate}%`, "Net KES", "Status", "Payment status"]];
     const body = rows.map((row: any) => fixedFee
       ? [row.creator.full_name, row.creator.fee_kes, row.target, row.approvedCount, row.gross, row.wht, row.net, row.provisional ? "Provisional" : "Complete", row.payout?.status === "paid" ? "Paid" : row.payout ? "Finalised" : "Not finalised"]
       : [row.creator.full_name, row.bestPost?.platform ?? "", row.bestPost?.post_url ?? "", row.bestPerformance, row.gross, row.wht, row.net, row.provisional ? "Provisional" : "Current", row.payout?.status === "paid" ? "Paid" : row.payout ? "Finalised" : "Not finalised"]);
@@ -152,8 +154,8 @@ const PublicPayments = () => {
               </div>
               <p className="text-xs text-muted-foreground mt-3 max-w-2xl">
                 {fixedFee
-                  ? "Each creator earns their agreed fee in equal parts per approved and posted video, up to their agreed number of Reels. 5% withholding tax applies."
-                  : "Payments use each creator's single best-performing reel by views or reach, per the signed agreement. 5% withholding tax applies. Cross-posted platforms are not added together."}
+                  ? `Each creator earns their agreed fee in equal parts per approved and posted video, up to their agreed number of Reels. ${taxRate}% withholding tax applies.`
+                  : `Payments use each creator's single best-performing reel by views or reach, per the signed agreement. ${taxRate}% withholding tax applies. Cross-posted platforms are not added together.`}
               </p>
             </div>
           </div>
