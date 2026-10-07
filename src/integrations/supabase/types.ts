@@ -1392,6 +1392,7 @@ export type Database = {
           mime_type: string | null
           platform: string | null
           post_url: string | null
+          posted_at: string | null
           posted_entry_id: string | null
           poster_path: string | null
           review_note: string | null
@@ -1404,6 +1405,7 @@ export type Database = {
           stream_thumbnail_url: string | null
           stream_uid: string | null
           updated_at: string
+          video_deleted_at: string | null
         }
         Insert: {
           campaign_id: string
@@ -1419,6 +1421,7 @@ export type Database = {
           mime_type?: string | null
           platform?: string | null
           post_url?: string | null
+          posted_at?: string | null
           posted_entry_id?: string | null
           poster_path?: string | null
           review_note?: string | null
@@ -1431,6 +1434,7 @@ export type Database = {
           stream_thumbnail_url?: string | null
           stream_uid?: string | null
           updated_at?: string
+          video_deleted_at?: string | null
         }
         Update: {
           campaign_id?: string
@@ -1446,6 +1450,7 @@ export type Database = {
           mime_type?: string | null
           platform?: string | null
           post_url?: string | null
+          posted_at?: string | null
           posted_entry_id?: string | null
           poster_path?: string | null
           review_note?: string | null
@@ -1458,6 +1463,7 @@ export type Database = {
           stream_thumbnail_url?: string | null
           stream_uid?: string | null
           updated_at?: string
+          video_deleted_at?: string | null
         }
         Relationships: [
           {
