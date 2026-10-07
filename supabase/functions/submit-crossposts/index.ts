@@ -7,7 +7,7 @@ const LinkSchema = z.object({
   post_url: z.string().url().max(2000),
 });
 const BodySchema = z.object({
-  token: z.string().min(16).max(128),
+  token: z.string().min(4).max(128),
   brief_token: z.string().min(16).max(128).nullable().optional(),
   handle: z.string().max(120).optional().default(""),
   submitter_name: z.string().max(160).optional().default(""),
