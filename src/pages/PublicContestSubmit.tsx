@@ -94,7 +94,7 @@ const PublicContestSubmit = () => {
     if (!platform) return toast.error("That doesn't look like a TikTok, Instagram, Facebook, YouTube or X link");
     if (creator && !confirmed) return toast.error("Please confirm the post meets the brief");
     setLoading(true);
-    const links = [form.post_url, ...crossPostUrls].filter(Boolean).map((post_url) => ({ post_url, platform: detectPlatform(post_url) }));
+    const links = [form.post_url, ...crossPostUrls].map((u) => u.trim().replace(/[\s,;.]+$/, "")).filter(Boolean).map((post_url) => ({ post_url, platform: detectPlatform(post_url) }));
     if (links.some((link) => !link.platform)) { setLoading(false); return toast.error("Check each link is from a supported platform"); }
     if (new Set(links.map((link) => link.platform)).size !== links.length) { setLoading(false); return toast.error("Add only one link per platform for the same video"); }
     const { data, error } = await supabase.functions.invoke("submit-crossposts", { body: {
