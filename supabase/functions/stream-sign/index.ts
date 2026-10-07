@@ -47,8 +47,8 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_ANON_KEY")!,
         { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } },
       );
-      const { data: auth } = await userClient.auth.getUser();
-      if (!auth?.user) return false;
+      const { data: auth, error: authErr } = await userClient.auth.getUser();
+      if (!auth?.user) { console.warn("stream-sign no user", authErr?.message); return false; }
       // Agency staff, super admins and client members may all view drafts.
       const args = { _user_id: auth.user.id, _campaign_id: campaignId };
       const [staff, client, admin] = await Promise.all([
