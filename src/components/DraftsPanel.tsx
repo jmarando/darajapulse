@@ -33,6 +33,23 @@ type Draft = {
   influencers?: { full_name?: string | null; handle?: string | null } | null;
 };
 
+/**
+ * Calls stream-sign with a fresh session. An idle tab can hold an expired
+ * access token, which the function rejects as "no access" — refresh first,
+ * and retry once after a forced refresh if it is still refused.
+ */
+const invokeStreamSign = async (body: Record<string, unknown>) => {
+  const { data: s } = await supabase.auth.getSession();
+  const exp = s.session?.expires_at ?? 0;
+  if (exp * 1000 - Date.now() < 60_000) await supabase.auth.refreshSession();
+  let r = await supabase.functions.invoke("stream-sign", { body });
+  if (r.error && (r.error as any)?.context?.status === 403) {
+    await supabase.auth.refreshSession();
+    r = await supabase.functions.invoke("stream-sign", { body });
+  }
+  return r;
+};
+
 const TABS = [
   ["pending", "Awaiting approval"],
   ["approved", "Approved"],
@@ -75,7 +92,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     // so tiles show the real frame without anyone tapping play.
     const streamIds = list.filter((d) => d.stream_uid).map((d) => d.id);
     if (streamIds.length) {
-      const { data: res } = await supabase.functions.invoke("stream-sign", { body: { draft_ids: streamIds } });
+      const { data: res } = await invokeStreamSign({ draft_ids: streamIds });
       const p = (res as any)?.posters;
       if (p && typeof p === "object") setStreamPosters(p as Record<string, string>);
     }
@@ -103,7 +120,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
 
   /** Stream-hosted drafts: mint player / thumbnail / download URLs on demand. */
   const streamSign = async (d: Draft): Promise<{ status: "processing" | "ready"; embedUrl?: string; posterUrl?: string; downloadUrl?: string } | null> => {
-    const { data: res, error } = await supabase.functions.invoke("stream-sign", { body: { draft_id: d.id } });
+    const { data: res, error } = await invokeStreamSign({ draft_id: d.id });
     if (error || (res as any)?.error) return null;
     return res as any;
   };

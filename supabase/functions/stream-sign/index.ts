@@ -47,13 +47,18 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_ANON_KEY")!,
         { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } },
       );
-      const { data: auth } = await userClient.auth.getUser();
-      if (!auth?.user) return false;
-      const { data: allowed } = await db.rpc("user_has_campaign_access", {
-        _user_id: auth.user.id,
-        _campaign_id: campaignId,
-      });
-      return Boolean(allowed);
+      const { data: auth, error: authErr } = await userClient.auth.getUser();
+      if (!auth?.user) { console.warn("stream-sign no user", authErr?.message); return false; }
+      // Agency staff, super admins and client members may all view drafts.
+      const args = { _user_id: auth.user.id, _campaign_id: campaignId };
+      const [staff, client, admin] = await Promise.all([
+        db.rpc("agency_staff_on_campaign", args),
+        db.rpc("user_has_campaign_access", args),
+        db.rpc("is_super_admin", { _user_id: auth.user.id }),
+      ]);
+      const ok = Boolean(staff.data || client.data || admin.data);
+      if (!ok) console.warn("stream-sign denied", auth.user.id, campaignId, staff.error?.message, client.error?.message);
+      return ok;
     };
 
     // ---- Batch thumbnails ------------------------------------------------
