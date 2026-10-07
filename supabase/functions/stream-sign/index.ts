@@ -56,7 +56,9 @@ Deno.serve(async (req) => {
         db.rpc("user_has_campaign_access", args),
         db.rpc("is_super_admin", { _user_id: auth.user.id }),
       ]);
-      return Boolean(staff.data || client.data || admin.data);
+      const ok = Boolean(staff.data || client.data || admin.data);
+      if (!ok) console.warn("stream-sign denied", auth.user.id, campaignId, staff.error?.message, client.error?.message);
+      return ok;
     };
 
     // ---- Batch thumbnails ------------------------------------------------
