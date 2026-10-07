@@ -75,7 +75,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     // so tiles show the real frame without anyone tapping play.
     const streamIds = list.filter((d) => d.stream_uid).map((d) => d.id);
     if (streamIds.length) {
-      const { data: res } = await supabase.functions.invoke("stream-sign", { body: { draft_ids: streamIds } });
+      const { data: res } = await invokeStreamSign({ draft_ids: streamIds });
       const p = (res as any)?.posters;
       if (p && typeof p === "object") setStreamPosters(p as Record<string, string>);
     }
@@ -103,7 +103,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
 
   /** Stream-hosted drafts: mint player / thumbnail / download URLs on demand. */
   const streamSign = async (d: Draft): Promise<{ status: "processing" | "ready"; embedUrl?: string; posterUrl?: string; downloadUrl?: string } | null> => {
-    const { data: res, error } = await supabase.functions.invoke("stream-sign", { body: { draft_id: d.id } });
+    const { data: res, error } = await invokeStreamSign({ draft_id: d.id });
     if (error || (res as any)?.error) return null;
     return res as any;
   };
