@@ -15,15 +15,16 @@ const json = (b: unknown, status = 200) =>
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, key);
+  const body = await req.json().catch(() => ({}));
+  const { data: jobKey } = await admin.from("internal_job_keys").select("key").eq("name", "purge-draft-videos").maybeSingle();
+  const given = req.headers.get("x-job-key") ?? "";
   const auth = req.headers.get("Authorization") ?? "";
-  const cronSecret = Deno.env.get("CRON_SECRET");
-  if (auth !== `Bearer ${key}` && !(cronSecret && req.headers.get("x-cron-secret") === cronSecret)) {
+  if (auth !== `Bearer ${key}` && !(jobKey?.key && given === jobKey.key)) {
     return json({ error: "unauthorized" }, 401);
   }
-  const body = await req.json().catch(() => ({}));
   const dryRun = body?.dry_run !== false;
   const limit = Math.min(Number(body?.limit) || 100, 300);
-  const admin = createClient(Deno.env.get("SUPABASE_URL")!, key);
 
   const week = new Date(Date.now() - 7 * 864e5).toISOString();
   const month = new Date(Date.now() - 30 * 864e5).toISOString();
