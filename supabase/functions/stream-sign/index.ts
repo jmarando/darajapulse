@@ -49,11 +49,14 @@ Deno.serve(async (req) => {
       );
       const { data: auth } = await userClient.auth.getUser();
       if (!auth?.user) return false;
-      const { data: allowed } = await db.rpc("user_has_campaign_access", {
-        _user_id: auth.user.id,
-        _campaign_id: campaignId,
-      });
-      return Boolean(allowed);
+      // Agency staff, super admins and client members may all view drafts.
+      const args = { _user_id: auth.user.id, _campaign_id: campaignId };
+      const [staff, client, admin] = await Promise.all([
+        db.rpc("agency_staff_on_campaign", args),
+        db.rpc("user_has_campaign_access", args),
+        db.rpc("is_super_admin", { _user_id: auth.user.id }),
+      ]);
+      return Boolean(staff.data || client.data || admin.data);
     };
 
     // ---- Batch thumbnails ------------------------------------------------
