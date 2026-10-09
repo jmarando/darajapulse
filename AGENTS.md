@@ -1,2 +1,5 @@
 Campaign email brand resolution lives in `supabase/functions/_shared/campaign-brand.ts` and is imported by the dashboard and review function, so both sending paths choose the same template and identity without cross-brand fallback.
 OMO payments use campaign roster fee/count and approved draft IDs, while Royco retains view tiers, because the two contracts have distinct payment rules.
+Contract dates are additive display/reporting fields, never implicit payment filters, so historical eligibility survives agreement corrections.
+Agreement amendments and their signatures use separate tables linked to immutable original signatures, so existing submission and payment gates remain unchanged.
+Amended PDFs are generated from signed text snapshots into private storage and dispatched on signing, so signatures never attach to revised wording retroactively.
