@@ -77,6 +77,7 @@ Deno.serve(async req => {
         await db.from('contract_amendment_signatures').update({ processing_at: null, retry_after: new Date(Date.now() + 3600000).toISOString(), last_error: String(error).slice(0, 500) }).eq('id', s.id)
       }
     }
+    await db.rpc('drain_amendment_pdf_retries')
     return json({ sent, failed })
   } catch (error) { return json({ error: error instanceof Error ? error.message : 'Could not prepare agreement' }, 500) }
 })
