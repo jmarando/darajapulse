@@ -531,6 +531,8 @@ export type Database = {
           budget_kes: number | null
           client_id: string
           content_format: string | null
+          contract_end_date: string | null
+          contract_start_date: string | null
           contract_template_id: string | null
           country_code: string | null
           created_at: string
@@ -540,11 +542,13 @@ export type Database = {
           end_date: string | null
           hashtag: string | null
           hashtags_extra: string[] | null
+          historical_start_date: string | null
           id: string
           learnings: string | null
           mandatory_mentions: string[] | null
           name: string
           objective: string | null
+          payment_eligibility_notes: string | null
           references_urls: string[] | null
           require_draft_approval: boolean
           slug: string | null
@@ -560,6 +564,8 @@ export type Database = {
           budget_kes?: number | null
           client_id: string
           content_format?: string | null
+          contract_end_date?: string | null
+          contract_start_date?: string | null
           contract_template_id?: string | null
           country_code?: string | null
           created_at?: string
@@ -569,11 +575,13 @@ export type Database = {
           end_date?: string | null
           hashtag?: string | null
           hashtags_extra?: string[] | null
+          historical_start_date?: string | null
           id?: string
           learnings?: string | null
           mandatory_mentions?: string[] | null
           name: string
           objective?: string | null
+          payment_eligibility_notes?: string | null
           references_urls?: string[] | null
           require_draft_approval?: boolean
           slug?: string | null
@@ -589,6 +597,8 @@ export type Database = {
           budget_kes?: number | null
           client_id?: string
           content_format?: string | null
+          contract_end_date?: string | null
+          contract_start_date?: string | null
           contract_template_id?: string | null
           country_code?: string | null
           created_at?: string
@@ -598,11 +608,13 @@ export type Database = {
           end_date?: string | null
           hashtag?: string | null
           hashtags_extra?: string[] | null
+          historical_start_date?: string | null
           id?: string
           learnings?: string | null
           mandatory_mentions?: string[] | null
           name?: string
           objective?: string | null
+          payment_eligibility_notes?: string | null
           references_urls?: string[] | null
           require_draft_approval?: boolean
           slug?: string | null
@@ -1218,6 +1230,126 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_amendment_signatures: {
+        Row: {
+          amendment_id: string
+          campaign_influencer_id: string
+          contract_hash: string
+          contract_text: string
+          emailed_at: string | null
+          id: string
+          last_error: string | null
+          pdf_path: string | null
+          processing_at: string | null
+          retry_after: string | null
+          signature_data_url: string | null
+          signed_at: string
+          signer_name: string
+          supersedes_signature_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          amendment_id: string
+          campaign_influencer_id: string
+          contract_hash: string
+          contract_text: string
+          emailed_at?: string | null
+          id?: string
+          last_error?: string | null
+          pdf_path?: string | null
+          processing_at?: string | null
+          retry_after?: string | null
+          signature_data_url?: string | null
+          signed_at?: string
+          signer_name: string
+          supersedes_signature_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          amendment_id?: string
+          campaign_influencer_id?: string
+          contract_hash?: string
+          contract_text?: string
+          emailed_at?: string | null
+          id?: string
+          last_error?: string | null
+          pdf_path?: string | null
+          processing_at?: string | null
+          retry_after?: string | null
+          signature_data_url?: string | null
+          signed_at?: string
+          signer_name?: string
+          supersedes_signature_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_amendment_signatures_amendment_id_fkey"
+            columns: ["amendment_id"]
+            isOneToOne: false
+            referencedRelation: "contract_amendments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_amendment_signatures_campaign_influencer_id_fkey"
+            columns: ["campaign_influencer_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_influencers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_amendment_signatures_supersedes_signature_id_fkey"
+            columns: ["supersedes_signature_id"]
+            isOneToOne: false
+            referencedRelation: "contract_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_amendments: {
+        Row: {
+          active: boolean
+          body: string
+          campaign_id: string
+          contract_end_date: string
+          contract_start_date: string
+          created_at: string
+          id: string
+          logo_url: string | null
+          title: string
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          campaign_id: string
+          contract_end_date: string
+          contract_start_date: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          title: string
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          campaign_id?: string
+          contract_end_date?: string
+          contract_start_date?: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_amendments_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -3617,6 +3749,32 @@ export type Database = {
         }[]
       }
       caption_key: { Args: { _s: string }; Returns: string }
+      claim_amendment_pdf_jobs: {
+        Args: never
+        Returns: {
+          amendment_id: string
+          campaign_influencer_id: string
+          contract_hash: string
+          contract_text: string
+          emailed_at: string | null
+          id: string
+          last_error: string | null
+          pdf_path: string | null
+          processing_at: string | null
+          retry_after: string | null
+          signature_data_url: string | null
+          signed_at: string
+          signer_name: string
+          supersedes_signature_id: string
+          user_agent: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "contract_amendment_signatures"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       dashboard_overview: {
         Args: { _from: string; _to: string }
         Returns: Json
@@ -3636,6 +3794,7 @@ export type Database = {
         }[]
       }
       get_brief_by_token: { Args: { _token: string }; Returns: Json }
+      get_campaign_contract_dates: { Args: { _token: string }; Returns: Json }
       get_contest_by_token: { Args: { _token: string }; Returns: Json }
       get_contest_entries_by_token: {
         Args: { _limit?: number; _offset?: number; _token: string }
@@ -3690,6 +3849,10 @@ export type Database = {
           round_number: number
           thumbnail_url: string
         }[]
+      }
+      get_contract_amendment_by_token: {
+        Args: { _token: string }
+        Returns: Json
       }
       get_contract_by_token: { Args: { _token: string }; Returns: Json }
       get_creator_draft_state: { Args: { _brief_token: string }; Returns: Json }
@@ -3754,6 +3917,10 @@ export type Database = {
         Returns: number
       }
       render_contract: { Args: { _ci_id: string }; Returns: Json }
+      render_contract_amendment: {
+        Args: { _amendment_id: string; _ci_id: string }
+        Returns: Json
+      }
       reporting_publications: {
         Args: { _campaign_ids?: string[]; _from?: string; _to?: string }
         Returns: {
@@ -3796,6 +3963,16 @@ export type Database = {
         Returns: Json
       }
       run_contest_auto_polling: { Args: never; Returns: undefined }
+      sign_contract_amendment_by_token: {
+        Args: {
+          _amendment_id: string
+          _signature_data_url?: string
+          _signer_name: string
+          _token: string
+          _user_agent?: string
+        }
+        Returns: Json
+      }
       sign_contract_by_token: {
         Args: {
           _signature_data_url?: string
