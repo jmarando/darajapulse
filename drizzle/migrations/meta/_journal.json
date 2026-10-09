@@ -15,6 +15,13 @@
       "when": 1791540620956,
       "tag": "0001_bounded_amendment_pdf_retries",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791540752809,
+      "tag": "0002_protect_private_contract_pdf_objects",
+      "breakpoints": true
     }
   ]
 }

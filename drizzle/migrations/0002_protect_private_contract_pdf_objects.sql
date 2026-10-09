@@ -1,0 +1,1 @@
+CREATE POLICY "Contract PDFs restricted to server" ON storage.objects AS RESTRICTIVE FOR ALL TO anon, authenticated USING (bucket_id <> 'contract-pdfs') WITH CHECK (bucket_id <> 'contract-pdfs');
