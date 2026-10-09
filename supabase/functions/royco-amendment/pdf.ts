@@ -13,6 +13,7 @@ export async function agreementPdf(text: string, signer?: string, signedAt?: str
   for (const paragraph of text.split('\n')) {
     const table = paragraph.trim().match(/^(Views \/ Reach)\s{2,}(Amount to be Paid \(KES\))$|^([\d,]+\s*-\s*[\d,+]+)\s{2,}([\d,]+)$/)
     if (table) {
+      if (table[1] && y < 380) next()
       if (y < 90) next()
       page.drawRectangle({ x: 116, y: y - 6, width: 360, height: 18, borderWidth: .5, borderColor: rgb(.7,.7,.7) })
       page.drawLine({ start: { x: 316, y: y - 6 }, end: { x: 316, y: y + 12 }, thickness: .5, color: rgb(.7,.7,.7) })
