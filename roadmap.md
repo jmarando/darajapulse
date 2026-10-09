@@ -8,7 +8,8 @@
 - [x] Route campaign invitations and draft decisions by brand without changing ongoing campaigns
 - [x] Calculate OMO contracted fees by approved videos instead of Royco's view tiers
 - [x] Keep overview metrics and campaign tabs readable at laptop widths and browser zoom
-- [ ] Reconcile Royco historical posts and verify unchanged payments
-- [ ] Add separate contract dates and versioned re-signing without replacing signed records
-- [ ] Generate private signed PDFs and prepare Royco amendment emails
-- [ ] Verify flows and send Justin a review email; creator sends await final approval
+- [x] Reconcile Royco historical posts and verify unchanged projected payments
+- [x] Add separate contract dates and versioned re-signing without replacing signed records
+- [x] Generate private PDFs and prepare Royco amendment emails; verify PDF tests and review output
+- [x] Send Justin a review email and check all four PDF pages; repair split payment table
+- [ ] Activate amended signing, verify a real re-sign and deliver creator invitations — blocked on final user approval
