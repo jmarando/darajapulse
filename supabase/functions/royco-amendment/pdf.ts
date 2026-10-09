@@ -11,7 +11,18 @@ export async function agreementPdf(text: string, signer?: string, signedAt?: str
   const next = () => { page = pdf.addPage([595, 842]); y = 782 }
   const ascii = (s: string) => s.replace(/[\u2011\u2013\u2014]/g, '-').replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"')
   for (const paragraph of text.split('\n')) {
+    const table = paragraph.trim().match(/^(Views \/ Reach)\s{2,}(Amount to be Paid \(KES\))$|^([\d,]+\s*-\s*[\d,+]+)\s{2,}([\d,]+)$/)
+    if (table) {
+      if (y < 90) next()
+      page.drawRectangle({ x: 116, y: y - 6, width: 360, height: 18, borderWidth: .5, borderColor: rgb(.7,.7,.7) })
+      page.drawLine({ start: { x: 316, y: y - 6 }, end: { x: 316, y: y + 12 }, thickness: .5, color: rgb(.7,.7,.7) })
+      page.drawText(table[1] || table[3], { x: 122, y, size: 9, font: table[1] ? bold : regular })
+      page.drawText(table[2] || table[4], { x: 322, y, size: 9, font: table[1] ? bold : regular })
+      y -= 18
+      continue
+    }
     const heading = /^\d+\.|^[A-Z &()]+$/.test(paragraph.trim())
+    if (heading && y < 140) next()
     const font = heading ? bold : regular
     const words = ascii(paragraph).split(/\s+/); let line = ''
     const draw = (value: string) => {

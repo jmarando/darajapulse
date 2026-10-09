@@ -3783,6 +3783,7 @@ export type Database = {
         Args: { _post_id: string }
         Returns: string
       }
+      drain_amendment_pdf_retries: { Args: never; Returns: undefined }
       enforce_billing_status: { Args: never; Returns: undefined }
       get_agency_team: {
         Args: never
@@ -3962,6 +3963,7 @@ export type Database = {
         Args: { _decision: string; _entry_id: string }
         Returns: Json
       }
+      run_amendment_pdf_jobs: { Args: never; Returns: undefined }
       run_contest_auto_polling: { Args: never; Returns: undefined }
       sign_contract_amendment_by_token: {
         Args: {
