@@ -8,6 +8,7 @@ import { Hash, Wallet, Calendar, CheckCircle2, XCircle, Music2, Check, X, AtSign
 import { toast } from "sonner";
 import { normalizeBreakdown, DEFAULT_PLATFORMS } from "@/components/DeliverablesEditor";
 import ContractSign from "@/components/ContractSign";
+import { contractPeriodLabel } from "@/lib/contractDates";
 
 
 const PLATFORM_ICON: Record<string, any> = {
@@ -26,7 +27,8 @@ const PublicBrief = () => {
   const load = async () => {
     const { data, error } = await supabase.rpc("get_brief_by_token", { _token: token });
     if (error) toast.error(error.message);
-    setB(data); setLoading(false);
+    const { data: dates } = await supabase.rpc("get_campaign_contract_dates", { _token: token });
+    setB(data ? { ...(data as any), campaign: { ...(data as any).campaign, ...(dates as any) } } : null); setLoading(false);
   };
   useEffect(() => { load(); }, [token]);
 
@@ -112,8 +114,8 @@ const PublicBrief = () => {
             <div className="font-display text-xl mt-1 truncate">{b.campaign.hashtag || "—"}</div>
           </div>
           <div className="bg-card p-4">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Window</div>
-            <div className="font-display text-base mt-1">{b.campaign.start_date || "—"} → {b.campaign.end_date || "—"}</div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{b.campaign.contract_start_date ? "Contract period" : "Window"}</div>
+            <div className="font-display text-base mt-1">{contractPeriodLabel(b.campaign) || `${b.campaign.start_date || "—"} → ${b.campaign.end_date || "—"}`}</div>
           </div>
         </div>
 

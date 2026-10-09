@@ -15,6 +15,7 @@ import { PostThumb } from "@/components/PostThumb";
 
 import { fetchAllPostMetrics, peakMetricSnapshot, buildWindowMetricsByPost, withMetricFallbacks } from "@/lib/metrics";
 import { buildAudience } from "@/lib/audience";
+import { contractPeriodLabel } from "@/lib/contractDates";
 import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 
 type PostWithMetrics = any;
@@ -62,7 +63,8 @@ const PublicReport = () => {
     const link = linkCampaignId ? { campaign_id: linkCampaignId as string } : null;
     if (!link) { setNotFound(true); return; }
     const { data: c } = await supabase.from("campaigns").select("*").eq("id", link.campaign_id).single();
-    setCampaign(c);
+    const { data: dates } = await supabase.rpc("get_campaign_contract_dates", { _token: token });
+    setCampaign(c ? { ...c, ...(dates as any) } : null);
     if (c?.client_id) {
       const { data: cl } = await supabase.from("clients").select("*").eq("id", c.client_id).single();
       setClient(cl);
@@ -261,6 +263,7 @@ const PublicReport = () => {
               <Input type="date" value={to} onInput={e => setTo((e.target as HTMLInputElement).value)} onChange={e => setTo(e.target.value)} className="h-8 text-xs w-[120px] md:w-[140px]" aria-label="To date" />
               {(from || to) && <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFrom(""); setTo(""); }}>Clear</Button>}
             </div>
+            {campaign.contract_start_date && campaign.contract_end_date && <Button variant="outline" size="sm" className="h-8" onClick={() => { setFrom(campaign.contract_start_date); setTo(campaign.contract_end_date); }}>Contract-period activity</Button>}
             <Button variant="outline" size="sm" className="h-8" onClick={exportCsv}><Download className="w-3.5 h-3.5 mr-1.5" />CSV</Button>
             <Button variant="outline" size="sm" className="h-8" onClick={downloadReportAsPdf}><FileText className="w-3.5 h-3.5 mr-1.5" />PDF</Button>
             <Button variant="outline" size="sm" className="h-8" disabled={exporting} onClick={async () => {
@@ -305,6 +308,7 @@ const PublicReport = () => {
             <div className="min-w-0 flex-1">
               <div className="text-xs uppercase tracking-widest text-muted-foreground">{client?.name ?? "Client"}</div>
               <h1 className="font-display text-3xl md:text-5xl font-semibold mt-1 break-words">{campaign.name}</h1>
+              {contractPeriodLabel(campaign) && <p className="text-xs text-muted-foreground mt-3">Contract period: {contractPeriodLabel(campaign)} · {hasRange ? `Reporting activity: ${rangeLabel}` : "Historical reporting: all recorded posts"} · Payment eligibility unchanged</p>}
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 text-sm text-muted-foreground">
                 {campaign.hashtag && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{campaign.hashtag.replace(/^#/, "")}</span>}
                 {campaign.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />KES {Number(campaign.budget_kes).toLocaleString()}</span>}

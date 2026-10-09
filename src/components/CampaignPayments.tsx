@@ -7,11 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { contractPeriodLabel, type ContractDates } from "@/lib/contractDates";
 import { contractGrossForViews } from "@/lib/contractPayment";
 import { resolveCampaignBrand } from "../../supabase/functions/_shared/campaign-brand";
 
 type Props = {
   campaignId: string;
+  contractDates?: ContractDates;
   campaignName: string;
   clientName?: string | null;
   roster: any[];
@@ -25,7 +27,7 @@ type Props = {
 const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 const money = (value: number) => `KES ${Math.round(value).toLocaleString()}`;
 
-const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signatures, posts, metrics, whtPercent, onRefreshMetrics }: Props) => {
+const CampaignPayments = ({ contractDates, campaignId, campaignName, clientName, roster, signatures, posts, metrics, whtPercent, onRefreshMetrics }: Props) => {
   const fixedFee = resolveCampaignBrand(campaignName, clientName).kind === "omo";
   const [payouts, setPayouts] = useState<any[]>([]);
   const [approvedDrafts, setApprovedDrafts] = useState<{ id: string; influencer_id: string | null; post_url: string | null }[]>([]);
@@ -182,6 +184,7 @@ const CampaignPayments = ({ campaignId, campaignName, clientName, roster, signat
   const totals = rows.reduce((sum, row) => ({ gross: sum.gross + row.gross, wht: sum.wht + row.wht, net: sum.net + row.net }), { gross: 0, wht: 0, net: 0 });
 
   return <div className="space-y-5">
+    {contractDates && contractPeriodLabel(contractDates) && <p className="text-xs text-muted-foreground">Contract period: {contractPeriodLabel(contractDates)} · Historical posts and existing payment eligibility preserved</p>}
     <div className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
       <div className="bg-card p-4"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Signed creators</div><div className="font-display text-2xl mt-1">{rows.length}</div></div>
         <div className="bg-card p-4"><div className="text-[10px] uppercase tracking-widest text-muted-foreground">{fixedFee ? "Earned gross" : "Projected gross"}</div><div className="font-display text-2xl mt-1">{money(totals.gross)}</div></div>
