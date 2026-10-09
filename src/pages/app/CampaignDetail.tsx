@@ -1622,7 +1622,6 @@ const CampaignDetail = () => {
           <div className="flex items-center gap-2">
           <BroadcastCreatorsDialog
             campaignId={id!}
-            contractDates={c}
             campaignName={c?.name ?? "Campaign"}
             clientName={c?.clients?.name}
             hashtag={c?.hashtag}
