@@ -18,7 +18,6 @@ const RoycoAmended = ({ greeting_name = 'there', brief_url, pdf_url, signed = fa
       {!signed && !review && brief_url && <Button href={brief_url} style={buttonStyle(royco.accent)}>Review and re-sign my agreement</Button>}
       <Text style={muted}>Your existing submission link and drafts are unchanged. Reply to this email if you need help. PDF download links expire after seven days; your brief page can provide a fresh link.</Text>
     </Section></Container></Body></Html>
-  }
 }
 export const template = {
   component: RoycoAmended,
