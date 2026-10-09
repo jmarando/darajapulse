@@ -23,8 +23,10 @@ import { template as roycoDraftDecision } from './royco-draft-decision.tsx'
 import { template as omoBriefLive } from './omo-brief-live.tsx'
 import { template as campaignBriefLive } from './campaign-brief-live.tsx'
 import { template as campaignDraftDecision } from './campaign-draft-decision.tsx'
+import { template as roycoAgreementAmended } from './royco-agreement-amended.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
+  'royco-agreement-amended': roycoAgreementAmended,
   'contest-daily-summary': contestDailySummary,
   'campaign-weekly-report': campaignWeeklyReport,
   'contest-draw-closed': contestDrawClosed,

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, Hash, Wallet, Users } from "lucide-react";
 import logo from "@/assets/logo-pulse-mark.png";
+import { contractPeriodLabel } from "@/lib/contractDates";
 import { contractGrossForViews } from "@/lib/contractPayment";
 import { resolveCampaignBrand } from "../../supabase/functions/_shared/campaign-brand";
 
@@ -22,7 +23,8 @@ const PublicPayments = () => {
   const load = async () => {
     const { data: payload } = await (supabase as any).rpc("get_payments_public_data", { _token: token });
     if (!payload) { setNotFound(true); return; }
-    setData(payload);
+    const { data: dates } = await supabase.rpc("get_campaign_contract_dates", { _token: token });
+    setData({ ...payload, campaign: { ...payload.campaign, ...(dates as any) } });
     setUpdatedAt(new Date());
   };
 

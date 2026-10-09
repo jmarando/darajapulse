@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791540383054,
+      "tag": "0000_royco_additive_amendment_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791540620956,
+      "tag": "0001_bounded_amendment_pdf_retries",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791540752809,
+      "tag": "0002_protect_private_contract_pdf_objects",
+      "breakpoints": true
+    }
+  ]
+}

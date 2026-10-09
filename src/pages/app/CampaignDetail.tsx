@@ -1,3 +1,4 @@
+import { contractPeriodLabel } from "@/lib/contractDates";
 import { publicOrigin } from "@/lib/appUrl";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
@@ -757,6 +758,7 @@ const CampaignDetail = () => {
             <div className="min-w-0 flex-1">
             <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">{c.clients?.name}</div>
             <h1 className="font-display text-3xl md:text-[2.5rem] font-semibold mt-1 break-words leading-[1.1] tracking-tight">{c.name}</h1>
+            {contractPeriodLabel(c) && <p className="text-xs text-muted-foreground mt-2">Contract period: {contractPeriodLabel(c)} · Historical data retained</p>}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 text-sm text-muted-foreground">
               {(c.hashtag || c.brief_templates?.hashtag) && <span className="inline-flex items-center gap-1"><Hash className="w-3.5 h-3.5" />{(c.hashtag || c.brief_templates?.hashtag || "").replace(/^#/, "")}</span>}
               {c.budget_kes > 0 && <span className="inline-flex items-center gap-1"><Wallet className="w-3.5 h-3.5" />Budget KES {Number(c.budget_kes).toLocaleString()}</span>}
@@ -2114,6 +2116,7 @@ const CampaignDetail = () => {
               <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All time</SelectItem>
+                {c.contract_start_date && c.contract_end_date && <SelectItem value="contract">Contract-period publications</SelectItem>}
                 <SelectItem value="week">This week</SelectItem>
                 <SelectItem value="month">This month</SelectItem>
                 <SelectItem value="quarter">This quarter</SelectItem>
@@ -2168,7 +2171,9 @@ const CampaignDetail = () => {
           let cutoff: number | null = null;
           let until: number | null = null;
           let periodLabel = "All time";
-          if (periodFilter.startsWith("m:")) {
+          if (periodFilter === "contract" && c.contract_start_date && c.contract_end_date) {
+            cutoff = +new Date(c.contract_start_date); until = +new Date(c.contract_end_date) + 86399999; periodLabel = "Contract-period publications (payment eligibility unchanged)";
+          } else if (periodFilter.startsWith("m:")) {
             const [y, mo] = periodFilter.slice(2).split("-").map(Number);
             cutoff = +new Date(y, mo - 1, 1);
             until = +new Date(y, mo, 1) - 1;
@@ -2331,6 +2336,7 @@ const CampaignDetail = () => {
         <TabsContent value="payments" className="space-y-6 mt-0">
           <CampaignPayments
             campaignId={id!}
+            contractDates={c}
             campaignName={c?.name ?? "Campaign"}
             clientName={c?.clients?.name}
             roster={ci}

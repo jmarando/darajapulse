@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileSignature, ShieldCheck, Eraser, Printer } from "lucide-react";
+import { FileSignature, ShieldCheck, Eraser, Printer, Download } from "lucide-react";
 import { toast } from "sonner";
 
 type Contract = {
@@ -18,6 +18,10 @@ type Contract = {
   signer_name?: string;
   signature_data_url?: string | null;
   signed_at?: string;
+  amended?: boolean;
+  amendment_id?: string;
+  amendment_signature_id?: string;
+  logo_url?: string;
 };
 
 /** Simple finger/mouse signature pad — exports a PNG data URL. */
@@ -33,7 +37,8 @@ const SignaturePad = ({ onChange }: { onChange: (dataUrl: string | null) => void
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     ctx.scale(dpr, dpr);
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
@@ -41,7 +46,7 @@ const SignaturePad = ({ onChange }: { onChange: (dataUrl: string | null) => void
   }, []);
 
   const pos = (e: React.PointerEvent) => {
-    const rect = ref.current!.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
@@ -52,7 +57,8 @@ const SignaturePad = ({ onChange }: { onChange: (dataUrl: string | null) => void
         className="w-full h-32 rounded-md border border-border bg-card touch-none"
         onPointerDown={(e) => {
           drawing.current = true;
-          const ctx = ref.current!.getContext("2d")!;
+          const ctx = ref.current?.getContext("2d");
+           if (!ctx) return;
           const p = pos(e);
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
@@ -60,7 +66,8 @@ const SignaturePad = ({ onChange }: { onChange: (dataUrl: string | null) => void
         }}
         onPointerMove={(e) => {
           if (!drawing.current) return;
-          const ctx = ref.current!.getContext("2d")!;
+          const ctx = ref.current?.getContext("2d");
+           if (!ctx) return;
           const p = pos(e);
           ctx.lineTo(p.x, p.y);
           ctx.stroke();
@@ -68,7 +75,7 @@ const SignaturePad = ({ onChange }: { onChange: (dataUrl: string | null) => void
         }}
         onPointerUp={() => {
           drawing.current = false;
-          if (dirty.current) onChange(ref.current!.toDataURL("image/png"));
+          if (dirty.current && ref.current) onChange(ref.current.toDataURL("image/png"));
         }}
       />
       <div className="flex items-center justify-between mt-1.5">
@@ -78,8 +85,9 @@ const SignaturePad = ({ onChange }: { onChange: (dataUrl: string | null) => void
           variant="ghost"
           size="sm"
           onClick={() => {
-            const c = ref.current!;
-            c.getContext("2d")!.clearRect(0, 0, c.width, c.height);
+            const c = ref.current;
+            if (!c) return;
+            c.getContext("2d")?.clearRect(0, 0, c.width, c.height);
             dirty.current = false;
             onChange(null);
           }}
@@ -107,8 +115,11 @@ const ContractSign = ({
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase.rpc("get_contract_by_token", { _token: token });
-    setC((data as any) ?? null);
+    const [original, amendment] = await Promise.all([
+      supabase.rpc("get_contract_by_token", { _token: token }),
+      supabase.rpc("get_contract_amendment_by_token", { _token: token }),
+    ]);
+    setC((amendment.data as Contract | null) ?? (original.data as Contract | null));
   };
   useEffect(() => {
     load();
@@ -124,17 +135,26 @@ const ContractSign = ({
     if (!agree) return toast.error("Please tick the box to confirm you agree");
     if (name.trim().length < 3) return toast.error("Type your full legal name");
     setSaving(true);
-    const { error } = await supabase.rpc("sign_contract_by_token", {
+    const args = {
       _token: token,
       _signer_name: name.trim(),
       _signature_data_url: sig,
       _user_agent: navigator.userAgent,
-    });
+    };
+    const { error } = c.amendment_id
+      ? await supabase.rpc("sign_contract_amendment_by_token", { ...args, _amendment_id: c.amendment_id })
+      : await supabase.rpc("sign_contract_by_token", args);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Signed — thank you. A copy is saved to your record.");
     await load();
     onSigned?.();
+  };
+
+  const downloadAgreement = async () => {
+    const { data, error } = await supabase.functions.invoke("royco-amendment", { body: { action: "download", token } });
+    if (error || !data?.url) return toast.error(data?.error || "Your PDF is being prepared. Please try again shortly.");
+    window.location.assign(data.url);
   };
 
   /** Print just the agreement — not the surrounding brief page. */
@@ -171,6 +191,7 @@ const ContractSign = ({
   if (c.signed) {
     return (
       <Card className="p-6 mt-6 border-success/40 bg-success/5">
+        {c.logo_url && <img src={c.logo_url} alt="Daraja Plus" className="h-12 w-auto mx-auto mb-4" />}
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-success" />
           <h3 className="font-display text-xl">Agreement signed</h3>
@@ -191,19 +212,21 @@ const ContractSign = ({
         <Button variant="outline" size="sm" className="mt-3" onClick={printContract}>
           <Printer className="w-3.5 h-3.5 mr-1.5" /> Print / save a copy
         </Button>
+        {c.amendment_signature_id && <Button variant="outline" size="sm" className="mt-3 ml-2" onClick={() => void downloadAgreement()}><Download className="w-3.5 h-3.5 mr-1.5" /> Download signed PDF</Button>}
       </Card>
     );
   }
 
   return (
     <Card className="p-6 mt-6 border-accent/40">
+      {c.logo_url && <img src={c.logo_url} alt="Daraja Plus" className="h-12 w-auto mx-auto mb-4" />}
       <div className="flex items-center gap-2">
         <FileSignature className="w-5 h-5 text-accent" />
-        <div className="text-[10px] uppercase tracking-widest text-accent">Required before you post</div>
+        <div className="text-[10px] uppercase tracking-widest text-accent">{c.amended ? "Amended agreement" : "Required before you post"}</div>
       </div>
       <h3 className="font-display text-xl mt-1">{c.title || "Creator agreement"}</h3>
       <p className="text-sm text-muted-foreground mt-1">
-        Please read and sign. You can't submit post links until this is signed.
+        {c.amended ? "Please review the corrected dates and sign again. Your earlier signed copy stays on record; your existing submissions and payment eligibility are unchanged." : "Please read and sign. You can't submit post links until this is signed."}
       </p>
 
       <ScrollArea className="h-72 mt-4 rounded-md border border-border bg-secondary/20 p-4">
