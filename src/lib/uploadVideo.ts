@@ -114,27 +114,63 @@ const startUpload = ({
  * The minted URL IS the tus upload URL, so we pass it as `uploadUrl` (not
  * `endpoint`): a retry then HEADs for the current offset and continues from
  * there instead of creating a second, half-paid-for video in Stream.
+ *
+ * Slow / patchy mobile data: tus's own retries give up after ~2 minutes, which
+ * is shorter than a typical signal drop in a matatu or a phone screen locking.
+ * So after tus gives up we wait for the network (and the tab) to come back and
+ * resume from the server's offset ourselves. We only give up for good when the
+ * link is dead (403/404/410/413) or nothing has moved for STALL_LIMIT_MS.
  */
+const STALL_LIMIT_MS = 15 * 60 * 1000;
+
+export type UploadStatus = "uploading" | "reconnecting";
+
+export const uploadStatusCode = (err: unknown): number =>
+  (err as any)?.originalResponse?.getStatus?.() ?? (err as any)?.streamStatus ?? 0;
+
+/** Resolves when the device is online and the page is visible again (or after `ms`). */
+const waitForNetwork = (ms: number) =>
+  new Promise<void>((resolve) => {
+    let timer: ReturnType<typeof setTimeout>;
+    const done = () => {
+      clearTimeout(timer);
+      window.removeEventListener("online", check);
+      document.removeEventListener("visibilitychange", check);
+      resolve();
+    };
+    const check = () => {
+      if (navigator.onLine && document.visibilityState === "visible") done();
+    };
+    timer = setTimeout(done, ms);
+    window.addEventListener("online", check);
+    document.addEventListener("visibilitychange", check);
+  });
+
 const startStreamUpload = ({
   uploadUrl,
   file,
   onProgress,
+  onStatus,
   onUpload,
+  isAborted,
 }: {
   uploadUrl: string;
   file: File;
   onProgress?: (p: UploadProgress) => void;
+  onStatus?: (s: UploadStatus) => void;
   onUpload: (u: tus.Upload) => void;
+  isAborted: () => boolean;
 }) =>
   new Promise<void>((resolve, reject) => {
     const report = trackProgress(onProgress);
+    let lastMovedAt = Date.now();
+    let lastBytes = -1;
+    let backoff = 5000;
 
     const upload = new tus.Upload(file, {
       uploadUrl,
       retryDelays: [0, 1000, 3000, 6000, 10000, 15000, 20000, 30000],
-      // Cloudflare tus requires chunk sizes in 256KiB multiples. 5MiB survives
-      // flaky mobile data far better than 10MiB: a dropped connection re-sends
-      // less, and proxies that time out long PATCH bodies are less likely to cut in.
+      // Cloudflare tus requires chunks of at least 5MiB (in 256KiB multiples).
       chunkSize: 5 * 1024 * 1024,
       uploadDataDuringCreation: false,
       removeFingerprintOnSuccess: true,
@@ -149,8 +185,28 @@ const startStreamUpload = ({
         filename: file.name,
         filetype: file.type || "video/mp4",
       },
-      onError: (err) => reject(err),
-      onProgress: report,
+      onError: async (err) => {
+        if (isAborted()) return;
+        const status = uploadStatusCode(err);
+        const fatal = status === 403 || status === 404 || status === 410 || status === 413;
+        if (fatal || Date.now() - lastMovedAt > STALL_LIMIT_MS) return reject(err);
+        // Not dead, just disconnected: wait for the network/tab, then resume from
+        // the offset Cloudflare already holds.
+        onStatus?.("reconnecting");
+        await waitForNetwork(navigator.onLine ? backoff : 60000);
+        backoff = Math.min(backoff * 2, 60000);
+        if (isAborted()) return;
+        upload.start();
+      },
+      onProgress: (sent, total) => {
+        if (sent !== lastBytes) {
+          lastBytes = sent;
+          lastMovedAt = Date.now();
+          backoff = 5000;
+          onStatus?.("uploading");
+        }
+        report(sent, total);
+      },
       onSuccess: () => resolve(),
     });
 
