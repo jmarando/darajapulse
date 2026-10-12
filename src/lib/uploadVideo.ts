@@ -257,21 +257,32 @@ export const uploadStream = ({
   uploadUrl,
   file,
   onProgress,
+  onStatus,
 }: {
   uploadUrl: string;
   file: File;
   onProgress?: (p: UploadProgress) => void;
+  onStatus?: (s: UploadStatus) => void;
 }): { promise: Promise<void>; abort: () => void } => {
   let current: tus.Upload | null = null;
+  let aborted = false;
   const promise = startStreamUpload({
     uploadUrl,
     file,
     onProgress,
+    onStatus,
+    isAborted: () => aborted,
     onUpload: (u) => {
       current = u;
     },
   });
-  return { promise, abort: () => current?.abort(true) };
+  return {
+    promise,
+    abort: () => {
+      aborted = true;
+      current?.abort(true);
+    },
+  };
 };
 
 /** Grabs a still frame so review lists can show an image instead of loading video. */
