@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { UploadCloud, FileVideo, CheckCircle2, Clock, MessageSquareWarning, X } from "lucide-react";
 import { toast } from "sonner";
-import { uploadResumable, uploadStream, capturePoster, formatBytes, type UploadProgress } from "@/lib/uploadVideo";
+import { uploadResumable, uploadStream, uploadStatusCode, capturePoster, formatBytes, type UploadProgress } from "@/lib/uploadVideo";
 
 type Draft = {
   id: string;
@@ -49,6 +49,7 @@ export const CreatorDraftStep = ({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
 
