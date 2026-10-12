@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { UploadCloud, FileVideo, CheckCircle2, Clock, MessageSquareWarning, X } from "lucide-react";
 import { toast } from "sonner";
-import { uploadResumable, uploadStream, capturePoster, formatBytes, type UploadProgress } from "@/lib/uploadVideo";
+import { uploadResumable, uploadStream, uploadStatusCode, capturePoster, formatBytes, type UploadProgress } from "@/lib/uploadVideo";
 
 type Draft = {
   id: string;
@@ -49,6 +49,7 @@ export const CreatorDraftStep = ({
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
 
@@ -155,18 +156,44 @@ export const CreatorDraftStep = ({
       }
     };
 
+    let streamBytes = 0;
+    let keepResume = false;
     try {
       if (streamUrl && streamUid) {
         try {
-          const { promise, abort } = uploadStream({ uploadUrl: streamUrl, file, onProgress: setProgress });
+          const { promise, abort } = uploadStream({
+            uploadUrl: streamUrl,
+            file,
+            onProgress: (p) => {
+              streamBytes = p.uploaded;
+              setProgress(p);
+            },
+            onStatus: (s) => setReconnecting(s === "reconnecting"),
+          });
           abortRef.current = abort;
           await promise;
           abortRef.current = null;
+          setReconnecting(false);
         } catch (streamErr) {
-          // Cloudflare unreachable / link dead / blocked by the network: don't lose
-          // the creator's work — fall back to our own storage automatically.
           abortRef.current = null;
+          setReconnecting(false);
           report("stream", streamErr);
+          const status = uploadStatusCode(streamErr);
+          const linkDead = status === 403 || status === 404 || status === 410;
+          if (status === 413) {
+            try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
+            setBusy(false);
+            setProgress(null);
+            return toast.error("That video is too big to upload. Please export it at 1080p or smaller and try again.");
+          }
+          if (streamBytes > 0 && !linkDead) {
+            // Part of the video is already safely with Cloudflare: keep the link so
+            // tapping Send again really continues instead of starting from 0%.
+            keepResume = true;
+            throw streamErr;
+          }
+          // Cloudflare unreachable from this network, or the link expired before any
+          // data moved: fall back to our own storage so the creator's work isn't lost.
           try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
           streamUid = null;
           setProgress({ percent: 0, uploaded: 0, total: file.size, speed: 0, eta: null });
@@ -176,13 +203,19 @@ export const CreatorDraftStep = ({
         await uploadToStorage();
       }
     } catch (err: any) {
+      const pct = progress?.percent ?? (file.size ? (streamBytes / file.size) * 100 : 0);
       setBusy(false);
       setProgress(null);
+      setReconnecting(false);
       abortRef.current = null;
       report("storage", err);
-      try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
+      if (!keepResume) {
+        try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }
+      }
       return toast.error(
-        "Upload stopped — check your connection and tap Send again. It will continue from where it stopped."
+        keepResume && pct > 0
+          ? `Upload paused at ${Math.floor(pct)}% — your connection dropped. Keep this page open, move to a stronger signal or wifi, and tap Send again to continue from ${Math.floor(pct)}%.`
+          : "Upload stopped — your connection is too weak or dropped. Try wifi or a stronger signal, keep this page open, and tap Send again."
       );
     }
     try { localStorage.removeItem(resumeKey); } catch { /* ignore */ }

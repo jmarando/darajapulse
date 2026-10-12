@@ -186,17 +186,25 @@ const startStreamUpload = ({
         filetype: file.type || "video/mp4",
       },
       onError: async (err) => {
-        if (isAborted()) return;
-        const status = uploadStatusCode(err);
-        const fatal = status === 403 || status === 404 || status === 410 || status === 413;
-        if (fatal || Date.now() - lastMovedAt > STALL_LIMIT_MS) return reject(err);
-        // Not dead, just disconnected: wait for the network/tab, then resume from
-        // the offset Cloudflare already holds.
-        onStatus?.("reconnecting");
-        await waitForNetwork(navigator.onLine ? backoff : 60000);
-        backoff = Math.min(backoff * 2, 60000);
-        if (isAborted()) return;
-        upload.start();
+        // Must always settle: an exception here would leave the upload frozen.
+        try {
+          if (isAborted?.()) return;
+          const status = uploadStatusCode(err);
+          const fatal = status === 403 || status === 404 || status === 410 || status === 413;
+          // Never moved at all (e.g. Cloudflare blocked on this network): fail fast so
+          // the caller can fall back to storage instead of waiting 15 minutes.
+          const neverStarted = lastBytes <= 0 && Date.now() - lastMovedAt > 60000;
+          if (fatal || neverStarted || Date.now() - lastMovedAt > STALL_LIMIT_MS) return reject(err);
+          // Not dead, just disconnected: wait for the network/tab, then resume from
+          // the offset Cloudflare already holds.
+          onStatus?.("reconnecting");
+          await waitForNetwork(navigator.onLine ? backoff : 60000);
+          backoff = Math.min(backoff * 2, 60000);
+          if (isAborted?.()) return;
+          upload.start();
+        } catch (e) {
+          reject(err ?? e);
+        }
       },
       onProgress: (sent, total) => {
         if (sent !== lastBytes) {
@@ -257,21 +265,32 @@ export const uploadStream = ({
   uploadUrl,
   file,
   onProgress,
+  onStatus,
 }: {
   uploadUrl: string;
   file: File;
   onProgress?: (p: UploadProgress) => void;
+  onStatus?: (s: UploadStatus) => void;
 }): { promise: Promise<void>; abort: () => void } => {
   let current: tus.Upload | null = null;
+  let aborted = false;
   const promise = startStreamUpload({
     uploadUrl,
     file,
     onProgress,
+    onStatus,
+    isAborted: () => aborted,
     onUpload: (u) => {
       current = u;
     },
   });
-  return { promise, abort: () => current?.abort(true) };
+  return {
+    promise,
+    abort: () => {
+      aborted = true;
+      current?.abort(true);
+    },
+  };
 };
 
 /** Grabs a still frame so review lists can show an image instead of loading video. */
