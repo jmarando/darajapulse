@@ -58,6 +58,19 @@ import PayInvoice from "./pages/PayInvoice";
 import Inventory from "./pages/app/Inventory";
 import OAuthConsent from "./pages/OAuthConsent";
 import PublicDiscovery from "./pages/public/PublicDiscovery";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { initAnalytics, trackPageView } from "@/lib/analytics";
+
+initAnalytics();
+
+const PageViewTracker = () => {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+  return null;
+};
 
 const queryClient = new QueryClient();
 
@@ -67,6 +80,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <PageViewTracker />
         <AuthProvider><TenantProvider>
           <Routes>
             <Route path="/" element={<LandingDashboard />} />
