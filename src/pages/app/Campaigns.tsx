@@ -46,6 +46,7 @@ const Divider = () => <div className="h-9 w-px bg-background/15" />;
 const Campaigns = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [perf, setPerf] = useState<Record<string, { views: number; er: number; posts: number }>>({});
+  const [rosterCount, setRosterCount] = useState<Record<string, number>>({});
   const [perfLoaded, setPerfLoaded] = useState(false);
   const [contestPerf, setContestPerf] = useState<Record<string, ContestPerf>>({});
   const [clients, setClients] = useState<any[]>([]);
@@ -75,10 +76,14 @@ const Campaigns = () => {
     }
 
     // Per-campaign performance preview and contest aggregates run in parallel.
-    const [{ data: perfRows, error: perfErr }, { data: ctsts }] = await Promise.all([
+    const [{ data: perfRows, error: perfErr }, { data: ctsts }, { data: roster }] = await Promise.all([
       (supabase as any).rpc("campaign_perf_summary", { campaign_ids: ids }),
       supabase.from("contests").select("id, campaign_id").in("campaign_id", ids),
+      supabase.from("campaign_influencers").select("campaign_id").in("campaign_id", ids).limit(10000),
     ]);
+    const rc: Record<string, number> = {};
+    for (const r of roster ?? []) rc[r.campaign_id] = (rc[r.campaign_id] || 0) + 1;
+    setRosterCount(rc);
 
     if (perfErr) console.warn("campaign_perf_summary", perfErr);
     const out: Record<string, { views: number; er: number; posts: number }> = {};
@@ -295,7 +300,7 @@ const Campaigns = () => {
                   <div className="mx-4 mb-4 rounded-lg bg-foreground text-background px-4 py-5 sm:mx-5 sm:mb-5 sm:p-6 flex items-center justify-between gap-3 shadow-lg mt-auto">
                   {hasContest ? (
                     <>
-                      <Stat label="Creators" value={fmtNum(cp.contestants)} />
+                      <Stat label="Creators" value={fmtNum(Math.max(cp.contestants ?? 0, rosterCount[r.id] ?? 0))} />
                       <Divider />
                       <Stat label="Posts" value={fmtNum(Math.max(cp.entries ?? 0, perf[r.id]?.posts ?? 0))} />
                       <Divider />
