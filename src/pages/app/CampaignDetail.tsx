@@ -541,7 +541,9 @@ const CampaignDetail = () => {
 
   const totals = useMemo(() => {
     let views = 0, likes = 0, comments = 0, shares = 0, saves = 0, reach = 0, impressions = 0;
-    if (contestEntries.length > 0) {
+    // Roster campaigns that use a submission link (e.g. OMO) mirror posts into contest
+    // entries without metrics — the post metrics are the source of truth there.
+    if (isContestOnly) {
       // Contest-driven campaign: use contest entry metrics as the source of truth.
       for (const e of contestEntries) {
         views += Number(e.views || 0);
@@ -563,7 +565,7 @@ const CampaignDetail = () => {
     }
     const er = views ? ((likes + comments + shares + saves) / views) * 100 : 0;
     return { views, likes, comments, shares, saves, reach, impressions, er };
-  }, [latestByPost, contestEntries]);
+  }, [latestByPost, contestEntries, isContestOnly]);
 
   // Per-platform breakdown (mirrors public report)
   const platformRows = useMemo(() => {
