@@ -1,5 +1,6 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { accountId, streamApi, streamConfigured } from "../_shared/stream.ts";
+import { requireCaller, SUPER_ADMIN } from "../_shared/auth.ts";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -12,10 +13,13 @@ const json = (body: unknown, status = 200) =>
  *  - GET  { action: "check" }   → token health + current webhook
  *  - POST { action: "webhook" } → point Cloudflare's webhook at our function (returns its secret once)
  *  - POST { action: "key" }     → create a signed-playback key (returns the key once; store as secret)
- * Deleted after setup.
+ * Super admins only: "key" mints a playback signing key and "webhook" repoints
+ * Cloudflare's notifications, so an open endpoint would expose every private video.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req, { roles: SUPER_ADMIN });
+  if (caller instanceof Response) return caller;
   if (!streamConfigured()) return json({ error: "missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_STREAM_TOKEN" }, 503);
 
   const body = await req.json().catch(() => ({}));

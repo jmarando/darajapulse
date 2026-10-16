@@ -2,6 +2,7 @@
 // Runs in background via EdgeRuntime.waitUntil so the client returns immediately.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { requireCaller, SUPER_ADMIN } from "../_shared/auth.ts";
 
 const APIFY = Deno.env.get("APIFY_API_TOKEN") ?? "";
 const ACTORS = {
@@ -101,6 +102,9 @@ declare const EdgeRuntime: any;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // Manual fallback runner (spends Apify credits): super admins and internal calls only.
+  const caller = await requireCaller(req, { roles: SUPER_ADMIN });
+  if (caller instanceof Response) return caller;
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   try {
     const body = await req.json().catch(() => ({}));

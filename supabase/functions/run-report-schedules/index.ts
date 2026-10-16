@@ -4,6 +4,7 @@
 // Calls send-campaign-report for each due schedule.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { requireCaller, SUPER_ADMIN } from '../_shared/auth.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,8 @@ const cors = {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
+  const caller = await requireCaller(req, { job: 'run-report-schedules', roles: SUPER_ADMIN })
+  if (caller instanceof Response) return caller
 
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
   const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!

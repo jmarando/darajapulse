@@ -5,7 +5,7 @@ import { streamApi, verifyWebhookSignature } from "../_shared/stream.ts";
 /**
  * Cloudflare Stream webhook: marks creator drafts "ready" (or "failed") as soon
  * as conversion finishes. If the signature cannot be verified (secret not yet
- * provisioned), we double-check the video exists via the API before trusting it.
+ * provisioned), the video's state comes from the Stream API, never the payload.
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -24,19 +24,18 @@ Deno.serve(async (req) => {
   if (!uid) return new Response("ok", { headers: corsHeaders });
 
   const verified = await verifyWebhookSignature(raw, req.headers.get("Webhook-Signature"));
-  if (!verified) {
-    // Unverified source: only act if Cloudflare's own API confirms this video exists.
-    const { ok } = await streamApi(`/stream/${uid}`);
-    if (!ok) return new Response("bad signature", { status: 401, headers: corsHeaders });
-  }
+  // Unsigned deliveries are only a hint: their state is read back from Cloudflare's
+  // own API, so a forged event for a known video can't mark the draft failed.
+  const { ok: found, data: lookup } = await streamApi(`/stream/${uid}`);
+  const video = found ? lookup?.result : null;
+  if (!verified && !video) return new Response("bad signature", { status: 401, headers: corsHeaders });
+  const source = verified ? event : video;
 
-  const state = String(event?.status?.state ?? (event?.readyToStream ? "ready" : "")).toLowerCase();
+  const state = String(source?.status?.state ?? (source?.readyToStream ? "ready" : "")).toLowerCase();
 
   try {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    if (state === "ready" || event?.readyToStream) {
-      const { ok, data } = await streamApi(`/stream/${uid}`);
-      const video = ok ? data?.result : null;
+    if (state === "ready" || source?.readyToStream) {
       await admin
         .from("creator_drafts")
         .update({ stream_status: "ready", stream_duration: video?.duration ?? null })

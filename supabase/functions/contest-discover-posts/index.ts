@@ -4,6 +4,7 @@
 // Falls back gracefully if either provider is not configured / returns no data.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { canManageContest, denied, requireCaller } from "../_shared/auth.ts";
 
 const ED_TOKENS = [
   Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
@@ -129,6 +130,8 @@ async function discoverTikTokED(tags: string[]) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req, { job: "contest-discover-posts" });
+  if (caller instanceof Response) return caller;
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   let runId: string | null = null;
 
@@ -141,6 +144,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    if (!(await canManageContest(caller, contest_id))) return denied(403, "You don't have access to this contest.");
 
     const { data: contest } = await sb
       .from("contests")

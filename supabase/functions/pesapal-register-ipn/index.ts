@@ -1,4 +1,5 @@
 import { pesapalAuth, PESAPAL_BASE } from "../_shared/pesapal.ts";
+import { requireCaller, SUPER_ADMIN } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,6 +8,8 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req, { roles: SUPER_ADMIN });
+  if (caller instanceof Response) return caller;
   try {
     const token = await pesapalAuth();
     const projectRef = (Deno.env.get("SUPABASE_URL") ?? "").match(/https:\/\/([^.]+)/)?.[1];

@@ -8,6 +8,7 @@
 import { apifyProfileStats } from "../_shared/apify-profile.ts";
 import { scrapeCreatorsProfile, SCRAPECREATORS_ENABLED, SC_OUT_OF_CREDITS } from "../_shared/scrapecreators.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -375,6 +376,8 @@ Only include socials/contacts you're confident exist for THIS exact person. If y
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req);
+  if (caller instanceof Response) return caller;
   try {
     const body = await req.json().catch(() => ({}));
     if (body?.query && typeof body.query === "string") {

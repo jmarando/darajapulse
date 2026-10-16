@@ -3,3 +3,4 @@ OMO payments use campaign roster fee/count and approved draft IDs, while Royco r
 Contract dates are additive display/reporting fields, never implicit payment filters, so historical eligibility survives agreement corrections.
 Agreement amendments and their signatures use separate tables linked to immutable original signatures, so existing submission and payment gates remain unchanged.
 Amended PDFs are generated from signed text snapshots into private storage and dispatched on signing, so signatures never attach to revised wording retroactively.
+Edge functions that spend credits, send email or cross tenants check their caller with `supabase/functions/_shared/auth.ts` (scheduled job key, service role, or staff role), and cron jobs call them through `public.invoke_job_function`, because `verify_jwt` accepts the public anon key.

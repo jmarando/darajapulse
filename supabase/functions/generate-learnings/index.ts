@@ -1,5 +1,6 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { canManageCampaign, denied, requireCaller } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -9,6 +10,10 @@ Deno.serve(async (req) => {
     if (!campaign_id) {
       return new Response(JSON.stringify({ error: "campaign_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    // AI credits are spent per call: staff on this campaign only.
+    const caller = await requireCaller(req);
+    if (caller instanceof Response) return caller;
+    if (!(await canManageCampaign(caller, campaign_id))) return denied(403, "You don't have access to this campaign.");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {

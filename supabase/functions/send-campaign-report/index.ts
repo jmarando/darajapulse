@@ -7,6 +7,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { sendAppEmail } from "../_shared/app-email.ts";
+import { canManageCampaign, canManageContest, denied, requireCaller } from "../_shared/auth.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -346,6 +347,14 @@ Deno.serve(async (req) => {
     if (!campaign_id || !report_type) {
       return new Response(JSON.stringify({ error: 'campaign_id and report_type required' }),
         { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } })
+    }
+
+    // Reports carry the private report link and can go to any test address, so
+    // only the scheduler or staff on this campaign (and contest) may send them.
+    const caller = await requireCaller(req)
+    if (caller instanceof Response) return caller
+    if (!(await canManageCampaign(caller, campaign_id)) || (contest_id && !(await canManageContest(caller, contest_id)))) {
+      return denied(403, "You don't have access to this campaign.")
     }
 
     const supa = createClient(SUPABASE_URL, SERVICE_KEY)

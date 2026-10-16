@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { apifyProfileStats } from "../_shared/apify-profile.ts";
+import { requireCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -138,6 +139,8 @@ async function fetchAny(platform: string, handle: string): Promise<Stats | null>
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req, { job: "inventory-refresh" });
+  if (caller instanceof Response) return caller;
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
   let body: any = {};

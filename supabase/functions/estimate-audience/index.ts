@@ -7,6 +7,7 @@
 // overwritten. Everything written here is tagged demo_source = 'modelled' so the
 // UI can label it as an estimate.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -137,6 +138,8 @@ export function estimateFor(row: {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req);
+  if (caller instanceof Response) return caller;
 
   let body: any = {};
   try { body = await req.json(); } catch { /* defaults */ }

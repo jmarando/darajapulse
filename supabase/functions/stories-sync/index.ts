@@ -2,6 +2,7 @@
 // Stories expire after 24h, so this is meant to run on a schedule (every few hours).
 // Creators without a connected account are covered by manual screenshot logging in the UI.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { canManageCampaign, denied, requireCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,8 +77,14 @@ async function syncInstagram(acct: any, influencerId: string, campaignIds: strin
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    const caller = await requireCaller(req, { job: "stories-sync" });
+    if (caller instanceof Response) return caller;
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const { campaign_id } = body as { campaign_id?: string };
+    // Staff sync their own campaign; all-campaign runs are for the scheduler.
+    if (caller.kind === "user" && !(campaign_id ? await canManageCampaign(caller, campaign_id) : caller.isSuperAdmin)) {
+      return denied(403, "You don't have access to this campaign.");
+    }
 
     // Which creators are we covering, and which campaigns should each frame land on?
     let ciq = supabase.from("campaign_influencers").select("campaign_id, influencer_id");

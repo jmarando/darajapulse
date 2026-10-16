@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { canManageCampaign, denied, requireCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -115,8 +116,14 @@ async function pollInfluencer(influencer_id: string, campaign_id?: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    const caller = await requireCaller(req, { job: "tiktok-poll" });
+    if (caller instanceof Response) return caller;
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const { campaign_id, influencer_id } = body as { campaign_id?: string; influencer_id?: string };
+    // Staff poll their own campaign; anything wider is for the scheduler or a super admin.
+    if (caller.kind === "user" && !(campaign_id ? await canManageCampaign(caller, campaign_id) : caller.isSuperAdmin)) {
+      return denied(403, "You don't have access to this campaign.");
+    }
 
     let influencerIds: string[] = [];
     if (influencer_id) {

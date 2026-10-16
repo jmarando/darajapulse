@@ -1,11 +1,15 @@
 import { scrapeCreatorsProfile, SCRAPECREATORS_ENABLED } from "../_shared/scrapecreators.ts";
+import { requireCaller, SUPER_ADMIN } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // Each check spends a credit: super admins only.
+  const caller = await requireCaller(req, { roles: SUPER_ADMIN });
+  if (caller instanceof Response) return caller;
   if (!SCRAPECREATORS_ENABLED) {
     return new Response(JSON.stringify({ ok: false, error: "SCRAPECREATORS_API_KEY not configured" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -22,6 +22,13 @@
       "when": 1791540752809,
       "tag": "0002_protect_private_contract_pdf_objects",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792194391129,
+      "tag": "0003_scheduled_jobs_use_job_keys",
+      "breakpoints": true
     }
   ]
 }

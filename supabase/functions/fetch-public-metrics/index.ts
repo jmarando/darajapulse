@@ -6,6 +6,7 @@
 // Per-post status is returned so the UI can surface "couldn't fetch — retry / enter manually".
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { scrapeCreatorsPost, SCRAPECREATORS_ENABLED } from "../_shared/scrapecreators.ts";
+import { canManageCampaign, denied, requireCaller } from "../_shared/auth.ts";
 
 // Per-invocation ScrapeCreators credit accounting. Credits are a paid, finite
 // pool, so a run may never exceed the budget the caller asked for.
@@ -639,8 +640,21 @@ async function processPost(p: any) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    // Every call spends scraper credits: the scheduler, our own functions (self-chaining,
+    // creator submissions) or staff on the campaign. Unscoped runs are super admin only.
+    const caller = await requireCaller(req, { job: "fetch-public-metrics" });
+    if (caller instanceof Response) return caller;
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const { campaign_id, post_id, stale, max, offset, chain, use_scrapecreators, max_credits } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number; chain?: number; use_scrapecreators?: boolean; max_credits?: number };
+    if (caller.kind === "user") {
+      let scope = post_id ? null : campaign_id ?? null;
+      if (post_id) {
+        const { data: target } = await supabase.from("posts").select("campaign_id").eq("id", post_id).maybeSingle();
+        scope = target?.campaign_id ?? null;
+      }
+      const allowed = scope ? await canManageCampaign(caller, scope) : caller.isSuperAdmin;
+      if (!allowed) return denied(403, "You don't have access to this campaign.");
+    }
     // ScrapeCreators is the default provider now; pass use_scrapecreators:false
     // to force the legacy Apify/Ensemble path.
     sc.enabled = use_scrapecreators !== false && SCRAPECREATORS_ENABLED;

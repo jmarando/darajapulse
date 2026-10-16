@@ -3,11 +3,15 @@
 // API usage during App Review testing, and to verify tokens work end to end.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireCaller, SUPER_ADMIN } from "../_shared/auth.ts";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // Returns insights for every connected creator account: super admins only.
+  const caller = await requireCaller(req, { roles: SUPER_ADMIN });
+  if (caller instanceof Response) return caller;
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body, null, 2), {
       status,

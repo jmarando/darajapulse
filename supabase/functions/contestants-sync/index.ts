@@ -3,6 +3,7 @@
 // external_registration_id when present, otherwise on the IG/TikTok handle).
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { canManageContest, denied, requireCaller } from "../_shared/auth.ts";
 
 type Reg = {
   external_id: string;
@@ -148,6 +149,9 @@ async function normalize(payload: any): Promise<Reg[]> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // Callers can post registrations directly, so this must never be open.
+  const caller = await requireCaller(req, { job: "contestants-sync" });
+  if (caller instanceof Response) return caller;
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   let runId: string | null = null;
 
@@ -158,6 +162,8 @@ Deno.serve(async (req) => {
     if (!contest_id) {
       return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    if (!(await canManageContest(caller, contest_id))) return denied(403, "You don't have access to this contest.");
 
     const { data: run } = await sb.from("contestant_sync_runs").insert({
       contest_id, source: "feed", triggered_by, status: "running",

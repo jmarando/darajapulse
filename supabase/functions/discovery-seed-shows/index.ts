@@ -3,6 +3,7 @@
 // - Upserts shows into public.shows
 // - Auto-creates inventory_items for Mediamax talent so they appear on the storefront
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireCaller } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -445,6 +446,8 @@ async function runMediamaxSeed() {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req);
+  if (caller instanceof Response) return caller;
   try {
     // @ts-ignore - EdgeRuntime available
     EdgeRuntime.waitUntil(runMediamaxSeed());

@@ -21,6 +21,24 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
   headers: { ...corsHeaders, "Content-Type": "application/json" },
 });
 
+// Pull first metrics for newly registered posts now instead of waiting for the
+// scheduler. Runs after the response; fetch-public-metrics only accepts trusted
+// callers, so the public page can't trigger it directly.
+function refreshMetricsSoon(postIds: string[]) {
+  if (!postIds.length) return;
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/fetch-public-metrics`;
+  const work = Promise.all(postIds.map((post_id) =>
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, apikey: key },
+      body: JSON.stringify({ post_id }),
+    }).then((res) => res.body?.cancel()).catch(() => {})
+  ));
+  // @ts-ignore EdgeRuntime is provided by Supabase
+  EdgeRuntime.waitUntil(work);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -83,7 +101,9 @@ Deno.serve(async (req) => {
       }
       results.push({ entry_id: entry.id, post_id: postId, ...link });
     }
-    return json({ creative_group_id: groupId, results, post_ids: results.map((r) => r.post_id).filter(Boolean) });
+    const postIds = results.map((r) => r.post_id).filter(Boolean);
+    refreshMetricsSoon(postIds);
+    return json({ creative_group_id: groupId, results, post_ids: postIds });
   }
 
   const first = body.links[0];
@@ -162,5 +182,7 @@ Deno.serve(async (req) => {
     results.push({ entry_id: entry.id, post_id: postId, pending_review: firstEntry.status === "pending", ...link });
   }
 
-  return json({ creative_group_id: groupId, results, post_ids: results.map((result) => result.post_id).filter(Boolean) });
+  const postIds = results.map((result) => result.post_id).filter(Boolean);
+  refreshMetricsSoon(postIds);
+  return json({ creative_group_id: groupId, results, post_ids: postIds });
 });
