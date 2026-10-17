@@ -33,8 +33,8 @@ Checked before shipping: live roles (all 33 staff have an agency; all 5 brand ow
 ### Rollout (order matters)
 
 1. ~~**Apply migration 0003 first.**~~ **Done:** applied to production on 17 Oct 2026 at about 00:25 UTC and recorded in `drizzle.__drizzle_migrations`. Every scheduled job then ran through the new path (00:30–05:45 UTC) with the same results as before.
-2. **Merge the branch** (PR #1) so the functions deploy.
-3. Publish the frontend (the contest page change and the new homepage) whenever convenient; the old pages keep working.
+2. ~~**Merge the branch** (PR #1).~~ **Done 17 Oct.** Merging did **not** redeploy the edge functions: at 15:05 UTC `contest-poll` still ran the old code. **Still to do:** ask the Lovable agent to "Deploy all Supabase edge functions as they are in the code. Don't change any code." Until then the old functions stay open, and contest cross-posts get metrics from the scheduled job rather than on submission, because the live contest page no longer requests them itself.
+3. ~~Publish the frontend~~ **Done 17 Oct:** the new homepage and contest page are live.
 
 ### After rollout — please do
 
