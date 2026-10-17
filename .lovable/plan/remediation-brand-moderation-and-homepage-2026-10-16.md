@@ -76,7 +76,7 @@ Checked before shipping: live roles (all 33 staff have an agency; all 5 brand ow
 
 | # | Item | Detail | Size |
 |---|---|---|---|
-| 4.1 | **Split the bundle by route** | Every page, including creators' brief links, loads one 2.7 MB script (784 KB gzipped). `React.lazy` routes in `src/App.tsx`, plus dynamic `import()` for `xlsx`, `pptxgenjs` and charts (~290 KB gzipped together). | M |
+| 4.1 | ~~Split the bundle by route~~ **Done 17 Oct** | Pages load on demand (`React.lazy` in `src/App.tsx`). The first script fell from 2.7 MB (789 KB gzipped) to 613 KB (182 KB gzipped). Still to do: load `xlsx` and `pptxgenjs` only when someone exports (`src/lib/reportExports.ts`, `src/lib/exportReport.ts`), which shrinks the report and campaign pages. | S (remaining) |
 | 4.2 | Adopt React Query for data loading | It is installed but unused; 189 direct queries live in components with no caching. Start with Campaigns and CampaignDetail. | L (incremental) |
 
 ---
@@ -170,3 +170,35 @@ Expected data cost is roughly $30–50 per brand per month.
 ## 8. Homepage with more impact
 
 `/` (`LandingDashboard`) is rebuilt around a bolder hero, live-feeling product proof, an East African creator-economy story and a single strong call to action into the existing demo request flow. The old landing experiments are retired after (5.8). Tracked as its own change on this branch.
+
+---
+
+## 9. Search and installable app — done 17 Oct
+
+**Search.**
+- Every route sets its own title, description, canonical URL and robots tag (`src/lib/seo.ts`). Before this, every page declared the homepage as its canonical.
+- Only the homepage, Discovery, storefronts and the legal pages are indexable. The app, sign-in, workspace subdomains and private links are `noindex`, and `robots.txt` keeps crawlers out of them.
+- Added `sitemap.xml` and Organization and WebSite structured data.
+- Storefronts are titled after the agency, and unknown storefront slugs are `noindex`.
+- The hero headline now paints without a fade-in, and the homepage images are WebP.
+
+| Lighthouse | Before | After |
+|---|---|---|
+| Homepage, mobile | 38 (LCP 8.8 s) | 77 (LCP 3.4 s) |
+| Homepage, desktop | 89 (LCP 1.9 s) | 100 (LCP 0.7 s) |
+| Discovery, mobile | 40 (LCP 6.2 s) | 70 (LCP 3.6 s) |
+
+**Installable app.**
+- `public/manifest.webmanifest` and icons. The installed app opens at `/app`.
+- `public/sw.js` always fetches pages fresh online, caches fingerprinted build files, and opens the last good page offline. It registers on darajapulse.com hosts only, never in the Lovable preview.
+- An **Install app** button sits in the agency and brand sidebars. On iPhone and iPad it explains Share, then Add to Home Screen.
+
+**Follow-ups**
+
+| # | Item | Detail | Size |
+|---|---|---|---|
+| 9.1 | Search Console | Verify darajapulse.com in Google Search Console and Bing Webmaster Tools, and submit `https://darajapulse.com/sitemap.xml`. Needs the domain owner. | S |
+| 9.2 | Link previews per page | WhatsApp, LinkedIn and X don't run JavaScript, so shared Discovery and storefront links show the homepage card. Prerender those few public pages at build time. | M |
+| 9.3 | Sitemap from the database | New storefronts must be added to `public/sitemap.xml` by hand today. Serve the sitemap from the database instead. | S |
+| 9.4 | Workspace-branded install | Workspace subdomains install as "Daraja Pulse". A per-workspace name and icon needs a generated manifest; only worth it if white-label matters. | M |
+| 9.5 | Discovery main thread | Discovery still blocks the main thread for about 0.8 s on mobile. Profile the creator grid. | S |

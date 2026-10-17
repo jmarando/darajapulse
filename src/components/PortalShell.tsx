@@ -1,11 +1,13 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { LayoutDashboard, Megaphone, LogOut, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/logo-pulse-mark.png";
 import GettingStartedDialog from "@/components/GettingStartedDialog";
 import TenantGuard from "@/components/TenantGuard";
+import PageFallback from "@/components/PageFallback";
+import InstallAppButton from "@/components/InstallAppButton";
 import { useTenant } from "@/hooks/useTenant";
 
 const nav = [
@@ -46,6 +48,7 @@ const PortalShell = () => {
           <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setTourOpen(true)}>
             <HelpCircle className="w-4 h-4 mr-2" /> Getting started
           </Button>
+          <InstallAppButton className="text-sidebar-foreground hover:bg-sidebar-accent" />
           <div className="px-3 py-2 text-xs text-sidebar-foreground/70 truncate">{user.email}</div>
           <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={async () => { await signOut(); navigate("/auth"); }}>
             <LogOut className="w-4 h-4 mr-2" /> Sign out
@@ -53,7 +56,9 @@ const PortalShell = () => {
         </div>
       </aside>
       <main className="flex-1 overflow-auto">
-        <Outlet />
+        <Suspense fallback={<PageFallback fullScreen={false} />}>
+          <Outlet />
+        </Suspense>
       </main>
       <GettingStartedDialog open={tourOpen} onOpenChange={setTourOpen} />
     </div>

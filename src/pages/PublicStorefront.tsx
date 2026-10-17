@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/publicClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Instagram, Music2, Youtube, Twitter, Facebook, Tv, Radio, Globe, Sparkles, Check, ShoppingCart, X, Users, Search, SlidersHorizontal, Wand2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
+import { applyPageMeta, metaForPath } from "@/lib/seo";
 
 const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, tv: Tv, radio: Radio, web: Globe };
 const PLATFORM_BRAND: Record<string, { bg: string; fg: string }> = {
@@ -132,6 +133,21 @@ export default function PublicStorefront() {
       }
     })();
   }, [agencySlug, navigate]);
+
+  // Title the page after the storefront once it loads, and keep unknown slugs out of
+  // search. Runs on path changes too, so the slug-casing redirect above can't reset it.
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (loading) return;
+    const name = agency?.display_name || agency?.name;
+    applyPageMeta(name
+      ? {
+          ...metaForPath(pathname),
+          title: `${name} media kit | Daraja Pulse`,
+          description: `Browse ${name}'s channels, signed creators and ad slots, and request a quote within 24 hours.`,
+        }
+      : { title: "Storefront not found | Daraja Pulse" });
+  }, [loading, agency, pathname]);
 
   const platforms = useMemo(() => Array.from(new Set(items.map(i => i.platform).filter(Boolean))), [items]);
   const kinds = useMemo(() => Array.from(new Set(items.map(i => i.kind).filter(Boolean))), [items]);

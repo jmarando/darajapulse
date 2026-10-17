@@ -16,8 +16,9 @@ import {
   Trophy,
   Wallet,
 } from "lucide-react";
-import dashboardImg from "@/assets/landing-dashboard.jpg";
-import creatorImg from "@/assets/landing-creator.jpg";
+import dashboardImg from "@/assets/landing-dashboard.webp";
+import dashboardImgSmall from "@/assets/landing-dashboard-768.webp";
+import creatorImg from "@/assets/landing-creator.webp";
 
 /* ---------------------------------------------------------------- */
 /* Daraja Pulse — Every creator. Every post. Every shilling.         */
@@ -268,7 +269,15 @@ function HeroVisual() {
     <div className="relative [perspective:1800px]">
       <div aria-hidden className="absolute -inset-6 md:-inset-10 rounded-[3rem] bg-accent/25 blur-3xl" />
       <div className="relative rounded-2xl bg-background/10 p-2 ring-1 ring-background/15 shadow-[0_50px_100px_-30px_rgba(0,0,0,0.75)] [transform:rotateY(-8deg)_rotateX(4deg)] lg:[transform:rotateY(-16deg)_rotateX(8deg)_rotateZ(1deg)] transition-transform duration-700 ease-out hover:[transform:rotateY(0deg)_rotateX(0deg)_rotateZ(0deg)]">
-        <img src={dashboardImg} alt="Daraja Pulse campaign dashboard" width={1536} height={1024} className="w-full rounded-lg" />
+        <img
+          src={dashboardImg}
+          srcSet={`${dashboardImgSmall} 768w, ${dashboardImg} 1536w`}
+          sizes="(min-width: 1024px) 40vw, 100vw"
+          alt="Daraja Pulse campaign dashboard"
+          width={1536}
+          height={1024}
+          className="w-full rounded-lg"
+        />
       </div>
       <FloatingChip className="-left-4 top-[10%]" delay="0s">
         <span className="grid size-6 place-items-center rounded-full bg-success/15 text-success">
@@ -332,18 +341,20 @@ function Hero({ onDemo }: { onDemo: () => void }) {
       />
       <div className="px-5 md:px-6 lg:px-16 max-w-screen-2xl mx-auto pt-14 md:pt-20 lg:pt-24 grid lg:grid-cols-12 gap-14 lg:gap-10 items-center">
         <div className="lg:col-span-7">
+          {/* The headline and intro paint immediately (no fade-in): they are the page's
+              largest content, and hiding them delays Largest Contentful Paint. */}
           <h1 className="font-display font-semibold leading-[0.92] tracking-[-0.045em] text-[clamp(3rem,6.6vw,6.25rem)]">
-            <span className="block animate-enter" style={{ animationDelay: "80ms" }}>Every creator.</span>
-            <span className="block animate-enter" style={{ animationDelay: "200ms" }}>Every post.</span>
-            <span className="block animate-enter font-serif italic font-normal tracking-[-0.02em] text-accent" style={{ animationDelay: "320ms" }}>
+            <span className="block">Every creator.</span>
+            <span className="block">Every post.</span>
+            <span className="block font-serif italic font-normal tracking-[-0.02em] text-accent">
               Every shilling.
             </span>
           </h1>
-          <p className="mt-7 max-w-xl text-lg md:text-xl leading-relaxed text-background/70 animate-enter" style={{ animationDelay: "440ms" }}>
+          <p className="mt-7 max-w-xl text-lg md:text-xl leading-relaxed text-background/70">
             Brief and sign creators, approve their drafts, track every post across TikTok, Instagram, YouTube, Facebook and X,
             and work out every payout. One platform, built for how campaigns run here.
           </p>
-          <div className="mt-9 flex flex-col sm:flex-row gap-3 animate-enter" style={{ animationDelay: "560ms" }}>
+          <div className="mt-9 flex flex-col sm:flex-row gap-3 animate-enter" style={{ animationDelay: "120ms" }}>
             <button
               onClick={onDemo}
               className="group inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-7 py-4 text-[15px] font-semibold text-accent-foreground shadow-[0_18px_40px_-14px_hsl(var(--accent)/0.75)] hover:brightness-110 transition-[filter,transform] active:scale-[0.96]"
@@ -359,12 +370,12 @@ function Hero({ onDemo }: { onDemo: () => void }) {
               <ArrowUpRight className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </Link>
           </div>
-          <p className="mt-7 font-mono text-[11px] uppercase tracking-[0.18em] text-background/45 text-balance animate-enter" style={{ animationDelay: "680ms" }}>
+          <p className="mt-7 font-mono text-[11px] uppercase tracking-[0.18em] text-background/45 text-balance animate-enter" style={{ animationDelay: "240ms" }}>
             {/* Non-breaking spaces keep each dot at the end of a line, never the start. */}
             Built in Nairobi{" "}· Kenya{" "}· Uganda{" "}· Tanzania
           </p>
         </div>
-        <div className="lg:col-span-5 animate-enter" style={{ animationDelay: "300ms" }}>
+        <div className="lg:col-span-5 animate-enter">
           <HeroVisual />
         </div>
       </div>
@@ -730,7 +741,7 @@ function Platform() {
     <section id="platform" className="scroll-mt-20 border-y border-border bg-secondary/40 py-24 md:py-32">
       <div className="px-5 md:px-6 lg:px-16 max-w-screen-2xl mx-auto">
         <div className="mb-12 md:mb-16 max-w-3xl">
-          <span className="font-mono text-xs uppercase tracking-[0.2em] text-accent">The platform</span>
+          <span className="font-mono text-xs uppercase tracking-[0.2em] text-accent">The influencer marketing platform</span>
           <h2 className="mt-3 font-display text-4xl md:text-6xl font-semibold tracking-[-0.04em] text-balance">
             Everything a creator campaign needs. <span className="font-serif italic font-normal text-accent">Nothing it doesn’t.</span>
           </h2>

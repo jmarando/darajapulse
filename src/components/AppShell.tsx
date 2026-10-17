@@ -4,9 +4,11 @@ import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquar
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import logo from "@/assets/logo-pulse-mark.png";
 import TenantGuard from "@/components/TenantGuard";
+import PageFallback from "@/components/PageFallback";
+import InstallAppButton from "@/components/InstallAppButton";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { isRootHost, workspaceRedirect } from "@/lib/appUrl";
@@ -93,6 +95,7 @@ const SidebarBody = ({ user, isAdmin, isSuper, onSignOut, onNavigate }: any) => 
       )}
     </nav>
     <div className="p-3 border-t border-sidebar-border">
+      <InstallAppButton className="text-sidebar-foreground hover:bg-sidebar-accent" />
       <div className="px-3 py-2 text-xs text-sidebar-foreground/70 truncate">{user.email}</div>
       <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent" onClick={onSignOut}>
         <LogOut className="w-4 h-4 mr-2" /> Sign out
@@ -169,7 +172,10 @@ const AppShell = () => {
         </header>
         <TopBar user={user} />
         <main className="min-w-0 max-w-full flex-1 overflow-y-auto overflow-x-hidden">
-          <Outlet />
+          {/* Pages load on demand; keep the shell on screen meanwhile. */}
+          <Suspense fallback={<PageFallback fullScreen={false} />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
