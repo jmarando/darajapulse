@@ -332,11 +332,7 @@ function Hero({ onDemo }: { onDemo: () => void }) {
       />
       <div className="px-5 md:px-6 lg:px-16 max-w-screen-2xl mx-auto pt-14 md:pt-20 lg:pt-24 grid lg:grid-cols-12 gap-14 lg:gap-10 items-center">
         <div className="lg:col-span-7">
-          <div className="animate-enter inline-flex items-center gap-2.5 rounded-full bg-background/5 px-3.5 py-1.5 ring-1 ring-background/15">
-            <LiveDot />
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-background/80">The influence OS for East Africa</span>
-          </div>
-          <h1 className="mt-7 font-display font-semibold leading-[0.92] tracking-[-0.045em] text-[clamp(3rem,6.6vw,6.25rem)]">
+          <h1 className="font-display font-semibold leading-[0.92] tracking-[-0.045em] text-[clamp(3rem,6.6vw,6.25rem)]">
             <span className="block animate-enter" style={{ animationDelay: "80ms" }}>Every creator.</span>
             <span className="block animate-enter" style={{ animationDelay: "200ms" }}>Every post.</span>
             <span className="block animate-enter font-serif italic font-normal tracking-[-0.02em] text-accent" style={{ animationDelay: "320ms" }}>
