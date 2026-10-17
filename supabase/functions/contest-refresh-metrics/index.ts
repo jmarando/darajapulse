@@ -3,6 +3,7 @@
 // returns no signal or errors. Short-link resolution for vt.tiktok.com.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { canManageContest, denied, requireCaller } from "../_shared/auth.ts";
 
 const ED_TOKENS = [
   Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
@@ -294,11 +295,14 @@ async function fetchRescueRows(sb: any, contest_id: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req, { job: "contest-refresh-metrics" });
+  if (caller instanceof Response) return caller;
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   try {
     const body = await req.json().catch(() => ({}));
     const contest_id: string | undefined = body.contest_id;
     if (!contest_id) return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!(await canManageContest(caller, contest_id))) return denied(403, "You don't have access to this contest.");
     const onlyEmpty: boolean = body.only_empty ?? false;
     const wait: boolean = body.wait ?? false;
     // retry_invalid: include rows previously flagged invalid (run on a slower cadence)

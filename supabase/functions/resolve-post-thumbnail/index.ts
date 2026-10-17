@@ -192,6 +192,21 @@ async function fetchHtml(url: string): Promise<string | null> {
   }
 }
 
+const SOCIAL_HOSTS = ["tiktok.com", "instagram.com", "facebook.com", "fb.watch", "fb.com", "youtube.com", "youtu.be", "twitter.com", "x.com", "threads.net"];
+
+// Lookups without a post id are limited to social links so this public endpoint
+// can't be used to fetch arbitrary sites.
+function isSocialUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.toLowerCase();
+    return (u.protocol === "https:" || u.protocol === "http:") &&
+      SOCIAL_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -208,7 +223,9 @@ async function resolveThumbnail(supabase: ReturnType<typeof createClient>, postI
       .eq("id", postId)
       .maybeSingle();
     cached = data?.thumbnail_url ?? null;
-    url = url ?? data?.post_url ?? null;
+    // A post's thumbnail only ever comes from its own link; otherwise anyone could
+    // pair a post id with another URL and replace the image on public reports.
+    url = data?.post_url ?? null;
   }
 
   if (cached && !isExpiredSignedThumbnail(cached)) return { url, thumb: cached, cached: true };
@@ -331,6 +348,9 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { /* empty */ }
   const postId: string | null = body.post_id ?? requestUrl.searchParams.get("post_id") ?? null;
   const providedUrl: string | null = body.url ?? requestUrl.searchParams.get("url") ?? null;
+  if (!postId && providedUrl && !isSocialUrl(providedUrl)) {
+    return json({ ok: false, error: "unsupported url" }, 400);
+  }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
   const resolved = await resolveThumbnail(supabase, postId, providedUrl);

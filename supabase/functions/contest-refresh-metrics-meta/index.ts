@@ -2,6 +2,7 @@
 // IG: business_discovery on a connected IG business account → like_count, comments_count
 // FB: /{page_id}_{post_id} on the post's page using its connected page token (when available)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireCaller, SUPER_ADMIN } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,6 +44,9 @@ async function gget(path: string, params: Record<string, string>) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // Uses every connected creator's Meta tokens: super admins and internal calls only.
+  const caller = await requireCaller(req, { roles: SUPER_ADMIN });
+  if (caller instanceof Response) return caller;
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   try {
     const body = await req.json().catch(() => ({}));

@@ -13,3 +13,10 @@
 - [x] Generate private PDFs and prepare Royco amendment emails; verify PDF tests and review output
 - [x] Send Justin a review email and check all four PDF pages; repair split payment table
 - [ ] Activate amended signing, verify a real re-sign and deliver creator invitations — blocked on final user approval
+- [x] Lock down edge functions and move scheduled jobs to job keys (see `.lovable/plan/remediation-brand-moderation-and-homepage-2026-10-16.md`)
+- [ ] Roll out the security fixes: migration 0003 applied 17 Oct; merge PR #1 to deploy the functions, then rotate the Stream and Meta webhook secrets
+- [ ] Fix report/dashboard metric mismatch, Pesapal IPN config and the broken MCP influencer tool
+- [ ] Split the bundle by route and add CI checks
+- [ ] Brand-connected pages and real moderation (M1–M3) — needs Meta App Review
+- [ ] Social listening on top of the moderation pipeline
+- [ ] Ship the new homepage

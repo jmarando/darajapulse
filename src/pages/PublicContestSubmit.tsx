@@ -107,10 +107,7 @@ const PublicContestSubmit = () => {
     }});
     setLoading(false);
     if (error || (data as any)?.error) return toast.error(await readFnError(error, data, "Could not submit links"));
-    // Identified creators get their post registered on the campaign — kick off
-    // the metrics pull immediately so the roster updates without waiting for cron.
-    const postIds = ((data as any)?.post_ids ?? []) as string[];
-    postIds.forEach((postId) => supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } }).catch(() => {}));
+    // submit-crossposts starts the first metrics pull for any posts it registered.
     setSubmitted(true);
   };
 
@@ -127,7 +124,6 @@ const PublicContestSubmit = () => {
     }});
     setLoading(false);
     if (error || (data as any)?.error) return toast.error(await readFnError(error, data, "Could not add link"));
-    ((data as any)?.post_ids ?? []).forEach((postId: string) => supabase.functions.invoke("fetch-public-metrics", { body: { post_id: postId } }).catch(() => {}));
     setAttachUrl("");
     toast.success("Link added to that video");
   };

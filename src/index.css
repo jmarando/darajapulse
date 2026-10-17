@@ -146,6 +146,41 @@
     animation: enter 600ms cubic-bezier(0.2, 0, 0, 1) forwards;
     will-change: transform, opacity, filter;
   }
+
+  /* Homepage motion. Each one has a reduced-motion fallback at the end of this file. */
+  .animate-float { animation: float 6s ease-in-out infinite; }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .animate-marquee { animation: marquee 45s linear infinite; }
+
+  /* A bright segment travelling along a pulse path drawn with pathLength="1000". */
+  @keyframes pulse-trace {
+    from { stroke-dashoffset: 160; }
+    to   { stroke-dashoffset: -1000; }
+  }
+  .animate-pulse-trace { animation: pulse-trace 3.4s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+
+  @keyframes ping-soft {
+    0%        { transform: scale(1);   opacity: 0.75; }
+    80%, 100% { transform: scale(2.6); opacity: 0; }
+  }
+  .animate-ping-soft { animation: ping-soft 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+  /* Matches STAGE_MS in the homepage lifecycle tabs. */
+  @keyframes progress-fill {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
+  .animate-progress { animation: progress-fill 6s linear forwards; transform-origin: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter { animation: none; opacity: 1; }
+  .animate-float, .animate-marquee, .animate-ping-soft, .animate-progress { animation: none; }
+  .animate-pulse-trace { animation: none; stroke-dasharray: none; opacity: 0.8; }
 }
 
 @media print {

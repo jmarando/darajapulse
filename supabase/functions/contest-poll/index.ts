@@ -1,5 +1,6 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { canManageContest, denied, requireCaller } from "../_shared/auth.ts";
 
 // Weighted formula: shares*3 + comments*2 + likes*1
 const score = (e: any) => Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0);
@@ -23,8 +24,11 @@ async function fetchAllContestEntries(sb: any, contest_id: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    const caller = await requireCaller(req);
+    if (caller instanceof Response) return caller;
     const { contest_id } = await req.json();
     if (!contest_id) return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!(await canManageContest(caller, contest_id))) return denied(403, "You don't have access to this contest.");
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: contest } = await sb.from("contests").select("*").eq("id", contest_id).single();

@@ -6,6 +6,7 @@
 // Facebook is intentionally skipped — FB requires manual entry.
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { canManageContest, denied, requireCaller } from "../_shared/auth.ts";
 
 const ED_TOKENS = [
   Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
@@ -128,6 +129,8 @@ async function fetchInstagramUserPosts(handle: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const caller = await requireCaller(req, { job: "contest-fetch-handle-posts" });
+  if (caller instanceof Response) return caller;
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   let runId: string | null = null;
   try {
@@ -135,6 +138,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const contest_id: string | undefined = body.contest_id;
     if (!contest_id) return new Response(JSON.stringify({ error: "contest_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    if (!(await canManageContest(caller, contest_id))) return denied(403, "You don't have access to this contest.");
 
     const { data: contest } = await sb.from("contests").select("*, campaigns(hashtag, hashtags_extra)").eq("id", contest_id).single();
     if (!contest) throw new Error("contest not found");
