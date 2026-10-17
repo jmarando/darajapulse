@@ -32,9 +32,9 @@ Checked before shipping: live roles (all 33 staff have an agency; all 5 brand ow
 
 ### Rollout (order matters)
 
-1. **Apply migration 0003 first.** It is safe with the current function code: functions that don't check `x-job-key` yet ignore it.
-2. **Then merge the branch** so the functions deploy. If functions deploy first, scheduled jobs get 401s until the migration runs.
-3. Publish the frontend (the contest page change) whenever convenient; the old page keeps working.
+1. ~~**Apply migration 0003 first.**~~ **Done:** applied to production on 17 Oct 2026 at about 00:25 UTC and recorded in `drizzle.__drizzle_migrations`. Every scheduled job then ran through the new path (00:30–05:45 UTC) with the same results as before.
+2. **Merge the branch** (PR #1) so the functions deploy.
+3. Publish the frontend (the contest page change and the new homepage) whenever convenient; the old pages keep working.
 
 ### After rollout — please do
 
@@ -68,6 +68,7 @@ Checked before shipping: live roles (all 33 staff have an agency; all 5 brand ow
 | 3.3 | **Moderation shows fake data** | `/app/moderation` lists invented comments attributed to Safaricom and Unilever, and `/m/<any token>` presents them as a shared view. Hide or label until section 6 ships. | S |
 | 3.4 | **MCP `list_influencers` always fails** | It selects `platform` and `campaign_id`, which don't exist on `influencers` (`primary_platform`; campaigns via `campaign_influencers`). | S |
 | 3.5 | **Redirects during render** | `AppShell.tsx` and `PortalShell.tsx` call `navigate()` while rendering; use `<Navigate replace />`. Roles load after sign-in completes, so a tenant subdomain can flash "No access". | S |
+| 3.6 | **`contestants-sync` fails on every run** | `CONTESTANT_FEED_URL` isn't set, so the daily job and the contest auto-poll get a 412. Each failure leaves its sync-run row stuck at "running" (112 in the last 30 days). Configure the feed or drop the job, and mark the run failed on early exits. | S |
 
 ---
 
