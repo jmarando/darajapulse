@@ -3908,6 +3908,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      invoke_job_function: {
+        Args: { _body?: Json; _fn: string }
+        Returns: number
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       merge_posts_into_deliverable: {
         Args: { _post_ids: string[]; _target_deliverable_id?: string }
