@@ -2,6 +2,8 @@
 // Docs: https://docs.scrapecreators.com  (auth via x-api-key header)
 // Failed lookups are not charged; each successful lookup costs 1 credit.
 
+declare const Deno: { env: { get(name: string): string | undefined } };
+
 const SC_KEY = Deno.env.get("SCRAPECREATORS_API_KEY") ?? "";
 export const SCRAPECREATORS_ENABLED = SC_KEY.length > 0;
 
