@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Refresh Royco Q3 Nano older statistics and retry missing posts; verify recovered counts and document unavailable links
+- [x] Refresh Royco Q3 Nano older statistics and retry missing posts; verified 701/706 updated today, all 96 Facebook recovered, two malformed links repaired
+- [ ] Recover five remaining Royco post statistics — needs a correct individual Instagram reel URL for cook_it_how_you_feel_it and accessible links/statistics for Eddah Awinja, Linet Wambui Mwatha, Leah Wamboi Maina and Brenda Karimi Murithi
 
 - [x] Group same-video cross-posts end to end
 - [x] Clean Royco KE Q3 Nano roster to signed creators only
