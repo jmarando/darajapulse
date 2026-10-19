@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Refresh Royco Q3 Nano older statistics and retry missing posts; verify recovered counts and document unavailable links
+
 - [x] Group same-video cross-posts end to end
 - [x] Clean Royco KE Q3 Nano roster to signed creators only
 - [x] Verify and expose metric refresh coverage
