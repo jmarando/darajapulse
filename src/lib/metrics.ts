@@ -119,8 +119,7 @@ export const fetchCampaignPeakMetrics = async (client: any, campaignId?: string 
   if (!campaignId) return [] as MetricSnapshot[];
   const { data, error } = await client.rpc("campaign_post_peak_metrics", { target_campaign_id: campaignId });
   if (error) throw error;
-  return (data ?? []).map((row: MetricSnapshot) => ({
-    ...row,
-    captured_at: row.captured_at ?? new Date().toISOString(),
-  })) as MetricSnapshot[];
+  // The aggregate includes posts with no snapshots; a null timestamp must not
+  // become "now" or missing statistics look freshly collected in Payments.
+  return (data ?? []).filter((row: MetricSnapshot) => row.captured_at != null) as MetricSnapshot[];
 };
