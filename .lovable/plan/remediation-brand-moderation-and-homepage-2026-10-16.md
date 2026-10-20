@@ -202,3 +202,34 @@ Expected data cost is roughly $30–50 per brand per month.
 | 9.3 | Sitemap from the database | New storefronts must be added to `public/sitemap.xml` by hand today. Serve the sitemap from the database instead. | S |
 | 9.4 | Workspace-branded install | Workspace subdomains install as "Daraja Pulse". A per-workspace name and icon needs a generated manifest; only worth it if white-label matters. | M |
 | 9.5 | Discovery main thread | Discovery still blocks the main thread for about 0.8 s on mobile. Profile the creator grid. | S |
+
+---
+
+## 10. Menu and inbox review — 20 Oct
+
+What each menu item does today, from the code and live data:
+
+| Menu item | What's behind it | Live data | Proposal |
+|---|---|---|---|
+| Overview | Dashboard | — | Keep |
+| Campaigns | Core | 15 campaigns | Keep |
+| Contests | Core | 3 contests | Keep |
+| Briefs | Brief template library | 13 templates, last added 25 Sep | Rename **Brief templates**, move to a **Library** group |
+| Content | Content calendar | **0 items, ever** | Remove; drafts in each campaign cover this |
+| Approvals | **Placeholder** ("Ships in v0.2") | Real approvals happen inside each campaign: 635 drafts, **12 pending now** | Make real: one queue of pending drafts across campaigns, with a count badge |
+| Moderation | **Fake data** (3.3) | — | Hide until brand-connected moderation (section 6, M1) |
+| Inbox | Email replies to `royco@reply.darajapulse.com` | 137 threads, **232 unread, 0 replies sent from it** | Keep; make it the unified inbox (below) |
+| RSVPs | Event RSVPs | 98 RSVPs, one campaign, last 12 Sep | Move into that campaign as a tab; remove from the menu |
+| Reports | Core | — | Keep |
+| Clients, Influencers, Discovery | Roster | 9 clients, 542 influencers | Keep; rename Influencers to **Creators** to match Discovery |
+| Storefront | Media-house storefront | 101 items, 0 bookings | Show only for media-house workspaces |
+
+Resulting menu: **Overview · Approvals (12) · Inbox (232)**, then **Campaigns · Contests · Reports**, then **Creators · Discovery · Clients**, then **Library: Brief templates** (and Storefront for media houses). Team, Super Admin unchanged.
+
+### Unified inbox
+
+Today the inbox is email only, from one mailbox, and nobody answers from it: creators' replies to Royco emails pile up unread.
+
+1. **Make the email inbox work (S–M):** an unread badge in the menu, a filter by campaign and mailbox, assign to a teammate, mark done, and link each thread to the creator and campaign (135 of 137 are already linked to a creator).
+2. **Pull creator conversations in (M):** draft feedback threads ("changes requested" on 69 drafts) and brief questions appear as conversations next to email.
+3. **Social comments and DMs (after section 6 M1):** once brands connect their Facebook/Instagram pages, comments and DMs land in the same inbox. That pipe is also what social listening (section 7) builds on, so neither ships before Meta App Review.
