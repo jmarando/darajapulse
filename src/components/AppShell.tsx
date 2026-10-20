@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, Calendar, CalendarCheck, MessageSquare, UserCog, Menu, Search, Bell, Sparkles, Trophy, Compass, Shield, Store, Mail, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, Wallet, LogOut, MessageSquare, UserCog, Menu, Search, Bell, Sparkles, Trophy, Compass, Shield, Store, Mail, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -9,48 +9,51 @@ import logo from "@/assets/logo-pulse-mark.png";
 import TenantGuard from "@/components/TenantGuard";
 import PageFallback from "@/components/PageFallback";
 import InstallAppButton from "@/components/InstallAppButton";
+import { useNavCounts, type NavCounts } from "@/hooks/useNavCounts";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { isRootHost, workspaceRedirect } from "@/lib/appUrl";
 
-const navGroups: { label?: string; items: { to: string; icon: any; label: string; end?: boolean }[] }[] = [
+type NavItem = { to: string; icon: any; label: string; end?: boolean; badge?: keyof NavCounts; show?: (ctx: { isSuper: boolean; isMediaHouse: boolean }) => boolean };
+
+const navGroups: { label?: string; items: NavItem[] }[] = [
   {
     items: [
       { to: "/app", icon: LayoutDashboard, label: "Overview", end: true },
+      { to: "/app/approvals", icon: CheckSquare, label: "Approvals", badge: "pendingDrafts" },
+      { to: "/app/inbox", icon: Mail, label: "Inbox", badge: "unreadThreads" },
+      { to: "/app/moderation", icon: MessageSquare, label: "Moderation" },
     ],
   },
   {
-    label: "Campaign Management",
+    label: "Campaigns",
     items: [
       { to: "/app/campaigns", icon: Megaphone, label: "Campaigns" },
       { to: "/app/contests", icon: Trophy, label: "Contests" },
-      { to: "/app/briefs", icon: FileSignature, label: "Briefs" },
-      { to: "/app/content", icon: Calendar, label: "Content" },
-      { to: "/app/approvals", icon: CheckSquare, label: "Approvals" },
-      { to: "/app/moderation", icon: MessageSquare, label: "Moderation" },
-      { to: "/app/inbox", icon: Mail, label: "Inbox" },
-      { to: "/app/rsvps", icon: CalendarCheck, label: "RSVPs" },
       { to: "/app/reports", icon: BarChart3, label: "Reports" },
     ],
   },
   {
     label: "Roster",
     items: [
-      { to: "/app/clients", icon: Building2, label: "Clients" },
-      { to: "/app/influencers", icon: Users, label: "Influencers" },
+      { to: "/app/influencers", icon: Users, label: "Creators" },
       { to: "/app/discovery", icon: Compass, label: "Discovery" },
+      { to: "/app/clients", icon: Building2, label: "Clients" },
     ],
   },
   {
-    label: "Media house",
+    label: "Library",
     items: [
-      { to: "/app/inventory", icon: Store, label: "Storefront" },
+      { to: "/app/briefs", icon: FileSignature, label: "Brief templates" },
+      // Media houses sell their own inventory; super admins run storefronts for them.
+      { to: "/app/inventory", icon: Store, label: "Storefront", show: ({ isSuper, isMediaHouse }) => isSuper || isMediaHouse },
     ],
   },
 ];
 
-const SidebarBody = ({ user, isAdmin, isSuper, onSignOut, onNavigate }: any) => {
+const SidebarBody = ({ user, isAdmin, isSuper, counts, onSignOut, onNavigate }: any) => {
   const { tenant } = useTenant();
+  const isMediaHouse = tenant?.agency_kind === "media_house";
   const brandLogo = tenant?.logo_url || logo;
   const brandName = tenant?.display_name || tenant?.name || "Daraja Pulse";
   return (
@@ -63,18 +66,23 @@ const SidebarBody = ({ user, isAdmin, isSuper, onSignOut, onNavigate }: any) => 
       </div>
     </div>
     <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-      {navGroups.map((group, gi) => (
+      {navGroups.map((group, gi) => ({ ...group, items: group.items.filter((item) => !item.show || item.show({ isSuper, isMediaHouse })) })).filter((group) => group.items.length).map((group, gi) => (
         <div key={gi} className={gi > 0 ? "pt-3 mt-3 border-t border-sidebar-border/60" : ""}>
           {group.label && (
             <div className="px-3 pb-1 text-[10px] uppercase tracking-widest text-sidebar-foreground/50">
               {group.label}
             </div>
           )}
-          {group.items.map(({ to, icon: Icon, label, end }) => (
+          {group.items.map(({ to, icon: Icon, label, end, badge }) => (
             <NavLink key={to} to={to} end={end as any} onClick={onNavigate}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive ? 'bg-accent/15 text-accent font-medium' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}`}>
               <Icon className="w-4 h-4" /> {label}
+              {badge && counts?.[badge] > 0 && (
+                <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums text-accent-foreground">
+                  {counts[badge] > 99 ? "99+" : counts[badge]}
+                </span>
+              )}
             </NavLink>
           ))}
         </div>
@@ -126,6 +134,7 @@ const AppShell = () => {
   const isAdmin = roles.includes("agency_admin");
   const isSuper = roles.includes("super_admin" as any);
   const navigate = useNavigate();
+  const counts = useNavCounts(!!user && isAgency);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // On the root domain, send tenant workspace members to their own subdomain.
@@ -150,13 +159,13 @@ const AppShell = () => {
     <div className="min-h-screen w-full max-w-full overflow-x-hidden flex bg-background">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-64 bg-sidebar text-sidebar-foreground flex-col border-r border-sidebar-border">
-        <SidebarBody user={user} isAdmin={isAdmin} isSuper={isSuper} onSignOut={handleSignOut} />
+        <SidebarBody user={user} isAdmin={isAdmin} isSuper={isSuper} counts={counts} onSignOut={handleSignOut} />
       </aside>
 
       {/* Mobile sheet sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="p-0 w-72 bg-sidebar text-sidebar-foreground flex flex-col [&>button]:text-sidebar-foreground">
-          <SidebarBody user={user} isAdmin={isAdmin} isSuper={isSuper} onSignOut={handleSignOut} onNavigate={() => setMobileOpen(false)} />
+          <SidebarBody user={user} isAdmin={isAdmin} isSuper={isSuper} counts={counts} onSignOut={handleSignOut} onNavigate={() => setMobileOpen(false)} />
         </SheetContent>
       </Sheet>
 

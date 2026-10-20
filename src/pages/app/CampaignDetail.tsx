@@ -77,6 +77,7 @@ import CampaignPayments from "@/components/CampaignPayments";
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
 import { buildAudience } from "@/lib/audience";
 import { useGeo } from "@/lib/geo";
+import Rsvps from "@/pages/app/Rsvps";
 
 
 const CampaignDetail = () => {
@@ -95,6 +96,13 @@ const CampaignDetail = () => {
   const [metrics, setMetrics] = useState<any[]>([]);
   const [metricsLoaded, setMetricsLoaded] = useState(false);
   const [contestEntries, setContestEntries] = useState<any[]>([]);
+  // Event campaigns collect RSVPs; the tab only shows when there are some.
+  const [rsvpCount, setRsvpCount] = useState(0);
+  useEffect(() => {
+    if (!id) return;
+    supabase.from("event_rsvps").select("id", { count: "exact", head: true }).eq("campaign_id", id)
+      .then(({ count }) => setRsvpCount(count ?? 0));
+  }, [id]);
   const [submissionToken, setSubmissionToken] = useState<string | null>(null);
 
   const [link, setLink] = useState<any>(null);
@@ -924,6 +932,15 @@ const CampaignDetail = () => {
           >
             Email reports
           </TabsTrigger>
+          {rsvpCount > 0 && (
+            <TabsTrigger
+              value="rsvps"
+              className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
+            >
+              RSVPs
+              <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary">{rsvpCount}</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger
             value="share"
             className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
@@ -2298,15 +2315,6 @@ const CampaignDetail = () => {
 
       </Card>
 
-      <Card className="p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Production</div>
-          <h2 className="font-display text-2xl">Content calendar</h2>
-          <p className="text-xs text-muted-foreground mt-1">Plan, upload, review and approve content for this campaign — managed in the standalone Content module.</p>
-        </div>
-        <a href={`/app/content?campaign=${id}`} className="text-sm text-accent hover:underline">Open in Content module →</a>
-      </Card>
-
       <StoriesSection
         campaignId={id!}
         roster={ci}
@@ -2353,6 +2361,12 @@ const CampaignDetail = () => {
         <TabsContent value="emails" className="space-y-6 mt-0">
           <EmailReportsSection campaignId={id!} hasContests={true} />
         </TabsContent>
+
+        {rsvpCount > 0 && (
+          <TabsContent value="rsvps" className="space-y-6 mt-0">
+            <Rsvps campaignId={id!} />
+          </TabsContent>
+        )}
 
 
         <TabsContent value="share" className="space-y-6 mt-0">
