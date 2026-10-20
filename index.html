@@ -5,18 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/favicon.png?v=5" />
     <link rel="shortcut icon" type="image/png" href="/favicon.png?v=5" />
-    <link rel="apple-touch-icon" href="/favicon.png?v=5" />
-    <meta name="theme-color" content="#fe2424" />
-    <title>Daraja Pulse — Influence, measured.</title>
-    <meta name="description" content="Brief, publish, measure and pay creators across TikTok, Instagram, YouTube and X. The influence operating system for East African agencies." />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#1d1816" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Daraja Pulse" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+
+    <!-- Homepage defaults for crawlers that don't run JavaScript; src/lib/seo.ts sets them per route. -->
+    <title>Daraja Pulse | Influencer marketing platform for East Africa</title>
+    <meta name="description" content="Brief, sign, approve, measure and pay creators across TikTok, Instagram, YouTube, Facebook and X. 3,200+ creators in Kenya, Uganda and Tanzania." />
     <link rel="canonical" href="https://darajapulse.com/" />
     <meta name="author" content="Daraja Pulse" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Daraja Pulse" />
     <meta property="og:url" content="https://darajapulse.com/" />
-    <meta property="og:title" content="Daraja Pulse — Influence, measured." />
-    <meta property="og:description" content="Brief, publish, measure and pay creators across TikTok, Instagram, YouTube and X. The influence operating system for East African agencies." />
+    <meta property="og:title" content="Daraja Pulse | Influencer marketing platform for East Africa" />
+    <meta property="og:description" content="Brief, sign, approve, measure and pay creators across TikTok, Instagram, YouTube, Facebook and X. 3,200+ creators in Kenya, Uganda and Tanzania." />
     <meta property="og:image" content="https://darajapulse.com/og-image.jpg?v=6" />
     <meta property="og:image:secure_url" content="https://darajapulse.com/og-image.jpg?v=6" />
     <meta property="og:image:type" content="image/jpeg" />
@@ -26,21 +33,34 @@
     <meta property="og:locale" content="en_KE" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Daraja Pulse — Influence, measured." />
-    <meta name="twitter:description" content="Brief, publish, measure and pay creators across TikTok, Instagram, YouTube and X. The influence operating system for East African agencies." />
+    <meta name="twitter:title" content="Daraja Pulse | Influencer marketing platform for East Africa" />
+    <meta name="twitter:description" content="Brief, sign, approve, measure and pay creators across TikTok, Instagram, YouTube, Facebook and X. 3,200+ creators in Kenya, Uganda and Tanzania." />
     <meta name="twitter:image" content="https://darajapulse.com/og-image.jpg?v=6" />
     <meta name="twitter:image:alt" content="Daraja Pulse — Influence, measured." />
-
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "Daraja Pulse",
-        "url": "https://darajapulse.com",
-        "logo": "https://darajapulse.com/favicon.png",
-        "description": "Influence operating system for East African agencies. Brief, publish, measure and pay creators across TikTok, Instagram, YouTube and X.",
-        "areaServed": "KE"
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://darajapulse.com/#organization",
+            "name": "Daraja Pulse",
+            "url": "https://darajapulse.com",
+            "logo": "https://darajapulse.com/icons/icon-512.png",
+            "email": "hello@darajapulse.com",
+            "description": "Influencer marketing platform for East Africa. Brief, sign, approve, measure and pay creators across TikTok, Instagram, YouTube, Facebook and X.",
+            "address": { "@type": "PostalAddress", "addressLocality": "Nairobi", "addressCountry": "KE" },
+            "areaServed": ["KE", "UG", "TZ"]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://darajapulse.com/#website",
+            "url": "https://darajapulse.com",
+            "name": "Daraja Pulse",
+            "publisher": { "@id": "https://darajapulse.com/#organization" }
+          }
+        ]
       }
     </script>
   </head>

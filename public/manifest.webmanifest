@@ -1,0 +1,46 @@
+{
+  "id": "/",
+  "name": "Daraja Pulse",
+  "short_name": "Daraja Pulse",
+  "description": "Brief, sign, approve, measure and pay creators across TikTok, Instagram, YouTube, Facebook and X.",
+  "start_url": "/app?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1d1816",
+  "theme_color": "#1d1816",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Campaigns",
+      "url": "/app/campaigns?source=pwa-shortcut",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Discovery",
+      "url": "/app/discovery?source=pwa-shortcut",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Reports",
+      "url": "/app/reports?source=pwa-shortcut",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard-wide.jpg",
+      "sizes": "1536x1024",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Campaign dashboard"
+    }
+  ]
+}

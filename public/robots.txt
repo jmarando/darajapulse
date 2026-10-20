@@ -1,14 +1,35 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
+# Link-preview bots may fetch any page so shared links still unfurl in chats.
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
+# Search engines: public pages, Discovery and storefronts only. The app, sign-in
+# and private links (briefs, reports, reviews, invoices, payments) stay out.
 User-agent: *
 Allow: /
+Disallow: /app
+Disallow: /portal
+Disallow: /auth
+Disallow: /reset-password
+Disallow: /connect/
+Disallow: /landing
+Disallow: /.lovable/
+Disallow: /r/
+Disallow: /rc/
+Disallow: /p/
+Disallow: /b/
+Disallow: /brief/
+Disallow: /c/
+Disallow: /submit/
+Disallow: /m/
+Disallow: /d/
+Disallow: /payments/
+Disallow: /invoice/
+Disallow: /pay/
+Disallow: /*/report/
+Disallow: /*/brief/
+Disallow: /*/plan/
+
+Sitemap: https://darajapulse.com/sitemap.xml

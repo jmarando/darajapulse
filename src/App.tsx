@@ -5,64 +5,77 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
-import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import ResetPassword from "./pages/ResetPassword";
-import AppShell from "./components/AppShell";
-import Overview from "./pages/app/Overview";
-import Clients from "./pages/app/Clients";
-import Campaigns from "./pages/app/Campaigns";
-import CampaignDetail from "./pages/app/CampaignDetail";
-import ContestsList from "./pages/app/ContestsList";
-import ContestDetail from "./pages/app/ContestDetail";
-import PublicContestReport from "./pages/PublicContestReport";
-import Influencers from "./pages/app/Influencers";
-import Discovery from "./pages/app/Discovery";
-import Inbox from "./pages/app/Inbox";
-import Rsvps from "./pages/app/Rsvps";
-import Stub from "./pages/app/Stub";
-import Briefs from "./pages/app/Briefs";
-import Content from "./pages/app/Content";
-import Reports from "./pages/app/Reports";
-import Moderation from "./pages/app/Moderation";
-import Team from "./pages/app/Team";
-import AdminBilling from "./pages/app/AdminBilling";
-import Admin from "./pages/app/Admin";
-import PublicModeration from "./pages/PublicModeration";
-import PublicReport from "./pages/PublicReport";
-import PublicPayments from "./pages/PublicPayments";
-import PublicPlan from "./pages/PublicPlan";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import PublicBrief from "./pages/PublicBrief";
-import PublicContestSubmit from "./pages/PublicContestSubmit";
-import PublicDraftReview from "./pages/PublicDraftReview";
-import ConnectTikTok from "./pages/ConnectTikTok";
-import ConnectInstagram from "./pages/ConnectInstagram";
-import ConnectYouTube from "./pages/ConnectYouTube";
-import ConnectTwitter from "./pages/ConnectTwitter";
-import ConnectFacebook from "./pages/ConnectFacebook";
-import NotFound from "./pages/NotFound.tsx";
-import DataDeletion from "./pages/DataDeletion";
-import LandingPicker from "./pages/landings/LandingPicker";
-import LandingEditorial from "./pages/landings/LandingEditorial";
-import LandingCinematic from "./pages/landings/LandingCinematic";
-import LandingDashboard from "./pages/landings/LandingDashboard";
-import LandingBento from "./pages/landings/LandingBento";
-import PortalShell from "./components/PortalShell";
-import PortalOverview from "./pages/portal/PortalOverview";
-import PortalCampaign from "./pages/portal/PortalCampaign";
-import PublicStorefront from "./pages/PublicStorefront";
-import PublicInvoice from "./pages/PublicInvoice";
-import PayInvoice from "./pages/PayInvoice";
-import Inventory from "./pages/app/Inventory";
-import OAuthConsent from "./pages/OAuthConsent";
-import PublicDiscovery from "./pages/public/PublicDiscovery";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { initAnalytics, trackPageView } from "@/lib/analytics";
+import { applyPageMeta, metaForPath } from "@/lib/seo";
+import PageFallback from "@/components/PageFallback";
+// The homepage ships in the main bundle; every other page loads on demand.
+import LandingDashboard from "./pages/landings/LandingDashboard";
+
+const Auth = lazy(() => import("./pages/Auth"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AppShell = lazy(() => import("./components/AppShell"));
+const Overview = lazy(() => import("./pages/app/Overview"));
+const Clients = lazy(() => import("./pages/app/Clients"));
+const Campaigns = lazy(() => import("./pages/app/Campaigns"));
+const CampaignDetail = lazy(() => import("./pages/app/CampaignDetail"));
+const ContestsList = lazy(() => import("./pages/app/ContestsList"));
+const ContestDetail = lazy(() => import("./pages/app/ContestDetail"));
+const PublicContestReport = lazy(() => import("./pages/PublicContestReport"));
+const Influencers = lazy(() => import("./pages/app/Influencers"));
+const Discovery = lazy(() => import("./pages/app/Discovery"));
+const Inbox = lazy(() => import("./pages/app/Inbox"));
+const Rsvps = lazy(() => import("./pages/app/Rsvps"));
+const Stub = lazy(() => import("./pages/app/Stub"));
+const Briefs = lazy(() => import("./pages/app/Briefs"));
+const Content = lazy(() => import("./pages/app/Content"));
+const Reports = lazy(() => import("./pages/app/Reports"));
+const Moderation = lazy(() => import("./pages/app/Moderation"));
+const Team = lazy(() => import("./pages/app/Team"));
+const AdminBilling = lazy(() => import("./pages/app/AdminBilling"));
+const Admin = lazy(() => import("./pages/app/Admin"));
+const PublicModeration = lazy(() => import("./pages/PublicModeration"));
+const PublicReport = lazy(() => import("./pages/PublicReport"));
+const PublicPayments = lazy(() => import("./pages/PublicPayments"));
+const PublicPlan = lazy(() => import("./pages/PublicPlan"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const PublicBrief = lazy(() => import("./pages/PublicBrief"));
+const PublicContestSubmit = lazy(() => import("./pages/PublicContestSubmit"));
+const PublicDraftReview = lazy(() => import("./pages/PublicDraftReview"));
+const ConnectTikTok = lazy(() => import("./pages/ConnectTikTok"));
+const ConnectInstagram = lazy(() => import("./pages/ConnectInstagram"));
+const ConnectYouTube = lazy(() => import("./pages/ConnectYouTube"));
+const ConnectTwitter = lazy(() => import("./pages/ConnectTwitter"));
+const ConnectFacebook = lazy(() => import("./pages/ConnectFacebook"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const DataDeletion = lazy(() => import("./pages/DataDeletion"));
+const LandingPicker = lazy(() => import("./pages/landings/LandingPicker"));
+const LandingEditorial = lazy(() => import("./pages/landings/LandingEditorial"));
+const LandingCinematic = lazy(() => import("./pages/landings/LandingCinematic"));
+const LandingBento = lazy(() => import("./pages/landings/LandingBento"));
+const PortalShell = lazy(() => import("./components/PortalShell"));
+const PortalOverview = lazy(() => import("./pages/portal/PortalOverview"));
+const PortalCampaign = lazy(() => import("./pages/portal/PortalCampaign"));
+const PublicStorefront = lazy(() => import("./pages/PublicStorefront"));
+const PublicInvoice = lazy(() => import("./pages/PublicInvoice"));
+const PayInvoice = lazy(() => import("./pages/PayInvoice"));
+const Inventory = lazy(() => import("./pages/app/Inventory"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const PublicDiscovery = lazy(() => import("./pages/public/PublicDiscovery"));
 
 initAnalytics();
+
+// Title, description, canonical and robots per route. Runs before PageViewTracker
+// so analytics records the new page title.
+const RouteMeta = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    applyPageMeta(metaForPath(pathname));
+  }, [pathname]);
+  return null;
+};
 
 const PageViewTracker = () => {
   const location = useLocation();
@@ -80,8 +93,10 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <RouteMeta />
         <PageViewTracker />
         <AuthProvider><TenantProvider>
+          <Suspense fallback={<PageFallback />}>
           <Routes>
             <Route path="/" element={<LandingDashboard />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
@@ -150,6 +165,7 @@ const App = () => (
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </TenantProvider></AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
