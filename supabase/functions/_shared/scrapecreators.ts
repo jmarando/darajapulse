@@ -2,6 +2,8 @@
 // Docs: https://docs.scrapecreators.com  (auth via x-api-key header)
 // Failed lookups are not charged; each successful lookup costs 1 credit.
 
+declare const Deno: { env: { get(name: string): string | undefined } };
+
 const SC_KEY = Deno.env.get("SCRAPECREATORS_API_KEY") ?? "";
 export const SCRAPECREATORS_ENABLED = SC_KEY.length > 0;
 
@@ -146,17 +148,21 @@ async function youtube(url: string): Promise<ScrapedPost> {
 
 async function facebook(url: string): Promise<ScrapedPost> {
   const j = await call("/v1/facebook/post", url);
+  return mapFacebookPost(j);
+}
+
+export function mapFacebookPost(j: any): ScrapedPost {
   const p = j?.post ?? j?.data ?? j ?? {};
   return {
     stats: {
-      views: num(p?.viewCount ?? p?.video_view_count ?? p?.play_count ?? p?.views),
-      likes: num(p?.reactionCount ?? p?.likeCount ?? p?.likes ?? p?.reactions),
-      comments: num(p?.commentCount ?? p?.comments),
-      shares: num(p?.shareCount ?? p?.shares),
+      views: num(p?.view_count ?? p?.viewCount ?? p?.video_view_count ?? p?.play_count ?? p?.views),
+      likes: num(p?.like_count ?? p?.reactionCount ?? p?.likeCount ?? p?.likes ?? p?.reactions),
+      comments: num(p?.comment_count ?? p?.commentCount ?? p?.comments),
+      shares: num(p?.share_count ?? p?.shareCount ?? p?.shares),
     },
-    thumb: p?.thumbnailUrl ?? p?.image ?? p?.thumbnail ?? null,
-    caption: p?.text ?? p?.message ?? p?.caption ?? null,
-    postedAt: toIso(p?.publishTime ?? p?.publishedAt ?? p?.created_time ?? p?.time),
+    thumb: p?.video?.thumbnail ?? p?.image_url ?? p?.thumbnailUrl ?? p?.image ?? p?.thumbnail ?? null,
+    caption: p?.description ?? p?.text ?? p?.message ?? p?.caption ?? null,
+    postedAt: toIso(p?.creation_time ?? p?.publishTime ?? p?.publishedAt ?? p?.created_time ?? p?.time),
     creditsCharged: num(j?.credits_charged),
     creditsRemaining: j?.credits_remaining != null ? num(j.credits_remaining) : null,
   };
