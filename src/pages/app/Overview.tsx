@@ -15,6 +15,7 @@ import { BarChart, Bar, Cell, ResponsiveContainer, Tooltip, XAxis } from "rechar
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import OnboardingChecklist from "@/components/OnboardingChecklist";
+import { useNavCounts } from "@/hooks/useNavCounts";
 
 const fmt = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : `${n}`;
 
@@ -51,6 +52,7 @@ const greeting = () => {
 
 const Overview = () => {
   const { user } = useAuth();
+  const { pendingDrafts } = useNavCounts();
   const [firstName, setFirstName] = useState<string>("");
   const [s, setS] = useState({ clients: 0, campaigns: 0, influencers: 0, payouts: 0, live: 0, posts: 0, briefs: 0, contests: 0 });
   const [totals, setTotals] = useState({ views: 0, likes: 0, comments: 0, shares: 0, reach: 0 });
@@ -177,9 +179,9 @@ const Overview = () => {
               {[
                 [["Clients", s.clients, "/app/clients"], ["Views", loaded ? fmt(totals.views) : "—"]],
                 [["Campaigns", `${s.campaigns} (${s.live} live)`, "/app/campaigns"], ["Reach", loaded ? fmt(totals.reach) : "—"]],
-                [["Influencers", s.influencers, "/app/influencers"], ["Likes", loaded ? fmt(totals.likes) : "—"]],
-                [["Content items", s.briefs, "/app/content"], ["Comments", loaded ? fmt(totals.comments) : "—"]],
-                [["Posts tracked", s.posts, "/app/content"], ["Engagement", loaded ? `${er.toFixed(2)}%` : "—"]],
+                [["Creators", s.influencers, "/app/influencers"], ["Likes", loaded ? fmt(totals.likes) : "—"]],
+                [["Drafts to review", pendingDrafts, "/app/approvals"], ["Comments", loaded ? fmt(totals.comments) : "—"]],
+                [["Posts tracked", s.posts, "/app/reports"], ["Engagement", loaded ? `${er.toFixed(2)}%` : "—"]],
                 [["Contests", s.contests], ["", ""]],
               ].map((row: any, i) => (
                 <TableRow key={i}>
@@ -200,13 +202,13 @@ const Overview = () => {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <Stat icon={Building2} label="Clients" value={s.clients} to="/app/clients" />
         <Stat icon={Megaphone} label="Campaigns" value={s.campaigns} delta={`${s.live} live now`} to="/app/campaigns" />
-        <Stat icon={Users} label="Influencers" value={s.influencers} to="/app/influencers" />
+        <Stat icon={Users} label="Creators" value={s.influencers} to="/app/influencers" />
       </div>
 
       {/* Secondary KPIs */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        <Stat icon={FileText} label="Content items" value={s.briefs} to="/app/content" />
-        <Stat icon={Activity} label="Posts tracked" value={s.posts} to="/app/content" />
+        <Stat icon={FileText} label="Drafts to review" value={pendingDrafts} to="/app/approvals" />
+        <Stat icon={Activity} label="Posts tracked" value={s.posts} to="/app/reports" />
         <Stat icon={Trophy} label="Contests" value={s.contests} />
       </div>
 

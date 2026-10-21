@@ -27,15 +27,18 @@ const rsvpBadge = (r: Row["rsvp"]) => {
   return <Badge variant="secondary">No reply</Badge>;
 };
 
-const Rsvps = () => {
+/** The RSVP list. Inside a campaign it receives that campaign and drops its own title and picker. */
+const Rsvps = ({ campaignId: fixedCampaignId }: { campaignId?: string } = {}) => {
+  const embedded = !!fixedCampaignId;
   const [campaigns, setCampaigns] = useState<any[]>([]);
-  const [campaignId, setCampaignId] = useState<string>("");
+  const [campaignId, setCampaignId] = useState<string>(fixedCampaignId ?? "");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "yes" | "no" | "pending">("all");
 
   useEffect(() => {
+    if (embedded) return;
     supabase
       .from("campaigns")
       .select("id,name")
@@ -176,9 +179,9 @@ const Rsvps = () => {
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
+    <div className={embedded ? "space-y-6" : "p-8 max-w-7xl mx-auto space-y-6"}>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className={embedded ? "hidden" : undefined}>
           <h1 className="font-display text-4xl font-semibold flex items-center gap-2">
             <CalendarCheck className="w-7 h-7 text-accent" /> RSVPs
           </h1>
@@ -189,7 +192,7 @@ const Rsvps = () => {
         </div>
         <div className="flex items-center gap-2">
           <Select value={campaignId} onValueChange={setCampaignId}>
-            <SelectTrigger className="w-[260px]"><SelectValue placeholder="Select campaign" /></SelectTrigger>
+            <SelectTrigger className={embedded ? "hidden" : "w-[260px]"}><SelectValue placeholder="Select campaign" /></SelectTrigger>
             <SelectContent>
               {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
             </SelectContent>

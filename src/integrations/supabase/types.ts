@@ -2198,6 +2198,7 @@ export type Database = {
       email_threads: {
         Row: {
           agency_id: string | null
+          assigned_to: string | null
           campaign_id: string | null
           created_at: string
           id: string
@@ -2213,6 +2214,7 @@ export type Database = {
         }
         Insert: {
           agency_id?: string | null
+          assigned_to?: string | null
           campaign_id?: string | null
           created_at?: string
           id?: string
@@ -2228,6 +2230,7 @@ export type Database = {
         }
         Update: {
           agency_id?: string | null
+          assigned_to?: string | null
           campaign_id?: string | null
           created_at?: string
           id?: string

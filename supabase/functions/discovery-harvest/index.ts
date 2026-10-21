@@ -7,6 +7,7 @@
 // Each run is logged in discovery_harvest_runs and in scraper_credit_log.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { COUNTRY_PLAYBOOKS, DEFAULT_HARVEST_COUNTRIES, cityFromText, countryFromText, playbook } from "../_shared/discovery-countries.ts";
+import { isExpiringAvatar, storeAvatar } from "../_shared/avatar-store.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -244,13 +245,17 @@ async function saveCandidates(cands: Candidate[], code: string, minFollowers: nu
       .eq("handle", c.handle)
       .maybeSingle();
 
+    const avatar = c.avatar && (!existing?.avatar_url || isExpiringAvatar(existing.avatar_url))
+      ? await storeAvatar(supabase, c.avatar, `${c.platform}/${c.handle}`)
+      : null;
+
     if (!existing) {
       const { error } = await supabase.from("discovery_creators").insert({
         full_name: c.full_name,
         handle: c.handle,
         platform: c.platform,
         profile_url: c.profile_url,
-        avatar_url: c.avatar,
+        avatar_url: avatar,
         bio: c.bio || null,
         follower_count: c.followers ?? 0,
         engagement_rate: 0,
@@ -276,7 +281,7 @@ async function saveCandidates(cands: Candidate[], code: string, minFollowers: nu
     }
     if ((c.followers ?? 0) > (existing.follower_count ?? 0)) patch.follower_count = c.followers;
     if (!existing.bio && c.bio) patch.bio = c.bio;
-    if (!existing.avatar_url && c.avatar) patch.avatar_url = c.avatar;
+    if (avatar && avatar !== existing.avatar_url) patch.avatar_url = avatar;
     if (!existing.city && c.city) patch.city = c.city;
     if (Object.keys(patch).length) {
       await supabase.from("discovery_creators").update(patch).eq("id", existing.id);

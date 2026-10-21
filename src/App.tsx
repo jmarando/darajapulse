@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,9 +27,8 @@ const Influencers = lazy(() => import("./pages/app/Influencers"));
 const Discovery = lazy(() => import("./pages/app/Discovery"));
 const Inbox = lazy(() => import("./pages/app/Inbox"));
 const Rsvps = lazy(() => import("./pages/app/Rsvps"));
-const Stub = lazy(() => import("./pages/app/Stub"));
 const Briefs = lazy(() => import("./pages/app/Briefs"));
-const Content = lazy(() => import("./pages/app/Content"));
+const Approvals = lazy(() => import("./pages/app/Approvals"));
 const Reports = lazy(() => import("./pages/app/Reports"));
 const Moderation = lazy(() => import("./pages/app/Moderation"));
 const Team = lazy(() => import("./pages/app/Team"));
@@ -154,14 +153,15 @@ const App = () => (
               <Route path="briefs" element={<Briefs />} />
               <Route path="inbox" element={<Inbox />} />
               <Route path="rsvps" element={<Rsvps />} />
-              <Route path="content" element={<Content />} />
+              {/* The content calendar was never used; drafts are reviewed in Approvals. */}
+              <Route path="content" element={<Navigate to="/app/approvals" replace />} />
               <Route path="reports" element={<Reports />} />
               <Route path="moderation" element={<Moderation />} />
               <Route path="team" element={<Team />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="admin" element={<Admin />} />
               <Route path="admin/billing" element={<AdminBilling />} />
-              <Route path="approvals" element={<Stub title="Approvals" body="Two-round content approvals with versioning and threaded comments per asset. Ships in v0.2." />} />
+              <Route path="approvals" element={<Approvals />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

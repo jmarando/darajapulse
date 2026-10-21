@@ -9,6 +9,7 @@ import { apifyProfileStats } from "../_shared/apify-profile.ts";
 import { scrapeCreatorsProfile, SCRAPECREATORS_ENABLED, SC_OUT_OF_CREDITS } from "../_shared/scrapecreators.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireCaller } from "../_shared/auth.ts";
+import { storeAvatar } from "../_shared/avatar-store.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -287,10 +288,11 @@ async function fillContacts(supabase: any, opts: { maxCredits: number; limit: nu
     scanned++;
     const profileContacts = await fetchProfileContacts(c.platform, c.handle, c.bio);
     if (profileContacts.avatarUrl || (profileContacts.bio && profileContacts.bio !== c.bio)) {
+      const avatar = await storeAvatar(supabase, profileContacts.avatarUrl, `${c.platform}/${c.handle}`);
       await supabase
         .from("discovery_creators")
         .update({
-          avatar_url: profileContacts.avatarUrl || undefined,
+          avatar_url: avatar || undefined,
           bio: profileContacts.bio || undefined,
           updated_at: new Date().toISOString(),
         })
