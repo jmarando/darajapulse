@@ -426,19 +426,7 @@ async function apifyFetch(kind: "instagram" | "facebook" | "tiktok", url: string
       postedAt: toIso(item?.timestamp ?? item?.takenAtTimestamp),
     };
   }
-  if (kind === "facebook") {
-    return {
-      stats: {
-        views: item?.viewsCount ?? item?.videoViewCount ?? item?.playCount,
-        likes: item?.likesCount ?? item?.reactionsCount ?? item?.likes,
-        comments: item?.commentsCount ?? item?.comments,
-        shares: item?.sharesCount ?? item?.shares,
-      },
-      thumb: item?.thumbnailUrl ?? item?.previewImage ?? null,
-      caption: item?.text ?? item?.message ?? null,
-      postedAt: toIso(item?.time ?? item?.timestamp ?? item?.date),
-    };
-  }
+  // (Facebook is handled above via apifyFacebook.)
   return {
     stats: {
       views: item?.playCount ?? item?.viewCount,
