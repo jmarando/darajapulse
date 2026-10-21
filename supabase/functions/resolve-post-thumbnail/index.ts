@@ -2,7 +2,7 @@
 // video preview, persists it to posts.thumbnail_url for future loads, and
 // returns the resolved URL. This is the "once and for all" fallback for
 // posts (esp. Facebook) whose thumbnail wasn't populated during metric refresh.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
