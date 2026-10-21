@@ -105,7 +105,7 @@ Return STRICT JSON: {"matches":[{"item_id":"uuid","score":0-100,"reason":"one se
           item: c,
         };
       })
-      .sort((a, b) => b.score - a.score);
+      .sort((a: { score: number }, b: { score: number }) => b.score - a.score);
 
     return new Response(JSON.stringify({ matches, candidate_count: items.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
