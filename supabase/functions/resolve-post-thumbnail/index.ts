@@ -214,7 +214,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function resolveThumbnail(supabase: ReturnType<typeof createClient>, postId: string | null, providedUrl: string | null) {
+async function resolveThumbnail(supabase: SupabaseClient<any, any, any>, postId: string | null, providedUrl: string | null) {
   let url = providedUrl;
   let cached: string | null = null;
   if (postId) {
@@ -266,7 +266,7 @@ function storagePathFromThumbnailUrl(src?: string | null): string | null {
   return null;
 }
 
-async function cachedImageResponse(supabase: ReturnType<typeof createClient>, postId: string | null, thumbnailUrl?: string | null) {
+async function cachedImageResponse(supabase: SupabaseClient<any, any, any>, postId: string | null, thumbnailUrl?: string | null) {
   const candidates = [
     storagePathFromThumbnailUrl(thumbnailUrl),
     postId,
@@ -296,7 +296,7 @@ async function cachedImageResponse(supabase: ReturnType<typeof createClient>, po
   return null;
 }
 
-async function imageResponse(src: string, supabase: ReturnType<typeof createClient>, postId: string | null) {
+async function imageResponse(src: string, supabase: SupabaseClient<any, any, any>, postId: string | null) {
   const attempts = [src];
   try {
     const u = new URL(src);
