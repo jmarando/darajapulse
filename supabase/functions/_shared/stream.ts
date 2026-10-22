@@ -7,8 +7,23 @@ export const streamToken = () => Deno.env.get("CLOUDFLARE_STREAM_TOKEN") ?? "";
 export const accountId = () => Deno.env.get("CLOUDFLARE_ACCOUNT_ID") ?? "";
 export const streamConfigured = () => Boolean(streamToken() && accountId());
 
-/** Call the Cloudflare Stream API. Returns { ok, status, data } — never throws. */
+/**
+ * Call the Cloudflare Stream API. Returns { ok, status, data } — never throws.
+ * Reads are retried twice on a dropped connection, rate limit or server error,
+ * which otherwise surface to reviewers as "Video unavailable".
+ */
 export async function streamApi(path: string, init: RequestInit = {}) {
+  const isRead = !init.method || init.method === "GET";
+  let result = await streamApiOnce(path, init);
+  for (const wait of isRead ? [400, 1200] : []) {
+    if (result.ok || !(result.status === 0 || result.status === 429 || result.status >= 500)) break;
+    await new Promise((r) => setTimeout(r, wait));
+    result = await streamApiOnce(path, init);
+  }
+  return result;
+}
+
+async function streamApiOnce(path: string, init: RequestInit) {
   try {
     const res = await fetch(`${CF_API}/accounts/${accountId()}${path}`, {
       ...init,

@@ -99,10 +99,13 @@ Deno.serve(async (req) => {
     }
 
     // If the webhook was missed, poll the video once and self-heal the status.
+    // A failed check must not block a video we already know is ready.
     const { ok, data: videoRes } = await streamApi(`/stream/${draft.stream_uid}`);
-    if (!ok) return json({ error: "Video unavailable" }, 404);
-    const video = videoRes?.result;
-    const state = String(video?.status?.state ?? "").toLowerCase();
+    const knownReady = draft.stream_status === "ready" && !!customerCodeFrom(draft.stream_thumbnail_url);
+    if (!ok && !knownReady) return json({ error: "Video unavailable" }, 404);
+    if (!ok) console.warn("stream-sign: status check failed, using stored state", draft.stream_uid);
+    const video = ok ? videoRes?.result : null;
+    const state = ok ? String(video?.status?.state ?? "").toLowerCase() : "ready";
     if (state !== "ready") {
       if (draft.stream_status !== state && state) {
         await db
@@ -113,13 +116,13 @@ Deno.serve(async (req) => {
       return json({ status: "processing" });
     }
 
-    const code = customerCodeFrom(video?.previewURL, video?.thumbnail, video?.playback?.hls);
+    const code = customerCodeFrom(video?.previewURL, video?.thumbnail, video?.playback?.hls, draft.stream_thumbnail_url);
     if (!code) return json({ error: "Video unavailable" }, 404);
     const base = `https://customer-${code}.cloudflarestream.com/${draft.stream_uid}`;
-    const thumbBase = video?.thumbnail || `${base}/thumbnails/thumbnail.jpg`;
+    const thumbBase = video?.thumbnail || draft.stream_thumbnail_url || `${base}/thumbnails/thumbnail.jpg`;
 
     // Persist the thumbnail so review lists can show a real tile straight away.
-    if (draft.stream_status !== "ready" || draft.stream_thumbnail_url !== thumbBase) {
+    if (video && (draft.stream_status !== "ready" || draft.stream_thumbnail_url !== thumbBase)) {
       await db
         .from("creator_drafts")
         .update({

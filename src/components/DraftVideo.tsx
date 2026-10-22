@@ -8,6 +8,22 @@ export type StreamPlayback = {
 };
 
 /**
+ * Cloudflare's player otherwise opens paused on a black frame and needs a second
+ * tap. Start it straight away (the reviewer just tapped play) and give it the
+ * thumbnail to show while it loads.
+ */
+const withPlayerOptions = (embedUrl: string, poster: string | null) => {
+  try {
+    const u = new URL(embedUrl);
+    u.searchParams.set("autoplay", "true");
+    if (poster) u.searchParams.set("poster", poster);
+    return u.toString();
+  } catch {
+    return embedUrl;
+  }
+};
+
+/**
  * Video tile that downloads nothing until the reviewer taps play.
  * Keeps long approval lists fast, especially on mobile data.
  *
@@ -37,9 +53,11 @@ export const DraftVideo = ({
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [frameLoaded, setFrameLoaded] = useState(false);
 
   const start = async () => {
     if (loading) return;
+    setFailed(false);
     setLoading(true);
     try {
       if (getStream) {
@@ -47,7 +65,7 @@ export const DraftVideo = ({
         if (s?.status === "ready" && s.embedUrl) {
           if (s.posterUrl) setPosterUrl(s.posterUrl);
           setMode("iframe");
-          setSrc(s.embedUrl);
+          setSrc(withPlayerOptions(s.embedUrl, s.posterUrl ?? posterUrl));
           setPlaying(true);
           return;
         }
@@ -80,13 +98,21 @@ export const DraftVideo = ({
 
   if (playing && src && mode === "iframe") {
     return (
-      <div className="bg-black aspect-[9/16] max-h-[62vh] sm:max-h-[420px]">
+      <div className="relative bg-black aspect-[9/16] max-h-[62vh] sm:max-h-[420px]">
+        {/* Keep the thumbnail on screen until the player has loaded, instead of a black box. */}
+        {!frameLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            {posterUrl && <img src={posterUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-70" />}
+            <Loader2 className="relative w-7 h-7 animate-spin text-primary-foreground/80" />
+          </div>
+        )}
         <iframe
           src={src}
           title={label ? `Video from ${label}` : "Draft video"}
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowFullScreen
-          className="w-full h-full"
+          onLoad={() => setFrameLoaded(true)}
+          className="relative w-full h-full"
         />
       </div>
     );
@@ -105,7 +131,6 @@ export const DraftVideo = ({
     <button
       type="button"
       onClick={start}
-      disabled={failed}
       className="relative bg-black aspect-[9/16] max-h-[62vh] sm:max-h-[420px] w-full flex flex-col items-center justify-center gap-2 group"
       aria-label={`Play video${label ? ` from ${label}` : ""}`}
     >
@@ -116,7 +141,10 @@ export const DraftVideo = ({
         {loading ? (
           <Loader2 className="w-7 h-7 animate-spin text-primary-foreground/80" />
         ) : failed ? (
-          <span className="text-xs text-primary-foreground/70">Video unavailable</span>
+          <>
+            <span className="text-xs text-primary-foreground/80 text-center px-3">Couldn't load the video — tap to try again</span>
+            <RefreshCw className="w-5 h-5 text-primary-foreground/70" />
+          </>
         ) : processing ? (
           <>
             <span className="text-xs text-primary-foreground/80 text-center px-3">
