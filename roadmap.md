@@ -1,6 +1,7 @@
 # Roadmap
 
-- [ ] Replace ScrapeCreators key and refresh all campaigns with submitted posts regardless of status, starting with Pakakumi Aug–Oct Influencers — awaiting secure key entry
+- [x] Replace ScrapeCreators key and refresh all campaigns with submitted posts regardless of status, starting with Pakakumi Aug–Oct Influencers — verified 23 Oct: 1,831/1,914 posts updated across 13 campaigns; Pakakumi 207/242; 4,269 credits remaining
+- [ ] Recover 83 failed post statistics from the 23 Oct sweep — blocked/restricted or unsupported links, malformed URLs, missing provider statistics and one rate-limit response; needs targeted investigation and accessible links/manual evidence where providers cannot retrieve data
 
 - [x] Refresh Royco Q3 Nano older statistics and retry missing posts; verified 701/706 updated today, all 96 Facebook recovered, two malformed links repaired
 - [ ] Recover five remaining Royco post statistics — needs a correct individual Instagram reel URL for cook_it_how_you_feel_it and accessible links/statistics for Eddah Awinja, Linet Wambui Mwatha, Leah Wamboi Maina and Brenda Karimi Murithi
