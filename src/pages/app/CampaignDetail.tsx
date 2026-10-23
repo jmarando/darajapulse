@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles, Trash2, Calendar as CalendarIcon, Flame, Clock, Gauge, Coins, PieChart as PieIcon, FileSignature } from "lucide-react";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles, Trash2, Calendar as CalendarIcon, Flame, Clock, Gauge, Coins, FileSignature } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -75,6 +75,8 @@ import { EditCreatorDialog } from "@/components/EditCreatorDialog";
 import CampaignPayments from "@/components/CampaignPayments";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
+import { FreshnessChips, ReportOverview } from "@/components/report/ReportOverview";
+import type { ReportPost } from "@/lib/reportInsights";
 import { buildAudience } from "@/lib/audience";
 import { useGeo } from "@/lib/geo";
 import Rsvps from "@/pages/app/Rsvps";
@@ -95,6 +97,7 @@ const CampaignDetail = () => {
   const [posts, setPosts] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<any[]>([]);
   const [metricsLoaded, setMetricsLoaded] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [contestEntries, setContestEntries] = useState<any[]>([]);
   // Event campaigns collect RSVPs; the tab only shows when there are some.
   const [rsvpCount, setRsvpCount] = useState(0);
@@ -219,11 +222,13 @@ const CampaignDetail = () => {
         fetchAllPostMetrics(supabase, postIds, "post_id,captured_at,views,likes,comments,shares,saves,reach,impressions")
           .then((history) => {
             if (history.length) setMetrics(history);
+            setHistoryLoaded(true);
           })
           .catch((error: any) => console.warn("Could not load full metric history", error));
       } catch (error: any) {
         try {
           setMetrics(await fetchAllPostMetrics(supabase, postIds, "post_id,captured_at,views,likes,comments,shares,saves,reach,impressions"));
+          setHistoryLoaded(true);
         } catch (fallbackError: any) {
           toast.error(fallbackError.message || error.message || "Could not load metrics");
           setMetrics([]);
@@ -602,6 +607,39 @@ const CampaignDetail = () => {
     [ci],
   );
 
+  // The overview needs every reading per post. The peak rows that render first
+  // would make week-on-week figures look like everything arrived at once.
+  const reportPosts = useMemo<ReportPost[]>(() => {
+    if (!historyLoaded) return [];
+    const byPost = new Map<string, typeof metrics>();
+    for (const m of metrics) {
+      const list = byPost.get(m.post_id);
+      if (list) list.push(m); else byPost.set(m.post_id, [m]);
+    }
+    return posts.map((p) => ({
+      id: p.id,
+      platform: p.platform,
+      influencer_id: p.influencer_id,
+      creator: p.influencers?.full_name ?? null,
+      post_url: p.post_url,
+      posted_at: p.posted_at,
+      created_at: p.created_at,
+      history: byPost.get(p.id) ?? [],
+    }));
+  }, [historyLoaded, metrics, posts]);
+  // Campaign-to-date, whatever reporting window the sections below use.
+  const overview = useMemo(() => {
+    let likes = 0, comments = 0, shares = 0, estimatedShares = false;
+    for (const m of buildPeakMetricsByPost(metrics).values()) {
+      likes += Number(m.likes || 0);
+      comments += Number(m.comments || 0);
+      shares += Number(m.shares || 0);
+      if (m.estimated_fields?.shares) estimatedShares = true;
+    }
+    const creators = new Set(posts.map((p) => p.influencer_id).filter(Boolean)).size;
+    return { totals: { likes, comments, shares }, estimatedShares, creators, now: Date.now() };
+  }, [metrics, posts]);
+
 
   // Per-influencer aggregated metrics
   const byInfluencer = useMemo(() => {
@@ -951,6 +989,23 @@ const CampaignDetail = () => {
         </div>
 
         <TabsContent value="overview" className="space-y-6 mt-0">
+
+      {!isContestOnly && reportPosts.length > 0 && (
+        <div>
+          <FreshnessChips posts={reportPosts} now={overview.now} className="mb-4" />
+          <ReportOverview
+            posts={reportPosts}
+            totals={overview.totals}
+            estimated={{ shares: overview.estimatedShares }}
+            creators={overview.creators}
+            roster={ci.length}
+            audience={{ measured: audience.measuredCount, creators: audience.creatorCount }}
+            view="agency"
+            campaignStatus={c?.status}
+            now={overview.now}
+          />
+        </div>
+      )}
 
       {/* Agency team on this campaign */}
       {c?.id && (
@@ -1425,43 +1480,6 @@ const CampaignDetail = () => {
               </table>
             </div>
             <div className="mt-3 text-[10px] text-muted-foreground">Reach eff. = views ÷ follower count. Above 100% means the post reached well beyond their own audience.</div>
-          </Card>
-        );
-      })()}
-
-      {/* ── Share of voice ─────────────────────────────────────────── */}
-      {totals.views > 0 && byInfluencer.size > 0 && (() => {
-        const rows = ci
-          .map(x => {
-            const s = byInfluencer.get(x.influencer_id);
-            if (!s || s.views === 0) return null;
-            return { name: x.influencers?.full_name ?? "—", views: s.views, share: s.views / totals.views * 100 };
-          })
-          .filter(Boolean)
-          .sort((a: any, b: any) => b!.views - a!.views) as { name: string; views: number; share: number }[];
-        const top = rows.slice(0, 8);
-        const restShare = rows.slice(8).reduce((a, r) => a + r.share, 0);
-        if (restShare > 0) top.push({ name: `+${rows.length - 8} others`, views: rows.slice(8).reduce((a,r)=>a+r.views,0), share: restShare });
-        return (
-          <Card className="p-6 mb-6">
-            <div className="flex items-baseline justify-between mb-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><PieIcon className="w-3 h-3" />Share of voice</div>
-                <h2 className="font-display text-2xl mt-1">Who owns the campaign reach</h2>
-              </div>
-            </div>
-            <div className="space-y-2.5">
-              {top.map((r, i) => (
-                <div key={r.name + i} className="flex items-center gap-3">
-                  <div className="w-40 truncate text-sm">{r.name}</div>
-                  <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
-                    <div className={`h-full ${i === 0 ? "bg-accent" : i === 1 ? "bg-highlight" : "bg-accent/60"}`} style={{ width: `${r.share.toFixed(1)}%` }} />
-                  </div>
-                  <div className="w-24 text-right tabular-nums text-sm">{r.share.toFixed(1)}%</div>
-                  <div className="w-20 text-right tabular-nums text-xs text-muted-foreground">{fmt(r.views)}</div>
-                </div>
-              ))}
-            </div>
           </Card>
         );
       })()}
