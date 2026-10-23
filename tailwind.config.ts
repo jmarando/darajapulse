@@ -49,6 +49,13 @@ export default {
         },
         highlight: "hsl(var(--highlight))",
         success: "hsl(var(--success))",
+        series: "hsl(var(--series))",
+        status: {
+          good: "hsl(var(--status-good))",
+          warn: "hsl(var(--status-warn))",
+          bad: "hsl(var(--status-bad))",
+          info: "hsl(var(--status-info))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

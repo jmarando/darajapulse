@@ -62,6 +62,14 @@
     --font-body: 'Geist Sans', 'Geist', system-ui, sans-serif;
     --font-serif: 'Instrument Serif', 'Times New Roman', serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    /* Report data marks and data-health states. Checked with the dataviz
+       palette validator in light and dark; status hues never double as series. */
+    --series: 3 74% 53%;
+    --status-good: 146 58% 33%;
+    --status-warn: 40 88% 39%;
+    --status-bad: 339 63% 45%;
+    --status-info: 215 16% 47%;
   }
 
   .dark {
@@ -82,6 +90,12 @@
     --border: 22 12% 20%;
     --input: 22 12% 20%;
     --ring: 0 99% 57%;
+
+    --series: 3 81% 60%;
+    --status-good: 146 50% 52%;
+    --status-warn: 39 68% 50%;
+    --status-bad: 339 70% 62%;
+    --status-info: 215 20% 65%;
   }
 }
 
@@ -122,6 +136,20 @@
   .shadow-elegant { box-shadow: var(--shadow-elegant); }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .text-balance { text-wrap: balance; }
+
+  /* Report bars: earlier periods are hatched, the current one is solid. */
+  .bar-hatch {
+    background-color: hsl(var(--series) / 0.1);
+    background-image: repeating-linear-gradient(135deg, hsl(var(--series) / 0.7) 0 1.5px, transparent 1.5px 5px);
+  }
+  .bar-solid { background-color: hsl(var(--series)); }
+  /* The one loud surface on a report: the finding worth leading with. */
+  .bg-pattern-card {
+    background:
+      radial-gradient(110% 80% at 100% 100%, hsl(36 92% 58% / 0.85) 0%, transparent 55%),
+      radial-gradient(80% 65% at 90% 70%, hsl(3 78% 50% / 0.8) 0%, transparent 62%),
+      linear-gradient(160deg, hsl(228 24% 12%) 0%, hsl(244 18% 17%) 50%, hsl(354 45% 28%) 100%);
+  }
 
   @keyframes pulse-counter {
     0%,100% { opacity: 1; }

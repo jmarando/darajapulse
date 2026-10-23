@@ -115,6 +115,20 @@ export const fetchAllPostMetrics = async (client: any, postIds: string[], column
   return rows;
 };
 
+// Public reports read every snapshot for the link's campaign through one
+// token-checked call. Reading post_metrics directly as anon goes through row
+// security and timed out on large campaigns, leaving reports at zero.
+export const fetchReportPostMetrics = async (client: any, token: string) => {
+  const rows: MetricSnapshot[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await client.rpc("get_report_post_metrics", { _token: token }).range(from, from + 999);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return rows;
+};
+
 export const fetchCampaignPeakMetrics = async (client: any, campaignId?: string | null) => {
   if (!campaignId) return [] as MetricSnapshot[];
   const { data, error } = await client.rpc("campaign_post_peak_metrics", { target_campaign_id: campaignId });
