@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Refresh Pakakumi Aug–Oct Influencers metrics — blocked: current ScrapeCreators key returned out-of-credits (402) on 23 Oct; last recorded balance was 0 on 21 Oct; needs a top-up or replacement key
+
 - [x] Refresh Royco Q3 Nano older statistics and retry missing posts; verified 701/706 updated today, all 96 Facebook recovered, two malformed links repaired
 - [ ] Recover five remaining Royco post statistics — needs a correct individual Instagram reel URL for cook_it_how_you_feel_it and accessible links/statistics for Eddah Awinja, Linet Wambui Mwatha, Leah Wamboi Maina and Brenda Karimi Murithi
 
