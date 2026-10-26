@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, BarChart3, Trophy, Music2, Sparkles, Trash2, Flame, Clock, Gauge, Coins, FileSignature } from "lucide-react";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, BarChart3, Trophy, Music2, Sparkles, Trash2, Clock, Gauge, Coins, FileSignature } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -71,14 +71,18 @@ import { EditCreatorDialog } from "@/components/EditCreatorDialog";
 import CampaignPayments from "@/components/CampaignPayments";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
-import { FreshnessChips, ReportOverview } from "@/components/report/ReportOverview";
+import { FreshnessChips, ReportCard, ReportOverview } from "@/components/report/ReportOverview";
 import { ReportingWindow } from "@/components/report/ReportingWindow";
 import { MetricStrip } from "@/components/report/MetricStrip";
 import { TrendCard } from "@/components/report/TrendCard";
 import { TopPerformers } from "@/components/report/TopPerformers";
+import { ChannelMix } from "@/components/report/ChannelMix";
+import { TopPosts } from "@/components/report/TopPosts";
 import { buildTrend } from "@/lib/campaignTrend";
 import { buildMetricTiles, estimatedMetrics } from "@/lib/metricTiles";
 import { rankPerformers } from "@/lib/topPerformers";
+import { buildChannelMix } from "@/lib/channelMix";
+import { pickTopPosts } from "@/lib/topPosts";
 import { windowLabel } from "@/lib/reportingWindow";
 import type { ReportPost } from "@/lib/reportInsights";
 import { buildAudience } from "@/lib/audience";
@@ -591,26 +595,6 @@ const CampaignDetail = () => {
     return { views, likes, comments, shares, saves, reach, impressions, er };
   }, [latestByPost, contestEntries, isContestOnly]);
 
-  // Per-platform breakdown (mirrors public report)
-  const platformRows = useMemo(() => {
-    const map = new Map<string, { posts: number; creators: Set<string>; views: number; reach: number; followers: number }>();
-    for (const p of posts) {
-      const m = latestByPost.get(p.id);
-      const key = (p.platform as string) || "other";
-      const cur = map.get(key) ?? { posts: 0, creators: new Set<string>(), views: 0, reach: 0, followers: 0 };
-      cur.posts += 1;
-      if (p.influencer_id) cur.creators.add(p.influencer_id);
-      cur.views += Number(m?.views || 0);
-      cur.reach += Number(m?.reach || 0);
-      map.set(key, cur);
-    }
-    for (const x of ci) {
-      const plat = (x.influencers?.primary_platform as string) || "other";
-      const cur = map.get(plat);
-      if (cur) cur.followers += Number(x.influencers?.follower_count || 0);
-    }
-    return Array.from(map.entries()).sort((a, b) => b[1].views - a[1].views);
-  }, [posts, latestByPost, ci]);
 
   // Audience demographics (mirrors public report)
   const audience = useMemo(
@@ -730,6 +714,8 @@ const CampaignDetail = () => {
   const estimated = useMemo(() => estimatedMetrics(isContestOnly ? [] : latestByPost.values()), [latestByPost, isContestOnly]);
   const metricTiles = useMemo(() => buildMetricTiles(totals, metricsLoaded, estimated), [totals, metricsLoaded, estimated]);
   const topPerformers = useMemo(() => rankPerformers(ci, byInfluencer, totals.views), [ci, byInfluencer, totals.views]);
+  const channelRows = useMemo(() => buildChannelMix(posts, latestByPost, ci), [posts, latestByPost, ci]);
+  const topPosts = useMemo(() => pickTopPosts(posts, latestByPost), [posts, latestByPost]);
 
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
@@ -979,10 +965,9 @@ const CampaignDetail = () => {
 
       {/* Agency team on this campaign */}
       {c?.id && (
-        <Card className="min-w-0 p-4 sm:p-5">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Agency team on this campaign</div>
-          <AgencyTeamPicker scope={{ type: "campaign", campaign_id: c.id }} title="Who's running this campaign" />
-        </Card>
+        <ReportCard title="Agency team" subtitle="Who's running this campaign. Internal only, clients never see this.">
+          <AgencyTeamPicker scope={{ type: "campaign", campaign_id: c.id }} variant="panel" />
+        </ReportCard>
       )}
 
 
@@ -1003,102 +988,9 @@ const CampaignDetail = () => {
 
       <TopPerformers rows={topPerformers} estimated={estimated.shares || estimated.saves} />
 
-      {/* Channel mix */}
-      {platformRows.length > 0 && (
-        <Card className="p-5 mb-6">
-          <div className="mb-4">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">By platform</div>
-            <h2 className="font-display text-2xl">Channel mix</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
-                  <th className="text-left font-medium py-2 pr-3">Platform</th>
-                  <th className="text-right font-medium py-2 px-3">Posts</th>
-                  <th className="text-right font-medium py-2 px-3">Creators</th>
-                  <th className="text-right font-medium py-2 px-3">Views</th>
-                  <th className="text-right font-medium py-2 px-3">Reach</th>
-                  <th className="text-right font-medium py-2 pl-3">Followers</th>
-                </tr>
-              </thead>
-              <tbody>
-                {platformRows.map(([k, v]) => (
-                  <tr key={k} className="border-b border-border last:border-0">
-                    <td className="py-2 pr-3 capitalize">{k}</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{v.posts}</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{v.creators.size}</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{fmt(v.views)}</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{fmt(v.reach)}</td>
-                    <td className="py-2 pl-3 text-right tabular-nums">{fmt(v.followers)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+      <ChannelMix rows={channelRows} loaded={metricsLoaded} />
 
-
-      {/* ── Top posts showcase ─────────────────────────────────────── */}
-      {posts.length > 0 && (() => {
-        const withEng = posts.map(p => {
-          const m = latestByPost.get(p.id) || {};
-          const eng = (m.likes||0)+(m.comments||0)+(m.shares||0)+(m.saves||0);
-          const erP = m.views ? (eng / m.views * 100) : 0;
-          const intent = (m.saves||0) + (m.shares||0);
-          return { p, m, eng, erP, intent };
-        }).filter(x => (x.m.views||0) > 0);
-        if (withEng.length === 0) return null;
-        const byViews = [...withEng].sort((a,b)=>(b.m.views||0)-(a.m.views||0))[0];
-        const byEr = [...withEng].filter(x=>x.m.views>=200).sort((a,b)=>b.erP-a.erP)[0] || [...withEng].sort((a,b)=>b.erP-a.erP)[0];
-        const byIntent = [...withEng].sort((a,b)=>b.intent-a.intent)[0];
-        const picks = [
-          { label: "Most viewed", icon: Eye, item: byViews, stat: byViews ? fmt(byViews.m.views||0) + " views" : "" },
-          { label: "Highest engagement", icon: Sparkles, item: byEr, stat: byEr ? `${byEr.erP.toFixed(1)}% ER` : "" },
-          { label: "Strongest intent", icon: Flame, item: byIntent, stat: byIntent ? `${fmt(byIntent.intent)} saves + shares` : "" },
-        ].filter(x => x.item);
-        if (picks.length === 0) return null;
-        return (
-          <Card className="p-6 mb-6">
-            <div className="flex items-baseline justify-between mb-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Standout content</div>
-                <h2 className="font-display text-2xl mt-1">Top posts</h2>
-              </div>
-              <div className="text-xs text-muted-foreground">Picked across three signals</div>
-            </div>
-            <div className="grid md:grid-cols-3 gap-4">
-              {picks.map(({ label, icon: Icon, item, stat }) => {
-                const m = item!.m;
-                return (
-                  <a key={label} href={item!.p.post_url || "#"} target="_blank" rel="noreferrer" className="group rounded-lg border border-border overflow-hidden hover:border-accent/50 transition-colors bg-card">
-                    <div className="aspect-[4/5] bg-secondary overflow-hidden flex items-center justify-center">
-                      <PostThumb postId={item!.p.id} url={item!.p.post_url} platform={item!.p.platform} thumbnailUrl={item!.p.thumbnail_url} caption={item!.p.caption} handle={item!.p.influencers?.handle} asLink={false} />
-                    </div>
-                    <div className="p-3">
-                      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-accent">
-                        <Icon className="w-3 h-3" /> {label}
-                      </div>
-                      <div className="font-display text-lg mt-1 truncate">{item!.p.influencers?.full_name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground truncate">@{(item!.p.influencers?.handle || "").replace(/^@/, "")} · {item!.p.platform}</div>
-                      <div className="mt-2 font-display text-xl tabular-nums">{stat}</div>
-                      <div className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-1 text-center">
-                        <div><div className="text-xs font-medium tabular-nums">{fmt(m.views || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                        <div><div className="text-xs font-medium tabular-nums">{fmt(m.likes || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
-                        <div><div className="text-xs font-medium tabular-nums">{fmt(m.comments || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
-                        <div><div className="text-xs font-medium tabular-nums">{fmt(m.shares || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Shares</div></div>
-                        <div><div className="text-xs font-medium tabular-nums">{fmt(m.saves || 0)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Saves</div></div>
-                        <div><div className="text-xs font-medium tabular-nums">{item!.erP.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">ER</div></div>
-                      </div>
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          </Card>
-        );
-      })()}
+      <TopPosts picks={topPosts} />
 
       {/* ── Engagement quality mix ─────────────────────────────────── */}
       {(totals.likes + totals.comments + totals.shares + totals.saves) > 0 && (() => {
