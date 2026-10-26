@@ -18,8 +18,8 @@ const PortalOverview = () => {
   }, []);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="text-xs uppercase tracking-widest text-muted-foreground">Welcome</div>
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
+      <div className="text-sm text-muted-foreground">Welcome</div>
       <h1 className="font-display text-4xl font-semibold mt-1 mb-8">Your campaigns</h1>
 
       {clients.length === 0 ? (
@@ -50,12 +50,14 @@ const PortalOverview = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {campaigns.map(c => (
                 <Link key={c.id} to={`/portal/campaigns/${c.id}`} className="group">
-                  <Card className="p-5 hover:shadow-elegant hover:-translate-y-0.5 transition-all">
-                    <div className="text-xs text-muted-foreground">{c.clients?.name}</div>
+                  <Card className="rounded-[20px] border-border/70 p-5 transition-colors hover:bg-secondary/40">
+                    <div className="text-[12.5px] text-muted-foreground">{c.clients?.name}</div>
                     <div className="font-display text-xl mt-1">{c.name}</div>
-                    <div className="mt-2 text-xs text-muted-foreground">{c.start_date} — {c.end_date}</div>
+                    {(c.start_date || c.end_date) && (
+                      <div className="mt-2 text-[12.5px] text-muted-foreground">{c.start_date || "Start not set"} to {c.end_date || "ongoing"}</div>
+                    )}
                     <div className="mt-3 flex items-center justify-between text-xs">
-                      <span className="px-2 py-0.5 rounded bg-secondary capitalize">{c.status}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[11.5px] capitalize ${c.status === "live" ? "bg-status-good/10 text-status-good" : "bg-secondary text-muted-foreground"}`}>{c.status}</span>
                       <ArrowUpRight className="w-4 h-4 opacity-0 group-hover:opacity-100" />
                     </div>
                   </Card>

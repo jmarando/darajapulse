@@ -6,15 +6,17 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, MapPin, Bookmark, Radio, Trophy, BarChart3, Download, FileText, Instagram, Music2, Crown, Flame, Clock, Gauge, PieChart as PieIcon, Coins } from "lucide-react";
+import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, Bookmark, Radio, Trophy, BarChart3, Download, FileText, Instagram, Music2, Crown, Flame, Clock, Gauge, Coins } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
 import { PostEmbed } from "@/components/PostEmbed";
 import { PostThumb } from "@/components/PostThumb";
 
-import { fetchAllPostMetrics, peakMetricSnapshot, buildWindowMetricsByPost, withMetricFallbacks } from "@/lib/metrics";
+import { fetchAllPostMetrics, fetchReportPostMetrics, peakMetricSnapshot, buildWindowMetricsByPost, withMetricFallbacks, type MetricSnapshot } from "@/lib/metrics";
 import { buildAudience } from "@/lib/audience";
+import { FreshnessChips, ReportOverview } from "@/components/report/ReportOverview";
+import { readingSummary, type ReportPost } from "@/lib/reportInsights";
 import { contractPeriodLabel } from "@/lib/contractDates";
 import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
 
@@ -53,38 +55,58 @@ const PublicReport = () => {
   const [contestEntries, setContestEntries] = useState<any[]>([]);
   const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
   const [exporting, setExporting] = useState(false);
   const [metric, setMetric] = useState<"views"|"reach"|"impressions"|"likes"|"comments"|"shares"|"saves"|"engagement">("views");
 
   const load = async () => {
-    const { data: linkCampaignId } = await (supabase as any).rpc("get_report_link_campaign", { _token: token });
-    const link = linkCampaignId ? { campaign_id: linkCampaignId as string } : null;
-    if (!link) { setNotFound(true); return; }
-    const { data: c } = await supabase.from("campaigns").select("*").eq("id", link.campaign_id).single();
-    const { data: dates } = await supabase.rpc("get_campaign_contract_dates", { _token: token });
-    setCampaign(c ? { ...c, ...(dates as any) } : null);
-    if (c?.client_id) {
-      const { data: cl } = await supabase.from("clients").select("*").eq("id", c.client_id).single();
-      setClient(cl);
+    try {
+      const { data: linkCampaignId } = await (supabase as any).rpc("get_report_link_campaign", { _token: token });
+      const link = linkCampaignId ? { campaign_id: linkCampaignId as string } : null;
+      if (!link) { setNotFound(true); return; }
+      const { data: c } = await supabase.from("campaigns").select("*").eq("id", link.campaign_id).single();
+      const { data: dates } = await supabase.rpc("get_campaign_contract_dates", { _token: token });
+      setCampaign(c ? { ...c, ...(dates as any) } : null);
+      if (c?.client_id) {
+        const { data: cl } = await supabase.from("clients").select("*").eq("id", c.client_id).single();
+        setClient(cl);
+      }
+      const { data: ps } = await supabase.from("posts").select("*, influencers(full_name, handle)").eq("campaign_id", link.campaign_id);
+      const postIds = (ps ?? []).map(p => p.id);
+      let ms: MetricSnapshot[] = [];
+      if (postIds.length) {
+        try {
+          ms = await fetchReportPostMetrics(supabase, token!);
+        } catch {
+          // Databases without the report metrics function read rows directly.
+          ms = await fetchAllPostMetrics(supabase, postIds);
+        }
+      }
+      const byPost = new Map<string, MetricSnapshot[]>();
+      for (const m of ms) {
+        const list = byPost.get(m.post_id!);
+        if (list) list.push(m); else byPost.set(m.post_id!, [m]);
+      }
+      const grouped = (ps ?? []).map(p => {
+        const list = (byPost.get(p.id) ?? []).sort((a,b) => +new Date(a.captured_at!) - +new Date(b.captured_at!));
+        const peak = peakMetricSnapshot(list);
+        return { ...p, metrics: peak, history: list };
+      });
+      setPosts(grouped);
+      // Influencer + contest-entry tables are not readable anonymously; use the token-scoped RPC.
+      const { data: pub } = await (supabase as any).rpc("get_report_public_data", { _token: token });
+      setInfluencers(pub?.influencers ?? []);
+      const { data: cts } = await supabase.from("contests").select("*").eq("campaign_id", link.campaign_id).order("created_at", { ascending: false });
+      setContests(cts ?? []);
+      setContestEntries(pub?.entries ?? []);
+      setLoadError(false);
+      setUpdatedAt(new Date());
+    } catch {
+      // Keep whatever loaded last and say so, rather than showing zeros as live.
+      setLoadError(true);
     }
-    const { data: ps } = await supabase.from("posts").select("*, influencers(full_name, handle)").eq("campaign_id", link.campaign_id);
-    const postIds = (ps ?? []).map(p => p.id);
-    const ms = postIds.length ? await fetchAllPostMetrics(supabase, postIds) : [];
-    const grouped = (ps ?? []).map(p => {
-      const list = ms.filter(m => m.post_id === p.id).sort((a,b) => +new Date(a.captured_at) - +new Date(b.captured_at));
-      const peak = peakMetricSnapshot(list);
-      return { ...p, metrics: peak, history: list };
-    });
-    setPosts(grouped);
-    // Influencer + contest-entry tables are not readable anonymously; use the token-scoped RPC.
-    const { data: pub } = await (supabase as any).rpc("get_report_public_data", { _token: token });
-    setInfluencers(pub?.influencers ?? []);
-    const { data: cts } = await supabase.from("contests").select("*").eq("campaign_id", link.campaign_id).order("created_at", { ascending: false });
-    setContests(cts ?? []);
-    setContestEntries(pub?.entries ?? []);
-    setUpdatedAt(new Date());
   };
 
   useEffect(() => {
@@ -105,6 +127,19 @@ const PublicReport = () => {
     return buildWindowMetricsByPost(all, fromTs, toTs);
   }, [posts, hasRange, fromTs, toTs]);
 
+  // The overview reads each post's full reading history, so freshness and
+  // week-by-week totals come from when figures were actually collected.
+  const reportPosts = useMemo<ReportPost[]>(() => posts.map((p) => ({
+    id: p.id,
+    platform: p.platform,
+    influencer_id: p.influencer_id,
+    creator: p.influencers?.full_name ?? null,
+    post_url: p.post_url,
+    posted_at: p.posted_at,
+    created_at: p.created_at,
+    history: p.history ?? [],
+  })), [posts]);
+
   if (notFound) return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="flex-1 flex items-center justify-center p-6">
@@ -121,7 +156,11 @@ const PublicReport = () => {
       <PublicFooter />
     </div>
   );
-  if (!campaign) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading report…</div>;
+  if (!campaign) return (
+    <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+      {loadError ? "This report couldn't load just now. It tries again every minute." : "Loading report…"}
+    </div>
+  );
 
   const filteredPosts = posts
     .filter(p => {
@@ -214,6 +253,19 @@ const PublicReport = () => {
   }
   const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", impressions: "Impressions", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
 
+  // Overview is always campaign-to-date, whatever window the sections below use.
+  const overviewTotals = posts.reduce((a, p) => ({
+    likes: a.likes + (p.metrics?.likes || 0),
+    comments: a.comments + (p.metrics?.comments || 0),
+    shares: a.shares + (p.metrics?.shares || 0),
+  }), { likes: 0, comments: 0, shares: 0 });
+  const estimatedKeys = new Set<string>();
+  for (const p of filteredPosts) {
+    for (const [k, v] of Object.entries(p.metrics?.estimated_fields ?? {})) if (v) estimatedKeys.add(k);
+  }
+  const audienceSummary = influencers.length ? buildAudience(influencers.map((x) => x.influencers).filter(Boolean)) : null;
+  const creatorCount = new Set(posts.map((p) => p.influencer_id).filter(Boolean)).size;
+
   const exportCsv = () => {
     const esc = (s: any) => { const v = String(s ?? ""); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; };
     const rows: string[][] = [];
@@ -252,8 +304,10 @@ const PublicReport = () => {
             <img src={logo} alt="Daraja Pulse" className="h-10 md:h-12 w-auto" />
             <div className="hidden sm:block h-8 w-px bg-border" />
             <div className="hidden sm:block">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Live campaign report</div>
-              <div className="text-xs text-muted-foreground">Auto-refreshes every minute</div>
+              <div className="text-[13px] font-medium">Campaign report</div>
+              <div className={`text-xs ${loadError ? "text-status-bad" : "text-muted-foreground"}`}>
+                {loadError ? "Couldn't load the latest figures. Trying again every minute." : readingSummary(reportPosts, updatedAt.getTime()).label}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 no-print">
@@ -286,9 +340,6 @@ const PublicReport = () => {
                 });
               } finally { setExporting(false); }
             }}><Download className="w-3.5 h-3.5 mr-1.5" />{exporting ? "…" : "PPT"}</Button>
-            <span className="hidden lg:inline-flex items-center gap-2 text-xs text-muted-foreground ml-2">
-              <span className="w-2 h-2 rounded-full bg-success animate-pulse" /> {updatedAt.toLocaleTimeString()}
-            </span>
           </div>
 
         </div>
@@ -327,6 +378,24 @@ const PublicReport = () => {
           <Badge variant="outline" className="capitalize">{campaign.status}</Badge>
         </div>
 
+        {loadError && posts.length === 0 && (
+          <div role="status" className="mb-6 rounded-[20px] border border-status-bad/30 bg-status-bad/5 p-5 text-[13.5px]">
+            <div className="font-medium">This campaign's figures didn't load</div>
+            <p className="mt-1 text-muted-foreground">The zeros below are placeholders, not results. The page tries again every minute.</p>
+          </div>
+        )}
+        <FreshnessChips posts={reportPosts} now={updatedAt.getTime()} className="mb-4" />
+        <ReportOverview
+          posts={reportPosts}
+          totals={overviewTotals}
+          estimated={{ shares: posts.some((p) => p.metrics?.estimated_fields?.shares) }}
+          creators={creatorCount}
+          roster={influencers.length}
+          audience={audienceSummary ? { measured: audienceSummary.measuredCount, creators: audienceSummary.creatorCount } : undefined}
+          view="client"
+          now={updatedAt.getTime()}
+        />
+
         {/* Performance band — same style */}
         <div className="grid min-w-0 grid-cols-2 md:grid-cols-4 2xl:grid-cols-8 gap-px bg-border rounded-lg overflow-hidden mb-6 border border-border">
           {([
@@ -343,7 +412,10 @@ const PublicReport = () => {
             return (
               <Button key={s.key} variant="ghost" type="button" aria-pressed={active} onClick={() => setMetric(s.key as any)} className={`h-auto min-h-24 min-w-0 flex-col items-stretch justify-center gap-0 rounded-none bg-card p-4 text-left whitespace-normal hover:bg-secondary/40 hover:text-foreground ${active ? "outline outline-2 -outline-offset-2 outline-accent bg-secondary/30 relative z-10" : ""}`}>
                 <div className="flex min-w-0 items-start justify-between gap-2">
-                  <div className="min-w-0 break-words text-[10px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
+                  <div className="min-w-0 break-words text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {s.label}
+                    {estimatedKeys.has(s.key) && <span className="ml-1 normal-case tracking-normal" title="Partly estimated where the platform does not report it">(est.)</span>}
+                  </div>
                   {s.icon && <s.icon className={`h-3.5 w-3.5 shrink-0 ${active ? "text-accent" : "text-muted-foreground"}`} />}
                 </div>
                 <div className="font-display text-2xl mt-2 min-w-0 break-words tabular-nums">{s.value}</div>
@@ -387,9 +459,6 @@ const PublicReport = () => {
             <div className="mt-5 pt-5 border-t border-white/10">
               <div className="text-[10px] uppercase tracking-widest opacity-60">Avg views / post</div>
               <div className="font-display text-2xl mt-1">{fmt(filteredPosts.length ? totals.views / filteredPosts.length : 0)}</div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-2 text-xs opacity-80">
-              <MapPin className="w-3.5 h-3.5" /> Audience: ~80% Kenya · ~20% diaspora
             </div>
           </Card>
 
@@ -754,43 +823,6 @@ const PublicReport = () => {
                 </table>
               </div>
               <div className="mt-3 text-[10px] text-muted-foreground">Reach eff. = views ÷ follower count. Above 100% means the post reached well beyond their own audience.</div>
-            </Card>
-          );
-        })()}
-
-        {/* ── Share of voice ─────────────────────────────────────────── */}
-        {totals.views > 0 && byCreator.size > 0 && (() => {
-          const rows = influencers
-            .map(ci => {
-              const s = byCreator.get(ci.influencer_id);
-              if (!s || s.views === 0) return null;
-              return { name: ci.influencers?.full_name ?? "—", views: s.views, share: s.views / totals.views * 100 };
-            })
-            .filter(Boolean)
-            .sort((a: any, b: any) => b!.views - a!.views) as { name: string; views: number; share: number }[];
-          const top = rows.slice(0, 8);
-          const restShare = rows.slice(8).reduce((a, r) => a + r.share, 0);
-          if (restShare > 0) top.push({ name: `+${rows.length - 8} others`, views: rows.slice(8).reduce((a,r)=>a+r.views,0), share: restShare });
-          return (
-            <Card className="p-6 mb-6">
-              <div className="flex items-baseline justify-between mb-4">
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><PieIcon className="w-3 h-3" />Share of voice</div>
-                  <h2 className="font-display text-2xl mt-1">Who owns the campaign reach</h2>
-                </div>
-              </div>
-              <div className="space-y-2.5">
-                {top.map((r, i) => (
-                  <div key={r.name + i} className="flex items-center gap-3">
-                    <div className="w-40 truncate text-sm">{r.name}</div>
-                    <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
-                      <div className={`h-full ${i === 0 ? "bg-accent" : i === 1 ? "bg-highlight" : "bg-accent/60"}`} style={{ width: `${r.share.toFixed(1)}%` }} />
-                    </div>
-                    <div className="w-24 text-right tabular-nums text-sm">{r.share.toFixed(1)}%</div>
-                    <div className="w-20 text-right tabular-nums text-xs text-muted-foreground">{fmt(r.views)}</div>
-                  </div>
-                ))}
-              </div>
             </Card>
           );
         })()}
