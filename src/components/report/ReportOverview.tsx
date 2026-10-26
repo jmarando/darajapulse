@@ -144,6 +144,46 @@ function ViewsHero({ posts, totals, estimated, creators, roster, now, className 
   );
 }
 
+export type AddUpItem = { key: string; label: string; views: number; share: number };
+
+/** Parts stacked into a whole: each hatched bar starts where the last one ended, and the solid bar is the total. */
+export function AddUpBars({ items, total }: { items: AddUpItem[]; total: number }) {
+  let acc = 0;
+  return (
+    <div className="space-y-3.5">
+      {items.map((it) => {
+        const left = (acc / total) * 100;
+        const width = (it.views / total) * 100;
+        acc += it.views;
+        return (
+          <div key={it.key}>
+            <div className="mb-1.5 flex items-baseline justify-between gap-3 text-[13px]">
+              <span className="truncate">{it.label}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                <span className="font-medium text-foreground">+{compact(it.views)}</span> {pct(it.share)}
+              </span>
+            </div>
+            <div className="relative h-4">
+              <div
+                className="bar-hatch absolute inset-y-0 rounded-[4px]"
+                style={{ left: `${left}%`, width: `max(${width}%, 3px)` }}
+                title={`${it.label}: ${compact(it.views)} views, ${pct(it.share)} of the total`}
+              />
+            </div>
+          </div>
+        );
+      })}
+      <div>
+        <div className="mb-1.5 flex items-baseline justify-between text-[13px] font-medium">
+          <span>Total</span>
+          <span className="tabular-nums">{compact(total)}</span>
+        </div>
+        <div className="bar-solid h-4 rounded-[4px]" />
+      </div>
+    </div>
+  );
+}
+
 function ContributionWaterfall({ posts, now, className }: { posts: ReportPost[]; now: number; className?: string }) {
   const all = contributions(posts, now).filter((r) => r.views > 0);
   const total = all.reduce((a, r) => a + r.views, 0);
@@ -166,40 +206,9 @@ function ContributionWaterfall({ posts, now, className }: { posts: ReportPost[];
       ? `${all[0].label} and ${all[1].label} delivered ${pct(all[0].share + all[1].share)} of views. ${all[0].label} is strongest on ${mainPlatform(all[0].key)}.`
       : `${all[0].label} leads with ${pct(all[0].share)} of views, mostly on ${mainPlatform(all[0].key)}.`;
 
-  let acc = 0;
   return (
     <ReportCard title="How the views add up" subtitle={`${compact(total)} views, creator by creator`} className={className}>
-      <div className="space-y-3.5">
-        {items.map((it) => {
-          const left = (acc / total) * 100;
-          const width = (it.views / total) * 100;
-          acc += it.views;
-          return (
-            <div key={it.key}>
-              <div className="mb-1.5 flex items-baseline justify-between gap-3 text-[13px]">
-                <span className="truncate">{it.label}</span>
-                <span className="shrink-0 tabular-nums text-muted-foreground">
-                  <span className="font-medium text-foreground">+{compact(it.views)}</span> {pct(it.share)}
-                </span>
-              </div>
-              <div className="relative h-4">
-                <div
-                  className="bar-hatch absolute inset-y-0 rounded-[4px]"
-                  style={{ left: `${left}%`, width: `max(${width}%, 3px)` }}
-                  title={`${it.label}: ${compact(it.views)} views, ${pct(it.share)} of the total`}
-                />
-              </div>
-            </div>
-          );
-        })}
-        <div>
-          <div className="mb-1.5 flex items-baseline justify-between text-[13px] font-medium">
-            <span>Total</span>
-            <span className="tabular-nums">{compact(total)}</span>
-          </div>
-          <div className="bar-solid h-4 rounded-[4px]" />
-        </div>
-      </div>
+      <AddUpBars items={items} total={total} />
       <p className="mt-5 rounded-xl border border-border/70 bg-background/70 p-3.5 text-[13px] leading-relaxed">{callout}</p>
     </ReportCard>
   );
