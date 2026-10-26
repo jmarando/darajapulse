@@ -18,10 +18,19 @@ const ROLES = [
 
 interface Props {
   scope: Scope;
+  /** Heading of the boxed look. The panel look leaves the heading to the card around it. */
   title?: string;
+  /** "box" (default) draws its own box, heading and note. "panel" is for inside a card that has its own. */
+  variant?: "box" | "panel";
 }
 
-export const AgencyTeamPicker = ({ scope, title = "Agency team" }: Props) => {
+const initials = (name?: string | null, email?: string | null) => {
+  const words = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length) return words.slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  return (email || "?").trim()[0].toUpperCase();
+};
+
+export const AgencyTeamPicker = ({ scope, title = "Agency team", variant = "box" }: Props) => {
   const table = scope.type === "client" ? "client_team_members" : "campaign_team_members";
   const fkCol = scope.type === "client" ? "client_id" : "campaign_id";
   const fkVal = scope.type === "client" ? scope.client_id : scope.campaign_id;
@@ -79,6 +88,69 @@ export const AgencyTeamPicker = ({ scope, title = "Agency team" }: Props) => {
   const taken = new Set(rows.map((r) => r.user_id));
   const available = agencyUsers.filter((u) => !taken.has(u.id));
 
+  const addRow = (
+    <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto]">
+      <Select value={pickedUser} onValueChange={setPickedUser}>
+        <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={available.length ? "Pick a teammate" : "No more teammates"} /></SelectTrigger>
+        <SelectContent>
+          {available.map((u) => (
+            <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={pickedRole} onValueChange={setPickedRole}>
+        <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Button size="sm" onClick={add} disabled={!pickedUser} className="w-full bg-primary sm:w-auto">Assign</Button>
+    </div>
+  );
+
+  if (variant === "panel") {
+    return (
+      <div className="min-w-0">
+        {rows.length === 0 ? (
+          <p className="text-[13px] text-muted-foreground">No teammates assigned yet.</p>
+        ) : (
+          <ul className="-mt-3 divide-y divide-border/70">
+            {rows.map((r) => (
+              <li key={r.id} className="flex min-w-0 flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-[12px] font-medium">
+                    {initials(r.profile?.full_name, r.profile?.email)}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-[14px] font-medium">{r.profile?.full_name || r.profile?.email || "Unknown teammate"}</div>
+                    {r.profile?.email && r.profile?.full_name && (
+                      <div className="truncate text-[12.5px] text-muted-foreground">{r.profile.email}</div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Select value={r.team_role} onValueChange={(v) => updateRole(r.id, v)}>
+                    <SelectTrigger className="h-8 min-w-0 flex-1 text-xs sm:w-36 sm:flex-none"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map((ro) => <SelectItem key={ro.value} value={ro.value}>{ro.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => remove(r.id)} className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive" aria-label="Remove teammate">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-4 border-t border-border/70 pt-4">
+          <div className="mb-2 text-[12.5px] text-muted-foreground">Add a teammate</div>
+          {addRow}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-w-0 border rounded-md p-3 space-y-3 bg-secondary/30">
       <div className="flex items-center gap-2 text-sm font-medium">
@@ -86,23 +158,7 @@ export const AgencyTeamPicker = ({ scope, title = "Agency team" }: Props) => {
       </div>
       <p className="text-xs text-muted-foreground">Internal only — clients never see this.</p>
 
-      <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_11rem_auto]">
-        <Select value={pickedUser} onValueChange={setPickedUser}>
-          <SelectTrigger className="w-full min-w-0"><SelectValue placeholder={available.length ? "Pick a teammate" : "No more teammates"} /></SelectTrigger>
-          <SelectContent>
-            {available.map((u) => (
-              <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={pickedRole} onValueChange={setPickedRole}>
-          <SelectTrigger className="w-full min-w-0"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {ROLES.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Button size="sm" onClick={add} disabled={!pickedUser} className="w-full bg-primary sm:w-auto">Assign</Button>
-      </div>
+      {addRow}
 
       {rows.length === 0 ? (
         <div className="text-xs text-muted-foreground">No teammates assigned yet.</div>
