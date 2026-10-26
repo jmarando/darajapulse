@@ -36,14 +36,26 @@ export const withMetricFallbacks = (row: MetricSnapshot = {}) => {
   return { ...row, views, likes, comments, shares, saves, reach, impressions, estimated_fields: estimated };
 };
 
+const FILLED_IN_KEYS = ["shares", "saves", "reach", "impressions"] as const;
+
 export const peakMetricSnapshot = (rows: MetricSnapshot[] = []) => {
   const peak: MetricSnapshot = { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, reach: 0, impressions: 0 };
+  // The most the platform itself reported, to tell its figures from the ones filled in.
+  const reported: Record<string, number> = {};
   for (const row of rows) {
     const normalized = withMetricFallbacks(row);
-    for (const key of METRIC_KEYS) peak[key] = Math.max(Number(peak[key] || 0), Number(normalized?.[key] || 0));
+    for (const key of METRIC_KEYS) {
+      peak[key] = Math.max(Number(peak[key] || 0), Number(normalized?.[key] || 0));
+      reported[key] = Math.max(reported[key] ?? 0, Number(row[key] || 0));
+    }
     if (!peak.captured_at || (row.captured_at && new Date(row.captured_at) > new Date(peak.captured_at))) peak.captured_at = row.captured_at;
   }
-  return withMetricFallbacks(peak);
+  const result = withMetricFallbacks(peak);
+  // The combined peak already holds the filled-in figures, so withMetricFallbacks sees them as reported.
+  // A figure above everything the platform reported can only have come from the fallbacks.
+  const estimated: Record<string, boolean> = {};
+  for (const key of FILLED_IN_KEYS) if (Number(result[key]) > (reported[key] ?? 0)) estimated[key] = true;
+  return { ...result, estimated_fields: estimated };
 };
 
 export const buildPeakMetricsByPost = (rows: MetricSnapshot[] = []) => {
@@ -91,7 +103,10 @@ export const buildWindowMetricsByPost = (
       const d = Number(endPeak[key] || 0) - Number(baseline[key] || 0);
       delta[key] = Math.max(0, d);
     }
-    out.set(postId, withMetricFallbacks(delta));
+    const added = withMetricFallbacks(delta);
+    // What the window added is a difference of the same figures, so it is filled in wherever they were.
+    for (const key of FILLED_IN_KEYS) if (endPeak.estimated_fields?.[key] && Number(added[key]) > 0) added.estimated_fields[key] = true;
+    out.set(postId, added);
   }
   return out;
 };
