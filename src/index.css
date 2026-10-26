@@ -74,7 +74,7 @@
     /* Report data marks and data-health states. Checked with the dataviz
        palette validator in light and dark; status hues never double as series. */
     --series: 3 74% 53%;
-    --series-2: 17 82% 56%;
+    --series-2: 226 76% 50%;
     --status-good: 146 58% 33%;
     --status-warn: 40 88% 39%;
     --status-bad: 339 63% 45%;
@@ -150,11 +150,10 @@
     --sidebar-border: 240 3% 89%;
     --sidebar-ring: 226 76% 50%;
 
-    /* One data blue, checked with the dataviz validator on this card surface
-       (contrast and band pass in light and dark). Status hues stay as above. */
-    --series: 226 76% 50%;
-    /* Second categorical slot (orange); the pair passes the validator on this surface. */
-    --series-2: 17 82% 56%;
+    /* Data marks use the brand red from :root (--series). The second series is
+       blue: red + blue passes the dataviz validator on this surface (red +
+       orange does not, they are too close). */
+    --series-2: 226 76% 50%;
   }
 
   .console.dark {
@@ -183,7 +182,8 @@
     --sidebar-accent: 240 4% 14%;
     --sidebar-accent-foreground: 0 0% 93%;
     --sidebar-border: 240 4% 16%;
-    --series: 225 90% 67%;
+    --series: 3 81% 60%;
+    --series-2: 225 90% 67%;
   }
 }
 
@@ -238,15 +238,7 @@
       radial-gradient(80% 65% at 90% 70%, hsl(3 78% 50% / 0.8) 0%, transparent 62%),
       linear-gradient(160deg, hsl(228 24% 12%) 0%, hsl(244 18% 17%) 50%, hsl(354 45% 28%) 100%);
   }
-  /* In the console the finding card goes from deep navy through blue haze to a
-     warm peach corner, with one faint outlined shape for depth. */
-  .console .bg-pattern-card {
-    background:
-      radial-gradient(70% 60% at 100% 100%, hsl(26 96% 70%) 0%, hsl(22 92% 66% / 0.6) 30%, transparent 70%),
-      radial-gradient(55% 45% at 70% 95%, hsl(16 90% 64% / 0.55) 0%, transparent 70%),
-      radial-gradient(85% 65% at 62% 58%, hsl(213 58% 60% / 0.62) 0%, transparent 66%),
-      linear-gradient(162deg, hsl(226 72% 11%) 0%, hsl(223 58% 20%) 42%, hsl(216 42% 38%) 100%);
-  }
+  /* One faint outlined shape on the finding card for depth. */
   .console .bg-pattern-card::after {
     content: "";
     position: absolute;

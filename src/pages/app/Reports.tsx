@@ -26,7 +26,7 @@ import DeliverableGrouping from "@/components/DeliverableGrouping";
 
 const ALL = "__all__";
 
-/** Chart palette: the dashboard data blue, and a validated orange for a second series. */
+/** Chart palette: brand red for data, and a validated blue for a second series. */
 const C_ACCENT = "hsl(var(--series))";
 const C_INK = "hsl(var(--series-2))";
 const C_HIGHLIGHT = "hsl(var(--series))";
