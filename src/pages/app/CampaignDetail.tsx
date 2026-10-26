@@ -14,10 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, Radio, BarChart3, Trophy, Music2, Sparkles, Trash2, Calendar as CalendarIcon, Flame, Clock, Gauge, Coins, FileSignature } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { ArrowLeft, Plus, Link2, Copy, ExternalLink, RefreshCw, Eye, Heart, MessageCircle, Share2, Users, Hash, Wallet, Mail, MessageSquare, Pencil, Check, MoreHorizontal, Send, X, Bookmark, BarChart3, Trophy, Music2, Sparkles, Trash2, Flame, Clock, Gauge, Coins, FileSignature } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -68,7 +65,6 @@ const LinkedContestsCard = ({ campaignId }: { campaignId: string }) => {
 import EmailReportsSection from "./EmailReportsSection";
 import SubmissionsSection from "./SubmissionsSection";
 import DraftsPanel from "@/components/DraftsPanel";
-import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from "recharts";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
 import { DeliverablesEditor, breakdownTotal, breakdownSummary, normalizeBreakdown, DEFAULT_PLATFORMS, type Breakdown } from "@/components/DeliverablesEditor";
 import { EditCreatorDialog } from "@/components/EditCreatorDialog";
@@ -76,6 +72,14 @@ import CampaignPayments from "@/components/CampaignPayments";
 
 import { buildPeakMetricsByPost, buildWindowMetricsByPost, fetchAllPostMetrics, fetchCampaignPeakMetrics } from "@/lib/metrics";
 import { FreshnessChips, ReportOverview } from "@/components/report/ReportOverview";
+import { ReportingWindow } from "@/components/report/ReportingWindow";
+import { MetricStrip } from "@/components/report/MetricStrip";
+import { TrendCard } from "@/components/report/TrendCard";
+import { TopPerformers } from "@/components/report/TopPerformers";
+import { buildTrend } from "@/lib/campaignTrend";
+import { buildMetricTiles, estimatedMetrics } from "@/lib/metricTiles";
+import { rankPerformers } from "@/lib/topPerformers";
+import { windowLabel } from "@/lib/reportingWindow";
 import type { ReportPost } from "@/lib/reportInsights";
 import { buildAudience } from "@/lib/audience";
 import { useGeo } from "@/lib/geo";
@@ -98,6 +102,8 @@ const CampaignDetail = () => {
   const [metrics, setMetrics] = useState<any[]>([]);
   const [metricsLoaded, setMetricsLoaded] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  // The full history could not be downloaded, so the chart only has each post's latest figures.
+  const [historyFailed, setHistoryFailed] = useState(false);
   const [contestEntries, setContestEntries] = useState<any[]>([]);
   // Event campaigns collect RSVPs; the tab only shows when there are some.
   const [rsvpCount, setRsvpCount] = useState(0);
@@ -177,6 +183,7 @@ const CampaignDetail = () => {
 
   const load = async () => {
     setMetricsLoaded(false);
+    setHistoryFailed(false);
 
     // Fire every independent query at once — the previous sequential waterfall meant
     // ~12 round trips before the KPI cards could render (several seconds of zeros).
@@ -224,7 +231,10 @@ const CampaignDetail = () => {
             if (history.length) setMetrics(history);
             setHistoryLoaded(true);
           })
-          .catch((error: any) => console.warn("Could not load full metric history", error));
+          .catch((error: any) => {
+            console.warn("Could not load full metric history", error);
+            setHistoryFailed(true);
+          });
       } catch (error: any) {
         try {
           setMetrics(await fetchAllPostMetrics(supabase, postIds, "post_id,captured_at,views,likes,comments,shares,saves,reach,impressions"));
@@ -232,6 +242,7 @@ const CampaignDetail = () => {
         } catch (fallbackError: any) {
           toast.error(fallbackError.message || error.message || "Could not load metrics");
           setMetrics([]);
+          setHistoryFailed(true);
         }
       }
     } else setMetrics([]);
@@ -707,59 +718,18 @@ const CampaignDetail = () => {
   );
 
 
-  const metricLabel: Record<string,string> = { views: "Views", reach: "Reach", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
-  const valOf = (m: any) => {
-    if (metric === "engagement") return (m.likes||0)+(m.comments||0)+(m.shares||0)+(m.saves||0);
-    return Number((m as any)[metric] || 0);
-  };
-  const trend = useMemo(() => {
-    const sorted = [...metrics].sort((a, b) => +new Date(a.captured_at) - +new Date(b.captured_at));
-    if (sorted.length === 0) return [];
-
-    // Determine x-axis bounds:
-    // - If user picked a range, use it.
-    // - Else span from earliest signal (first post posted_at OR first metric captured_at) to now.
-    const postedTimes = (posts || []).map((p: any) => p.posted_at ? +new Date(p.posted_at) : null).filter((x): x is number => !!x);
-    const firstCapture = +new Date(sorted[0].captured_at);
-    const lastCapture = +new Date(sorted[sorted.length - 1].captured_at);
-    const naturalMin = Math.min(firstCapture, ...(postedTimes.length ? postedTimes : [firstCapture]));
-    const naturalMax = Math.max(lastCapture, Date.now());
-
-    const minDay = dateRange?.from ? +new Date(new Date(dateRange.from).setHours(0,0,0,0)) : new Date(naturalMin).setHours(0,0,0,0);
-    const maxDay = dateRange?.to ? +new Date(new Date(dateRange.to).setHours(23,59,59,999)) : new Date(naturalMax).setHours(23,59,59,999);
-
-    const dayMs = 86400000;
-    const totalDays = Math.max(1, Math.ceil((maxDay - minDay) / dayMs));
-    // Bucket by day if range <= 60 days, else aggregate to ~30 buckets.
-    const N = totalDays <= 1 ? 8 : Math.min(totalDays, 30);
-    const span = Math.max(maxDay - minDay, 1);
-
-    // Group all metric rows by post for fast lookup.
-    const byPost = new Map<string, any[]>();
-    for (const m of sorted) {
-      const arr = byPost.get(m.post_id) || [];
-      arr.push(m);
-      byPost.set(m.post_id, arr);
-    }
-
-    const points: { d: string; v: number }[] = [];
-    for (let i = 0; i < N; i++) {
-      const t = minDay + (span * (i + 1)) / N; // end of bucket
-      let total = 0;
-      for (const [postId, arr] of byPost.entries()) {
-        const pointMetrics = hasRange
-          ? buildWindowMetricsByPost(arr, minDay, t).get(postId)
-          : buildPeakMetricsByPost(arr.filter((m) => +new Date(m.captured_at) <= t)).get(postId);
-        if (pointMetrics) total += valOf(pointMetrics);
-      }
-      const date = new Date(t);
-      const label = totalDays <= 1
-        ? `${date.getHours().toString().padStart(2,'0')}:00`
-        : `${date.getMonth()+1}/${date.getDate()}`;
-      points.push({ d: label, v: total });
-    }
-    return points;
-  }, [metrics, posts, dateRange, metric, hasRange]);
+  const metricLabel: Record<string, string> = { views: "Views", reach: "Reach", likes: "Likes", comments: "Comments", shares: "Shares", saves: "Saves", engagement: "Engagement" };
+  const trend = useMemo(() => buildTrend({
+    metrics,
+    postedAt: posts.map((p: any) => (p.posted_at ? +new Date(p.posted_at) : null)),
+    range: dateRange,
+    metric,
+    now: Date.now(),
+  }), [metrics, posts, dateRange, metric]);
+  // Shares, saves and reach we filled in from views and likes, rather than the platform reporting them.
+  const estimated = useMemo(() => estimatedMetrics(isContestOnly ? [] : latestByPost.values()), [latestByPost, isContestOnly]);
+  const metricTiles = useMemo(() => buildMetricTiles(totals, metricsLoaded, estimated), [totals, metricsLoaded, estimated]);
+  const topPerformers = useMemo(() => rankPerformers(ci, byInfluencer, totals.views), [ci, byInfluencer, totals.views]);
 
   if (!c) return <div className="p-8 text-muted-foreground">Loading…</div>;
   const slugPath = c.clients?.slug && c.slug ? `/${c.clients.slug}/${c.slug}` : "";
@@ -1016,186 +986,22 @@ const CampaignDetail = () => {
       )}
 
 
-      {/* Reporting window */}
-      {(() => {
-        const today = new Date();
-        const startOfDay = (d: Date) => { const x = new Date(d); x.setHours(0,0,0,0); return x; };
-        const endOfDay = (d: Date) => { const x = new Date(d); x.setHours(23,59,59,999); return x; };
-        const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-        // Week starts Monday
-        const startOfWeek = (d: Date) => { const x = startOfDay(d); const day = (x.getDay() + 6) % 7; return addDays(x, -day); };
-        const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
-        const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-        const presets: { label: string; range: DateRange }[] = [
-          { label: "This week", range: { from: startOfWeek(today), to: endOfDay(today) } },
-          { label: "Last 7 days", range: { from: startOfDay(addDays(today, -6)), to: endOfDay(today) } },
-          { label: "Last 14 days", range: { from: startOfDay(addDays(today, -13)), to: endOfDay(today) } },
-          { label: "This month", range: { from: startOfMonth(today), to: endOfDay(today) } },
-          { label: "Last month", range: { from: startOfMonth(addDays(startOfMonth(today), -1)), to: endOfMonth(addDays(startOfMonth(today), -1)) } },
-        ];
-        const sameDay = (a?: Date, b?: Date) => a && b && +startOfDay(a) === +startOfDay(b);
-        const activePreset = presets.find(p => sameDay(p.range.from, dateRange?.from) && sameDay(p.range.to, dateRange?.to));
-        return (
-          <Card className="p-4 flex flex-wrap items-center gap-2">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mr-2">Reporting window</div>
-            <Button size="sm" variant={!dateRange?.from ? "default" : "outline"} onClick={() => setDateRange(undefined)}>All time</Button>
-            {presets.map(p => (
-              <Button key={p.label} size="sm" variant={activePreset?.label === p.label ? "default" : "outline"} onClick={() => setDateRange(p.range)}>{p.label}</Button>
-            ))}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button size="sm" variant="outline" className={cn("ml-auto", !activePreset && dateRange?.from && "border-accent")}>
-                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                  {dateRange?.from ? (
-                    dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
-                  ) : "Custom range"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} initialFocus className={cn("p-3 pointer-events-auto")} />
-              </PopoverContent>
-            </Popover>
-          </Card>
-        );
-      })()}
+      <ReportingWindow value={dateRange} onChange={setDateRange} />
 
+      <MetricStrip tiles={metricTiles} active={metric} onSelect={setMetric} />
 
-      {/* Performance band */}
-      {(() => {
-        const dash = "—";
-        const tiles = [
-          { key: "views", label: "Views", value: metricsLoaded ? fmt(totals.views) : dash, icon: Eye, raw: totals.views, available: metricsLoaded },
-          { key: "likes", label: "Likes", value: metricsLoaded ? fmt(totals.likes) : dash, icon: Heart, raw: totals.likes, available: metricsLoaded },
-          { key: "comments", label: "Comments", value: metricsLoaded ? fmt(totals.comments) : dash, icon: MessageCircle, raw: totals.comments, available: metricsLoaded },
-          { key: "engagement", label: "Engagement", value: metricsLoaded ? `${totals.er.toFixed(1)}%` : dash, icon: BarChart3, raw: totals.er, available: metricsLoaded },
-          { key: "shares", label: "Shares", value: metricsLoaded ? fmt(totals.shares) : dash, icon: Share2, raw: totals.shares, available: metricsLoaded && totals.shares > 0 },
-          { key: "saves", label: "Saves", value: metricsLoaded ? fmt(totals.saves) : dash, icon: Bookmark, raw: totals.saves, available: metricsLoaded && totals.saves > 0 },
-          { key: "reach", label: "Reach", value: metricsLoaded ? fmt(totals.reach) : dash, icon: Radio, raw: totals.reach, available: metricsLoaded && totals.reach > 0 },
-        ] as const;
-        const hasUnavailable = tiles.some(t => !t.available);
-        return (
-          <div className="mb-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
-              {tiles.map((s) => {
-                const active = metric === s.key;
-                const dim = !s.available;
-                return (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => setMetric(s.key as any)}
-                    className={`text-left bg-card px-3 py-4 transition-colors hover:bg-secondary/40 ${active ? "outline outline-2 -outline-offset-2 outline-accent bg-secondary/30 relative z-10" : ""}`}
-                  >
-                    <div className="flex items-start justify-between gap-2 min-h-[1.25rem]">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground leading-tight whitespace-normal break-words">{s.label}</div>
-                      {s.icon && <s.icon className={`w-3.5 h-3.5 shrink-0 ${active ? "text-accent" : "text-muted-foreground"}`} />}
-                    </div>
-                    <div className={`font-display text-2xl mt-2 tabular-nums ${dim ? "text-muted-foreground/60" : ""}`}>
-                      {dim ? "—" : s.value}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {hasUnavailable && (
-              <p className="text-[11px] text-muted-foreground mt-2 px-1">
-                Reach, shares and saves aren't returned by Instagram's public metrics — they appear once added manually or pulled from creators' insights.
-              </p>
-            )}
-            
-          </div>
-        );
-      })()}
+      <TrendCard
+        label={metricLabel[metric]}
+        windowLabel={windowLabel(dateRange)}
+        points={trend.points}
+        loading={posts.length > 0 && !historyLoaded && !historyFailed}
+        partial={historyFailed}
+        estimated={metricTiles.find((t) => t.key === metric)?.estimated}
+        startedAfterPosts={!dateRange?.from && trend.postedBeforeReadings}
+        firstReadingLabel={trend.firstReadingAt ? new Date(trend.firstReadingAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : undefined}
+      />
 
-      {/* Trend chart for selected metric */}
-      <Card className="p-6 mb-6">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Trend</div>
-            <h2 className="font-display text-2xl mt-1">{metricLabel[metric]} over time</h2>
-            <div className="text-xs text-muted-foreground mt-1">Click any metric above to switch the chart.</div>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CalendarIcon className="h-3.5 w-3.5" />
-            {dateRange?.from ? (
-              dateRange.to ? `${format(dateRange.from, "MMM d")} – ${format(dateRange.to, "MMM d, yyyy")}` : format(dateRange.from, "MMM d, yyyy")
-            ) : "All time"}
-          </div>
-        </div>
-        {trend.length === 0 ? (
-          <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">No metric history yet.</div>
-        ) : (
-          <div className="h-56">
-            <ResponsiveContainer>
-              <AreaChart data={trend}>
-                <defs>
-                  <linearGradient id="cdg" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => fmt(Number(v))} width={50} />
-                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: any) => fmt(Number(v))} />
-                <Area type="monotone" dataKey="v" stroke="hsl(var(--accent))" strokeWidth={2} fill="url(#cdg)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </Card>
-
-      {/* Top 3 performers */}
-      {byInfluencer.size > 0 && (() => {
-        const topThree = ci
-          .map(x => {
-            const s = byInfluencer.get(x.influencer_id);
-            if (!s || s.views === 0) return null;
-            const eng = s.likes + s.comments + s.shares + s.saves;
-            const erP = s.views > 0 ? (eng / s.views * 100) : 0;
-            return { ci: x, s, eng, erP };
-          })
-          .filter(Boolean)
-          .sort((a: any, b: any) => b.s.views - a.s.views)
-          .slice(0, 3) as any[];
-        if (topThree.length === 0) return null;
-        return (
-          <Card className="p-6 mb-6">
-            <div className="flex items-baseline justify-between mb-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Trophy className="w-3 h-3 text-accent" />Top performers</div>
-                <h2 className="font-display text-2xl mt-1">Who moved the needle</h2>
-              </div>
-              <div className="text-xs text-muted-foreground hidden md:block">Ranked by views delivered</div>
-            </div>
-            <div className="grid md:grid-cols-3 gap-3">
-              {topThree.map((r, i) => {
-                const badge = i === 0 ? "bg-accent text-accent-foreground" : i === 1 ? "bg-highlight text-highlight-foreground" : "bg-secondary text-foreground";
-                return (
-                  <div key={r.ci.id} className="rounded-lg border border-border p-4 bg-card">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-semibold ${badge}`}>#{i + 1}</span>
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{r.ci.influencers?.full_name ?? "—"}</div>
-                        <div className="text-[11px] text-muted-foreground truncate">@{(r.ci.influencers?.handle || "").replace(/^@/, "")} · {r.s.posts} post{r.s.posts === 1 ? "" : "s"}</div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 mt-3 text-center">
-                      <div><div className="font-display text-base tabular-nums">{fmt(r.s.views)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Views</div></div>
-                      <div><div className="font-display text-base tabular-nums">{fmt(r.eng)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Eng.</div></div>
-                      <div><div className="font-display text-base tabular-nums">{r.erP.toFixed(1)}%</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">ER</div></div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 mt-2 text-center">
-                      <div><div className="text-xs font-medium tabular-nums">{fmt(r.s.likes)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Likes</div></div>
-                      <div><div className="text-xs font-medium tabular-nums">{fmt(r.s.comments)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Comm.</div></div>
-                      <div><div className="text-xs font-medium tabular-nums">{fmt(r.s.shares + r.s.saves)}</div><div className="text-[9px] uppercase tracking-widest text-muted-foreground">Sh+Sv</div></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        );
-      })()}
+      <TopPerformers rows={topPerformers} estimated={estimated.shares || estimated.saves} />
 
       {/* Channel mix */}
       {platformRows.length > 0 && (
