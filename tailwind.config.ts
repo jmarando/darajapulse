@@ -47,6 +47,13 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        /** Inputs, menus, chips and hovered rows: white in the console theme. */
+        raised: "hsl(var(--raised))",
+        /** Neutral hover/focus fill for the UI kit. */
+        subtle: {
+          DEFAULT: "hsl(var(--subtle))",
+          foreground: "hsl(var(--subtle-foreground))",
+        },
         highlight: "hsl(var(--highlight))",
         success: "hsl(var(--success))",
         series: "hsl(var(--series))",
@@ -71,6 +78,7 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "var(--radius-card)",
       },
       fontFamily: {
         display: ["Geist Sans", "Geist", "system-ui", "sans-serif"],

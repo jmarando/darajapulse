@@ -19,6 +19,7 @@ import { FreshnessChips, ReportOverview } from "@/components/report/ReportOvervi
 import { readingSummary, type ReportPost } from "@/lib/reportInsights";
 import { contractPeriodLabel } from "@/lib/contractDates";
 import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
+import { useConsoleTheme } from "@/hooks/useConsoleTheme";
 
 type PostWithMetrics = any;
 
@@ -46,6 +47,8 @@ const contestantKey = (e: any) => {
 
 
 const PublicReport = () => {
+  // Clients see the same palette as the agency's campaign report.
+  useConsoleTheme();
   const { token } = useParams();
   const [campaign, setCampaign] = useState<any>(null);
   const [client, setClient] = useState<any>(null);

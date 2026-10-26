@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,7 +74,9 @@ const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; form
 
 const Influencers = () => {
   const [rows, setRows] = useState<any[]>([]);
-  const [q, setQ] = useState("");
+  // Global search links here with ?q= so the list opens filtered.
+  const [searchParams] = useSearchParams();
+  const [q, setQ] = useState(() => searchParams.get("q") ?? "");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(blankForm);

@@ -5,22 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/dash/PageHeader";
+import { StatusChip, type Tone } from "@/components/dash/chips";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Megaphone, ArrowUpRight, Eye, BarChart3, FileText, Trophy, Users, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-
-const statusColor: Record<string, string> = {
-  draft: "bg-muted text-muted-foreground",
-  pitched: "bg-secondary",
-  won: "bg-success/15 text-success",
-  live: "bg-accent text-accent-foreground",
-  reporting: "bg-highlight/20 text-foreground",
-  closed: "bg-muted text-muted-foreground",
-};
 
 const fmtNum = (n: number) => {
   if (!isFinite(n) || n === 0) return "0";
@@ -32,16 +24,16 @@ const fmtNum = (n: number) => {
 type ContestPerf = { contests: number; contestants: number; entries: number; views: number };
 
 const Stat = ({ label, value, suffix }: { label: string; value: string; suffix?: string }) => (
-  <div className="flex flex-col gap-1">
-    <span className="text-[9px] font-bold text-background/50 uppercase tracking-[0.2em]">{label}</span>
-    <div className="flex items-baseline gap-1">
-      <span className="font-display text-2xl md:text-[1.65rem] font-semibold text-background tracking-tight tabular-nums">{value}</span>
-      {suffix && <span className="text-sm font-medium text-background/60">{suffix}</span>}
+  <div className="min-w-0 flex-1 px-4 first:pl-0 last:pr-0">
+    <div className="text-[12px] text-muted-foreground">{label}</div>
+    <div className="mt-1 flex items-baseline gap-0.5">
+      <span className="text-[26px] font-normal leading-none tracking-[-0.03em]">{value}</span>
+      {suffix && <span className="text-[13px] text-muted-foreground">{suffix}</span>}
     </div>
   </div>
 );
 
-const Divider = () => <div className="h-9 w-px bg-background/15" />;
+const STATUS_TONE: Record<string, Tone> = { live: "good", won: "good", reporting: "info", pitched: "neutral", draft: "warn", closed: "neutral" };
 
 const Campaigns = () => {
   const [rows, setRows] = useState<any[]>([]);
@@ -174,11 +166,10 @@ const Campaigns = () => {
 
   return (
     <div className="w-full min-w-0 max-w-7xl mx-auto px-4 py-6 sm:p-8">
-      <div className="flex min-w-0 flex-wrap justify-between items-end gap-4 mb-8">
-        <div className="min-w-0">
-          
-          <h1 className="font-display text-3xl sm:text-4xl font-semibold mt-1 break-words">Campaigns</h1>
-        </div>
+      <PageHeader
+        title="Campaigns"
+        subtitle={rows.length ? `${rows.length} campaign${rows.length === 1 ? "" : "s"}, ${rows.filter((r) => r.status === "live").length} live` : undefined}
+        actions={
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button className="bg-primary shrink-0" disabled={clients.length === 0}><Plus className="w-4 h-4 mr-2" /> New campaign</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
@@ -210,7 +201,8 @@ const Campaigns = () => {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+        }
+      />
 
       {clients.length === 0 && <Card className="p-4 mb-4 bg-secondary/50 text-sm">Add a client first to create a campaign.</Card>}
 
@@ -220,48 +212,36 @@ const Campaigns = () => {
           <h3 className="font-display text-2xl mt-4">No campaigns yet</h3>
         </Card>
       ) : (
-        <div className="grid min-w-0 md:grid-cols-2 gap-6">
+        <div className="grid min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {rows.map(r => {
-            const isLive = r.status === "live";
             const cp = contestPerf[r.id];
             const hasContest = !!cp?.contests;
             return (
             <Link key={r.id} to={`/app/campaigns/${r.id}`} className="group min-w-0">
-              <Card className="relative min-w-0 overflow-hidden rounded-lg border border-border bg-card p-0 shadow-sm hover:shadow-elegant hover:-translate-y-1 transition-all duration-500 h-full flex flex-col">
+              <Card className="relative flex h-full min-w-0 flex-col overflow-hidden p-0 transition-[box-shadow,background-color] duration-200 hover:bg-raised hover:shadow-elegant">
                 {/* Header */}
-                <div className="min-w-0 p-5 pb-4 sm:p-7 sm:pb-5">
-                  <div className="flex justify-between items-start mb-6 gap-3">
+                <div className="min-w-0 p-5 pb-4 sm:p-6 sm:pb-4">
+                  <div className="mb-5 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-4 min-w-0">
-                      <div className="relative shrink-0">
-                        <div className="absolute -inset-1.5 bg-gradient-to-tr from-primary to-accent rounded-2xl blur-md opacity-15 group-hover:opacity-35 transition-opacity" />
-                        <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-card border border-border flex items-center justify-center p-2 shadow-sm overflow-hidden">
+                      <div className="shrink-0">
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-[10px] border border-border/80 bg-raised p-1.5">
                           {r.clients?.logo_url ? (
                             <img src={r.clients.logo_url} alt={`${r.clients?.name} logo`} className="max-w-full max-h-full object-contain" loading="lazy" />
                           ) : (
-                            <span className="font-display text-lg text-muted-foreground">{(r.clients?.name || "?").slice(0,2).toUpperCase()}</span>
+                            <span className="text-[13px] font-medium text-muted-foreground">{(r.clients?.name || "?").slice(0,2).toUpperCase()}</span>
                           )}
                         </div>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[10px] font-bold tracking-[0.22em] text-muted-foreground uppercase truncate">{r.clients?.name}</p>
-                        <p className="text-[11px] font-semibold text-foreground/70 mt-0.5 uppercase tracking-wider">Brand Partner</p>
+                        <p className="truncate text-[13.5px] font-medium">{r.clients?.name}</p>
+                        <p className="text-[12px] text-muted-foreground">Brand partner</p>
                       </div>
                     </div>
-                    {isLive ? (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 shrink-0">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                        </span>
-                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Live</span>
-                      </div>
-                    ) : (
-                      <Badge className={`${statusColor[r.status]} shrink-0 uppercase text-[10px] tracking-widest font-bold px-3 py-1`}>{r.status}</Badge>
-                    )}
+                    <StatusChip tone={STATUS_TONE[r.status] ?? "neutral"} className="shrink-0 capitalize">{r.status}</StatusChip>
                   </div>
 
-                  <div className="flex items-start gap-1.5 mb-4">
-                    <h2 className="font-display text-2xl md:text-[1.6rem] font-semibold text-foreground leading-[1.15] break-words flex-1 group-hover:text-primary transition-colors duration-300">
+                  <div className="mb-3 flex items-start gap-1.5">
+                    <h2 className="flex-1 break-words font-sans text-[20px] font-medium leading-snug tracking-[-0.015em] text-foreground">
                       {r.name}
                     </h2>
                     <button
@@ -285,40 +265,34 @@ const Campaigns = () => {
 
                   <div className="flex flex-wrap items-center gap-3">
                     {r.hashtag && (
-                      <div className="px-3 py-1 bg-secondary rounded-lg">
-                        <span className="text-xs font-semibold text-foreground/80 tracking-tight">{r.hashtag.startsWith("#") ? r.hashtag : `#${r.hashtag}`}</span>
+                      <div className="rounded-full bg-secondary px-2.5 py-0.5">
+                        <span className="text-[12px] text-foreground/80">{r.hashtag.startsWith("#") ? r.hashtag : `#${r.hashtag}`}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Budget</span>
-                      <span className="text-xs font-bold text-foreground tabular-nums">KES {Number(r.budget_kes).toLocaleString()}</span>
+                      <span className="text-[12px] text-muted-foreground">Budget</span>
+                      <span className="text-[12px] font-medium tabular-nums text-foreground">KES {Number(r.budget_kes).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* KPI strip */}
-                  <div className="mx-4 mb-4 rounded-lg bg-foreground text-background px-4 py-5 sm:mx-5 sm:mb-5 sm:p-6 flex items-center justify-between gap-3 shadow-lg mt-auto">
+                  <div className="mx-5 mb-5 mt-auto flex items-stretch divide-x divide-border/70 border-t border-border/70 pt-4 sm:mx-6">
                   {hasContest ? (
                     <>
                       <Stat label="Creators" value={fmtNum(Math.max(cp.contestants ?? 0, rosterCount[r.id] ?? 0))} />
-                      <Divider />
-                      <Stat label="Posts" value={fmtNum(Math.max(cp.entries ?? 0, perf[r.id]?.posts ?? 0))} />
-                      <Divider />
-                      <Stat label="Views" value={fmtNum(Math.max(cp.views ?? 0, perf[r.id]?.views ?? 0))} />
+                                            <Stat label="Posts" value={fmtNum(Math.max(cp.entries ?? 0, perf[r.id]?.posts ?? 0))} />
+                                            <Stat label="Views" value={fmtNum(Math.max(cp.views ?? 0, perf[r.id]?.views ?? 0))} />
                     </>
                   ) : (
                     <>
                       <Stat label="Views" value={perfLoaded ? fmtNum(perf[r.id]?.views ?? 0) : "—"} />
-                      <Divider />
-                      <Stat label="Engagement" value={perfLoaded ? `${(perf[r.id]?.er ?? 0).toFixed(1)}` : "—"} suffix={perfLoaded ? "%" : ""} />
-                      <Divider />
-                      <Stat label="Posts" value={perfLoaded ? String(perf[r.id]?.posts ?? 0) : "—"} />
+                                            <Stat label="Engagement" value={perfLoaded ? `${(perf[r.id]?.er ?? 0).toFixed(1)}` : "—"} suffix={perfLoaded ? "%" : ""} />
+                                            <Stat label="Posts" value={perfLoaded ? String(perf[r.id]?.posts ?? 0) : "—"} />
                     </>
                   )}
                 </div>
 
-                {/* Accent bar */}
-                <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary" />
               </Card>
             </Link>
             );
