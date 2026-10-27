@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, Bookmark, Radio, Trophy, BarChart3, Download, FileText, Instagram, Music2, Crown, Flame, Clock, Gauge, Coins } from "lucide-react";
+import { Eye, Heart, MessageCircle, Share2, Hash, Wallet, Users, Sparkles, Bookmark, Radio, Trophy, BarChart3, Download, FileText, Instagram, Music2, Crown, Flame } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import logo from "@/assets/logo-pulse-mark.png";
 import { exportReportToPptx, downloadReportAsPdf } from "@/lib/exportReport";
@@ -16,6 +16,15 @@ import { PostThumb } from "@/components/PostThumb";
 import { fetchAllPostMetrics, fetchReportPostMetrics, peakMetricSnapshot, buildWindowMetricsByPost, withMetricFallbacks, type MetricSnapshot } from "@/lib/metrics";
 import { buildAudience } from "@/lib/audience";
 import { FreshnessChips, ReportOverview } from "@/components/report/ReportOverview";
+import { EngagementMix } from "@/components/report/EngagementMix";
+import { PostingCadence } from "@/components/report/PostingCadence";
+import { CreatorLeaderboard } from "@/components/report/CreatorLeaderboard";
+import { CostEfficiency } from "@/components/report/CostEfficiency";
+import { AudienceCard } from "@/components/report/AudienceCard";
+import { buildEngagementMix } from "@/lib/engagementMix";
+import { buildCadence } from "@/lib/postingCadence";
+import { buildLeaderboard } from "@/lib/creatorLeaderboard";
+import { buildCostEfficiency } from "@/lib/costEfficiency";
 import { readingSummary, type ReportPost } from "@/lib/reportInsights";
 import { contractPeriodLabel } from "@/lib/contractDates";
 import { canonicalPostUrl, cleanHandle as cleanH } from "@/lib/postUrl";
@@ -30,7 +39,6 @@ const fmt = (n: number) => {
   if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}K`;
   return `${Math.round(n)}`;
 };
-const fmtKes = (n: number) => n >= 1e6 ? `KES ${(n/1e6).toFixed(2)}M` : n >= 1e3 ? `KES ${(n/1e3).toFixed(0)}K` : `KES ${Math.round(n).toLocaleString()}`;
 
 const normalizedText = (value?: string | null) => (value || "").trim().toLowerCase().replace(/\s+/g, " ");
 const contestantKey = (e: any) => {
@@ -267,6 +275,12 @@ const PublicReport = () => {
     for (const [k, v] of Object.entries(p.metrics?.estimated_fields ?? {})) if (v) estimatedKeys.add(k);
   }
   const audienceSummary = influencers.length ? buildAudience(influencers.map((x) => x.influencers).filter(Boolean)) : null;
+  // Shares and saves we filled in from views and likes, rather than the platform reporting them.
+  const filledIn = { shares: estimatedKeys.has("shares"), saves: estimatedKeys.has("saves") };
+  const engagementMix = buildEngagementMix(totals, filledIn);
+  const cadence = buildCadence(filteredPosts, new Map(filteredPosts.map((p) => [p.id, p.metrics])));
+  const leaderboard = buildLeaderboard(influencers, byCreator, totals.views);
+  const costRows = campaign.budget_kes > 0 ? buildCostEfficiency(influencers, byCreator, Number(campaign.budget_kes)) : [];
   const creatorCount = new Set(posts.map((p) => p.influencer_id).filter(Boolean)).size;
 
   const exportCsv = () => {
@@ -641,351 +655,15 @@ const PublicReport = () => {
           );
         })()}
 
-        {/* ── Engagement quality mix ─────────────────────────────────── */}
-        {(totals.likes + totals.comments + totals.shares + totals.saves) > 0 && (() => {
-          const parts = [
-            { k: "Likes",    v: totals.likes,    icon: Heart,         color: "bg-accent",          hex: "hsl(var(--accent))" },
-            { k: "Comments", v: totals.comments, icon: MessageCircle, color: "bg-highlight",       hex: "hsl(var(--highlight))" },
-            { k: "Shares",   v: totals.shares,   icon: Share2,        color: "bg-success",         hex: "hsl(var(--success))" },
-            { k: "Saves",    v: totals.saves,    icon: Bookmark,      color: "bg-muted-foreground",hex: "hsl(var(--muted-foreground))" },
-          ];
-          const sum = parts.reduce((a,b)=>a+b.v,0) || 1;
-          const intentPct = ((totals.shares + totals.saves) / sum * 100);
-          return (
-            <Card className="p-6 mb-6">
-              <div className="flex items-baseline justify-between mb-4">
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Engagement quality</div>
-                  <h2 className="font-display text-2xl mt-1">What drove the engagement</h2>
-                </div>
-                <div className="text-xs text-muted-foreground hidden md:block">Saves &amp; shares signal stronger intent</div>
-              </div>
-              <div className="grid md:grid-cols-[1fr_auto] gap-6 items-center">
-                <div className="space-y-3">
-                  <div className="flex h-3 rounded-full overflow-hidden bg-secondary">
-                    {parts.map(p => (
-                      <div key={p.k} className={p.color} style={{ width: `${(p.v / sum * 100).toFixed(2)}%` }} title={`${p.k}: ${p.v}`} />
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {parts.map(({ k, v, icon: Icon, color }) => (
-                      <div key={k} className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                        <div>
-                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1"><Icon className="w-3 h-3" />{k}</div>
-                          <div className="font-display text-base tabular-nums">{fmt(v)} <span className="text-xs text-muted-foreground">({(v/sum*100).toFixed(0)}%)</span></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="text-center px-4 py-3 rounded-lg bg-secondary/40 border border-border min-w-[160px]">
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Intent share</div>
-                  <div className="font-display text-3xl mt-1">{intentPct.toFixed(0)}%</div>
-                  <div className="text-[10px] text-muted-foreground mt-1">saves + shares of all interactions</div>
-                </div>
-              </div>
-            </Card>
-          );
-        })()}
+        <EngagementMix className="mb-6" mix={engagementMix} />
 
-        {/* ── Posting cadence heatmap ────────────────────────────────── */}
-        {filteredPosts.some(p => p.posted_at || p.created_at) && (() => {
-          const dayLabels = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-          const cells = new Map<string, { posts: number; views: number }>();
-          for (const p of filteredPosts) {
-            const when = p.posted_at || p.created_at;
-            if (!when) continue;
-            const d = new Date(when);
-            const dow = (d.getDay() + 6) % 7; // Mon=0
-            const hour = d.getHours();
-            const key = `${dow}-${hour}`;
-            const cur = cells.get(key) ?? { posts: 0, views: 0 };
-            cur.posts += 1;
-            cur.views += p.metrics.views || 0;
-            cells.set(key, cur);
-          }
-          const max = Math.max(1, ...Array.from(cells.values()).map(c => c.views));
-          let best = { dow: 0, hour: 0, views: 0 };
-          for (const [k, v] of cells.entries()) {
-            if (v.views > best.views) {
-              const [d, h] = k.split("-").map(Number);
-              best = { dow: d, hour: h, views: v.views };
-            }
-          }
-          const slotLabel = (h: number) => `${((h+11)%12)+1}${h<12?"am":"pm"}`;
-          const hours = [0,3,6,9,12,15,18,21];
-          return (
-            <Card className="p-6 mb-6">
-              <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Posting cadence</div>
-                  <h2 className="font-display text-2xl mt-1">When content lands &amp; what wins</h2>
-                </div>
-                {best.views > 0 && (
-                  <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-accent" />
-                    Peak slot · <span className="font-medium text-foreground">{dayLabels[best.dow]} {slotLabel(best.hour)}</span> · {fmt(best.views)} views
-                  </div>
-                )}
-              </div>
-              <div className="overflow-x-auto">
-                <div className="min-w-[640px]">
-                  <div className="grid" style={{ gridTemplateColumns: `48px repeat(24, minmax(0, 1fr))` }}>
-                    <div />
-                    {Array.from({ length: 24 }).map((_, h) => (
-                      <div key={h} className="text-[9px] text-center text-muted-foreground pb-1">{hours.includes(h) ? slotLabel(h) : ""}</div>
-                    ))}
-                    {dayLabels.map((dl, di) => (
-                      <div key={dl} className="contents">
-                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground self-center pr-2">{dl}</div>
-                        {Array.from({ length: 24 }).map((_, h) => {
-                          const c = cells.get(`${di}-${h}`);
-                          const intensity = c ? Math.max(0.08, c.views / max) : 0;
-                          return (
-                            <div
-                              key={h}
-                              title={c ? `${dl} ${slotLabel(h)} · ${c.posts} post${c.posts===1?"":"s"} · ${fmt(c.views)} views` : `${dl} ${slotLabel(h)}`}
-                              className="aspect-square m-[1px] rounded-sm border border-border/40"
-                              style={{ backgroundColor: c ? `hsl(var(--accent) / ${intensity})` : "hsl(var(--secondary))" }}
-                            />
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center justify-end gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                Less
-                {[0.15, 0.35, 0.55, 0.8, 1].map(o => (
-                  <span key={o} className="w-3 h-3 rounded-sm border border-border/40" style={{ backgroundColor: `hsl(var(--accent) / ${o})` }} />
-                ))}
-                More
-              </div>
-            </Card>
-          );
-        })()}
+        <PostingCadence className="mb-6" cadence={cadence} />
 
-        {/* ── Creator leaderboard + reach efficiency ─────────────────── */}
-        {byCreator.size > 0 && (() => {
-          const rows = influencers
-            .map(ci => {
-              const s = byCreator.get(ci.influencer_id);
-              if (!s) return null;
-              const inf = ci.influencers ?? {};
-              const followers = Number(inf.follower_count || 0);
-              const eng = s.likes + s.comments + s.shares + s.saves;
-              const erP = s.views ? (eng / s.views * 100) : 0;
-              const eff = followers > 0 ? (s.views / followers) : 0;
-              return { ci, inf, s, followers, eng, erP, eff };
-            })
-            .filter(Boolean)
-            .sort((a: any, b: any) => b.s.views - a.s.views) as any[];
-          if (rows.length === 0) return null;
-          const maxViews = Math.max(1, ...rows.map(r => r.s.views));
-          return (
-            <Card className="p-5 mb-6 overflow-hidden">
-              <div className="mb-4">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Creator leaderboard</div>
-                <h2 className="font-display text-2xl">Who delivered &amp; who punched above their weight</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
-                      <th className="text-left font-medium py-2 pr-3">#</th>
-                      <th className="text-left font-medium py-2 pr-3">Creator</th>
-                      <th className="text-right font-medium py-2 px-3">Posts</th>
-                      <th className="text-right font-medium py-2 px-3">Views</th>
-                      <th className="text-right font-medium py-2 px-3">ER</th>
-                      <th className="text-right font-medium py-2 px-3"><span className="inline-flex items-center gap-1"><Gauge className="w-3 h-3" />Reach eff.</span></th>
-                      <th className="text-left font-medium py-2 pl-3">Share of campaign</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.slice(0, 12).map((r, i) => (
-                      <tr key={r.ci.id} className="border-b border-border last:border-0">
-                        <td className="py-2 pr-3 text-muted-foreground tabular-nums">{i + 1}</td>
-                        <td className="py-2 pr-3">
-                          <div className="font-medium truncate max-w-[180px]">{r.inf.full_name}</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[180px]">@{(r.inf.handle || "").replace(/^@/, "")}</div>
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums">{r.s.posts}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{fmt(r.s.views)}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{r.erP.toFixed(1)}%</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{r.followers > 0 ? `${(r.eff * 100).toFixed(0)}%` : "—"}</td>
-                        <td className="py-2 pl-3 min-w-[140px]">
-                          <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                            <div className="h-full bg-accent" style={{ width: `${(r.s.views / maxViews * 100).toFixed(1)}%` }} />
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-3 text-[10px] text-muted-foreground">Reach eff. = views ÷ follower count. Above 100% means the post reached well beyond their own audience.</div>
-            </Card>
-          );
-        })()}
+        <CreatorLeaderboard className="mb-6" rows={leaderboard} estimated={filledIn.shares || filledIn.saves} />
 
-        {/* ── Cost efficiency per creator ────────────────────────────── */}
-        {campaign.budget_kes > 0 && byCreator.size > 0 && (() => {
-          const totalFee = influencers.reduce((a, x) => a + Number(x.fee_kes || 0), 0);
-          const fallbackBudget = totalFee > 0 ? totalFee : Number(campaign.budget_kes);
-          const rows = influencers
-            .map(ci => {
-              const s = byCreator.get(ci.influencer_id);
-              if (!s) return null;
-              const fee = Number(ci.fee_kes || 0) || (fallbackBudget / Math.max(1, influencers.length));
-              const eng = s.likes + s.comments + s.shares + s.saves;
-              const cpv = s.views > 0 ? fee / s.views : 0;
-              const cpe = eng > 0 ? fee / eng : 0;
-              const cpm = s.views > 0 ? (fee / s.views) * 1000 : 0;
-              return { ci, s, fee, eng, cpv, cpe, cpm };
-            })
-            .filter(Boolean)
-            .sort((a: any, b: any) => (a.cpv === 0 ? Infinity : a.cpv) - (b.cpv === 0 ? Infinity : b.cpv)) as any[];
-          if (rows.length === 0) return null;
-          return (
-            <Card className="p-5 mb-6 overflow-hidden">
-              <div className="mb-4">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Coins className="w-3 h-3" />Cost efficiency</div>
-                <h2 className="font-display text-2xl">Best value creators</h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
-                      <th className="text-left font-medium py-2 pr-3">Creator</th>
-                      <th className="text-right font-medium py-2 px-3">Fee</th>
-                      <th className="text-right font-medium py-2 px-3">Views</th>
-                      <th className="text-right font-medium py-2 px-3">CPV</th>
-                      <th className="text-right font-medium py-2 px-3">CPM</th>
-                      <th className="text-right font-medium py-2 pl-3">CPE</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.slice(0, 12).map((r) => (
-                      <tr key={r.ci.id} className="border-b border-border last:border-0">
-                        <td className="py-2 pr-3">
-                          <div className="font-medium truncate max-w-[200px]">{r.ci.influencers?.full_name}</div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[200px]">@{(r.ci.influencers?.handle || "").replace(/^@/, "")}</div>
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums">{r.fee > 0 ? fmtKes(r.fee) : "—"}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{fmt(r.s.views)}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{r.cpv > 0 ? `KES ${r.cpv.toFixed(2)}` : "—"}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{r.cpm > 0 ? `KES ${r.cpm.toFixed(0)}` : "—"}</td>
-                        <td className="py-2 pl-3 text-right tabular-nums">{r.cpe > 0 ? `KES ${r.cpe.toFixed(2)}` : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-3 text-[10px] text-muted-foreground">CPV = cost per view · CPM = cost per 1,000 views · CPE = cost per engagement. Where individual fees aren't recorded, budget is split evenly.</div>
-            </Card>
-          );
-        })()}
+        {campaign.budget_kes > 0 && <CostEfficiency className="mb-6" rows={costRows} estimated={filledIn.shares || filledIn.saves} />}
 
-        {/* Audience */}
-        {influencers.length > 0 && (() => {
-          const audience = buildAudience(influencers.map((x: any) => x.influencers).filter(Boolean));
-          const { totalFollowers, weightedKE, diaspora, langs, ages, genders, cities } = audience;
-
-          return (
-            <Card className="p-6 mb-6">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audience</div>
-              <div className="flex flex-wrap items-center gap-2 mt-1 mb-4">
-                <h2 className="font-display text-2xl">Who we reached</h2>
-                <Badge variant="outline" className="text-[10px]">
-                  {audience.measuredCount > 0 && audience.measuredCount === audience.creatorsWithData ? "Measured" : "Estimated"}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {audience.measuredCount} of {audience.creatorCount} creators measured from their own account stats
-                  {audience.modelledCount > 0 && ` · ${audience.modelledCount} estimated from platform, category, location and audience size`}
-                  {audience.zeroFollowerCount > 0 && ` · ${audience.zeroFollowerCount} without follower counts weighted at the roster average`}
-                </span>
-              </div>
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="md:col-span-2">
-                  <div className="flex justify-between items-baseline text-sm mb-1.5">
-                    <span>Kenya</span><span className="font-display text-lg">{weightedKE.toFixed(0)}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-secondary overflow-hidden flex">
-                    <div className="bg-accent h-full" style={{ width: `${weightedKE}%` }} />
-                    <div className="bg-highlight/60 h-full" style={{ width: `${diaspora}%` }} />
-                  </div>
-                  <div className="flex justify-between items-baseline text-sm mt-1.5">
-                    <span className="text-muted-foreground">Diaspora & rest of world</span>
-                    <span className="text-muted-foreground">{diaspora.toFixed(0)}%</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-border">
-                    <div><div className="font-display text-2xl">{fmt(totalFollowers)}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Combined followers</div></div>
-                    <div><div className="font-display text-2xl">{influencers.length}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Creators</div></div>
-                    <div><div className="font-display text-2xl">{langs.size || 1}</div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Languages</div></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Languages</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {Array.from(langs).map(l => <Badge key={l} variant="outline" className="text-xs">{l}</Badge>)}
-                    {langs.size === 0 && <span className="text-xs text-muted-foreground">—</span>}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-6 mt-6 pt-6 border-t border-border">
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Age</div>
-                  <div className="space-y-2">
-                    {ages.map(a => (
-                      <div key={a.bucket}>
-                        <div className="flex justify-between text-xs mb-1"><span>{a.bucket}</span><span className="tabular-nums text-muted-foreground">{a.pct.toFixed(0)}%</span></div>
-                        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div className="h-full bg-accent" style={{ width: `${Math.min(100, a.pct)}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Gender</div>
-                  <div className="h-2 rounded-full bg-secondary overflow-hidden flex mb-3">
-                    <div className="bg-accent h-full" style={{ width: `${genders[0]?.pct || 0}%` }} />
-                    <div className="bg-highlight h-full" style={{ width: `${genders[1]?.pct || 0}%` }} />
-                    <div className="bg-muted-foreground/40 h-full" style={{ width: `${genders[2]?.pct || 0}%` }} />
-                  </div>
-                  <div className="space-y-1.5">
-                    {genders.map((g, i) => (
-                      <div key={g.gender} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2.5 h-2.5 rounded-full ${i===0?"bg-accent":i===1?"bg-highlight":"bg-muted-foreground/40"}`} />
-                          <span className="capitalize">{g.gender}</span>
-                        </div>
-                        <span className="tabular-nums text-muted-foreground">{g.pct.toFixed(0)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Top cities</div>
-                  <div className="space-y-2">
-                    {cities.length === 0 && <div className="text-xs text-muted-foreground">—</div>}
-                    {cities.map(c => (
-                      <div key={c.city}>
-                        <div className="flex justify-between text-xs mb-1"><span>{c.city}</span><span className="tabular-nums text-muted-foreground">{c.pct.toFixed(0)}%</span></div>
-                        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div className="h-full bg-highlight" style={{ width: `${Math.min(100, c.pct)}%` }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          );
-        })()}
+        {audienceSummary && <AudienceCard className="mb-6" audience={audienceSummary} creators={influencers.length} />}
 
         {/* Hashtag contests */}
         {contests.length > 0 && (() => {
