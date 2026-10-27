@@ -93,6 +93,8 @@ import { buildCadence } from "@/lib/postingCadence";
 import { buildLeaderboard } from "@/lib/creatorLeaderboard";
 import { buildCostEfficiency } from "@/lib/costEfficiency";
 import { windowLabel } from "@/lib/reportingWindow";
+import { resolveCampaignTab, type ContestView } from "@/lib/campaignTabs";
+import { PageTab, PageTabDivider, PageTabList, ViewSwitch } from "@/components/dash/PageTabs";
 import type { ReportPost } from "@/lib/reportInsights";
 import { buildAudience } from "@/lib/audience";
 import { useGeo } from "@/lib/geo";
@@ -179,8 +181,9 @@ const CampaignDetail = () => {
   // When a campaign has no creator roster but does have contest activity, treat it as contest-only:
   // default the active tab to "contests" and adapt hero KPIs / hide the empty creators tab.
   const isContestOnly = ci.length === 0 && contestEntries.length > 0;
-  const activeTab = searchParams.get("tab") || (isContestOnly ? "contests" : "overview");
-  const setActiveTab = (v: string) => setSearchParams((sp) => { sp.set("tab", v); return sp; }, { replace: true });
+  const { tab: activeTab, view: contestView } = resolveCampaignTab(searchParams, { isContestOnly, hasRsvps: rsvpCount > 0 });
+  const setActiveTab = (v: string) => setSearchParams((sp) => { sp.set("tab", v); sp.delete("view"); return sp; }, { replace: true });
+  const setContestView = (v: ContestView) => setSearchParams((sp) => { sp.set("tab", "contests"); sp.set("view", v); return sp; }, { replace: true });
 
   const generateLearnings = async () => {
     setGeneratingLearnings(true);
@@ -891,69 +894,18 @@ const CampaignDetail = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 max-w-full">
         <div className="mb-6 w-full min-w-0">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-lg border bg-muted/40 p-1.5 shadow-sm">
-          <TabsTrigger
-            value="overview"
-            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
-          >
-            Overview
-          </TabsTrigger>
-          {!isContestOnly && (
-            <TabsTrigger
-              value="creators"
-              className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
-            >
-              Creators &amp; content
-              <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary">{ci.length}</span>
-            </TabsTrigger>
-          )}
-          <TabsTrigger
-            value="contests"
-            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
-          >
-            Contests
-          </TabsTrigger>
-          <TabsTrigger
-            value="drafts"
-            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
-          >
-            Video approvals
-          </TabsTrigger>
-          <TabsTrigger
-            value="submissions"
-            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
-          >
-            Submissions
-            <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary">{contestEntries.length}</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="payments"
-            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
-          >
-            Payments
-          </TabsTrigger>
-          <TabsTrigger
-            value="emails"
-            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
-          >
-            Email reports
-          </TabsTrigger>
-          {rsvpCount > 0 && (
-            <TabsTrigger
-              value="rsvps"
-              className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
-            >
-              RSVPs
-              <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-primary">{rsvpCount}</span>
-            </TabsTrigger>
-          )}
-          <TabsTrigger
-            value="share"
-            className="px-4 py-2 text-sm font-semibold tracking-tight data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border"
-          >
-            Share &amp; wrap
-          </TabsTrigger>
-        </TabsList>
+          <PageTabList aria-label="Campaign sections" active={activeTab}>
+            <PageTab value="overview">Overview</PageTab>
+            {!isContestOnly && <PageTab value="creators" count={ci.length}>Creators &amp; content</PageTab>}
+            <PageTab value="drafts">Video approvals</PageTab>
+            <PageTab value="payments">Payments</PageTab>
+            <PageTabDivider />
+            <PageTab value="contests">Contests</PageTab>
+            {rsvpCount > 0 && <PageTab value="rsvps" count={rsvpCount}>RSVPs</PageTab>}
+            <PageTabDivider />
+            <PageTab value="emails">Email reports</PageTab>
+            <PageTab value="share">Share &amp; wrap</PageTab>
+          </PageTabList>
         </div>
 
         <TabsContent value="overview" className="space-y-6 mt-0">
@@ -1716,20 +1668,26 @@ const CampaignDetail = () => {
         </TabsContent>
 
         <TabsContent value="contests" className="space-y-6 mt-0">
-          <LinkedContestsCard campaignId={id!} />
+          <ViewSwitch
+            label="Contest views"
+            items={[{ value: "contests", label: "Linked contests" }, { value: "submissions", label: "Submissions", count: contestEntries.length }]}
+            value={contestView}
+            onChange={setContestView}
+          />
+          {contestView === "submissions" ? (
+            <SubmissionsSection
+              entries={contestEntries}
+              submissionToken={submissionToken}
+              campaignName={c?.name}
+              onRefresh={load}
+            />
+          ) : (
+            <LinkedContestsCard campaignId={id!} />
+          )}
         </TabsContent>
 
         <TabsContent value="drafts" className="space-y-6 mt-0">
           <DraftsPanel campaignId={id!} />
-        </TabsContent>
-
-        <TabsContent value="submissions" className="space-y-6 mt-0">
-          <SubmissionsSection
-            entries={contestEntries}
-            submissionToken={submissionToken}
-            campaignName={c?.name}
-            onRefresh={load}
-          />
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-6 mt-0">
