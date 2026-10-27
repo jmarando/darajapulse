@@ -31,6 +31,7 @@ const Briefs = lazy(() => import("./pages/app/Briefs"));
 const Approvals = lazy(() => import("./pages/app/Approvals"));
 const Reports = lazy(() => import("./pages/app/Reports"));
 const Moderation = lazy(() => import("./pages/app/Moderation"));
+const Listening = lazy(() => import("./pages/app/Listening"));
 const Team = lazy(() => import("./pages/app/Team"));
 const AdminBilling = lazy(() => import("./pages/app/AdminBilling"));
 const Admin = lazy(() => import("./pages/app/Admin"));
@@ -57,6 +58,7 @@ const LandingBento = lazy(() => import("./pages/landings/LandingBento"));
 const PortalShell = lazy(() => import("./components/PortalShell"));
 const PortalOverview = lazy(() => import("./pages/portal/PortalOverview"));
 const PortalCampaign = lazy(() => import("./pages/portal/PortalCampaign"));
+const PortalListening = lazy(() => import("./pages/portal/PortalListening"));
 const PublicStorefront = lazy(() => import("./pages/PublicStorefront"));
 const PublicInvoice = lazy(() => import("./pages/PublicInvoice"));
 const PayInvoice = lazy(() => import("./pages/PayInvoice"));
@@ -140,6 +142,7 @@ const App = () => (
               <Route index element={<PortalOverview />} />
               <Route path="campaigns" element={<PortalOverview />} />
               <Route path="campaigns/:id" element={<PortalCampaign />} />
+              <Route path="listening" element={<PortalListening />} />
             </Route>
             <Route path="/app" element={<AppShell />}>
               <Route index element={<Overview />} />
@@ -157,6 +160,7 @@ const App = () => (
               <Route path="content" element={<Navigate to="/app/approvals" replace />} />
               <Route path="reports" element={<Reports />} />
               <Route path="moderation" element={<Moderation />} />
+              <Route path="listening" element={<Listening />} />
               <Route path="team" element={<Team />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="admin" element={<Admin />} />

@@ -15,6 +15,8 @@ project_id = "ucxlveehobmeywkiynpy"
     verify_jwt = false
   [functions.fetch-public-metrics]
     verify_jwt = false
+  [functions.listening-sweep]
+    verify_jwt = false
   [functions.instagram-oauth-start]
     verify_jwt = false
   [functions.instagram-oauth-callback]

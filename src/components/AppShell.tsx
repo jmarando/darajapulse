@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, LogOut, MessageSquare, UserCog, Menu, Compass, Shield, Store, Mail, BarChart3, ChevronsUpDown } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Building2, FileSignature, CheckSquare, LogOut, MessageSquare, UserCog, Menu, Compass, Shield, Store, Mail, BarChart3, ChevronsUpDown, Ear } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -25,6 +25,7 @@ const navGroups: NavItem[][] = [
     { to: "/app", icon: LayoutDashboard, label: "Overview", end: true },
     { to: "/app/campaigns", icon: Megaphone, label: "Campaigns" },
     { to: "/app/reports", icon: BarChart3, label: "Reports" },
+    { to: "/app/listening", icon: Ear, label: "Listening" },
   ],
   [
     { to: "/app/approvals", icon: CheckSquare, label: "Approvals", badge: "pendingDrafts" },
