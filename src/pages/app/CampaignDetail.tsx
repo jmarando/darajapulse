@@ -431,20 +431,19 @@ const CampaignDetail = () => {
 
   const autoFetchAll = async () => {
     toast.loading("Auto-fetching all posts…", { id: "pf-all" });
-    let offset = 0;
     let ok = 0;
     let total = 0;
-    // Page through so large campaigns don't hit the edge function time limit.
+    // Each call reads the next posts not read or tried in the last hour, so calling
+    // again until none remain covers the whole campaign without an offset.
     for (let page = 0; page < 40; page++) {
       const { data, error } = await supabase.functions.invoke("fetch-public-metrics", {
-        body: { campaign_id: id, max: 45, offset },
+        body: { campaign_id: id, max: 45 },
       });
       if (error) return toast.error(error.message, { id: "pf-all" });
       ok += data?.ok ?? 0;
       total += data?.total ?? 0;
       toast.loading(`Auto-fetching… ${total} posts done`, { id: "pf-all" });
-      if (!data?.next_offset) break;
-      offset = data.next_offset;
+      if (!data?.total || !data?.remaining) break;
     }
     toast.success(`Fetched ${ok} of ${total} posts`, { id: "pf-all" });
     load();
