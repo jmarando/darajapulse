@@ -127,10 +127,20 @@ function ViewsHero({ posts, totals, estimated, creators, roster, now, className 
   );
 }
 
-export type AddUpItem = { key: string; label: string; views: number; share: number };
+export type AddUpItem = {
+  key: string;
+  label: string;
+  views: number;
+  share: number;
+  /** Filled in from views and likes, because the platform doesn't report it. */
+  estimated?: boolean;
+};
 
-/** Parts stacked into a whole: each hatched bar starts where the last one ended, and the solid bar is the total. */
-export function AddUpBars({ items, total }: { items: AddUpItem[]; total: number }) {
+/**
+ * Parts stacked into a whole: each hatched bar starts where the last one ended, and the solid bar is the total.
+ * `unit` names what is being added up in the tooltips.
+ */
+export function AddUpBars({ items, total, unit = "views" }: { items: AddUpItem[]; total: number; unit?: string }) {
   let acc = 0;
   return (
     <div className="space-y-3.5">
@@ -141,7 +151,12 @@ export function AddUpBars({ items, total }: { items: AddUpItem[]; total: number 
         return (
           <div key={it.key}>
             <div className="mb-1.5 flex items-baseline justify-between gap-3 text-[13px]">
-              <span className="truncate">{it.label}</span>
+              <span className="truncate">
+                {it.label}
+                {it.estimated && (
+                  <span className="ml-1.5 rounded border border-border px-1 py-px text-[10.5px] text-muted-foreground" title="Partly estimated from views and likes, because the platform doesn't report it">est.</span>
+                )}
+              </span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
                 <span className="font-medium text-foreground">+{compact(it.views)}</span> {pct(it.share)}
               </span>
@@ -150,7 +165,7 @@ export function AddUpBars({ items, total }: { items: AddUpItem[]; total: number 
               <div
                 className="bar-hatch absolute inset-y-0 rounded-[4px]"
                 style={{ left: `${left}%`, width: `max(${width}%, 3px)` }}
-                title={`${it.label}: ${compact(it.views)} views, ${pct(it.share)} of the total`}
+                title={`${it.label}: ${compact(it.views)} ${unit}, ${pct(it.share)} of the total`}
               />
             </div>
           </div>
