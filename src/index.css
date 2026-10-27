@@ -42,6 +42,14 @@
 
     --radius: 0.625rem;
 
+    /* Theme hooks for the UI kit. These defaults keep public pages exactly as
+       they were; the console theme below redefines them for the dashboards. */
+    --raised: 36 30% 97%;
+    --subtle: 0 99% 57%;
+    --subtle-foreground: 36 30% 97%;
+    --radius-card: 0.625rem;
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+
     --sidebar-background: 22 16% 12%;
     --sidebar-foreground: 36 20% 88%;
     --sidebar-primary: 0 99% 57%;
@@ -66,6 +74,7 @@
     /* Report data marks and data-health states. Checked with the dataviz
        palette validator in light and dark; status hues never double as series. */
     --series: 3 74% 53%;
+    --series-2: 226 76% 50%;
     --status-good: 146 58% 33%;
     --status-warn: 40 88% 39%;
     --status-bad: 339 63% 45%;
@@ -96,6 +105,85 @@
     --status-warn: 39 68% 50%;
     --status-bad: 339 70% 62%;
     --status-info: 215 20% 65%;
+    --raised: 22 16% 8%;
+  }
+
+  /* Console theme: the signed-in dashboards and client reports. Quiet neutral
+     greys in three steps (canvas, panel, raised white), ink for selection, and
+     one data blue. Applied to <html> by useConsoleTheme so dialogs and menus
+     rendered in portals pick it up too. */
+  .console {
+    --background: 0 0% 95%;
+    --foreground: 240 4% 9%;
+    --card: 0 0% 97.5%;
+    --card-foreground: 240 4% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 4% 9%;
+    --raised: 0 0% 100%;
+
+    --primary: 240 2% 17%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 3% 91%;
+    --secondary-foreground: 240 4% 9%;
+    --muted: 240 3% 93%;
+    --muted-foreground: 240 2% 43%;
+    --subtle: 240 3% 92%;
+    --subtle-foreground: 240 4% 9%;
+    --accent-foreground: 0 0% 100%;
+
+    --border: 240 3% 90%;
+    --input: 240 3% 87%;
+    --ring: 226 76% 50%;
+
+    --radius: 0.75rem;
+    --radius-card: 1.25rem;
+    --shadow-card: none;
+    --shadow-elegant: 0 18px 40px -24px hsl(240 6% 10% / 0.22);
+    --shadow-soft: 0 4px 16px -8px hsl(240 6% 10% / 0.1);
+
+    --sidebar-background: 0 0% 95%;
+    --sidebar-foreground: 240 3% 24%;
+    --sidebar-primary: 240 2% 17%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3% 90%;
+    --sidebar-accent-foreground: 240 4% 9%;
+    --sidebar-border: 240 3% 89%;
+    --sidebar-ring: 226 76% 50%;
+
+    /* Data marks use the brand red from :root (--series). The second series is
+       blue: red + blue passes the dataviz validator on this surface (red +
+       orange does not, they are too close). */
+    --series-2: 226 76% 50%;
+  }
+
+  .console.dark {
+    --background: 240 4% 7%;
+    --foreground: 0 0% 93%;
+    --card: 240 4% 10%;
+    --card-foreground: 0 0% 93%;
+    --popover: 240 4% 12%;
+    --popover-foreground: 0 0% 93%;
+    --raised: 240 4% 14%;
+    --primary: 0 0% 93%;
+    --primary-foreground: 240 4% 9%;
+    --secondary: 240 4% 17%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 240 4% 15%;
+    --muted-foreground: 240 4% 63%;
+    --subtle: 240 4% 17%;
+    --subtle-foreground: 0 0% 93%;
+    --border: 240 4% 18%;
+    --input: 240 4% 21%;
+    --ring: 225 90% 67%;
+    --sidebar-background: 240 4% 7%;
+    --sidebar-foreground: 0 0% 80%;
+    --sidebar-primary: 0 0% 93%;
+    --sidebar-primary-foreground: 240 4% 9%;
+    --sidebar-accent: 240 4% 14%;
+    --sidebar-accent-foreground: 0 0% 93%;
+    --sidebar-border: 240 4% 16%;
+    --series: 3 81% 60%;
+    --series-2: 225 90% 67%;
   }
 }
 
@@ -149,6 +237,19 @@
       radial-gradient(110% 80% at 100% 100%, hsl(36 92% 58% / 0.85) 0%, transparent 55%),
       radial-gradient(80% 65% at 90% 70%, hsl(3 78% 50% / 0.8) 0%, transparent 62%),
       linear-gradient(160deg, hsl(228 24% 12%) 0%, hsl(244 18% 17%) 50%, hsl(354 45% 28%) 100%);
+  }
+  /* One faint outlined shape on the finding card for depth. */
+  .console .bg-pattern-card::after {
+    content: "";
+    position: absolute;
+    right: -18%;
+    bottom: -22%;
+    width: 62%;
+    aspect-ratio: 1;
+    border-radius: 9999px;
+    border: 1px solid hsl(0 0% 100% / 0.22);
+    background: hsl(0 0% 100% / 0.05);
+    pointer-events: none;
   }
 
   @keyframes pulse-counter {

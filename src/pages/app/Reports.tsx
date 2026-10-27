@@ -26,10 +26,11 @@ import DeliverableGrouping from "@/components/DeliverableGrouping";
 
 const ALL = "__all__";
 
-/** Chart palette drawn from the app's own tokens — accent, ink, amber highlight. */
-const C_ACCENT = "hsl(var(--accent))";
-const C_INK = "hsl(var(--primary))";
-const C_HIGHLIGHT = "hsl(var(--highlight))";
+/** Chart palette: brand red for data, and a validated blue for a second series. */
+const C_ACCENT = "hsl(var(--series))";
+const C_INK = "hsl(var(--series-2))";
+const C_HIGHLIGHT = "hsl(var(--series))";
+const AXIS = { stroke: "hsl(var(--muted-foreground))", fontSize: 11, tickLine: false, axisLine: false } as const;
 
 const Stat = ({ label, value, hint, onClick, to }: {
   label: string; value: string; hint?: string; onClick?: () => void; to?: string;
@@ -51,16 +52,16 @@ const Stat = ({ label, value, hint, onClick, to }: {
         : {})}
       className={
         interactive
-          ? "cursor-pointer transition-[box-shadow,transform] duration-150 hover:shadow-soft active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          ? "cursor-pointer transition-[box-shadow,transform,background-color] duration-150 hover:bg-raised hover:shadow-soft active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           : undefined
       }
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="text-[10px] uppercase tracking-widest text-accent font-medium">{label}</div>
-          {interactive && <ArrowUpRight className="w-3.5 h-3.5 text-accent shrink-0" aria-hidden />}
+          <div className="text-[12.5px] text-muted-foreground">{label}</div>
+          {interactive && <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden />}
         </div>
-        <div className="text-2xl font-semibold mt-1 tabular-nums">{value}</div>
+        <div className="mt-2 text-[28px] font-normal leading-none tracking-[-0.03em]">{value}</div>
         {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
       </CardContent>
     </Card>
@@ -270,12 +271,12 @@ const Reports = () => {
   }));
 
   return (
-    <div className="p-6 space-y-6 print:p-0">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">Reports</h1>
-          <p className="text-sm text-muted-foreground">
-            Campaign, creator, platform and monthly performance — deliverables counted once, publications counted per platform.
+    <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 py-6 sm:p-8 print:p-0">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="font-sans text-[32px] font-medium leading-[1.05] tracking-[-0.03em] sm:text-[40px]">Reports</h1>
+          <p className="mt-2 text-[14px] text-muted-foreground">
+            Campaign, creator, platform and monthly performance. Deliverables are counted once, publications once per platform.
           </p>
         </div>
         <div className="flex gap-2 print:hidden">
@@ -394,8 +395,8 @@ const Reports = () => {
               <CardContent className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={monthChart}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
+                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" {...AXIS} /><YAxis {...AXIS} width={44} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} />
                     <Line type="monotone" dataKey="views" stroke={C_ACCENT} strokeWidth={2} dot={false} />
                   </LineChart>
@@ -407,8 +408,8 @@ const Reports = () => {
               <CardContent className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={monthChart}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
+                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" {...AXIS} /><YAxis {...AXIS} width={44} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} />
                     <Line type="monotone" dataKey="engagement" stroke={C_HIGHLIGHT} strokeWidth={2} dot={false} />
                   </LineChart>
@@ -420,11 +421,11 @@ const Reports = () => {
               <CardContent className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={platforms.map((p) => ({ name: titleCase(p.label), views: Math.round(p.views), engagement: Math.round(p.engagement) }))}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="name" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
+                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" {...AXIS} /><YAxis {...AXIS} width={44} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} /><Legend />
-                    <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="engagement" fill={C_INK} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="engagement" fill={C_INK} radius={[4, 4, 0, 0]} maxBarSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -434,11 +435,11 @@ const Reports = () => {
               <CardContent className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthChart}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="month" fontSize={11} /><YAxis fontSize={11} allowDecimals={false} />
+                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="month" {...AXIS} /><YAxis {...AXIS} width={44} allowDecimals={false} />
                     <Tooltip /><Legend />
-                    <Bar dataKey="deliverables" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="publications" fill={C_INK} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="deliverables" fill={C_ACCENT} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="publications" fill={C_INK} radius={[4, 4, 0, 0]} maxBarSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -449,11 +450,11 @@ const Reports = () => {
             <CardContent className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={creators.slice(0, 12).map((c) => ({ name: c.label.split(" ")[0], views: Math.round(c.views) }))}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" fontSize={11} interval={0} angle={-25} textAnchor="end" height={60} />
-                  <YAxis fontSize={11} tickFormatter={fmtShort} />
+                  <YAxis {...AXIS} width={44} tickFormatter={fmtShort} />
                   <Tooltip formatter={(v: any) => fmtNum(Number(v))} />
-                  <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} maxBarSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -466,11 +467,11 @@ const Reports = () => {
               <CardContent className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={countryGroups.map((c) => ({ name: c.label, views: Math.round(c.views), engagement: Math.round(c.engagement) }))}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="name" fontSize={11} /><YAxis fontSize={11} tickFormatter={fmtShort} />
+                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" {...AXIS} /><YAxis {...AXIS} width={44} tickFormatter={fmtShort} />
                     <Tooltip formatter={(v: any) => fmtNum(Number(v))} /><Legend />
-                    <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="engagement" fill={C_INK} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="views" fill={C_ACCENT} radius={[4, 4, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="engagement" fill={C_INK} radius={[4, 4, 0, 0]} maxBarSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

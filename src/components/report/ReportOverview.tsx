@@ -1,6 +1,9 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Info, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Panel } from "@/components/dash/Panel";
+import { PatternCard } from "@/components/dash/PatternCard";
+import { ToneList } from "@/components/dash/ToneList";
+import type { Tone } from "@/components/dash/chips";
 import {
   buildDataNotes,
   buildInsights,
@@ -23,28 +26,8 @@ const H = 3600_000;
 const shortDate = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
-export function ReportCard({ title, subtitle, action, className, children }: {
-  title?: ReactNode;
-  subtitle?: ReactNode;
-  action?: ReactNode;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className={cn("min-w-0 rounded-[20px] border border-border/70 bg-card p-5 sm:p-6", className)}>
-      {(title || action) && (
-        <header className="mb-5 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            {title && <h2 className="font-sans text-[15px] font-medium leading-snug tracking-normal">{title}</h2>}
-            {subtitle && <p className="mt-0.5 text-[12.5px] text-muted-foreground">{subtitle}</p>}
-          </div>
-          {action}
-        </header>
-      )}
-      {children}
-    </section>
-  );
-}
+/** Kept for existing imports; the shared dashboard panel. */
+export const ReportCard = Panel;
 
 const FRESHNESS_DOT = { fresh: "bg-status-good", aging: "bg-status-warn", stale: "bg-status-bad", missing: "bg-status-bad" } as const;
 
@@ -214,40 +197,6 @@ function ContributionWaterfall({ posts, now, className }: { posts: ReportPost[];
   );
 }
 
-function PatternCard({ insights, className }: { insights: Insight[]; className?: string }) {
-  const [i, setI] = useState(0);
-  if (insights.length === 0) return null;
-  const n = insights.length;
-  const it = insights[Math.min(i, n - 1)];
-  return (
-    <section className={cn("bg-pattern-card relative flex min-h-[320px] flex-col overflow-hidden rounded-[20px] p-6 text-white", className)}>
-      <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[12px]">
-          <Sparkles className="h-3.5 w-3.5" aria-hidden /> Pattern found
-        </span>
-        {n > 1 && (
-          <div className="flex items-center gap-0.5 text-[12px] text-white/70">
-            <button type="button" aria-label="Previous finding" onClick={() => setI((i - 1 + n) % n)} className="rounded-full p-1 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="tabular-nums">{Math.min(i, n - 1) + 1} of {n}</span>
-            <button type="button" aria-label="Next finding" onClick={() => setI((i + 1) % n)} className="rounded-full p-1 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-      </div>
-      <div aria-live="polite" className="mt-auto pt-10">
-        <div className="flex items-baseline gap-3">
-          <span className="text-[48px] font-light leading-none tracking-[-0.035em] tabular-nums">{it.value}</span>
-          <span className="max-w-[11rem] text-[12.5px] leading-snug text-white/70">{it.caption}</span>
-        </div>
-        <h3 className="mt-5 font-sans text-[22px] font-medium leading-tight tracking-[-0.01em]">{it.headline}</h3>
-        <p className="mt-2 max-w-[42ch] text-[13.5px] leading-relaxed text-white/75">{it.body}</p>
-      </div>
-    </section>
-  );
-}
 
 function WeeklyViews({ posts, now, className }: { posts: ReportPost[]; now: number; className?: string }) {
   const weeks = weeklyCumulative(posts, 12, now);
@@ -276,7 +225,7 @@ function WeeklyViews({ posts, now, className }: { posts: ReportPost[]; now: numb
           <button
             key={wk.end}
             type="button"
-            className="relative flex h-full min-w-0 flex-1 items-end rounded-t-[4px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="relative flex h-full min-w-0 flex-1 items-end justify-center rounded-t-[4px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             onMouseEnter={() => setHover(idx)}
             onFocus={() => setHover(idx)}
             onBlur={() => setHover(null)}
@@ -284,7 +233,7 @@ function WeeklyViews({ posts, now, className }: { posts: ReportPost[]; now: numb
           >
             <span
               className={cn(
-                "block w-full rounded-t-[4px] transition-opacity",
+                "block w-full max-w-[28px] rounded-t-[4px] transition-opacity",
                 wk.current ? "bar-solid" : "bar-hatch",
                 hover != null && hover !== idx && "opacity-45",
               )}
@@ -301,12 +250,7 @@ function WeeklyViews({ posts, now, className }: { posts: ReportPost[]; now: numb
   );
 }
 
-const TONES: Record<DataNote["tone"], { icon: typeof Info; cls: string }> = {
-  ok: { icon: CheckCircle2, cls: "bg-status-good/10 text-status-good" },
-  warn: { icon: AlertTriangle, cls: "bg-status-warn/10 text-status-warn" },
-  bad: { icon: AlertCircle, cls: "bg-status-bad/10 text-status-bad" },
-  info: { icon: Info, cls: "bg-status-info/10 text-status-info" },
-};
+const NOTE_TONE: Record<DataNote["tone"], Tone> = { ok: "good", warn: "warn", bad: "bad", info: "info" };
 
 function DataNotes({ notes, view, className }: { notes: DataNote[]; view: "client" | "agency"; className?: string }) {
   if (notes.length === 0) return null;
@@ -317,22 +261,7 @@ function DataNotes({ notes, view, className }: { notes: DataNote[]; view: "clien
       subtitle={issues ? `${issues} thing${issues === 1 ? "" : "s"} to know` : "Everything is current"}
       className={className}
     >
-      <ul className="-my-1 divide-y divide-border/70">
-        {notes.map((n) => {
-          const T = TONES[n.tone];
-          return (
-            <li key={n.title} className="flex gap-3 py-3">
-              <span className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full", T.cls)}>
-                <T.icon className="h-4 w-4" aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <div className="text-[13.5px] font-medium leading-snug">{n.title}</div>
-                <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">{n.detail}</p>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <ToneList items={notes.map((n) => ({ key: n.title, tone: NOTE_TONE[n.tone], title: n.title, detail: n.detail }))} />
     </ReportCard>
   );
 }
@@ -364,7 +293,7 @@ export function ReportOverview({ posts, totals, estimated = {}, creators, roster
     <div className="mb-8 grid gap-4 lg:grid-cols-12">
       <ViewsHero posts={posts} totals={totals} estimated={estimated} creators={creators} roster={roster} now={now} className="lg:col-span-4" />
       <ContributionWaterfall posts={posts} now={now} className={insights.length ? "lg:col-span-4" : "lg:col-span-8"} />
-      <PatternCard insights={insights} className="lg:col-span-4" />
+      <PatternCard findings={insights} className="lg:col-span-4" />
       <WeeklyViews posts={posts} now={now} className="lg:col-span-8" />
       <DataNotes notes={notes} view={view} className="lg:col-span-4" />
     </div>
