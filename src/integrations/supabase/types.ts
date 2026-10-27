@@ -2852,6 +2852,166 @@ export type Database = {
         }
         Relationships: []
       }
+      job_locks: {
+        Row: {
+          locked_until: string
+          name: string
+        }
+        Insert: {
+          locked_until: string
+          name: string
+        }
+        Update: {
+          locked_until?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      listening_credits: {
+        Row: {
+          agency_id: string
+          day: string
+          used: number
+        }
+        Insert: {
+          agency_id: string
+          day: string
+          used?: number
+        }
+        Update: {
+          agency_id?: string
+          day?: string
+          used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listening_credits_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listening_mentions: {
+        Row: {
+          author: string | null
+          client_id: string
+          found_at: string
+          id: string
+          published_at: string | null
+          reach: number | null
+          sentiment: string | null
+          sentiment_score: number | null
+          shares: number | null
+          snippet: string | null
+          source: string
+          theme: string | null
+          title: string | null
+          topic_id: string
+          url: string
+        }
+        Insert: {
+          author?: string | null
+          client_id: string
+          found_at?: string
+          id?: string
+          published_at?: string | null
+          reach?: number | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          shares?: number | null
+          snippet?: string | null
+          source: string
+          theme?: string | null
+          title?: string | null
+          topic_id: string
+          url: string
+        }
+        Update: {
+          author?: string | null
+          client_id?: string
+          found_at?: string
+          id?: string
+          published_at?: string | null
+          reach?: number | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          shares?: number | null
+          snippet?: string | null
+          source?: string
+          theme?: string | null
+          title?: string | null
+          topic_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listening_mentions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listening_mentions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "listening_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listening_topics: {
+        Row: {
+          active: boolean
+          client_id: string
+          created_at: string
+          created_by: string | null
+          exclude_terms: string[]
+          id: string
+          kind: string
+          label: string
+          last_note: string | null
+          last_scanned_at: string | null
+          query: string
+        }
+        Insert: {
+          active?: boolean
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          exclude_terms?: string[]
+          id?: string
+          kind?: string
+          label: string
+          last_note?: string | null
+          last_scanned_at?: string | null
+          query: string
+        }
+        Update: {
+          active?: boolean
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          exclude_terms?: string[]
+          id?: string
+          kind?: string
+          label?: string
+          last_note?: string | null
+          last_scanned_at?: string | null
+          query?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listening_topics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_links: {
         Row: {
           campaign_id: string
@@ -3049,6 +3209,76 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_fetch_state: {
+        Row: {
+          checked_at: string
+          failures: number
+          last_error: string | null
+          post_id: string
+        }
+        Insert: {
+          checked_at?: string
+          failures?: number
+          last_error?: string | null
+          post_id: string
+        }
+        Update: {
+          checked_at?: string
+          failures?: number
+          last_error?: string | null
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_fetch_state_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_metric_peaks: {
+        Row: {
+          comments: number | null
+          impressions: number | null
+          likes: number | null
+          post_id: string
+          reach: number | null
+          saves: number | null
+          shares: number | null
+          views: number | null
+        }
+        Insert: {
+          comments?: number | null
+          impressions?: number | null
+          likes?: number | null
+          post_id: string
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          views?: number | null
+        }
+        Update: {
+          comments?: number | null
+          impressions?: number | null
+          likes?: number | null
+          post_id?: string
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_metric_peaks_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "posts"
             referencedColumns: ["id"]
           },
         ]
@@ -3751,6 +3981,10 @@ export type Database = {
           views: number
         }[]
       }
+      can_access_listening: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
       caption_key: { Args: { _s: string }; Returns: string }
       claim_amendment_pdf_jobs: {
         Args: never
@@ -3893,6 +4127,20 @@ export type Database = {
       }
       get_public_storefront: { Args: { _agency_slug: string }; Returns: Json }
       get_report_link_campaign: { Args: { _token: string }; Returns: string }
+      get_report_post_metrics: {
+        Args: { _token: string }
+        Returns: {
+          captured_at: string
+          comments: number
+          impressions: number
+          likes: number
+          post_id: string
+          reach: number
+          saves: number
+          shares: number
+          views: number
+        }[]
+      }
       get_report_public_data: { Args: { _token: string }; Returns: Json }
       get_tenant_by_host: { Args: { _host: string }; Returns: Json }
       get_user_access_status: {
@@ -3916,14 +4164,49 @@ export type Database = {
         Returns: number
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      listening_credits_today: { Args: { _client_id: string }; Returns: number }
       merge_posts_into_deliverable: {
         Args: { _post_ids: string[]; _target_deliverable_id?: string }
         Returns: string
+      }
+      metric_fallbacks: {
+        Args: {
+          _comments: number
+          _likes: number
+          _reach: number
+          _saves: number
+          _shares: number
+          _views: number
+        }
+        Returns: {
+          comments: number
+          likes: number
+          reach: number
+          saves: number
+          shares: number
+          views: number
+        }[]
+      }
+      metrics_due_posts: {
+        Args: { _campaign_id?: string; _limit: number; _min_gap?: string }
+        Returns: {
+          post_id: string
+          total_due: number
+        }[]
+      }
+      rebuild_post_metric_peaks: {
+        Args: { _post_ids?: string[] }
+        Returns: undefined
+      }
+      record_post_fetch: {
+        Args: { _error?: string; _ok: boolean; _post_id: string }
+        Returns: undefined
       }
       refresh_deliverable_suggestions: {
         Args: { _campaign_id: string }
         Returns: number
       }
+      release_job_lock: { Args: { _name: string }; Returns: undefined }
       render_contract: { Args: { _ci_id: string }; Returns: Json }
       render_contract_amendment: {
         Args: { _amendment_id: string; _ci_id: string }
@@ -4038,6 +4321,14 @@ export type Database = {
             }
             Returns: string
           }
+      take_job_lock: {
+        Args: { _name: string; _seconds: number }
+        Returns: boolean
+      }
+      take_listening_credits: {
+        Args: { _agency_id: string; _cap: number; _n: number }
+        Returns: boolean
+      }
       update_brief_status: {
         Args: { _status: string; _token: string }
         Returns: undefined
