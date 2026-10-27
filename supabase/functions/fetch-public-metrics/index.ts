@@ -49,21 +49,17 @@ function pickCount(...values: any[]): number {
   return 0;
 }
 
-// Only estimate shares/saves/reach when we have a real view count.
-// Otherwise leave at 0 — "—" beats a made-up number.
+// Store only what the platform reported. Unreported shares/saves/reach stay 0;
+// the app fills those in at display time and labels them as estimates
+// (src/lib/metrics.ts), so a made-up number never lands in post_metrics.
 function normalizeStats(stats: any) {
   const views = pickCount(stats?.views, stats?.videoPlayCount, stats?.videoViewCount, stats?.playCount, stats?.play_count, stats?.view_count);
   const likes = pickCount(stats?.likes, stats?.likesCount, stats?.diggCount, stats?.like_count, stats?.digg_count);
   const comments = pickCount(stats?.comments, stats?.commentsCount, stats?.commentCount, stats?.comment_count);
-  const sharesRaw = pickCount(stats?.shares, stats?.sharesCount, stats?.shareCount, stats?.share_count, stats?.reshareCount, stats?.reshare_count);
-  const savesRaw = pickCount(stats?.saves, stats?.savesCount, stats?.collectCount, stats?.collect_count, stats?.saveCount, stats?.savedCount);
-  const reachRaw = pickCount(stats?.reach, stats?.reachCount);
-  const impressionsRaw = pickCount(stats?.impressions, stats?.impressionsCount);
-
-  const shares = sharesRaw || (views > 0 ? Math.round(Math.max(views * 0.0025, likes * 0.06)) : 0);
-  const saves  = savesRaw  || (views > 0 ? Math.round(Math.max(views * 0.0035, likes * 0.08)) : 0);
-  const reach  = reachRaw  || (views > 0 ? Math.round(views * 0.68) : 0);
-  const impressions = impressionsRaw || (views > 0 ? Math.max(views, reach) : 0);
+  const shares = pickCount(stats?.shares, stats?.sharesCount, stats?.shareCount, stats?.share_count, stats?.reshareCount, stats?.reshare_count);
+  const saves = pickCount(stats?.saves, stats?.savesCount, stats?.collectCount, stats?.collect_count, stats?.saveCount, stats?.savedCount);
+  const reach = pickCount(stats?.reach, stats?.reachCount);
+  const impressions = pickCount(stats?.impressions, stats?.impressionsCount);
 
   return { views, likes, comments, shares, saves, reach, impressions };
 }
@@ -621,6 +617,9 @@ async function processPost(p: any) {
     if (Object.keys(upd).length) await supabase.from("posts").update(upd).eq("id", p.id);
     return { id: p.id, ok: true, stats };
   } catch (e) {
+    // Past the run's credit budget the paid lookup was skipped, so this was not a
+    // real attempt: report it as such and the post stays due for the next run.
+    if (sc.capped) return { id: p.id, ok: false, error: "credit_cap" };
     return { id: p.id, ok: false, error: String((e as Error).message ?? e) };
   }
 }
@@ -633,7 +632,7 @@ Deno.serve(async (req) => {
     const caller = await requireCaller(req, { job: "fetch-public-metrics" });
     if (caller instanceof Response) return caller;
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const { campaign_id, post_id, stale, max, offset, chain, use_scrapecreators, max_credits } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; offset?: number; chain?: number; use_scrapecreators?: boolean; max_credits?: number };
+    const { campaign_id, post_id, stale, max, chain, use_scrapecreators, max_credits } = body as { campaign_id?: string; post_id?: string; stale?: boolean; max?: number; chain?: number; use_scrapecreators?: boolean; max_credits?: number };
     if (caller.kind === "user") {
       let scope = post_id ? null : campaign_id ?? null;
       if (post_id) {
@@ -654,57 +653,67 @@ Deno.serve(async (req) => {
     sc.remaining = null;
     const chainDepth = Math.max(0, Number(chain ?? 0));
     const MAX_CHAIN = 40;
-    let q = supabase
-      .from("posts")
-      .select("id, post_url, platform, thumbnail_url, caption, status, created_at, posted_at, campaign_id, campaigns!inner(status)")
-      .order("created_at", { ascending: true });
-    if (post_id) q = q.eq("id", post_id);
-    else if (campaign_id) q = q.eq("campaign_id", campaign_id);
-    const { data: postsAll, error } = await q;
-    if (error) throw error;
-    let posts = postsAll ?? [];
-    const totalMatched = posts.length;
+    const limit = Math.max(1, Math.min(Number(max ?? 60), 200));
 
-    // stale mode: age-tiered refresh. Views plateau fast, so an old post does not
-    // need the same cadence as one published this morning. This is what keeps the
-    // paid scraper quota down while the numbers stay accurate where it matters.
-    //   < 3 days old   -> refresh if last capture > 10h ago  (≈2x/day)
-    //   < 14 days old  -> > 22h                              (≈1x/day)
-    //   < 45 days old  -> > 3 days
-    //   older          -> > 14 days
-    // Draft campaigns are skipped entirely.
-    if (stale && posts.length) {
-      posts = posts.filter((p: any) => (p.campaigns?.status ?? "live") !== "draft");
-      const ids = posts.map((p: any) => p.id);
-      const latest = new Map<string, string>();
-      for (let i = 0; i < ids.length; i += 500) {
-        const { data: metricAgg } = await supabase
-          .from("post_metrics")
-          .select("post_id, captured_at")
-          .in("post_id", ids.slice(i, i + 500))
-          .order("captured_at", { ascending: false });
-        for (const m of (metricAgg ?? []) as any[]) if (!latest.has(m.post_id)) latest.set(m.post_id, m.captured_at);
+    // One scheduled run at a time: a second cron firing or a stray chain would
+    // otherwise scrape the same due posts twice. The lock expires on its own if a
+    // run dies, and is released before this run hands over to the next link.
+    const LOCK = "fetch-public-metrics:stale";
+    if (stale && !post_id) {
+      const { data: locked, error: lockErr } = await supabase.rpc("take_job_lock", { _name: LOCK, _seconds: 170 });
+      if (lockErr) throw lockErr;
+      if (!locked) {
+        return new Response(JSON.stringify({ ok: 0, failed: 0, total: 0, remaining: null, next_offset: null, results: [], skipped: "another_run_in_progress" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
-      const H = 3600_000;
-      const now = Date.now();
-      posts = posts.filter((p: any) => {
-        const last = latest.get(p.id);
-        if (!last) return true;
-        const ageDays = (now - new Date(p.posted_at ?? p.created_at).getTime()) / (24 * H);
-        const minGapHours = ageDays < 3 ? 10 : ageDays < 14 ? 22 : ageDays < 45 ? 72 : 336;
-        return now - new Date(last).getTime() > minGapHours * H;
-      });
     }
 
-
-    // Paging so large campaigns can be refreshed without hitting the 150s edge limit.
-    const start = Math.max(0, Number(offset ?? 0));
-    const limit = Math.max(1, Number(max ?? 60));
-    const remaining = Math.max(0, posts.length - (start + limit));
-    posts = posts.slice(start, start + limit);
+    // Which posts to read, worked out in SQL (metrics_due_posts) so there is no
+    // 1,000-row API cap:
+    //   post_id      that one post, always.
+    //   stale        the milestone schedule: first reading, then day 1, 3, 7, 14
+    //                and 30 after the post went live; draft campaigns skipped.
+    //   campaign_id  every post in the campaign not read or tried in the last
+    //                hour (staff refresh, e.g. the final reading before payment).
+    // Every attempt is recorded, so the next call gets the next posts instead of
+    // paging with an offset, and a post that can't be scraped isn't retried each run.
+    let posts: any[] = [];
+    let totalDue = 0;
+    if (post_id) {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("id, post_url, platform, thumbnail_url, caption, status, created_at, posted_at, campaign_id")
+        .eq("id", post_id);
+      if (error) throw error;
+      posts = data ?? [];
+      totalDue = posts.length;
+    } else {
+      if (!stale && !campaign_id) {
+        return new Response(JSON.stringify({ error: "Pass post_id, campaign_id or stale." }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: due, error: dueErr } = await supabase.rpc("metrics_due_posts", {
+        _limit: limit,
+        _campaign_id: campaign_id ?? null,
+        _min_gap: stale ? null : "1 hour",
+      });
+      if (dueErr) throw dueErr;
+      const ids = ((due ?? []) as { post_id: string; total_due: number }[]).map((d) => d.post_id);
+      totalDue = Number((due as any[])?.[0]?.total_due ?? 0);
+      if (ids.length) {
+        const { data, error } = await supabase
+          .from("posts")
+          .select("id, post_url, platform, thumbnail_url, caption, status, created_at, posted_at, campaign_id")
+          .in("id", ids);
+        if (error) throw error;
+        posts = data ?? [];
+      }
+    }
 
     // Wall-clock budget: stop starting new batches near the edge limit so the caller
-    // gets partial results plus a next_offset instead of a 504.
+    // gets partial results instead of a 504; the rest stay due for the next call.
     const deadline = Date.now() + 100_000;
     const results: any[] = [];
     const chunks = 6;
@@ -713,35 +722,29 @@ Deno.serve(async (req) => {
       if (Date.now() > deadline) break;
       const batch = posts.slice(i, i + chunks);
       const r = await Promise.all(batch.map(processPost));
+      // Credit cap hit: the post wasn't really tried, so leave it due.
+      await Promise.all(r.filter((x) => x.error !== "credit_cap").map((x) =>
+        supabase.rpc("record_post_fetch", { _post_id: x.id, _ok: !!x.ok, _error: x.ok ? null : String(x.error ?? "") })));
       results.push(...r);
       processed += batch.length;
+      if (sc.capped) break;
     }
-    const leftover = remaining + (posts.length - processed);
+    const leftover = Math.max(0, totalDue - processed);
     const succeeded = results.filter(r => r.ok).length;
-    // Posts we scraped successfully write a fresh post_metrics row, so they are no
-    // longer "due" and disappear from the queue the next run rebuilds. Only the
-    // failures stay in the list, so the next run must skip exactly those — skipping
-    // by the full processed count would jump over posts never touched.
-    const failedThisRun = Math.max(0, processed - succeeded);
-    // Only stale mode rebuilds a shrinking queue. A campaign/full refresh keeps the
-    // same list every call, so it must advance past everything processed or it
-    // re-scrapes the same posts and burns credits.
-    const nextOffset = stale ? start + failedThisRun : start + processed;
+
+    if (stale && !post_id) await supabase.rpc("release_job_lock", { _name: LOCK });
 
     // Cron runs (stale mode) chain themselves until the due queue is empty, so two
-    // scheduled runs a day are enough no matter how many posts are due.
-    // The chain stays depth-capped: posts that can never be scraped (private/deleted
-    // links) write no metrics row, so they stay "due" forever — without the offset
-    // over failures we would re-scrape them endlessly and burn paid scraper credits.
-    if (stale && leftover > 0 && processed > 0 && chainDepth < MAX_CHAIN) {
+    // scheduled runs a day are enough no matter how many posts are due. Each link
+    // has its own credit budget (a link that hits it stops early and hands over).
+    // Depth-capped as a backstop; recorded attempts keep failing posts out of the queue.
+    if (stale && !post_id && leftover > 0 && processed > 0 && chainDepth < MAX_CHAIN) {
       fetch(`${SUPABASE_URL}/functions/v1/fetch-public-metrics`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
-        body: JSON.stringify({ stale: true, max: limit, offset: nextOffset, chain: chainDepth + 1 }),
+        body: JSON.stringify({ stale: true, max: limit, chain: chainDepth + 1 }),
       }).catch(() => {});
     }
-
-
 
     if (sc.used > 0) {
       await supabase.from("scraper_credit_log").insert({
@@ -754,7 +757,7 @@ Deno.serve(async (req) => {
     }
 
     const ok = succeeded;
-    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalMatched, remaining: leftover, next_offset: leftover > 0 ? nextOffset : null, results, provider: sc.enabled ? "scrapecreators" : APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback", credits_used: sc.used, credits_remaining: sc.remaining, credits_capped: sc.capped }), {
+    return new Response(JSON.stringify({ ok, failed: results.length - succeeded, total: results.length, matched: totalDue, remaining: leftover, next_offset: null, results, provider: sc.enabled ? "scrapecreators" : APIFY ? "apify" : ENSEMBLE_TOKEN ? "ensembledata" : "html-fallback", credits_used: sc.used, credits_remaining: sc.remaining, credits_capped: sc.capped }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

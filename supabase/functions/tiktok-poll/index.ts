@@ -18,15 +18,16 @@ function extractVideoId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+// Store only what TikTok reported. TikTok's API gives no reach or impressions, so
+// those stay 0; the app fills them in at display time and labels them as estimates
+// (src/lib/metrics.ts).
 function normalizeStats(v: any) {
   const views = Math.max(0, Number(v.view_count || 0));
   const likes = Math.max(0, Number(v.like_count || 0));
   const comments = Math.max(0, Number(v.comment_count || 0));
   const shares = Math.max(0, Number(v.share_count || 0));
-  const saves = Math.max(0, Number(v.collect_count || 0)) || Math.round(Math.max(views * 0.0035, likes * 0.08, comments * 1.5));
-  const reach = Math.round(views * 0.68);
-  const impressions = Math.max(views, reach);
-  return { views, likes, comments, shares, saves, reach, impressions };
+  const saves = Math.max(0, Number(v.collect_count || 0));
+  return { views, likes, comments, shares, saves, reach: 0, impressions: 0 };
 }
 
 async function refreshIfNeeded(acct: any) {
