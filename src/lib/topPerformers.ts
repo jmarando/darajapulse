@@ -21,7 +21,7 @@ export type PerformerRow = {
 export type RosterEntry = {
   id: string;
   influencer_id: string;
-  influencers?: { full_name?: string | null; handle?: string | null } | null;
+  influencers?: { full_name?: string | null; handle?: string | null; follower_count?: number | null } | null;
 };
 
 /** The creators who delivered the most views, with what they delivered. Creators with no views are left out. */
