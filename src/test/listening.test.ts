@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  OFF_TOPIC, dayKey, moodByDay, moodShare, needsAttention, netMood, parseTerms, shareOfVoice, themes, totals, withinDays,
+  OFF_TOPIC, dayKey, moodByDay, moodShare, needsAttention, netMood, parseTerms, platformMix, shareOfVoice, sweepStatus,
+  themes, topMentions, totals, weekChange, withinDays,
   type ListeningMention, type ListeningTopic,
 } from "@/lib/listening";
 
@@ -106,4 +107,68 @@ describe("themes and attention", () => {
 
 it("parses comma-separated exclude terms", () => {
   expect(parseTerms(" jobs, vacancy ,, jobs ,")).toEqual(["jobs", "vacancy"]);
+});
+
+describe("the week so far", () => {
+  const now = Date.parse("2026-10-27T12:00:00Z");
+
+  it("compares the last seven days with the seven before", () => {
+    const rows = weekChange([
+      mention("b", { found_at: "2026-10-26T00:00:00Z" }),
+      mention("b", { found_at: "2026-10-24T00:00:00Z" }),
+      mention("b", { found_at: "2026-10-20T00:00:00Z" }),
+      mention("b", { found_at: "2026-10-19T00:00:00Z" }),
+      mention("b", { found_at: "2026-10-01T00:00:00Z" }),
+    ], now);
+    expect(rows).toEqual({ current: 2, previous: 2, delta: 0 });
+  });
+
+  it("uses the publish date when the platform gives one", () => {
+    expect(weekChange([mention("b", { published_at: "2026-10-26T00:00:00Z", found_at: "2026-10-27T00:00:00Z" })], now)).toEqual({
+      current: 1, previous: 0, delta: 1,
+    });
+  });
+});
+
+describe("platform mix", () => {
+  it("counts a post once even when two keywords found it, and shares by post", () => {
+    const rows = platformMix([
+      mention("b", { source: "tiktok", url: "same", reach: 100 }),
+      mention("b2", { source: "tiktok", url: "same", reach: 100 }),
+      mention("b", { source: "tiktok", url: "tik", reach: 50 }),
+      mention("b", { source: "reddit", url: "red" }),
+      mention("b", { source: "youtube", url: "yt", reach: 400 }),
+    ]);
+    expect(rows.map((r) => [r.key, r.mentions, r.reach, r.share, r.viewsKnown])).toEqual([
+      ["tiktok", 2, 150, 50, true],
+      ["reddit", 1, 0, 25, false],
+      ["youtube", 1, 400, 25, true],
+    ]);
+  });
+});
+
+describe("the most seen posts", () => {
+  it("dedupes, leaves off-topic posts out, and sorts by views then date", () => {
+    const rows = topMentions([
+      mention("b", { url: "same", reach: 900, id: "first" }),
+      mention("b", { url: "same", reach: 900 }),
+      mention("b", { url: "a", reach: 100, found_at: "2026-10-26T00:00:00Z" }),
+      mention("b", { url: "b", reach: 100, found_at: "2026-10-27T00:00:00Z" }),
+      mention("b", { url: "off", reach: 9000, theme: OFF_TOPIC }),
+      mention("b", { url: "none", reach: null, found_at: "2026-10-20T00:00:00Z" }),
+    ]);
+    expect(rows.map((m) => m.url)).toEqual(["same", "b", "a", "none"]);
+  });
+});
+
+describe("sweep status", () => {
+  it("counts active, paused, unsearched and failing keywords, and finds the latest scan", () => {
+    const rows = sweepStatus([
+      { ...topic("a", "brand"), last_scanned_at: "2026-10-27T08:00:00Z" },
+      { ...topic("b", "competitor"), last_scanned_at: "2026-10-27T10:00:00Z", last_note: "ScrapeCreators is out of credits." },
+      { ...topic("c", "brand"), last_scanned_at: null },
+      { ...topic("d", "category"), active: false, last_scanned_at: "2026-10-28T09:00:00Z" },
+    ]);
+    expect(rows).toEqual({ active: 3, paused: 1, never: 1, failing: 1, lastScan: "2026-10-28T09:00:00Z" });
+  });
 });

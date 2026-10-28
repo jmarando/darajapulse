@@ -6,10 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/dash/PageHeader";
+import { PageTab, PageTabList } from "@/components/dash/PageTabs";
 import { Panel } from "@/components/dash/Panel";
 import type { ListeningMention, ListeningTopic } from "@/lib/listening";
 import ListeningOverview from "./ListeningOverview";
@@ -167,19 +168,32 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
       />
 
       <Tabs value={tab} onValueChange={(v) => setParam("tab", v)}>
-        <TabsList className="mb-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="mentions">Mentions</TabsTrigger>
-          <TabsTrigger value="keywords">Keywords{topics.length ? ` · ${activeTopics.length}` : ""}</TabsTrigger>
-        </TabsList>
+        <PageTabList active={tab} className="mb-5 w-fit max-w-full">
+          <PageTab value="overview">Overview</PageTab>
+          <PageTab value="mentions">Mentions</PageTab>
+          <PageTab value="keywords" count={activeTopics.length || undefined}>Keywords</PageTab>
+        </PageTabList>
         {loading || !brands ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-[20px]" />)}
+          <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-3">
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-80 rounded-[20px]" />)}
+            </div>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Skeleton className="h-72 rounded-[20px] lg:col-span-2" />
+              <Skeleton className="h-72 rounded-[20px]" />
+            </div>
           </div>
         ) : (
           <>
             <TabsContent value="overview" className="mt-0">
-              <ListeningOverview brandName={brand?.name ?? "Your brand"} topics={topics} mentions={mentions} onAddKeywords={() => setParam("tab", "keywords")} />
+              <ListeningOverview
+                brandName={brand?.name ?? "Your brand"}
+                topics={topics}
+                mentions={mentions}
+                creditsToday={creditsToday}
+                showCredits={staff}
+                onAddKeywords={() => setParam("tab", "keywords")}
+              />
             </TabsContent>
             <TabsContent value="mentions" className="mt-0">
               <ListeningMentions topics={topics} mentions={mentions} />
