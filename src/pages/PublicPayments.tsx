@@ -19,19 +19,38 @@ const PublicPayments = () => {
   const [data, setData] = useState<any>(null);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
+  // Only a link the database doesn't know is "not found". A call that fails (visitors
+  // without a login are cut off after 3 seconds) keeps whatever loaded last.
   const load = async () => {
-    const { data: payload } = await (supabase as any).rpc("get_payments_public_data", { _token: token });
-    if (!payload) { setNotFound(true); return; }
-    const { data: dates } = await supabase.rpc("get_campaign_contract_dates", { _token: token });
-    setData({ ...payload, campaign: { ...payload.campaign, ...(dates as any) } });
-    setUpdatedAt(new Date());
+    try {
+      const { data: payload, error } = await (supabase as any).rpc("get_payments_public_data", { _token: token });
+      if (error) { setLoadError(true); return false; }
+      if (!payload) { setNotFound(true); return true; }
+      const { data: dates } = await supabase.rpc("get_campaign_contract_dates", { _token: token });
+      setData({ ...payload, campaign: { ...payload.campaign, ...(dates as any) } });
+      setNotFound(false);
+      setLoadError(false);
+      setUpdatedAt(new Date());
+      return true;
+    } catch {
+      setLoadError(true);
+      return false;
+    }
   };
 
+  // Refresh every minute. After a failure try again at 10s, 20s, 40s, then every minute.
   useEffect(() => {
-    load();
-    const i = setInterval(load, 60000);
-    return () => clearInterval(i);
+    let timer: ReturnType<typeof setTimeout>;
+    let stopped = false;
+    let failures = 0;
+    const tick = async () => {
+      failures = (await load()) ? 0 : failures + 1;
+      if (!stopped) timer = setTimeout(tick, failures ? Math.min(60000, 5000 * 2 ** failures) : 60000);
+    };
+    tick();
+    return () => { stopped = true; clearTimeout(timer); };
   }, [token]);
 
   const brand = useMemo(() => resolveCampaignBrand(data?.campaign?.name ?? "", data?.campaign?.client_name ?? null), [data]);
@@ -111,7 +130,11 @@ const PublicPayments = () => {
       <PublicFooter />
     </div>
   );
-  if (!data) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading payments summary…</div>;
+  if (!data) return (
+    <div className="min-h-screen flex items-center justify-center p-6 text-center text-muted-foreground">
+      {loadError ? "This payments summary couldn't load just now. It tries again on its own." : "Loading payments summary…"}
+    </div>
+  );
 
   const campaign = data.campaign ?? {};
 
@@ -137,6 +160,12 @@ const PublicPayments = () => {
       </header>
 
       <main className="max-w-7xl mx-auto p-4 md:p-8">
+        {loadError && (
+          <div role="status" className="mb-6 rounded-lg border border-status-bad/30 bg-status-bad/5 p-4 text-sm">
+            <div className="font-medium">Couldn't refresh just now</div>
+            <p className="mt-1 text-muted-foreground">These figures are from {updatedAt?.toLocaleTimeString()}. The page keeps trying.</p>
+          </div>
+        )}
         <div className="flex justify-between items-start gap-6 mb-8">
           <div className="min-w-0 flex items-start gap-4 flex-1">
             {campaign.client_logo_url ? (
