@@ -161,5 +161,85 @@ export function needsAttention(topics: ListeningTopic[], mentions: ListeningMent
     .slice(0, limit);
 }
 
+export type WeekChange = { current: number; previous: number; delta: number };
+
+/** Posts in the last seven days compared with the seven before that. */
+export function weekChange(mentions: ListeningMention[], now = Date.now()): WeekChange {
+  const week = 7 * 86_400_000;
+  let current = 0;
+  let previous = 0;
+  for (const m of mentions) {
+    const at = Date.parse(mentionDate(m));
+    if (at >= now - week) current++;
+    else if (at >= now - 2 * week) previous++;
+  }
+  return { current, previous, delta: current - previous };
+}
+
+export type PlatformRow = { key: string; label: string; mentions: number; reach: number; share: number; viewsKnown: boolean };
+
+/** A post found by two keywords still counts once here. Only TikTok and YouTube report views. */
+export function platformMix(mentions: ListeningMention[]): PlatformRow[] {
+  const seen = new Set<string>();
+  const map = new Map<string, { mentions: number; reach: number; viewsKnown: boolean }>();
+  for (const m of mentions) {
+    if (seen.has(m.url)) continue;
+    seen.add(m.url);
+    const row = map.get(m.source) ?? { mentions: 0, reach: 0, viewsKnown: false };
+    row.mentions++;
+    if (m.reach != null) {
+      row.reach += Number(m.reach);
+      row.viewsKnown = true;
+    }
+    map.set(m.source, row);
+  }
+  const total = [...map.values()].reduce((n, r) => n + r.mentions, 0);
+  return [...map.entries()]
+    .map(([key, r]) => ({
+      key,
+      label: SOURCE_LABEL[key] ?? key,
+      ...r,
+      share: total ? Math.round((r.mentions / total) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.mentions - a.mentions || a.label.localeCompare(b.label));
+}
+
+/** The on-topic posts with the most views, once each; recent posts first when views aren't reported. */
+export function topMentions(mentions: ListeningMention[], limit = 5): ListeningMention[] {
+  const seen = new Set<string>();
+  const rows: ListeningMention[] = [];
+  for (const m of mentions) {
+    if (m.theme === OFF_TOPIC || seen.has(m.url)) continue;
+    seen.add(m.url);
+    rows.push(m);
+  }
+  return rows
+    .sort((a, b) => Number(b.reach || 0) - Number(a.reach || 0) || Date.parse(mentionDate(b)) - Date.parse(mentionDate(a)))
+    .slice(0, limit);
+}
+
+export type SweepStatus = { active: number; paused: number; never: number; failing: number; lastScan: string | null };
+
+/** How far the sweep has got through a brand's keywords. */
+export function sweepStatus(topics: ListeningTopic[]): SweepStatus {
+  let active = 0;
+  let paused = 0;
+  let never = 0;
+  let failing = 0;
+  let lastScan: string | null = null;
+  for (const t of topics) {
+    // A paused keyword's last search still counts as the last time listening ran.
+    if (t.last_scanned_at && (!lastScan || Date.parse(t.last_scanned_at) > Date.parse(lastScan))) lastScan = t.last_scanned_at;
+    if (!t.active) {
+      paused++;
+      continue;
+    }
+    active++;
+    if (!t.last_scanned_at) never++;
+    if (t.last_note) failing++;
+  }
+  return { active, paused, never, failing, lastScan };
+}
+
 /** "a, b , ,c" → ["a","b","c"], deduplicated, at most 10. */
 export const parseTerms = (s: string) => [...new Set(s.split(",").map((t) => t.trim()).filter(Boolean))].slice(0, 10);
