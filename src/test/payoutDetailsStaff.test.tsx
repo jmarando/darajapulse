@@ -7,6 +7,7 @@ import { detailsRow, props } from "./helpers/paymentsFixtures";
 const db = vi.hoisted(() => ({
   tables: {} as Record<string, unknown[]>,
   errors: {} as Record<string, { message: string }>,
+  inSizes: [] as number[],
   upsert: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({
@@ -14,6 +15,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     from: (table: string) => {
       const chain: Record<string, unknown> = {};
       for (const method of ["select", "eq", "in", "order", "limit"]) chain[method] = () => chain;
+      chain.in = (_column: string, values: string[]) => { db.inSizes.push(values.length); return chain; };
       chain.maybeSingle = async () => ({ data: null, error: null });
       chain.upsert = (...args: unknown[]) => db.upsert(table, ...args);
       chain.then = (resolve: (reply: unknown) => unknown) =>
@@ -50,7 +52,7 @@ const chooseFilter = (label: string) => {
 };
 
 describe("staff payout details in the Payments tab", () => {
-  beforeEach(() => { db.tables = {}; db.errors = {}; db.upsert.mockReset().mockResolvedValue({ error: null }); });
+  beforeEach(() => { db.tables = {}; db.errors = {}; db.inSizes = []; db.upsert.mockReset().mockResolvedValue({ error: null }); });
   afterEach(cleanup);
 
   it("saves staff-entered details, normalised", async () => {
@@ -110,6 +112,13 @@ describe("staff payout details in the Payments tab", () => {
     await waitFor(() => expect(screen.queryByText("Jane Wanjiku")).toBeNull());
     expect(screen.getByText("Wanjiru Kamau")).toBeInTheDocument();
     expect(screen.queryByText("Peter Otieno")).toBeNull();
+  });
+
+  it("asks for details in batches, so the request address stays short on a big roster", async () => {
+    const many = Array.from({ length: 250 }, (_, i) => ({ id: `ci-m${i}`, influencer_id: `m${i}`, fee_kes: 0, deliverables_count: 1, influencers: { full_name: `Creator ${i}` } }));
+    render(<CampaignPayments {...props({ roster: many, signatures: many.map((r) => ({ campaign_influencer_id: r.id })) })} />);
+    await waitFor(() => expect(db.inSizes.length).toBeGreaterThan(0));
+    expect(db.inSizes).toEqual([100, 100, 50]);
   });
 
   it("doesn't call everyone missing when the details can't be loaded", async () => {

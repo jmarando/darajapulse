@@ -19,12 +19,17 @@ const detailsTable = () => (supabase as unknown as { from(table: string): Detail
 
 const fail = (error: DbError) => new Error(error.message || "Something went wrong. Please try again.");
 
+// The ids travel in the request address (about 37 characters each), so a big roster is asked for in batches.
+const BATCH = 100;
+
 /** The payout details this agency holds for these creators. */
 export async function listPayoutDetails(agencyId: string, influencerIds: string[]): Promise<DetailsLike[]> {
-  if (influencerIds.length === 0) return [];
-  const { data, error } = await detailsTable().select("*").eq("agency_id", agencyId).in("influencer_id", influencerIds);
-  if (error) throw fail(error);
-  return (data ?? []).map(detailsFromRow);
+  const batches: string[][] = [];
+  for (let i = 0; i < influencerIds.length; i += BATCH) batches.push(influencerIds.slice(i, i + BATCH));
+  const replies = await Promise.all(batches.map((ids) => detailsTable().select("*").eq("agency_id", agencyId).in("influencer_id", ids)));
+  const failed = replies.find((reply) => reply.error);
+  if (failed?.error) throw fail(failed.error);
+  return replies.flatMap((reply) => reply.data ?? []).map(detailsFromRow);
 }
 
 /**
