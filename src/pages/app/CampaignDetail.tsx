@@ -1693,6 +1693,7 @@ const CampaignDetail = () => {
         <TabsContent value="payments" className="space-y-6 mt-0">
           <CampaignPayments
             campaignId={id!}
+            agencyId={c?.agency_id}
             contractDates={c}
             campaignName={c?.name ?? "Campaign"}
             clientName={c?.clients?.name}
