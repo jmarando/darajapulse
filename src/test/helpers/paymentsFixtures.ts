@@ -19,6 +19,7 @@ export const props = (over: Partial<Props> = {}): Props => ({
   posts: [],
   metrics: [],
   whtPercent: 5,
+  paymentTermsDays: null,
   onRefreshMetrics: async () => {},
   ...over,
 });

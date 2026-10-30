@@ -2,6 +2,20 @@
 // newer than the generated Supabase types, so they are reached through `as any` here and nowhere else.
 import { publicSupabase } from "@/integrations/supabase/publicClient";
 import type { NormalisedDetails } from "./details";
+import type { InvoiceRoute, InvoiceStatus } from "../../../supabase/functions/_shared/payout-rules";
+
+/** The creator's finalised payout as their own card sees it: no ids, numbers or PINs. */
+export interface PayoutCardPayout {
+  status: "pending" | "processing" | "paid" | "failed";
+  gross_kes: number;
+  net_kes: number;
+  invoice_route: InvoiceRoute | null;
+  invoice_status: InvoiceStatus;
+  invoice_raised_at: string | null;
+  invoice_decided_at: string | null;
+  report_approved_at: string | null;
+  payment_terms_days: number | null;
+}
 
 export interface PayoutCard {
   contract_signed: boolean;
@@ -15,7 +29,7 @@ export interface PayoutCard {
     bii_consent: boolean;
     confirmed_at: string;
   };
-  payout: null;
+  payout: null | PayoutCardPayout;
 }
 
 type RpcError = { message?: string };
