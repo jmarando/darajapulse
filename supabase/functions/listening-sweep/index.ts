@@ -1,14 +1,14 @@
-// Social listening sweep: searches each brand's keywords on TikTok, YouTube and
-// Reddit through ScrapeCreators, stores new posts as mentions, then has the AI
-// read the mood and theme of anything not yet rated. Ported from Groundwork's
-// runListeningScan, scoped to client brands.
+// Social listening sweep: searches each brand's keywords on TikTok, Instagram,
+// YouTube and Reddit through ScrapeCreators, stores new posts as mentions, then
+// has the AI read the mood and theme of anything not yet rated. Ported from
+// Groundwork's runListeningScan, scoped to client brands.
 //
 // Callers
 //   - the hourly job (x-job-key "listening-sweep"): every brand's keywords not
 //     searched in the last 12 hours
 //   - agency staff ("Search now", body { client_id }): that brand's keywords not
 //     searched in the last hour
-// Credits: 3 per keyword search, out of 300 per agency per Nairobi day
+// Credits: 4 per keyword search, out of 300 per agency per Nairobi day
 // (LISTENING_DAILY_CREDITS overrides), logged to scraper_credit_log.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { denied, requireCaller } from "../_shared/auth.ts";

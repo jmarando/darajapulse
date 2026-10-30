@@ -36,7 +36,7 @@ export type ListeningMention = {
 
 export const OFF_TOPIC = "off-topic";
 export const DAILY_CREDITS = 300;
-export const CREDITS_PER_SEARCH = 3;
+export const CREDITS_PER_SEARCH = 4;
 export const MAX_ACTIVE_TOPICS = 15;
 
 export const KIND_LABEL: Record<TopicKind, string> = {
@@ -47,7 +47,10 @@ export const KIND_LABEL: Record<TopicKind, string> = {
 
 export const SOURCE_LABEL: Record<string, string> = {
   tiktok: "TikTok",
+  instagram: "Instagram",
   youtube: "YouTube",
+  facebook: "Facebook",
+  x: "X",
   reddit: "Reddit",
 };
 
