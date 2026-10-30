@@ -63,8 +63,8 @@ export const INVOICE_APPROVAL_WINDOW_DAYS = 30;
 
 const DAY_MS = 86_400_000;
 
-/** The calendar day in Nairobi (UTC+3) as YYYY-MM-DD. */
-const nairobiDay = (when: string | Date) =>
+/** The calendar day in Nairobi (UTC+3) as YYYY-MM-DD, the value a date field holds. */
+export const nairobiDay = (when: string | Date) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Nairobi", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(when));
 
 /** The last moment the creator can approve an invoice raised at `raisedAt`. */

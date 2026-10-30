@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   INVOICE_APPROVAL_WINDOW_DAYS, canChangeRoute, canRaiseBii, daysLeft, detailsFromRow, detailsState, dueDate, formatNairobiDate,
-  invoiceDeadline, isDetailsComplete, type DetailsLike, type InvoiceStatus,
+  invoiceDeadline, isDetailsComplete, nairobiDay, type DetailsLike, type InvoiceStatus,
 } from "../../supabase/functions/_shared/payout-rules";
 
 const d = (o: Partial<DetailsLike> = {}): DetailsLike => ({
@@ -83,5 +83,10 @@ describe("invoice rules", () => {
 
   it("writes dates the way Nairobi reads them", () => {
     expect(formatNairobiDate("2026-10-30T22:30:00Z")).toBe("31 Oct 2026");
+  });
+
+  it("names the Nairobi calendar day, for a date field", () => {
+    expect(nairobiDay("2026-10-30T22:30:00Z")).toBe("2026-10-31");
+    expect(nairobiDay(new Date("2026-10-30T20:59:00Z"))).toBe("2026-10-30");
   });
 });

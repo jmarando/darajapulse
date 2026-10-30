@@ -1702,6 +1702,7 @@ const CampaignDetail = () => {
             posts={posts}
             metrics={metrics}
             whtPercent={Number(c?.wht_percent || 0)}
+            paymentTermsDays={c?.payment_terms_days ?? null}
             onRefreshMetrics={autoFetchAll}
           />
         </TabsContent>
