@@ -59,8 +59,10 @@ async function scGet(path: string, params: Record<string, string>): Promise<any>
 export async function searchTikTok(query: string, limit = 10): Promise<Found[]> {
   const json = await scGet("/v1/tiktok/search/keyword", { query });
   const items: any[] = json?.search_item_list ?? [];
-  return items
-    .map((it: any): Found => {
+  const videos = items
+    .map((item: any): Found => {
+      // ScrapeCreators wraps each result as { aweme_info: {...} }; a bare video is read too.
+      const it = item?.aweme_info ?? item;
       const id = typeof it?.aweme_id === "string" ? it.aweme_id : "";
       const handle = it?.author?.unique_id || "";
       const desc = typeof it?.desc === "string" ? it.desc : "";
@@ -75,8 +77,10 @@ export async function searchTikTok(query: string, limit = 10): Promise<Found[]> 
         shares: count(it?.statistics?.share_count),
       };
     })
-    .filter((h) => Boolean(h.url))
-    .slice(0, limit);
+    .filter((h) => Boolean(h.url));
+  // Results that all fail to read mean the reply's shape changed, not that nobody posted: say so.
+  if (items.length && !videos.length) throw new Error("TikTok search returned results that could not be read.");
+  return videos.slice(0, limit);
 }
 
 export async function searchYouTube(query: string, limit = 10): Promise<Found[]> {
