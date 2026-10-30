@@ -54,4 +54,14 @@ describe("TikTok keyword search", () => {
     respondWith({ success: true, search_item_list: [] });
     expect(await searchTikTok("paint")).toEqual([]);
   });
+
+  it("asks TikTok for this week's videos, so old ones don't fill the list", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => new Response(JSON.stringify({ success: true, search_item_list: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await searchTikTok("paint");
+    const url = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(url.pathname).toBe("/v1/tiktok/search/keyword");
+    expect(url.searchParams.get("query")).toBe("paint");
+    expect(url.searchParams.get("date_posted")).toBe("this-week");
+  });
 });
