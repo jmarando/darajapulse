@@ -119,3 +119,57 @@ describe("GetPaidCard", () => {
     expect(await screen.findByText("Couldn't reach the server. Check your connection and try again.")).toBeInTheDocument();
   });
 });
+
+describe("GetPaidCard invoice status", () => {
+  const payout = (over: Record<string, unknown> = {}) => ({
+    ...saved,
+    payout: {
+      status: "pending", gross_kes: 5000, net_kes: 4750, invoice_route: null, invoice_status: "not_raised",
+      invoice_raised_at: null, invoice_decided_at: null, report_approved_at: "2026-10-28T09:00:00Z", payment_terms_days: 45, ...over,
+    },
+  });
+  const decline = "Your invoice wasn't approved. We'll raise it again, so watch for KRA's text.";
+
+  beforeEach(() => {
+    rpc.mockReset();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-20T08:00:00Z"));
+  });
+  afterEach(() => { cleanup(); vi.useRealTimers(); });
+
+  it("says the figure is final before the invoice is raised", async () => {
+    answer(payout());
+    await open();
+    expect(screen.getByText("Your figure is final: KES 5,000. We'll raise your eTIMS invoice next.")).toBeInTheDocument();
+  });
+
+  it("asks the creator to approve a raised BII invoice by the deadline", async () => {
+    answer(payout({ invoice_route: "bii", invoice_status: "raised", invoice_raised_at: "2026-11-02T08:00:00Z" }));
+    await open();
+    expect(screen.getByText("Approve your invoice on *222# by 2 Dec 2026 (12 days left).")).toBeInTheDocument();
+  });
+
+  it("says a creator's own invoice is being checked", async () => {
+    answer(payout({ invoice_route: "creator", invoice_status: "raised", invoice_raised_at: "2026-11-02T08:00:00Z" }));
+    await open();
+    expect(screen.getByText("We're checking the invoice you sent.")).toBeInTheDocument();
+  });
+
+  it("gives the payment due date once the invoice is approved", async () => {
+    answer(payout({ invoice_route: "bii", invoice_status: "approved", invoice_raised_at: "2026-11-02T08:00:00Z", invoice_decided_at: "2026-11-05T09:00:00Z" }));
+    await open();
+    expect(screen.getByText("Invoice approved. Payment due 20 Dec 2026.")).toBeInTheDocument();
+  });
+
+  it("says the due date is to be confirmed when it can't be worked out", async () => {
+    answer(payout({ invoice_route: "bii", invoice_status: "approved", invoice_decided_at: "2026-11-05T09:00:00Z", report_approved_at: null }));
+    await open();
+    expect(screen.getByText("Invoice approved. Payment due date to be confirmed.")).toBeInTheDocument();
+  });
+
+  it.each(["declined", "expired"])("tells the creator a %s invoice will be raised again", async (status) => {
+    answer(payout({ invoice_route: "bii", invoice_status: status, invoice_raised_at: "2026-10-02T08:00:00Z", invoice_decided_at: "2026-11-01T08:00:00Z" }));
+    await open();
+    expect(screen.getByText(decline)).toBeInTheDocument();
+  });
+});
