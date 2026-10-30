@@ -8,6 +8,7 @@ import { Hash, Wallet, Calendar, CheckCircle2, XCircle, Music2, Check, X, AtSign
 import { toast } from "sonner";
 import { normalizeBreakdown, DEFAULT_PLATFORMS } from "@/components/DeliverablesEditor";
 import ContractSign from "@/components/ContractSign";
+import GetPaidCard from "@/components/payouts/GetPaidCard";
 import { contractPeriodLabel } from "@/lib/contractDates";
 
 
@@ -247,6 +248,9 @@ const PublicBrief = () => {
 
         {/* Contract — must be signed before any post can be submitted */}
         <ContractSign token={String(b.brief_token || token)} creatorName={creatorName} onSigned={load} />
+
+        {/* Payout details — asked for once the agreement is signed */}
+        {b.contract_signed && <GetPaidCard token={String(b.brief_token || token)} />}
 
         {/* Personal submission link — how the creator sends us their post */}
         {b.submission_token && (
