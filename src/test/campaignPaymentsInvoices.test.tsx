@@ -19,7 +19,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@/lib/payouts/staffApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/payouts/staffApi")>()),
-  markInvoicesRaised: vi.fn(async () => {}),
+  markInvoicesRaised: vi.fn(async (ids: string[]) => ids),
   recordInvoiceDecision: vi.fn(async () => {}),
   recordCreatorInvoice: vi.fn(async () => {}),
   setPaymentTerms: vi.fn(async () => {}),
@@ -98,6 +98,33 @@ describe("eTIMS invoices in the Payments tab", () => {
     fireEvent.click(download(1));
     await waitFor(() => expect(staffApi.markInvoicesRaised).toHaveBeenCalledWith(["p1"]));
     expect(await readBlob(blobs[0])).toContain('"Jane Wanjiku Kamau","12345678","0712345678"');
+  });
+
+  it("leaves a creator out of the file when their invoice changed since the page loaded", async () => {
+    db.tables.payouts = [payoutRow("p1", "i1"), payoutRow("p3", "i3")];
+    db.tables.creator_payout_details = [detailsRow("i1"), detailsRow("i3", { legal_name: "Wanjiru Akinyi Kamau", id_number: "87654321" })];
+    vi.mocked(staffApi.markInvoicesRaised).mockResolvedValueOnce(["p1"]);
+    await open();
+    await within(rowOf("Jane Wanjiku")).findByText("Creator confirmed");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select all eligible creators" }));
+    fireEvent.click(download(2));
+    await waitFor(() => expect(blobs).toHaveLength(1));
+    const file = await readBlob(blobs[0]);
+    expect(file).toContain('"Jane Wanjiku Kamau"');
+    expect(file).not.toContain("Wanjiru Akinyi Kamau");
+  });
+
+  it("makes no file when the invoices couldn't be marked raised", async () => {
+    db.tables.payouts = [payoutRow("p1", "i1")];
+    db.tables.creator_payout_details = [detailsRow("i1")];
+    vi.mocked(staffApi.markInvoicesRaised).mockRejectedValueOnce(new Error("Failed to fetch"));
+    await open();
+    await within(rowOf("Jane Wanjiku")).findByText("Creator confirmed");
+    fireEvent.click(within(rowOf("Jane Wanjiku")).getByRole("checkbox"));
+    fireEvent.click(download(1));
+    await waitFor(() => expect(staffApi.markInvoicesRaised).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(blobs).toHaveLength(0);
   });
 
   it("won't record an approval without an invoice number", async () => {

@@ -1,19 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { markInvoicesRaised, recordCreatorInvoice, recordInvoiceDecision, setPaymentTerms, setReportApprovedAt } from "@/lib/payouts/staffApi";
 
-// Only the database is stood in for. These calls must produce rows the invoices migration's constraints accept.
+// Only the database is stood in for. These calls must produce rows the invoices migration's constraints accept,
+// and must only touch invoices that are still where the page last saw them.
 const db = vi.hoisted(() => ({
-  updates: [] as { table: string; values: Record<string, unknown>; column: string; match: unknown }[],
+  updates: [] as { table: string; values: Record<string, unknown>; filters: [string, unknown][] }[],
   uploads: [] as { bucket: string; path: string; type: string }[],
   uploadError: null as { message: string } | null,
+  // The rows the database reports as updated; null means every id the call named.
+  matched: null as string[] | null,
 }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => ({
-      update: (values: Record<string, unknown>) => ({
-        eq: async (column: string, match: unknown) => { db.updates.push({ table, values, column, match }); return { error: null }; },
-        in: async (column: string, match: unknown) => { db.updates.push({ table, values, column, match }); return { error: null }; },
-      }),
+      update: (values: Record<string, unknown>) => {
+        const entry = { table, values, filters: [] as [string, unknown][] };
+        db.updates.push(entry);
+        const named = () => entry.filters.filter(([column]) => column === "id").flatMap(([, match]) => (Array.isArray(match) ? match : [match])) as string[];
+        const chain = {
+          eq: (column: string, match: unknown) => { entry.filters.push([column, match]); return chain; },
+          in: (column: string, match: unknown) => { entry.filters.push([column, match]); return chain; },
+          select: async () => ({ data: (db.matched ?? named()).map((id) => ({ id })), error: null }),
+          then: (resolve: (reply: { error: null }) => unknown) => resolve({ error: null }),
+        };
+        return chain;
+      },
     }),
     storage: {
       from: (bucket: string) => ({
@@ -24,22 +35,28 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 const iso = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/);
+const noLiveInvoice = ["invoice_status", ["not_raised", "declined", "expired"]];
 
 describe("invoice calls for the Payments tab", () => {
-  beforeEach(() => { db.updates = []; db.uploads = []; db.uploadError = null; });
+  beforeEach(() => { db.updates = []; db.uploads = []; db.uploadError = null; db.matched = null; });
 
   it("marks the chosen payouts as raised through BII, clearing any earlier decision", async () => {
-    await markInvoicesRaised(["p1", "p2"]);
+    await expect(markInvoicesRaised(["p1", "p2"])).resolves.toEqual(["p1", "p2"]);
     expect(db.updates).toEqual([{
-      table: "payouts", column: "id", match: ["p1", "p2"],
+      table: "payouts", filters: [["id", ["p1", "p2"]], noLiveInvoice],
       values: { invoice_route: "bii", invoice_status: "raised", invoice_raised_at: iso, invoice_decided_at: null, invoice_number: null, invoice_file_path: null },
     }]);
+  });
+
+  it("only marks payouts that still have no live invoice, and says which ones it marked", async () => {
+    db.matched = ["p1"];
+    await expect(markInvoicesRaised(["p1", "p2"])).resolves.toEqual(["p1"]);
   });
 
   it("records an approval with its number and date", async () => {
     await recordInvoiceDecision("p1", { status: "approved", invoiceNumber: "ETIMS-1", decidedAt: "2026-11-05T09:00:00Z" });
     expect(db.updates).toEqual([{
-      table: "payouts", column: "id", match: "p1",
+      table: "payouts", filters: [["id", "p1"], ["invoice_status", "raised"]],
       values: { invoice_status: "approved", invoice_number: "ETIMS-1", invoice_decided_at: "2026-11-05T09:00:00Z" },
     }]);
   });
@@ -53,6 +70,11 @@ describe("invoice calls for the Payments tab", () => {
     ]);
   });
 
+  it("won't record a decision on an invoice that is no longer raised", async () => {
+    db.matched = [];
+    await expect(recordInvoiceDecision("p1", { status: "declined", decidedAt: "2026-11-05T09:00:00Z" })).rejects.toThrow("changed since the page loaded");
+  });
+
   it("stores a creator's own invoice, with its file, as raised on the creator route", async () => {
     const file = new File(["%PDF"], "My Invoice.pdf", { type: "application/pdf" });
     await recordCreatorInvoice("p1", "a1", file, "ETIMS-9");
@@ -60,7 +82,7 @@ describe("invoice calls for the Payments tab", () => {
     expect(db.uploads[0]).toMatchObject({ bucket: "payout-invoices", type: "application/pdf" });
     expect(db.uploads[0].path).toMatch(/^a1\/p1\/\d+-My_Invoice\.pdf$/);
     expect(db.updates).toEqual([{
-      table: "payouts", column: "id", match: "p1",
+      table: "payouts", filters: [["id", "p1"], noLiveInvoice],
       values: {
         invoice_route: "creator", invoice_status: "raised", invoice_number: "ETIMS-9", invoice_raised_at: iso,
         invoice_decided_at: null, invoice_file_path: db.uploads[0].path,
@@ -74,6 +96,11 @@ describe("invoice calls for the Payments tab", () => {
     expect(db.updates[0].values).toMatchObject({ invoice_route: "creator", invoice_status: "raised", invoice_file_path: null });
   });
 
+  it("won't put a creator's invoice over one that is already out", async () => {
+    db.matched = [];
+    await expect(recordCreatorInvoice("p1", "a1", null, "ETIMS-9")).rejects.toThrow("changed since the page loaded");
+  });
+
   it("doesn't mark the invoice raised when the file didn't upload", async () => {
     db.uploadError = { message: "The object exceeded the maximum allowed size" };
     await expect(recordCreatorInvoice("p1", "a1", new File(["x"], "big.pdf", { type: "application/pdf" }), "ETIMS-9")).rejects.toThrow("exceeded the maximum");
@@ -84,13 +111,13 @@ describe("invoice calls for the Payments tab", () => {
     await setPaymentTerms("c1", 45);
     await setPaymentTerms("c1", null);
     expect(db.updates).toEqual([
-      { table: "campaigns", column: "id", match: "c1", values: { payment_terms_days: 45 } },
-      { table: "campaigns", column: "id", match: "c1", values: { payment_terms_days: null } },
+      { table: "campaigns", filters: [["id", "c1"]], values: { payment_terms_days: 45 } },
+      { table: "campaigns", filters: [["id", "c1"]], values: { payment_terms_days: null } },
     ]);
   });
 
   it("moves the report approval date to noon in Nairobi, so the day can't slip", async () => {
     await setReportApprovedAt("p1", "2026-11-10");
-    expect(db.updates).toEqual([{ table: "payouts", column: "id", match: "p1", values: { report_approved_at: "2026-11-10T12:00:00+03:00" } }]);
+    expect(db.updates).toEqual([{ table: "payouts", filters: [["id", "p1"]], values: { report_approved_at: "2026-11-10T12:00:00+03:00" } }]);
   });
 });

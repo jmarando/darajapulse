@@ -57,24 +57,33 @@ export async function saveStaffPayoutDetails(
   if (error) throw fail(error);
 }
 
-interface UpdateQuery {
-  eq(column: string, value: string): PromiseLike<{ error: DbError | null }>;
-  in(column: string, values: string[]): PromiseLike<{ error: DbError | null }>;
+interface UpdateQuery extends PromiseLike<{ error: DbError | null }> {
+  eq(column: string, value: string): UpdateQuery;
+  in(column: string, values: string[]): UpdateQuery;
+  select(columns: string): PromiseLike<{ data: { id: string }[] | null; error: DbError | null }>;
 }
 const updatable = (table: string) =>
   (supabase as unknown as { from(table: string): { update(values: Record<string, unknown>): UpdateQuery } }).from(table);
 
-/** Staff took these payouts' batch file to KRA: they are now invoiced through Buyer Initiated Invoicing, with no earlier decision. */
-export async function markInvoicesRaised(payoutIds: string[]): Promise<void> {
-  const { error } = await updatable("payouts").update({
+// Each invoice change names the state it starts from, so a page left open can't undo what someone else recorded since.
+const NO_LIVE_INVOICE = ["not_raised", "declined", "expired"];
+const STALE = "This invoice changed since the page loaded. Refresh the page and try again.";
+
+/**
+ * Staff are taking these payouts' batch file to KRA: they are now invoiced through Buyer Initiated Invoicing, with no
+ * earlier decision. Only payouts that still have no live invoice are marked; returns the ids that were.
+ */
+export async function markInvoicesRaised(payoutIds: string[]): Promise<string[]> {
+  const { data, error } = await updatable("payouts").update({
     invoice_route: "bii",
     invoice_status: "raised",
     invoice_raised_at: new Date().toISOString(),
     invoice_decided_at: null,
     invoice_number: null,
     invoice_file_path: null,
-  }).in("id", payoutIds);
+  }).in("id", payoutIds).in("invoice_status", NO_LIVE_INVOICE).select("id");
   if (error) throw fail(error);
+  return (data ?? []).map((row) => row.id);
 }
 
 export type InvoiceDecision =
@@ -86,8 +95,9 @@ export async function recordInvoiceDecision(payoutId: string, d: InvoiceDecision
   const values = d.status === "approved"
     ? { invoice_status: d.status, invoice_number: d.invoiceNumber, invoice_decided_at: d.decidedAt }
     : { invoice_status: d.status, invoice_decided_at: d.decidedAt };
-  const { error } = await updatable("payouts").update(values).eq("id", payoutId);
+  const { data, error } = await updatable("payouts").update(values).eq("id", payoutId).eq("invoice_status", "raised").select("id");
   if (error) throw fail(error);
+  if (!data?.length) throw new Error(STALE);
 }
 
 /**
@@ -101,15 +111,16 @@ export async function recordCreatorInvoice(payoutId: string, agencyId: string, f
     const { error: uploadError } = await supabase.storage.from("payout-invoices").upload(path, file, { contentType: file.type || undefined });
     if (uploadError) throw fail(uploadError);
   }
-  const { error } = await updatable("payouts").update({
+  const { data, error } = await updatable("payouts").update({
     invoice_route: "creator",
     invoice_status: "raised",
     invoice_number: invoiceNumber,
     invoice_raised_at: new Date().toISOString(),
     invoice_decided_at: null,
     invoice_file_path: path,
-  }).eq("id", payoutId);
+  }).eq("id", payoutId).in("invoice_status", NO_LIVE_INVOICE).select("id");
   if (error) throw fail(error);
+  if (!data?.length) throw new Error(STALE);
 }
 
 /** Days after both approvals that this campaign's creators become payable (Royco: 45), or null for none. */

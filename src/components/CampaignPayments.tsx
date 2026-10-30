@@ -181,34 +181,44 @@ const CampaignPayments = ({ contractDates, campaignId, agencyId, campaignName, c
 
   const nameOf = (payoutId: string) => rows.find((row) => row.payout?.id === payoutId)?.item.influencers?.full_name ?? "a creator";
 
+  // Rows are marked raised first, and the file holds only the rows that were: a row someone else invoiced since the
+  // page loaded never reaches KRA twice.
   const downloadKraFile = async () => {
-    const chosen = rows.filter((row) => row.payout && selected.has(row.payout.id));
-    const { csv, included, skipped } = buildKraBatchCsv(chosen.map((row) => {
+    const now = new Date();
+    const inputs = rows.filter((row) => row.payout && selected.has(row.payout.id)).map((row) => {
       const details = detailsByCreator.get(row.item.influencer_id);
       return {
-        payoutId: row.payout.id,
+        payoutId: row.payout.id as string,
         legalName: details?.legalName ?? "",
         idNumber: details?.idNumber ?? "",
         phone: details?.mpesaNumber ?? "",
         grossKes: Number(row.payout.gross_kes),
         itemName: `Content creation: ${campaignName}`,
       };
-    }), new Date());
+    });
+    const { included, skipped } = buildKraBatchCsv(inputs, now);
     if (skipped.length) toast.error(`Left out of the file: ${skipped.map((s) => `${nameOf(s.payoutId)} (${s.reason})`).join(", ")}`);
     if (!included.length) return;
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${campaignName.replace(/[^a-z0-9]+/gi, "_")}_KRA_invoices_${new Date().toISOString().slice(0, 10)}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    let marked: string[];
     try {
-      await markInvoicesRaised(included);
-      toast.success(`${included.length} invoice${included.length === 1 ? "" : "s"} marked raised. Upload the file in eCitizen's Batch Invoices.`);
-      setSelected(new Set());
+      marked = await markInvoicesRaised(included);
     } catch (err) {
-      toast.error(`The file downloaded, but these weren't marked raised: ${included.map(nameOf).join(", ")}. ${err instanceof Error ? err.message : ""} Try again.`);
+      toast.error(`Couldn't mark the invoices raised, so no file was made. ${err instanceof Error ? err.message : ""} Try again.`);
+      return;
     }
+    const changed = included.filter((id) => !marked.includes(id));
+    if (changed.length) toast.error(`Left out because their invoice changed since the page loaded: ${changed.map(nameOf).join(", ")}`);
+    if (marked.length) {
+      const { csv } = buildKraBatchCsv(inputs.filter((input) => marked.includes(input.payoutId)), now);
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${campaignName.replace(/[^a-z0-9]+/gi, "_")}_KRA_invoices_${now.toISOString().slice(0, 10)}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${marked.length} invoice${marked.length === 1 ? "" : "s"} marked raised. Upload the file in eCitizen's Batch Invoices.`);
+    }
+    setSelected(new Set());
     await loadPayouts();
   };
 
