@@ -57,7 +57,8 @@ async function scGet(path: string, params: Record<string, string>): Promise<any>
 }
 
 export async function searchTikTok(query: string, limit = 10): Promise<Found[]> {
-  const json = await scGet("/v1/tiktok/search/keyword", { query });
+  // Without date_posted TikTok returns videos of any age; YouTube and Reddit already ask for the last week.
+  const json = await scGet("/v1/tiktok/search/keyword", { query, date_posted: "this-week" });
   const items: any[] = json?.search_item_list ?? [];
   const videos = items
     .map((item: any): Found => {
