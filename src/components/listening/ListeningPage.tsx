@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,10 +12,12 @@ import { toast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/dash/PageHeader";
 import { PageTab, PageTabList } from "@/components/dash/PageTabs";
 import { Panel } from "@/components/dash/Panel";
-import type { ListeningMention, ListeningTopic } from "@/lib/listening";
+import { lastDays, periodLabel, previousPeriod, withinPeriod, type ListeningMention, type ListeningTopic, type Period } from "@/lib/listening";
+import { buildListeningDeck } from "@/lib/listeningDeck";
 import ListeningOverview from "./ListeningOverview";
 import ListeningMentions from "./ListeningMentions";
 import ListeningKeywords from "./ListeningKeywords";
+import ListeningPeriod, { type Preset } from "./ListeningPeriod";
 
 type Brand = { id: string; name: string };
 
@@ -23,18 +25,22 @@ type Brand = { id: string; name: string };
 const db = supabase as unknown as SupabaseClient;
 
 const MENTION_COLUMNS = "id, topic_id, source, url, title, snippet, author, reach, shares, published_at, found_at, sentiment, sentiment_score, theme";
-const DAYS = 30;
+const PRESET_DAYS: Record<Exclude<Preset, "custom">, number> = { "7d": 7, "30d": 30, "90d": 90 };
 
-/** The brand's last 30 days of mentions, read in pages so none are cut off at the API's 1,000 rows. */
-async function loadMentions(clientId: string): Promise<ListeningMention[]> {
-  const since = new Date(Date.now() - DAYS * 86_400_000).toISOString();
+/**
+ * Mentions found since a moment, read in pages so none are cut off at the API's 1,000
+ * rows. Everything found stays in the table, so filtering by when we found it is enough
+ * to reach any period: a post cannot be found before the day it was published.
+ */
+async function loadMentions(clientId: string, since: number): Promise<ListeningMention[]> {
+  const from = new Date(since).toISOString();
   const out: ListeningMention[] = [];
   for (let start = 0; start < 10_000; start += 1000) {
     const { data, error } = await db
       .from("listening_mentions")
       .select(MENTION_COLUMNS)
       .eq("client_id", clientId)
-      .gte("found_at", since)
+      .gte("found_at", from)
       .order("found_at", { ascending: false })
       .range(start, start + 999);
     if (error) throw error;
@@ -49,7 +55,8 @@ async function loadMentions(clientId: string): Promise<ListeningMention[]> {
  * themes and posts that need attention, the mentions themselves, and the
  * keywords that find them. Agency staff pick any of their clients and can
  * search on demand; brands see their own and add keywords, which the hourly
- * sweep picks up.
+ * sweep picks up. Everything is shown for a chosen period, with the period
+ * before it for comparison, and can be downloaded as a deck.
  */
 export default function ListeningPage({ portal = false }: { portal?: boolean }) {
   const { user, isAgency, isSuperAdmin } = useAuth();
@@ -58,12 +65,23 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
   const [brands, setBrands] = useState<Brand[] | null>(null);
   const [topics, setTopics] = useState<ListeningTopic[]>([]);
   const [mentions, setMentions] = useState<ListeningMention[]>([]);
+  const [period, setPeriod] = useState<Period>(() => lastDays(30));
+  const [preset, setPreset] = useState<Preset>("30d");
+  const [compare, setCompare] = useState(true);
   const [creditsToday, setCreditsToday] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const tab = params.get("tab") ?? "overview";
   const clientId = params.get("brand") ?? brands?.[0]?.id ?? null;
   const brand = brands?.find((b) => b.id === clientId) ?? null;
+
+  // The window the chosen period is compared with, and the earliest day either needs.
+  const previous = useMemo(() => previousPeriod(period), [period]);
+  const loadedFrom = Math.min(period.start, previous.start);
+
+  const inPeriod = useMemo(() => withinPeriod(mentions, period), [mentions, period]);
+  const inPrevious = useMemo(() => withinPeriod(mentions, previous), [mentions, previous]);
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -91,7 +109,7 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
     try {
       const [t, m, c] = await Promise.all([
         db.from("listening_topics").select("*").eq("client_id", clientId).order("created_at"),
-        loadMentions(clientId),
+        loadMentions(clientId, loadedFrom),
         db.rpc("listening_credits_today", { _client_id: clientId }),
       ]);
       if (t.error) throw t.error;
@@ -103,9 +121,20 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, loadedFrom]);
 
   useEffect(() => { load(); }, [load]);
+
+  const choosePreset = (next: Preset) => {
+    setPreset(next);
+    if (next !== "custom") setPeriod(lastDays(PRESET_DAYS[next]));
+  };
+
+  // Stepping or picking dates is no longer one of the presets, so the label shows the dates.
+  const choosePeriod = (next: Period) => {
+    setPreset("custom");
+    setPeriod(next);
+  };
 
   const searchNow = async () => {
     if (!clientId) return;
@@ -126,6 +155,29 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
       description: data?.topics ? `${data.credits_used} credits used${note ? ` · ${note}` : ""}` : note ?? "Every keyword was searched in the last hour.",
     });
     load();
+  };
+
+  const downloadPpt = async () => {
+    if (!brand) return;
+    setExporting(true);
+    try {
+      const deck = buildListeningDeck({
+        brandName: brand.name,
+        topics,
+        mentions: inPeriod,
+        previousMentions: inPrevious,
+        period,
+        previous,
+        compare,
+      });
+      // Loaded only when someone exports, so the page doesn't carry the deck code around.
+      const { exportListeningToPptx } = await import("@/lib/exportListening");
+      await exportListeningToPptx(deck);
+    } catch (e) {
+      toast({ title: "Couldn't build the deck", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const activeTopics = useMemo(() => topics.filter((t) => t.active), [topics]);
@@ -158,6 +210,17 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
                 </SelectContent>
               </Select>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={downloadPpt}
+              disabled={exporting || !inPeriod.length}
+              title={inPeriod.length ? "Download the period as a PowerPoint deck" : "No posts in this period to put in a deck"}
+            >
+              <Download className="mr-2 h-4 w-4" aria-hidden />
+              {exporting ? "Preparing…" : "Download PPT"}
+            </Button>
             {staff && (
               <Button variant="outline" size="sm" className="h-9" onClick={searchNow} disabled={searching || !activeTopics.length}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${searching ? "animate-spin" : ""}`} /> {searching ? "Searching…" : "Search now"}
@@ -166,6 +229,18 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
           </>
         }
       />
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <ListeningPeriod
+          period={period}
+          preset={preset}
+          compare={compare}
+          onPreset={choosePreset}
+          onPeriod={choosePeriod}
+          onCompare={setCompare}
+        />
+        <span className="text-[12.5px] text-muted-foreground">{periodLabel(period)}</span>
+      </div>
 
       <Tabs value={tab} onValueChange={(v) => setParam("tab", v)}>
         <PageTabList active={tab} className="mb-5 w-fit max-w-full">
@@ -189,14 +264,20 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
               <ListeningOverview
                 brandName={brand?.name ?? "Your brand"}
                 topics={topics}
-                mentions={mentions}
+                mentions={inPeriod}
+                previousMentions={inPrevious}
+                period={period}
+                rangeLabel={periodLabel(period)}
+                compare={compare}
+                hasAnyPosts={mentions.length > 0}
+                onResetPeriod={() => choosePreset("30d")}
                 creditsToday={creditsToday}
                 showCredits={staff}
                 onAddKeywords={() => setParam("tab", "keywords")}
               />
             </TabsContent>
             <TabsContent value="mentions" className="mt-0">
-              <ListeningMentions topics={topics} mentions={mentions} />
+              <ListeningMentions topics={topics} mentions={inPeriod} />
             </TabsContent>
             <TabsContent value="keywords" className="mt-0">
               {clientId && (

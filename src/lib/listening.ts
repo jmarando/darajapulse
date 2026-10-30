@@ -60,6 +60,16 @@ export const mentionDate = (m: Pick<ListeningMention, "published_at" | "found_at
 /** Mentions the AI judged to be about the keyword's subject (unrated ones count until read). */
 export const onTopic = (mentions: ListeningMention[]) => mentions.filter((m) => m.theme !== OFF_TOPIC);
 
+/**
+ * Posts about the brand itself: the on-topic mentions its brand keywords found, once each
+ * when two of them found the same post.
+ */
+export function brandMentions(topics: ListeningTopic[], mentions: ListeningMention[]): ListeningMention[] {
+  const ids = new Set(topics.filter((t) => t.kind === "brand").map((t) => t.id));
+  const seen = new Set<string>();
+  return onTopic(mentions).filter((m) => ids.has(m.topic_id) && !seen.has(m.url) && !!seen.add(m.url));
+}
+
 export const withinDays = (mentions: ListeningMention[], days: number, now = Date.now()) => {
   const since = now - days * 86_400_000;
   return mentions.filter((m) => Date.parse(mentionDate(m)) >= since);
@@ -177,6 +187,86 @@ export function weekChange(mentions: ListeningMention[], now = Date.now()): Week
     else if (at >= now - 2 * week) previous++;
   }
   return { current, previous, delta: current - previous };
+}
+
+/** A window of whole local days, as local timestamps. */
+export type Period = { start: number; end: number };
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const endOfDay = (d: Date) => startOfDay(d) + 86_400_000 - 1;
+
+/** The last `days` days, today included. */
+export function lastDays(days: number, now = Date.now()): Period {
+  const d = new Date(now);
+  const first = new Date(d.getFullYear(), d.getMonth(), d.getDate() - (days - 1));
+  return { start: startOfDay(first), end: endOfDay(d) };
+}
+
+/** A period covering the two dates' days, in either order. */
+export function dayPeriod(a: Date, b: Date): Period {
+  const [from, to] = a.getTime() <= b.getTime() ? [a, b] : [b, a];
+  return { start: startOfDay(from), end: endOfDay(to) };
+}
+
+/** The window of the same length immediately before this one. */
+export function previousPeriod(p: Period): Period {
+  const span = p.end - p.start + 1;
+  return { start: p.start - span, end: p.start - 1 };
+}
+
+/** The same-length window `n` periods back (negative: forward). */
+export function shiftPeriod(p: Period, n: number): Period {
+  const span = p.end - p.start + 1;
+  return { start: p.start + n * span, end: p.end + n * span };
+}
+
+export const periodDays = (p: Period) => Math.round((p.end - p.start + 1) / 86_400_000);
+
+/** When a mention happened, as a timestamp: the platform's date, else when we found it. */
+export const mentionTime = (m: ListeningMention) => Date.parse(mentionDate(m));
+
+/** The mentions that happened within the period. */
+export function withinPeriod(mentions: ListeningMention[], p: Period): ListeningMention[] {
+  return mentions.filter((m) => {
+    const at = mentionTime(m);
+    return at >= p.start && at <= p.end;
+  });
+}
+
+/** Posts this period against the same-length period before it. */
+export function changeBetween(current: ListeningMention[], previous: ListeningMention[]): WeekChange {
+  return { current: current.length, previous: previous.length, delta: current.length - previous.length };
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "1–30 Sep 2026", or "28 Sep – 3 Oct 2026" when the period spans months. */
+export function periodLabel(p: Period): string {
+  const a = new Date(p.start);
+  const b = new Date(p.end);
+  const ma = MONTHS[a.getMonth()];
+  const mb = MONTHS[b.getMonth()];
+  if (a.getFullYear() !== b.getFullYear()) {
+    return `${a.getDate()} ${ma} ${a.getFullYear()} – ${b.getDate()} ${mb} ${b.getFullYear()}`;
+  }
+  if (a.getMonth() === b.getMonth()) return `${a.getDate()}–${b.getDate()} ${mb} ${b.getFullYear()}`;
+  return `${a.getDate()} ${ma} – ${b.getDate()} ${mb} ${b.getFullYear()}`;
+}
+
+/** Rated mentions per day across the period, oldest first, with empty days kept. */
+export function moodByPeriod(mentions: ListeningMention[], p: Period): MoodDay[] {
+  const out = new Map<string, MoodDay>();
+  const first = new Date(p.start);
+  for (let d = new Date(first.getFullYear(), first.getMonth(), first.getDate()); d.getTime() <= p.end; d.setDate(d.getDate() + 1)) {
+    const key = dayKey(d);
+    out.set(key, { day: key, positive: 0, neutral: 0, negative: 0 });
+  }
+  for (const m of mentions) {
+    if (!m.sentiment) continue;
+    const row = out.get(dayKey(new Date(mentionTime(m))));
+    if (row) row[m.sentiment]++;
+  }
+  return [...out.values()];
 }
 
 export type PlatformRow = { key: string; label: string; mentions: number; reach: number; share: number; viewsKnown: boolean };
