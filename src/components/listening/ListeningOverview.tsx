@@ -9,9 +9,9 @@ import { DeltaChip, StatusChip } from "@/components/dash/chips";
 import { ToneList, type ToneItem } from "@/components/dash/ToneList";
 import { cn } from "@/lib/utils";
 import {
-  CREDITS_PER_SEARCH, DAILY_CREDITS, KIND_LABEL, SOURCE_LABEL, mentionDate, moodByDay, moodShare, needsAttention, netMood,
-  onTopic, platformMix, shareOfVoice, sweepStatus, themes, topMentions, totals, weekChange, withinDays,
-  type ListeningMention, type ListeningTopic,
+  CREDITS_PER_SEARCH, DAILY_CREDITS, KIND_LABEL, SOURCE_LABEL, brandMentions, changeBetween, mentionDate, moodByPeriod,
+  moodShare, needsAttention, netMood, onTopic, platformMix, shareOfVoice, sweepStatus, themes, topMentions, totals,
+  type ListeningMention, type ListeningTopic, type Period,
 } from "@/lib/listening";
 import { fmtShort } from "@/lib/reporting";
 
@@ -52,10 +52,20 @@ function Figure({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function ListeningOverview({ brandName, topics, mentions, creditsToday, showCredits, onAddKeywords }: {
+export default function ListeningOverview({ brandName, topics, mentions, previousMentions, period, rangeLabel, compare, hasAnyPosts, onResetPeriod, creditsToday, showCredits, onAddKeywords }: {
   brandName: string;
   topics: ListeningTopic[];
+  /** The chosen period's mentions only. */
   mentions: ListeningMention[];
+  /** The same-length period before it, for the comparison. */
+  previousMentions: ListeningMention[];
+  period: Period;
+  /** "1–30 Sep 2026" — the days the page is showing. */
+  rangeLabel: string;
+  compare: boolean;
+  /** Whether any posts were found at all, so an empty period isn't mistaken for not listening. */
+  hasAnyPosts: boolean;
+  onResetPeriod: () => void;
   creditsToday: number | null;
   /** Agency staff see the day's credit use. */
   showCredits: boolean;
@@ -63,16 +73,12 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
 }) {
   const { search, pathname } = useLocation();
   const now = Date.now();
-  const brandIds = useMemo(() => new Set(topics.filter((t) => t.kind === "brand").map((t) => t.id)), [topics]);
   const relevant = useMemo(() => onTopic(mentions), [mentions]);
   // Posts about the brand, once each even when two of its keywords found the same post.
-  const own = useMemo(() => {
-    const seen = new Set<string>();
-    return relevant.filter((m) => brandIds.has(m.topic_id) && !seen.has(m.url) && !!seen.add(m.url));
-  }, [relevant, brandIds]);
-  const ownWeek = useMemo(() => totals(withinDays(own, 7)), [own]);
-  const ownMonth = useMemo(() => totals(own), [own]);
-  const week = useMemo(() => weekChange(own), [own]);
+  const own = useMemo(() => brandMentions(topics, mentions), [topics, mentions]);
+  const ownBefore = useMemo(() => brandMentions(topics, previousMentions), [topics, previousMentions]);
+  const ownTotals = useMemo(() => totals(own), [own]);
+  const change = useMemo(() => changeBetween(own, ownBefore), [own, ownBefore]);
   const creators = useMemo(
     () => new Set(own.map((m) => m.author?.trim().toLowerCase()).filter((a): a is string => !!a)).size,
     [own],
@@ -81,8 +87,8 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
   const allThemes = useMemo(() => themes(own), [own]);
   const themeRows = allThemes.slice(0, 6);
   const voices = useMemo(() => shareOfVoice(topics, mentions, brandName), [topics, mentions, brandName]);
-  const days = useMemo(() => moodByDay(own, 30), [own]);
-  const attention = useMemo(() => needsAttention(topics, withinDays(mentions, 7)), [topics, mentions]);
+  const days = useMemo(() => moodByPeriod(own, period), [own, period]);
+  const attention = useMemo(() => needsAttention(topics, own), [topics, own]);
   const top = useMemo(() => topMentions(relevant, 5), [relevant]);
   const latestNegative = useMemo(
     () => own
@@ -114,6 +120,22 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
     );
   }
 
+  if (!mentions.length && hasAnyPosts) {
+    return (
+      <Panel>
+        <div className="flex flex-col items-start gap-3 py-2">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary"><Ear className="h-5 w-5 text-muted-foreground" aria-hidden /></span>
+          <h2 className="text-[17px] font-medium">No posts in {rangeLabel}</h2>
+          <p className="max-w-xl text-[14px] text-muted-foreground">
+            Listening is on, but nothing on-topic was posted in these days.
+            {ownBefore.length ? ` The period before has ${count(ownBefore.length, "post")}.` : " Try a wider period."}
+          </p>
+          <Button size="sm" variant="outline" onClick={onResetPeriod}>Show the last 30 days</Button>
+        </div>
+      </Panel>
+    );
+  }
+
   if (!relevant.length) {
     const lastScan = sweep.lastScan;
     const failing = topics.find((t) => t.active && t.last_note);
@@ -140,13 +162,13 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
     );
   }
 
-  const hasBrand = brandIds.size > 0;
+  const hasBrand = topics.some((t) => t.kind === "brand");
   const lead = platforms[0];
-  const positive = moodShare(ownMonth, "positive");
-  const neutral = moodShare(ownMonth, "neutral");
-  const negative = moodShare(ownMonth, "negative");
-  const net = netMood(ownMonth);
-  const unread = ownMonth.mentions - ownMonth.rated;
+  const positive = moodShare(ownTotals, "positive");
+  const neutral = moodShare(ownTotals, "neutral");
+  const negative = moodShare(ownTotals, "negative");
+  const net = netMood(ownTotals);
+  const unread = ownTotals.mentions - ownTotals.rated;
   const scanAge = sweep.lastScan ? now - Date.parse(sweep.lastScan) : null;
   const lastNegativeDays = latestNegative ? Math.max(0, Math.floor((now - Date.parse(mentionDate(latestNegative))) / 86_400_000)) : null;
 
@@ -156,9 +178,9 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
     return `${pathname}?${next.toString()}`;
   };
 
-  const sentence = ownMonth.mentions === 0
-    ? "No on-topic posts about your brand have come back yet. The sweep checks again within 12 hours."
-    : `${count(ownMonth.mentions, "post")} in the last 30 days${creators ? ` from ${count(creators, "creator")}` : ""}` +
+  const sentence = ownTotals.mentions === 0
+    ? "No on-topic posts about your brand in this period."
+    : `${count(ownTotals.mentions, "post")} in this period${creators ? ` from ${count(creators, "creator")}` : ""}` +
       `${lead ? `, ${lead.share}% of them on ${lead.label}` : ""}. ` +
       (positive == null ? "The AI hasn't read their mood yet." : `${positive}% of the posts it read are positive.`);
 
@@ -189,21 +211,21 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
       });
     }
   }
-  if (ownMonth.rated >= 3 && negative != null && negative >= 25) {
+  if (ownTotals.rated >= 3 && negative != null && negative >= 25) {
     const worst = allThemes.find((t) => t.negative > 0);
     const seen = attention[0];
     findings.push({
       value: `${negative}%`,
       caption: "of rated posts are negative",
       headline: "Negative posts are worth answering",
-      body: `${ownMonth.negative} of ${ownMonth.rated} posts we read are negative${worst ? `, mostly about ${worst.theme}` : ""}.` +
+      body: `${ownTotals.negative} of ${ownTotals.rated} posts we read are negative${worst ? `, mostly about ${worst.theme}` : ""}.` +
         (seen?.reach ? ` The most seen has ${fmtShort(seen.reach)} views.` : ""),
       action: { label: "Review them", to: hrefFor("mentions") },
     });
-  } else if (ownMonth.rated >= 3 && net != null && net >= 40) {
+  } else if (ownTotals.rated >= 3 && net != null && net >= 40) {
     findings.push({
       value: `${net > 0 ? "+" : ""}${net}`,
-      caption: "net mood, 30 days",
+      caption: "net mood, this period",
       headline: "The mood is on your side",
       body: `${positive}% of the posts we read are positive against ${negative}% negative.`,
     });
@@ -213,7 +235,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
       value: `${lead.share}%`,
       caption: `of posts are on ${lead.label}`,
       headline: `${lead.label} is where the conversation happens`,
-      body: `${lead.mentions} of ${count(ownMonth.mentions, "post")}${lead.viewsKnown ? `, ${fmtShort(lead.reach)} views` : ""}.` +
+      body: `${lead.mentions} of ${count(ownTotals.mentions, "post")}${lead.viewsKnown ? `, ${fmtShort(lead.reach)} views` : ""}.` +
         (platforms[1] ? ` ${platforms[1].label} is second with ${platforms[1].share}%.` : ""),
     });
   }
@@ -276,30 +298,30 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
         <Panel
           className={cn("flex flex-col", findings.length ? "lg:col-span-4" : "lg:col-span-6")}
           title="The conversation"
-          subtitle={`Posts about ${brandName}, last 7 days`}
+          subtitle={`Posts about ${brandName}, ${rangeLabel}`}
           action={<Link to={hrefFor("mentions")} className="whitespace-nowrap text-[12.5px] text-muted-foreground hover:text-foreground">See posts</Link>}
         >
           <div className="flex flex-1 flex-col">
-            <div className="text-[56px] font-light leading-none tracking-[-0.035em] tabular-nums">{fmtShort(week.current)}</div>
+            <div className="text-[56px] font-light leading-none tracking-[-0.035em] tabular-nums">{fmtShort(change.current)}</div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              {week.previous > 0 ? (
-                <DeltaChip delta={week.delta}>{week.delta === 0 ? "No change" : `${week.delta > 0 ? "+" : ""}${week.delta} vs last week`}</DeltaChip>
-              ) : week.current > 0 ? (
-                <StatusChip tone="info">First week of posts</StatusChip>
+              {compare && change.previous > 0 ? (
+                <DeltaChip delta={change.delta}>{change.delta === 0 ? "No change" : `${change.delta > 0 ? "+" : ""}${change.delta} vs the period before`}</DeltaChip>
               ) : (
-                <StatusChip tone="neutral">No posts this week</StatusChip>
+                <StatusChip tone="neutral">{count(change.current, "post")} this period</StatusChip>
               )}
-              <span className="text-[12px] text-muted-foreground">
-                {week.previous > 0 ? `${fmtShort(week.previous)} the week before` : "Listening has just started"}
-              </span>
+              {compare && (
+                <span className="text-[12px] text-muted-foreground">
+                  {change.previous > 0 ? `${fmtShort(change.previous)} in the period before` : "Nothing in the period before"}
+                </span>
+              )}
             </div>
             <p className="mt-4 max-w-[42ch] text-[13.5px] leading-relaxed text-muted-foreground">{sentence}</p>
             <dl className="mt-auto divide-y divide-border/70 pt-4">
               {[
-                { label: "Posts in 30 days", value: fmtShort(ownMonth.mentions) },
-                { label: "Read for mood", value: ownMonth.rated ? `${fmtShort(ownMonth.rated)} of ${fmtShort(ownMonth.mentions)}` : "Not read yet" },
+                { label: "Posts in this period", value: fmtShort(ownTotals.mentions) },
+                { label: "Read for mood", value: ownTotals.rated ? `${fmtShort(ownTotals.rated)} of ${fmtShort(ownTotals.mentions)}` : "Not read yet" },
                 { label: "Creators", value: creators ? String(creators) : "—" },
-                { label: "Views, where reported", value: ownMonth.reach ? fmtShort(ownMonth.reach) : "—" },
+                { label: "Views, where reported", value: ownTotals.reach ? fmtShort(ownTotals.reach) : "—" },
               ].map((r) => (
                 <div key={r.label} className="flex items-center justify-between gap-3 py-2.5 text-[13.5px]">
                   <dt className="text-muted-foreground">{r.label}</dt>
@@ -307,7 +329,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
                 </div>
               ))}
             </dl>
-            {ownMonth.rated > 0 && (
+            {ownTotals.rated > 0 && (
               <div className="mt-4">
                 <div
                   className="flex h-2.5 overflow-hidden rounded-full bg-secondary"
@@ -365,11 +387,11 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
         <Panel
           className="lg:col-span-8"
           title="Mood over time"
-          subtitle="Rated posts about your brand per day, last 30 days"
+          subtitle={`Rated posts about your brand per day, ${rangeLabel}`}
           action={
             <div className="hidden shrink-0 text-right sm:block">
-              <div className="text-[20px] font-light leading-none tracking-[-0.02em] tabular-nums">{fmtShort(ownWeek.mentions)}</div>
-              <div className="mt-1 text-[12px] text-muted-foreground">posts this week</div>
+              <div className="text-[20px] font-light leading-none tracking-[-0.02em] tabular-nums">{fmtShort(ownTotals.rated)}</div>
+              <div className="mt-1 text-[12px] text-muted-foreground">posts read for mood</div>
             </div>
           }
         >
@@ -386,7 +408,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={days} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" tickFormatter={shortDay} interval={6} {...AXIS} />
+                  <XAxis dataKey="day" tickFormatter={shortDay} interval={Math.max(0, Math.floor(days.length / 8))} {...AXIS} />
                   <YAxis allowDecimals={false} {...AXIS} />
                   <Tooltip
                     cursor={{ fill: "hsl(var(--secondary))" }}
@@ -407,7 +429,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
           )}
         </Panel>
 
-        <Panel className="lg:col-span-4" title="Share of voice" subtitle="On-topic mentions, last 30 days">
+        <Panel className="lg:col-span-4" title="Share of voice" subtitle={`On-topic mentions, ${rangeLabel}`}>
           {voices.length ? (
             <ul className="space-y-4">
               {voices.map((v) => (
@@ -443,7 +465,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
       </div>
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-12">
-        <Panel className="lg:col-span-4" title="Where it's happening" subtitle="Posts about your brand, last 30 days">
+        <Panel className="lg:col-span-4" title="Where it's happening" subtitle={`Posts about your brand, ${rangeLabel}`}>
           {platforms.length ? (
             <ul className="-my-1 divide-y divide-border/70">
               {platforms.map((p) => (
@@ -469,7 +491,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
           )}
         </Panel>
 
-        <Panel className="lg:col-span-4" title="What people talk about" subtitle="Themes in posts about your brand, 30 days">
+        <Panel className="lg:col-span-4" title="What people talk about" subtitle={`Themes in posts about your brand, ${rangeLabel}`}>
           {themeRows.length ? (
             <ul className="-my-1 divide-y divide-border/70">
               {themeRows.map((t) => (
@@ -498,7 +520,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
           )}
         </Panel>
 
-        <Panel className="lg:col-span-4" title="Needs attention" subtitle="Negative posts about your brand this week">
+        <Panel className="lg:col-span-4" title="Needs attention" subtitle={`Negative posts about your brand, ${rangeLabel}`}>
           {attention.length ? (
             <ul className="-my-1 divide-y divide-border/70">
               {attention.map((m) => (
@@ -526,11 +548,11 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
                   <p className="text-[13.5px] font-medium">Nothing needs attention</p>
                   <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
                     No negative posts about {brandName} in the last seven days.{" "}
-                    {ownMonth.rated
-                      ? ownMonth.negative === 0
-                        ? `None of the ${ownMonth.rated} posts read this month were negative.`
-                        : `${ownMonth.negative} of ${ownMonth.rated} posts read this month were negative.`
-                      : "No posts have been read for mood this month."}
+                    {ownTotals.rated
+                      ? ownTotals.negative === 0
+                        ? `None of the ${ownTotals.rated} posts read in this period were negative.`
+                        : `${ownTotals.negative} of ${ownTotals.rated} posts read in this period were negative.`
+                      : "No posts have been read for mood in this period."}
                   </p>
                 </div>
               </div>
@@ -538,7 +560,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
                 <div className="flex items-center justify-between gap-3 py-2.5 text-[13px]">
                   <dt className="text-muted-foreground">Last negative post</dt>
                   <dd className="font-medium tabular-nums">
-                    {latestNegative ? `${lastNegativeDays} day${lastNegativeDays === 1 ? "" : "s"} ago` : "None this month"}
+                    {latestNegative ? `${lastNegativeDays} day${lastNegativeDays === 1 ? "" : "s"} ago` : "None in this period"}
                   </dd>
                 </div>
               </dl>
@@ -565,7 +587,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
       </div>
 
       <Panel
-        title="Most seen this month"
+        title="Most seen in this period"
         subtitle="Across the keywords you track, most views first"
         action={<Link to={hrefFor("mentions")} className="whitespace-nowrap text-[12.5px] text-muted-foreground hover:text-foreground">All mentions</Link>}
       >
