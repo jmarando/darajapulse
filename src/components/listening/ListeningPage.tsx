@@ -147,7 +147,7 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
     <div className="mx-auto w-full min-w-0 max-w-7xl px-4 py-6 sm:p-8">
       <PageHeader
         title="Listening"
-        subtitle={brand ? `What people say about ${brand.name} and its competitors on TikTok, YouTube and Reddit.` : "What people say about your brand and its competitors."}
+        subtitle={brand ? `What people say about ${brand.name} and its competitors on TikTok, Instagram, YouTube and Reddit.` : "What people say about your brand and its competitors."}
         actions={
           <>
             {brands && brands.length > 1 && (

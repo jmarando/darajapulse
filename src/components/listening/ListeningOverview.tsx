@@ -100,7 +100,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary"><Ear className="h-5 w-5 text-muted-foreground" aria-hidden /></span>
           <h2 className="text-[17px] font-medium">Start listening</h2>
           <p className="max-w-lg text-[14px] text-muted-foreground">
-            Add your brand name, your competitors and the category you sell in. We search TikTok, YouTube and Reddit for them
+            Add your brand name, your competitors and the category you sell in. We search TikTok, Instagram, YouTube and Reddit for them
             twice a day and read the mood of every post.
           </p>
           <ul className="grid w-full gap-3 pt-1 text-[13px] text-muted-foreground sm:grid-cols-3">
@@ -124,7 +124,7 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
           <h2 className="text-[17px] font-medium">{sweep.active ? `Listening is on for ${brandName}` : "Listening is paused"}</h2>
           <p className="max-w-xl text-[14px] text-muted-foreground">
             {sweep.active
-              ? `We search ${count(sweep.active, "keyword")} on TikTok, YouTube and Reddit twice a day. Nothing on-topic has come back yet.`
+              ? `We search ${count(sweep.active, "keyword")} on TikTok, Instagram, YouTube and Reddit twice a day. Nothing on-topic has come back yet.`
               : "Every keyword is paused, so nothing is being searched. Turn one on to start listening again."}
           </p>
           {failing && <p className="text-[12.5px] text-status-warn">{failing.last_note}</p>}
@@ -464,8 +464,8 @@ export default function ListeningOverview({ brandName, topics, mentions, credits
           ) : (
             <p className="text-[13px] text-muted-foreground">No posts about your brand yet.</p>
           )}
-          {platforms.some((p) => p.key === "reddit") && (
-            <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">Reddit doesn't report views, so those posts count in mentions only.</p>
+          {platforms.some((p) => p.key === "reddit" || p.key === "instagram") && (
+            <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">Reddit and Instagram don't report views, so those posts count in mentions only.</p>
           )}
         </Panel>
 
