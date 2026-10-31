@@ -17,6 +17,12 @@ project_id = "ucxlveehobmeywkiynpy"
     verify_jwt = false
   [functions.listening-sweep]
     verify_jwt = false
+  [functions.groundwork-brief]
+    verify_jwt = false
+  [functions.groundwork-report]
+    verify_jwt = false
+  [functions.groundwork-prospect]
+    verify_jwt = false
   [functions.instagram-oauth-start]
     verify_jwt = false
   [functions.instagram-oauth-callback]
