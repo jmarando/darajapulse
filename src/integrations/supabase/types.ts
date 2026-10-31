@@ -2985,6 +2985,73 @@ export type Database = {
         }
         Relationships: []
       }
+      listening_alert_log: {
+        Row: {
+          client_id: string
+          id: string
+          key: string
+          level: string
+          recipients: number
+          sent_at: string
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          key: string
+          level: string
+          recipients?: number
+          sent_at?: string
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          key?: string
+          level?: string
+          recipients?: number
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listening_alert_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listening_alert_rules: {
+        Row: {
+          client_id: string
+          enabled: boolean
+          recipients: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          enabled?: boolean
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          enabled?: boolean
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listening_alert_rules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listening_credits: {
         Row: {
           agency_id: string
@@ -4100,6 +4167,10 @@ export type Database = {
         }[]
       }
       can_access_listening: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_edit_listening_alerts: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
