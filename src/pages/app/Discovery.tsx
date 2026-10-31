@@ -64,7 +64,7 @@ const Discovery = () => {
   const [cityOptions, setCityOptions] = useState<string[]>([]);
 
   // Matchmaker
-  const [brief, setBrief] = useState({ brand: "", category: "", audience: "", platforms: [] as string[], budget_tier: "any", goal: "awareness", notes: "" });
+  const [brief, setBrief] = useState({ brand: "", category: "", audience: "", platforms: [] as string[], budget_tier: "any", goal: "awareness", notes: "", political: false });
   const [matching, setMatching] = useState(false);
   const [matches, setMatches] = useState<Array<{ creator_id: string; score: number; reason: string; angle: string }>>([]);
 
@@ -516,6 +516,7 @@ const Discovery = () => {
           </div>
         </div>
         <div className="mt-3"><Label>Notes</Label><Textarea rows={2} value={brief.notes} onChange={e => setBrief({ ...brief, notes: e.target.value })} placeholder="Anything else to weigh in the match" /></div>
+        <label className="mt-3 flex items-center gap-2 text-sm"><Switch checked={brief.political} onCheckedChange={political => setBrief({ ...brief, political })} /> Political campaign: keep political and news creators in the match</label>
         <div className="mt-3 flex gap-2">
           <Button onClick={runMatch} disabled={matching} className="bg-primary">
             {matching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}Rank matches

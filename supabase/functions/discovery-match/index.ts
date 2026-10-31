@@ -1,5 +1,6 @@
 // Rank existing discovery_creators against a user brief using Lovable AI.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { isPolitical, offTopicRule } from "../_shared/match-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,7 +54,7 @@ CANDIDATES (id, handle, platform, niche, followers, city, bio):
 ${candidates.map((c, i) => `${i + 1}. id=${c.id} | name=${c.full_name || "-"} | @${c.handle} on ${c.platform} | niche=${(c.niche || []).join(",")} | followers=${c.follower_count} | city=${c.city || "-"} | bio=${(c.bio || "").slice(0, 100)}`).join("\n")}
 
 Rules:
-- Only include a creator if their niche/bio clearly matches the brief. Skip anyone off-topic (e.g. do NOT include a political/news creator for a food brief).
+${offTopicRule(isPolitical(brief))}
 - The "reason" MUST reference the creator by their exact @handle or name from the list above — never a different creator's name.
 - Score reflects fit: 80+ excellent, 60-79 good, 40-59 weak (omit anything below 40).
 - Return up to 15, but fewer is fine.
