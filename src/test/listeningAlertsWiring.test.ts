@@ -103,6 +103,15 @@ describe("the alert tables: who can read and write", () => {
   });
 });
 
+describe("listening page: who may change the alert list", () => {
+  const page = read("../src/components/listening/ListeningPage.tsx");
+
+  it("is agency staff only; the brand portal sees the list without editing it", () => {
+    expect(page).toContain("const staff = !portal && (isAgency || isSuperAdmin);");
+    expect(page).toContain("canEditAlerts={staff}");
+  });
+});
+
 describe("listening-alerts: registered", () => {
   it("is a function that checks its own caller, not the platform's JWT check", () => {
     expect(read("config.toml")).toMatch(/\[functions\.listening-alerts\]\s+verify_jwt = false/);

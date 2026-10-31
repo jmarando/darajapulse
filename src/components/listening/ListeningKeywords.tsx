@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { Panel } from "@/components/dash/Panel";
 import { StatusChip } from "@/components/dash/chips";
+import ListeningAlerts from "./ListeningAlerts";
 import {
   CREDITS_PER_SEARCH, DAILY_CREDITS, KIND_LABEL, MAX_ACTIVE_TOPICS, parseTerms, type ListeningTopic, type TopicKind,
 } from "@/lib/listening";
@@ -26,12 +27,13 @@ const KIND_HINT: Record<TopicKind, string> = {
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-KE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Not yet";
 
-export default function ListeningKeywords({ clientId, brandName, topics, creditsToday, showCredits, onChanged }: {
+export default function ListeningKeywords({ clientId, brandName, topics, creditsToday, showCredits, canEditAlerts, onChanged }: {
   clientId: string;
   brandName: string;
   topics: ListeningTopic[];
   creditsToday: number | null;
   showCredits: boolean;
+  canEditAlerts: boolean;
   onChanged: () => void;
 }) {
   const [kind, setKind] = useState<TopicKind>(topics.some((t) => t.kind === "brand") ? "competitor" : "brand");
@@ -137,6 +139,8 @@ export default function ListeningKeywords({ clientId, brandName, topics, credits
             <Button type="submit" size="sm" disabled={saving || full}>{full ? `Limit of ${MAX_ACTIVE_TOPICS} reached` : saving ? "Adding…" : "Add keyword"}</Button>
           </form>
         </Panel>
+
+        <ListeningAlerts clientId={clientId} brandName={brandName} canEdit={canEditAlerts} />
 
         <Panel title="How it works">
           <ul className="space-y-2 text-[13px] text-muted-foreground">

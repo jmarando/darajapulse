@@ -287,6 +287,7 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
                   topics={topics}
                   creditsToday={creditsToday}
                   showCredits={staff}
+                  canEditAlerts={staff}
                   onChanged={load}
                 />
               )}
