@@ -10,10 +10,12 @@ import { ToneList, type ToneItem } from "@/components/dash/ToneList";
 import { cn } from "@/lib/utils";
 import {
   CREDITS_PER_SEARCH, DAILY_CREDITS, KIND_LABEL, SOURCE_LABEL, brandMentions, changeBetween, mentionDate, moodByPeriod,
-  moodShare, needsAttention, netMood, onTopic, platformMix, shareOfVoice, sweepStatus, themes, topMentions, totals,
+  moodShare, needsAttention, netMood, onTopic, platformMix, previousPeriod, shareOfVoice, sweepStatus, themes, topMentions, totals,
   type ListeningMention, type ListeningTopic, type Period,
 } from "@/lib/listening";
 import { fmtShort } from "@/lib/reporting";
+import { morningView } from "../../../supabase/functions/_shared/listening-brief";
+import MorningViewCard from "./MorningView";
 
 const AXIS = { stroke: "hsl(var(--muted-foreground))", fontSize: 11, tickLine: false, axisLine: false } as const;
 const MOOD_COLOR = {
@@ -291,9 +293,15 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
         : `${leader.label} holds ${leader.share}% of the conversation.`;
   const themedTotal = allThemes.reduce((n, t) => n + t.mentions, 0);
   const ratedDays = days.some((d) => d.positive + d.neutral + d.negative > 0);
+  // The morning view describes the last day up to now, so it needs a period that reaches now: one that stopped
+  // yesterday holds none of this morning's posts and could call it clear.
+  const morning = period.end >= now
+    ? morningView({ brandName, topics, mentions: [...mentions, ...previousMentions], now, loadedFrom: previousPeriod(period).start })
+    : null;
 
   return (
     <div className="space-y-4">
+      {morning && <MorningViewCard view={morning} brandName={brandName} now={now} />}
       <div className="grid min-w-0 gap-4 lg:grid-cols-12">
         <Panel
           className={cn("flex flex-col", findings.length ? "lg:col-span-4" : "lg:col-span-6")}
