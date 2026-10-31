@@ -51,6 +51,8 @@ export type MorningView = {
   unread: number;
   /** Platforms whose posts about the brand in the last day report no views at all. */
   noViews: string[];
+  /** Negative posts about the brand in the last day against the usual day of the week before, when that is a rise. */
+  spike: { now: number; usual: number } | null;
 };
 
 const OFF_TOPIC = "off-topic";
@@ -188,5 +190,6 @@ export function morningView(input: {
     category,
     unread,
     noViews,
+    spike: spike ? { now: negativeNow.length, usual: Math.round((usual as number) * 10) / 10 } : null,
   };
 }
