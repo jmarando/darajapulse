@@ -548,7 +548,9 @@ export type Database = {
           mandatory_mentions: string[] | null
           name: string
           objective: string | null
+          paid_for_by: string | null
           payment_eligibility_notes: string | null
+          political: boolean
           references_urls: string[] | null
           require_draft_approval: boolean
           slug: string | null
@@ -581,7 +583,9 @@ export type Database = {
           mandatory_mentions?: string[] | null
           name: string
           objective?: string | null
+          paid_for_by?: string | null
           payment_eligibility_notes?: string | null
+          political?: boolean
           references_urls?: string[] | null
           require_draft_approval?: boolean
           slug?: string | null
@@ -614,7 +618,9 @@ export type Database = {
           mandatory_mentions?: string[] | null
           name?: string
           objective?: string | null
+          paid_for_by?: string | null
           payment_eligibility_notes?: string | null
+          political?: boolean
           references_urls?: string[] | null
           require_draft_approval?: boolean
           slug?: string | null
@@ -2414,6 +2420,118 @@ export type Database = {
           state?: string
         }
         Relationships: []
+      }
+      groundwork_links: {
+        Row: {
+          agency_id: string
+          campaign_id: string
+          client_id: string
+          created_at: string
+          groundwork_campaign_id: string
+        }
+        Insert: {
+          agency_id: string
+          campaign_id: string
+          client_id: string
+          created_at?: string
+          groundwork_campaign_id: string
+        }
+        Update: {
+          agency_id?: string
+          campaign_id?: string
+          client_id?: string
+          created_at?: string
+          groundwork_campaign_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groundwork_links_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groundwork_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groundwork_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groundwork_prospects: {
+        Row: {
+          agency_id: string
+          campaign_id: string
+          created_at: string
+          followers: number | null
+          handle: string
+          id: string
+          invitation: string | null
+          name: string | null
+          paid_for_by: string
+          platform: string
+          status: string
+          updated_at: string
+          url: string | null
+          why: string[]
+        }
+        Insert: {
+          agency_id: string
+          campaign_id: string
+          created_at?: string
+          followers?: number | null
+          handle: string
+          id?: string
+          invitation?: string | null
+          name?: string | null
+          paid_for_by: string
+          platform: string
+          status?: string
+          updated_at?: string
+          url?: string | null
+          why?: string[]
+        }
+        Update: {
+          agency_id?: string
+          campaign_id?: string
+          created_at?: string
+          followers?: number | null
+          handle?: string
+          id?: string
+          invitation?: string | null
+          name?: string | null
+          paid_for_by?: string
+          platform?: string
+          status?: string
+          updated_at?: string
+          url?: string | null
+          why?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groundwork_prospects_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groundwork_prospects_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       influencers: {
         Row: {
