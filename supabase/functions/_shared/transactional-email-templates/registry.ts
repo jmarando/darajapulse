@@ -24,6 +24,7 @@ import { template as omoBriefLive } from './omo-brief-live.tsx'
 import { template as campaignBriefLive } from './campaign-brief-live.tsx'
 import { template as campaignDraftDecision } from './campaign-draft-decision.tsx'
 import { template as roycoAgreementAmended } from './royco-agreement-amended.tsx'
+import { template as listeningAlert } from './listening-alert.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'royco-agreement-amended': roycoAgreementAmended,
@@ -41,4 +42,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'omo-brief-live': omoBriefLive,
   'campaign-brief-live': campaignBriefLive,
   'campaign-draft-decision': campaignDraftDecision,
+  'listening-alert': listeningAlert,
 }
