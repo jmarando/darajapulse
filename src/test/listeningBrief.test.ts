@@ -88,6 +88,12 @@ describe("morningView: the verdict", () => {
     expect(v.verdict.level).toBe("clear");
   });
 
+  it("reports the spike with the usual day, and null when there is none", () => {
+    expect(view([...today(6), ...lastWeek(7), post("b")]).spike).toEqual({ now: 6, usual: 1 });
+    expect(view([...today(4), ...lastWeek(7), post("b")]).spike).toBeNull();
+    expect(view([...today(6), post("b")], { loadedFrom: NOW - 3 * DAY }).spike).toBeNull();
+  });
+
   it("is not sure when nothing was posted", () => {
     const v = view([]);
     expect(v.verdict.level).toBe("unsure");
