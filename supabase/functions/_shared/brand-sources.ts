@@ -249,14 +249,15 @@ export function mapFacebookPosts(json: Raw): MappedPage {
     const rawId = id(row?.id);
     if (!rawId) continue;
     const url = text(row?.url) ?? text(row?.permalink);
-    const picture = text(row?.link_attachment?.image_url) ?? text(row?.images?.[0]?.url);
+    const firstImage = row?.images?.[0];
+    const picture = text(row?.link_attachment?.image_url) ?? text(firstImage) ?? text(firstImage?.url) ?? text(firstImage?.uri);
     const details = row?.videoDetails;
     const video = !!(details?.sdUrl || details?.hdUrl || details?.thumbnailUrl) || /\/reel\//.test(url ?? "");
     posts.push({
       external_id: facebookPostKey(rawId),
       url,
       posted_at: fromTimestamp(row?.publishTime),
-      format: video ? "video" : picture ? "photo" : "text",
+      format: video ? "video" : picture ? "photo" : "other", // the list can't tell words alone from a picture it doesn't show
       caption: cleanCaption(row?.text),
       thumbnail_url: text(row?.videoDetails?.thumbnailUrl) ?? picture,
       metrics: metrics({ views: count(row?.videoViewCount), likes: count(row?.reactionCount), comments: count(row?.commentCount) }),

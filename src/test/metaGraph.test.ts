@@ -1,9 +1,9 @@
 import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-  READ_SCOPES, assetHandle, classifyMetaError, mapMetaFacebookPost, mapMetaMedia, mapMetaPage, mapMetaInstagram, matchChannel, metaDialogUrl,
+  READ_SCOPES, assetHandle, classifyMetaError, graphCall, listAccounts, mapMetaFacebookPost, mapMetaMedia, mapMetaPage, mapMetaInstagram, matchChannel, metaDialogUrl,
   normalisePostUrl, parseDemographics, parseMediaInsights, parsePostInsights, parsePostViewsSplit, parseSignedRequest, reconcilePosts, reconnectNote, shapeAssets,
 } from "../../supabase/functions/_shared/meta-graph";
 
@@ -291,5 +291,49 @@ describe("normalisePostUrl and reconcilePosts", () => {
   it("doesn't re-key onto an id another stored post already has", () => {
     const existing = [row("r1", "old", "https://facebook.com/reel/1"), row("r2", "new", "https://facebook.com/reel/9")];
     expect(reconcilePosts(existing, [{ external_id: "new", url: "https://facebook.com/reel/1" }])).toEqual([]);
+  });
+});
+
+describe("graphCall", () => {
+  it("sends the token in a header, never in the address", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "1" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const answer = await graphCall("secret-token")("me", { fields: "id,name" });
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string> }];
+    expect(url).toBe("https://graph.facebook.com/v26.0/me?fields=id%2Cname");
+    expect(url).not.toContain("secret-token");
+    expect(init.headers.Authorization).toBe("Bearer secret-token");
+    expect(answer).toEqual({ ok: true, json: { id: "1" } });
+    vi.unstubAllGlobals();
+  });
+
+  it("hands back Meta's error, even on a 200", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: { code: 190, message: "expired" } }), { status: 400 })));
+    expect(await graphCall("t")("me", {})).toMatchObject({ ok: false, error: { code: 190 } });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: { code: 4 } }), { status: 200 })));
+    expect(await graphCall("t")("me", {})).toMatchObject({ ok: false, error: { code: 4 } });
+    vi.unstubAllGlobals();
+  });
+
+  it("copes with an answer that isn't JSON", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("<html>", { status: 502 })));
+    expect(await graphCall("t")("me", {})).toMatchObject({ ok: false, json: null });
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("listAccounts", () => {
+  it("reads every page of accounts up to five", async () => {
+    let n = 0;
+    const graph = vi.fn(async () => { n++; return { ok: true, json: { data: [{ id: String(n) }], paging: { cursors: { after: `c${n}` }, next: "x" } } }; });
+    const { rows, error } = await listAccounts(graph, "id");
+    expect(rows).toHaveLength(5);
+    expect(error).toBeNull();
+    expect(graph.mock.calls[1]).toEqual(["me/accounts", { fields: "id", limit: "100", after: "c1" }]);
+  });
+
+  it("hands back an error from the first page", async () => {
+    const graph = vi.fn(async () => ({ ok: false, json: null, error: { code: 200 } }));
+    expect(await listAccounts(graph, "id")).toEqual({ rows: [], error: { code: 200 } });
   });
 });

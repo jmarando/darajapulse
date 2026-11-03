@@ -4,6 +4,30 @@
 import { cleanCaption, count, facebookPostKey, type MappedChannel, type MappedPost, type PostFormat, type PostMetrics, type Raw } from "./brand-sources.ts";
 import type { AudienceRow } from "./brand-pull.ts";
 
+export type GraphError = { code?: number; message?: string };
+export type GraphCall = (path: string, params: Record<string, string>) => Promise<{ ok: boolean; json: Raw; error?: GraphError }>;
+
+/** Calls the Graph API with the token in a header, so it never reaches an address, a log or an error message. */
+export const graphCall = (token: string): GraphCall => async (path, params) => {
+  const r = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${path}?${new URLSearchParams(params).toString()}`, { headers: { Authorization: `Bearer ${token}` } });
+  const json = await r.json().catch(() => null);
+  return r.ok && !json?.error ? { ok: true, json } : { ok: false, json, error: json?.error };
+};
+
+/** The pages a login shared, up to five pages of them. */
+export async function listAccounts(graph: GraphCall, fields: string): Promise<{ rows: Raw[]; error: GraphError | null }> {
+  const rows: Raw[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < 5; page++) {
+    const answer = await graph("me/accounts", after ? { fields, limit: "100", after } : { fields, limit: "100" });
+    if (!answer.ok) return page === 0 ? { rows, error: answer.error ?? {} } : { rows, error: null };
+    rows.push(...(Array.isArray(answer.json?.data) ? answer.json.data : []));
+    after = answer.json?.paging?.next ? answer.json?.paging?.cursors?.after ?? null : null;
+    if (!after) break;
+  }
+  return { rows, error: null };
+}
+
 export const GRAPH_VERSION = "v26.0";
 export const READ_SCOPES = ["pages_show_list", "pages_read_engagement", "read_insights", "instagram_basic", "instagram_manage_insights", "business_management"];
 
