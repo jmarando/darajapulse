@@ -169,6 +169,112 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_channel_days: {
+        Row: {
+          channel_id: string
+          day: string
+          followers: number | null
+          pulled_at: string
+          source: string
+        }
+        Insert: {
+          channel_id: string
+          day: string
+          followers?: number | null
+          pulled_at?: string
+          source: string
+        }
+        Update: {
+          channel_id?: string
+          day?: string
+          followers?: number | null
+          pulled_at?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_channel_days_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "brand_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_channels: {
+        Row: {
+          audience: Json | null
+          audience_at: string | null
+          avatar_url: string | null
+          client_id: string
+          connected_at: string | null
+          connected_by: string | null
+          connected_by_name: string | null
+          created_at: string
+          created_by: string | null
+          display_name: string | null
+          external_id: string | null
+          handle: string
+          id: string
+          last_good_pull_at: string | null
+          last_pull_at: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          source: string
+          status: string
+          status_note: string | null
+        }
+        Insert: {
+          audience?: Json | null
+          audience_at?: string | null
+          avatar_url?: string | null
+          client_id: string
+          connected_at?: string | null
+          connected_by?: string | null
+          connected_by_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          external_id?: string | null
+          handle: string
+          id?: string
+          last_good_pull_at?: string | null
+          last_pull_at?: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          source?: string
+          status?: string
+          status_note?: string | null
+        }
+        Update: {
+          audience?: Json | null
+          audience_at?: string | null
+          avatar_url?: string | null
+          client_id?: string
+          connected_at?: string | null
+          connected_by?: string | null
+          connected_by_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          external_id?: string | null
+          handle?: string
+          id?: string
+          last_good_pull_at?: string | null
+          last_pull_at?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
+          source?: string
+          status?: string
+          status_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_channels_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_org_agencies: {
         Row: {
           agency_id: string
@@ -276,6 +382,126 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      brand_post_metrics: {
+        Row: {
+          captured_at: string
+          comments: number | null
+          id: string
+          likes: number | null
+          post_id: string
+          reach: number | null
+          saves: number | null
+          shares: number | null
+          source: string
+          views: number | null
+          views_paid: number | null
+        }
+        Insert: {
+          captured_at?: string
+          comments?: number | null
+          id?: string
+          likes?: number | null
+          post_id: string
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          source: string
+          views?: number | null
+          views_paid?: number | null
+        }
+        Update: {
+          captured_at?: string
+          comments?: number | null
+          id?: string
+          likes?: number | null
+          post_id?: string
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          source?: string
+          views?: number | null
+          views_paid?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_post_metrics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "brand_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_posts: {
+        Row: {
+          caption: string | null
+          channel_id: string
+          created_at: string
+          external_id: string
+          format: string
+          id: string
+          posted_at: string | null
+          thumbnail_url: string | null
+          url: string | null
+        }
+        Insert: {
+          caption?: string | null
+          channel_id: string
+          created_at?: string
+          external_id: string
+          format?: string
+          id?: string
+          posted_at?: string | null
+          thumbnail_url?: string | null
+          url?: string | null
+        }
+        Update: {
+          caption?: string | null
+          channel_id?: string
+          created_at?: string
+          external_id?: string
+          format?: string
+          id?: string
+          posted_at?: string | null
+          thumbnail_url?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_posts_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "brand_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_pull_credits: {
+        Row: {
+          agency_id: string
+          day: string
+          used: number
+        }
+        Insert: {
+          agency_id: string
+          day: string
+          used?: number
+        }
+        Update: {
+          agency_id?: string
+          day?: string
+          used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_pull_credits_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       brief_templates: {
         Row: {
@@ -4135,6 +4361,10 @@ export type Database = {
         Args: { _post_id: string; _user_id: string }
         Returns: boolean
       }
+      brand_report_doc: {
+        Args: { _client_id: string; _from: string; _to: string }
+        Returns: Json
+      }
       campaign_has_active_plan_link: {
         Args: { _campaign_id: string }
         Returns: boolean
@@ -4171,6 +4401,14 @@ export type Database = {
         Returns: boolean
       }
       can_edit_listening_alerts: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_brand_channels: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_brand_channels: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
@@ -4219,6 +4457,10 @@ export type Database = {
           full_name: string
           id: string
         }[]
+      }
+      get_brand_report_rows: {
+        Args: { _client_id: string; _from: string; _to: string }
+        Returns: Json
       }
       get_brief_by_token: { Args: { _token: string }; Returns: Json }
       get_campaign_contract_dates: { Args: { _token: string }; Returns: Json }
@@ -4510,6 +4752,10 @@ export type Database = {
             }
             Returns: string
           }
+      take_brand_pull_credits: {
+        Args: { _agency_id: string; _cap: number; _n: number }
+        Returns: boolean
+      }
       take_job_lock: {
         Args: { _name: string; _seconds: number }
         Returns: boolean
