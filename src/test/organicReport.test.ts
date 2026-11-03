@@ -68,6 +68,21 @@ describe("buildOrganicReport: the tiles", () => {
     expect(tiles.rate.change).toBeCloseTo(3.12, 2);
   });
 
+  it("leaves a post with views but no reaction counts out of the rate, as Facebook's reel list gives", () => {
+    const report = buildOrganicReport(doc({ channels: [fb], posts: [
+      post("a", "fb", "video", { views: 10_000 }),
+      post("b", "fb", "video", { views: 100, likes: 10 }),
+    ] }), now);
+    expect(report.tiles.rate.value).toBeCloseTo(10, 2);
+    expect(report.platforms[0].rate).toBeCloseTo(10, 2);
+    expect(report.tiles.views.value).toBe(10_100); // its views still count
+  });
+
+  it("gives no rate when no post has both views and reactions", () => {
+    const report = buildOrganicReport(doc({ channels: [fb], posts: [post("a", "fb", "video", { views: 10_000 })] }), now);
+    expect(report.tiles.rate.value).toBeNull();
+  });
+
   it("gives no follower change when no channel has an earlier line", () => {
     const report = buildOrganicReport(doc({ channels: [tt], posts: [] }), now);
     expect(report.tiles.followers).toMatchObject({ value: 500, change: null });
@@ -151,6 +166,11 @@ describe("buildOrganicReport: top posts and what worked", () => {
     expect(report.formats.find((f) => f.format === "video")).toEqual({ format: "video", posts: 2, avgViews: 1500 });
     expect(report.formats.find((f) => f.format === "photo")).toEqual({ format: "photo", posts: 2, avgViews: 400 });
     expect(report.formats.map((f) => f.format)).toEqual(["video", "photo"]);
+  });
+
+  it("leaves out the engagement pick when no source reported any reactions, rather than showing 0%", () => {
+    const { picks } = buildOrganicReport(doc({ channels: [fb], posts: [post("a", "fb", "video", { views: 500 })] }), now);
+    expect(picks.map((p) => p.kind)).toEqual(["views"]);
   });
 
   it("leaves out the saves-and-shares pick when no source reported either, rather than showing 0", () => {

@@ -30,6 +30,11 @@ describe("TopPosts", () => {
     expect(figure("Likes").getByText("10")).toBeTruthy();
   });
 
+  it("shows a dash for the engagement figure when no reactions were reported", () => {
+    render(<TopPosts picks={[{ ...pick, interactions: 0, rate: 0, metrics: { views: 500, likes: null, comments: null, shares: null, saves: null } }]} />);
+    expect(figure("Engagement").getByText("—")).toBeTruthy();
+  });
+
   it("asks for a stored thumbnail by id only for campaign posts, not brand posts", () => {
     thumb.mockClear();
     render(<TopPosts picks={[pick]} brandPosts />);
