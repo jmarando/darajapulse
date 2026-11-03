@@ -310,3 +310,13 @@ describe("the privacy policy", () => {
     expect(privacy).toContain("deletes the token straight away");
   });
 });
+
+describe("a newly connected page", () => {
+  it("reads back as far as a first read, since its older posts only have public numbers so far", () => {
+    expect(read("functions/brand-connect-confirm/index.ts")).toContain("JSON.stringify({ channel_ids: channelIds, first_read: true })");
+    const sync = read("functions/brand-channels-sync/index.ts");
+    expect(sync).toContain('const mode: PullMode = forceFirst ? "first" : pullMode(row, now);');
+    const user = sync.slice(sync.indexOf('caller.kind === "user"'), sync.indexOf("if (ids.length) {"));
+    expect(user).not.toContain("first_read"); // only another function may ask for it: a first read spends more
+  });
+});

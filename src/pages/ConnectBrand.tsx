@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { publicSupabase as supabase } from "@/integrations/supabase/publicClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { platformLabel } from "@/lib/reportInsights";
 import type { SharedAsset } from "../../supabase/functions/_shared/meta-graph";
+
+// This function is newer than the generated database types.
+const db = supabase as unknown as SupabaseClient;
 
 const FINISHED = "This step is finished or has expired. Open the link again if you still need to connect.";
 const ERRORS: Record<string, string> = {
@@ -33,7 +37,7 @@ function LinkPage({ token }: { token: string }) {
 
   const load = useCallback(async () => {
     setFailed(false);
-    const { data, error } = await (supabase as any).rpc("get_brand_connect_link", { _token: token });
+    const { data, error } = await db.rpc("get_brand_connect_link", { _token: token });
     if (error) return setFailed(true);
     setInfo((data ?? null) as LinkInfo | null);
   }, [token]);

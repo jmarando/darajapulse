@@ -34,7 +34,7 @@ function firstRead(channelIds: string[]) {
   const reading = fetch(`${SUPABASE_URL}/functions/v1/brand-channels-sync`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY },
-    body: JSON.stringify({ channel_ids: channelIds }),
+    body: JSON.stringify({ channel_ids: channelIds, first_read: true }),
   }).catch((e) => console.error("brand connect: first read did not start", (e as Error).message));
   if (typeof EdgeRuntime !== "undefined" && EdgeRuntime) EdgeRuntime.waitUntil(reading);
 }

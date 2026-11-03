@@ -85,7 +85,7 @@ export default function ChannelsCard({ clientId, brandName, channels, canManage,
   };
 
   return (
-    <Panel title="Accounts" subtitle={`${brandName}'s own pages. Public numbers from the day a handle is added; Meta's official numbers once connected.`} action={connect} className="mb-5">
+    <Panel title="Accounts" subtitle={`${brandName}'s own pages. Public numbers from the day a handle is added; Meta's official numbers once connected.`} className="mb-5">
       {channels.length > 0 && (
         <ul className="divide-y divide-border/70">
           {channels.map((c) => {
@@ -124,8 +124,9 @@ export default function ChannelsCard({ clientId, brandName, channels, canManage,
           })}
         </ul>
       )}
+      {connect && <div className={channels.length > 0 ? "mt-4 border-t border-border/70 pt-4" : ""}>{connect}</div>}
       {canManage && (
-        <div className={channels.length > 0 ? "mt-4 border-t border-border/70 pt-4" : ""}>
+        <div className={channels.length > 0 || connect ? "mt-4 border-t border-border/70 pt-4" : ""}>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select value={platform} onValueChange={(v) => setPlatform(v as ChannelPlatform)}>
               <SelectTrigger className="h-9 sm:w-[140px]" aria-label="Platform"><SelectValue /></SelectTrigger>

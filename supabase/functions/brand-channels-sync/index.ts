@@ -78,9 +78,9 @@ async function rekeyPosts(channelId: string, posts: MappedPost[]) {
   }
 }
 
-async function pullOne(row: Channel, run: Run, now: number): Promise<PullResult> {
+async function pullOne(row: Channel, run: Run, now: number, forceFirst: boolean): Promise<PullResult> {
   const platform = row.platform as ChannelPlatform;
-  const mode = pullMode(row, now);
+  const mode: PullMode = forceFirst ? "first" : pullMode(row, now);
   const outOfTime = () => Date.now() > run.deadline;
   if (pullRoute(row) === "meta") {
     const result = await pullFromMeta(row, mode, now, outOfTime);
@@ -158,7 +158,7 @@ async function warnSuperAdmins() {
   }
 }
 
-async function runChannels(rows: Channel[], limitMs: number) {
+async function runChannels(rows: Channel[], limitMs: number, forceFirst = false) {
   const now = Date.now();
   const run: Run = { used: 0, balance: null, outOfCredits: false, deadline: now + limitMs };
   const summary = { ran: true, channels: 0, ok: 0, failed: 0, credits_used: 0, notes: [] as string[] };
@@ -167,7 +167,7 @@ async function runChannels(rows: Channel[], limitMs: number) {
     await Promise.all(rows.slice(i, i + AT_ONCE).map(async (row) => {
       summary.channels++;
       try {
-        const { outcome, channel } = await writePull(row, await pullOne(row, run, now), now);
+        const { outcome, channel } = await writePull(row, await pullOne(row, run, now, forceFirst), now);
         if (outcome.ok === true) summary.ok++;
         else summary.failed++;
         finished.push(channel);
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
     if (ids.length) {
       const { data: rows, error } = await supabase.from("brand_channels").select(COLUMNS).in("id", ids);
       if (error) throw error;
-      return json((await runChannels((rows ?? []) as unknown as Channel[], RUN_MS)).summary);
+      return json((await runChannels((rows ?? []) as unknown as Channel[], RUN_MS, body?.first_read === true)).summary);
     }
 
     const { data: locked, error: lockErr } = await supabase.rpc("take_job_lock", { _name: LOCK, _seconds: 170 });

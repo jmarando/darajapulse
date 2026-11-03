@@ -166,3 +166,11 @@ describe("connecting from the card", () => {
     expect(onReconnect).toHaveBeenCalled();
   });
 });
+
+describe("the connect control", () => {
+  it("sits in the card's body, so it can't squeeze the title on a phone", () => {
+    renderCard({ connect: <button>Connect here</button> });
+    const button = screen.getByRole("button", { name: "Connect here" });
+    expect(button.closest("header")).toBeNull();
+  });
+});
