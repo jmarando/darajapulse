@@ -37,7 +37,7 @@ const ListeningAlert = ({ brand_name, level, headline, items = [], open_url, tes
   return (
     <Html lang="en" dir="ltr">
       <Head />
-      <Preview>{tag}: {headline}</Preview>
+      <Preview>{`${tag}: ${headline ?? ''}`}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Img src={logoUrl} alt="Daraja Pulse" width="210" style={logoImg} />

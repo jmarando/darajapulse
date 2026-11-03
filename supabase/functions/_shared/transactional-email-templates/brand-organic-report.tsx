@@ -24,7 +24,7 @@ const BrandOrganicReport = ({ brand_name, month_label, tiles = [], top_post, not
   return (
     <Html lang="en" dir="ltr">
       <Head />
-      <Preview>{brand} in {month_label}</Preview>
+      <Preview>{`${brand} in ${month_label ?? ''}`}</Preview>
       <Body style={main}>
         <Container style={container}>
           <Img src={logoUrl} alt="Daraja Pulse" width="210" style={logoImg} />
