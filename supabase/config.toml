@@ -105,3 +105,6 @@ verify_jwt = false
 
 [functions.meta-deauthorize]
 verify_jwt = false
+
+[functions.send-brand-report]
+verify_jwt = false

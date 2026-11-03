@@ -5,6 +5,7 @@ import { publicSupabase } from "@/integrations/supabase/publicClient";
 import { Skeleton } from "@/components/ui/skeleton";
 import PublicFooter from "@/components/PublicFooter";
 import ListeningPeriod, { type Preset } from "@/components/listening/ListeningPeriod";
+import DownloadDeck from "@/components/channels/DownloadDeck";
 import OrganicReport from "@/components/channels/OrganicReport";
 import { dayPeriod, lastDays, periodLabel, periodToRange, type Period } from "@/lib/listening";
 import { buildOrganicReport, type ReportDoc } from "../../supabase/functions/_shared/organic-report";
@@ -87,12 +88,13 @@ export default function PublicOrganicReport() {
   } else {
     body = (
       <>
-        <header className="mb-5 flex items-center gap-3">
+        <header className="mb-5 flex flex-wrap items-center gap-3">
           {doc?.client.logo_url && <img src={doc.client.logo_url} alt="" className="h-11 w-11 rounded-full object-cover" />}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="truncate text-2xl font-medium tracking-tight">{doc?.client.name}</h1>
             <p className="text-[13px] text-muted-foreground">Organic report</p>
           </div>
+          <DownloadDeck report={report} brandName={doc?.client.name ?? "Brand"} rangeLabel={periodLabel(period)} />
         </header>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <ListeningPeriod period={period} preset={preset} compare={compare} onPreset={choosePreset} onPeriod={choosePeriod} onCompare={setCompare} hint={PERIOD_HINT} />

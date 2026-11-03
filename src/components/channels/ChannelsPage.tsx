@@ -12,8 +12,10 @@ import ListeningPeriod, { type Preset } from "@/components/listening/ListeningPe
 import { lastDays, periodLabel, periodToRange, type Period } from "@/lib/listening";
 import { loadChannels, loadReportDoc, startConnect, type BrandChannel } from "@/lib/brandChannels";
 import { buildOrganicReport, type ReportDoc } from "../../../supabase/functions/_shared/organic-report";
+import BrandReportEmail from "./BrandReportEmail";
 import ChannelsCard from "./ChannelsCard";
 import ConnectMeta from "./ConnectMeta";
+import DownloadDeck from "./DownloadDeck";
 import OrganicReport from "./OrganicReport";
 import ShareReport from "./ShareReport";
 
@@ -134,6 +136,7 @@ export default function ChannelsPage({ portal = false }: { portal?: boolean }) {
               </Select>
             )}
             {canManage && hasChannels && clientId && <ShareReport clientId={clientId} brandName={brand?.name ?? "This brand"} />}
+            {report && hasChannels && <DownloadDeck report={report} brandName={brand?.name ?? doc?.client.name ?? "Brand"} rangeLabel={periodLabel(period)} />}
           </>
         }
       />
@@ -171,7 +174,10 @@ export default function ChannelsPage({ portal = false }: { portal?: boolean }) {
               <Button variant="outline" size="sm" className="mt-3 h-9" onClick={reload}>Try again</Button>
             </Panel>
           ) : report ? (
-            <OrganicReport report={report} compare={compare} />
+            <>
+              <OrganicReport report={report} compare={compare} />
+              {clientId && <div className="mt-5"><BrandReportEmail clientId={clientId} brandName={brand?.name ?? "this brand"} canEdit={canManage} /></div>}
+            </>
           ) : (
             <div className="space-y-4">
               <Skeleton className="h-28 rounded-[20px]" />

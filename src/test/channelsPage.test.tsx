@@ -9,7 +9,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     from: (table: string) => {
       if (table === "clients") return { select: () => ({ order: () => mocks.brands() }) };
       if (table === "client_members") return { select: () => ({ eq: () => mocks.members() }) };
-      return { select: () => ({ eq: () => ({ order: () => mocks.channels() }) }) };
+      return { select: () => ({ eq: () => ({ order: () => mocks.channels(), maybeSingle: async () => ({ data: null, error: null }) }) }) };
     },
     rpc: (name: string, args: unknown) => mocks.rpc(name, args),
     functions: { invoke: vi.fn() },
