@@ -320,3 +320,39 @@ describe("a newly connected page", () => {
     expect(user).not.toContain("first_read"); // only another function may ask for it: a first read spends more
   });
 });
+
+describe("share links", () => {
+  const sql = read("migrations/20261106110000_brand_report_links.sql");
+
+  it("gives a visitor no table rights, only the function", () => {
+    expect(sql).toContain("REVOKE ALL ON public.brand_report_links FROM anon, authenticated;");
+    expect(sql).toContain("GRANT SELECT, INSERT (client_id), UPDATE (is_active) ON public.brand_report_links TO authenticated;");
+    expect(sql).toContain("GRANT EXECUTE ON FUNCTION public.get_brand_report_rows_by_token(text, date, date) TO anon, authenticated;");
+  });
+
+  it("reads the brand from the link, and takes no brand from the caller", () => {
+    const fn = sql.slice(sql.indexOf("FUNCTION public.get_brand_report_rows_by_token"));
+    expect(fn).toMatch(/get_brand_report_rows_by_token\(_token text, _from date, _to date\)/);
+    expect(fn).toMatch(/WHERE l\.token = _token AND l\.is_active/);
+    expect(fn).toContain("brand_report_doc(_client, _from, _to)");
+  });
+
+  it("keeps one live link per brand, and agency staff manage them", () => {
+    expect(sql).toMatch(/CREATE UNIQUE INDEX[^;]*\(client_id\) WHERE is_active/);
+    expect(sql).toMatch(/"Brand report links: read"[\s\S]*can_manage_brand_channels/);
+  });
+
+  it("says how to roll it back", () => {
+    expect(sql).toMatch(/To roll back:[\s\S]*DROP TABLE IF EXISTS public\.brand_report_links/);
+  });
+
+  it("is a public page and a portal tab", () => {
+    const app = read("../src/App.tsx");
+    expect(app).toContain('<Route path="/o/:token" element={<PublicOrganicReport />} />');
+    expect(app).toContain('<Route path="channels" element={<PortalChannels />} />');
+    const portal = read("../src/components/PortalShell.tsx");
+    expect(portal.indexOf('label: "Channels"')).toBeGreaterThan(portal.indexOf('label: "Listening"'));
+    expect(read("../src/pages/PublicOrganicReport.tsx")).toContain('from "@/integrations/supabase/publicClient"');
+    expect(read("../src/pages/PublicOrganicReport.tsx")).not.toContain('from "@/integrations/supabase/client"');
+  });
+});

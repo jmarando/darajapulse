@@ -102,6 +102,32 @@ export async function disconnectChannel(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export type ShareLink = { id: string; token: string };
+
+/** The brand's one live share link, made if there is none. Two people pressing Share together end up with the same one. */
+export async function shareLink(clientId: string): Promise<ShareLink> {
+  const live = () => db.from("brand_report_links").select("id, token").eq("client_id", clientId).eq("is_active", true).maybeSingle();
+  const found = await live();
+  if (found.error) throw found.error;
+  if (found.data) return found.data as ShareLink;
+  const { data, error } = await db.from("brand_report_links").insert({ client_id: clientId }).select("id, token").single();
+  if (!error) return data as ShareLink;
+  if (error.code !== "23505") throw error;
+  const again = await live();
+  if (again.error || !again.data) throw again.error ?? error;
+  return again.data as ShareLink;
+}
+
+export async function turnOffShareLink(id: string): Promise<void> {
+  const { error } = await db.from("brand_report_links").update({ is_active: false }).eq("id", id);
+  if (error) throw error;
+}
+
+export const reportShareUrl = (token: string) => `${publicOrigin()}/o/${token}`;
+
+export const reportWhatsappUrl = (brandName: string, token: string) =>
+  `https://wa.me/?text=${encodeURIComponent(`Here is ${brandName}'s organic report: ${reportShareUrl(token)}`)}`;
+
 export function updatedLabel(iso: string | null, now = Date.now()): string {
   if (!iso) return "Not read yet";
   const minutes = Math.floor((now - Date.parse(iso)) / 60_000);

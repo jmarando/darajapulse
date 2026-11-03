@@ -39,6 +39,7 @@ const Admin = lazy(() => import("./pages/app/Admin"));
 const PublicModeration = lazy(() => import("./pages/PublicModeration"));
 const PublicReport = lazy(() => import("./pages/PublicReport"));
 const PublicPayments = lazy(() => import("./pages/PublicPayments"));
+const PublicOrganicReport = lazy(() => import("./pages/PublicOrganicReport"));
 const PublicPlan = lazy(() => import("./pages/PublicPlan"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
@@ -61,6 +62,7 @@ const PortalShell = lazy(() => import("./components/PortalShell"));
 const PortalOverview = lazy(() => import("./pages/portal/PortalOverview"));
 const PortalCampaign = lazy(() => import("./pages/portal/PortalCampaign"));
 const PortalListening = lazy(() => import("./pages/portal/PortalListening"));
+const PortalChannels = lazy(() => import("./pages/portal/PortalChannels"));
 const PublicStorefront = lazy(() => import("./pages/PublicStorefront"));
 const PublicInvoice = lazy(() => import("./pages/PublicInvoice"));
 const PayInvoice = lazy(() => import("./pages/PayInvoice"));
@@ -113,6 +115,7 @@ const App = () => (
             <Route path="/discovery" element={<PublicDiscovery />} />
             <Route path="/r/:token" element={<PublicReport />} />
             <Route path="/payments/:token" element={<PublicPayments />} />
+            <Route path="/o/:token" element={<PublicOrganicReport />} />
             <Route path="/rc/:token" element={<PublicContestReport />} />
             <Route path="/p/:token" element={<PublicPlan />} />
             <Route path="/:clientSlug/:campaignSlug/plan/:token" element={<PublicPlan />} />
@@ -147,6 +150,7 @@ const App = () => (
               <Route path="campaigns" element={<PortalOverview />} />
               <Route path="campaigns/:id" element={<PortalCampaign />} />
               <Route path="listening" element={<PortalListening />} />
+              <Route path="channels" element={<PortalChannels />} />
             </Route>
             <Route path="/app" element={<AppShell />}>
               <Route index element={<Overview />} />
