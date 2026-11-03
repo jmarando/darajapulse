@@ -671,6 +671,102 @@ export type Database = {
           },
         ]
       }
+      brand_report_links: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          token: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          token?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_report_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_report_sends: {
+        Row: {
+          client_id: string
+          month: string
+          recipients: number
+          sent_at: string
+        }
+        Insert: {
+          client_id: string
+          month: string
+          recipients?: number
+          sent_at?: string
+        }
+        Update: {
+          client_id?: string
+          month?: string
+          recipients?: number
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_report_sends_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_report_settings: {
+        Row: {
+          client_id: string
+          monthly_email: boolean
+          recipients: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          monthly_email?: boolean
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          monthly_email?: boolean
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_report_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brief_templates: {
         Row: {
           agency_id: string | null
@@ -4652,6 +4748,10 @@ export type Database = {
       get_brand_connect_link: { Args: { _token: string }; Returns: Json }
       get_brand_report_rows: {
         Args: { _client_id: string; _from: string; _to: string }
+        Returns: Json
+      }
+      get_brand_report_rows_by_token: {
+        Args: { _from: string; _to: string; _token: string }
         Returns: Json
       }
       get_brief_by_token: { Args: { _token: string }; Returns: Json }
