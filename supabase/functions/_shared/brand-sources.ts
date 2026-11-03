@@ -112,3 +112,189 @@ export function cleanCaption(raw: unknown): string | null {
   const characters = Array.from(raw.split("\u0000").join("")).filter((c) => !(c.length === 1 && c >= "\ud800" && c <= "\udfff"));
   return characters.slice(0, 500).join("").trim() || null;
 }
+
+export type PostFormat = "video" | "photo" | "carousel" | "text" | "other";
+export type PostMetrics = {
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
+  saves: number | null;
+  reach: number | null;
+  views_paid: number | null;
+};
+export type MappedChannel = { external_id: string | null; display_name: string | null; avatar_url: string | null; followers: number | null };
+export type MappedPost = {
+  external_id: string;
+  url: string | null;
+  posted_at: string | null;
+  format: PostFormat;
+  caption: string | null;
+  thumbnail_url: string | null;
+  metrics: PostMetrics;
+};
+export type MappedPage = { posts: MappedPost[]; cursor: string | null };
+export type MappedReel = { video_id: string; url: string | null; views: number | null; posted_at: string | null; caption: string | null; thumbnail_url: string | null };
+
+/** A count the source gave as a whole number, or null: a missing count must never turn into 0. A real 0 stays 0. */
+export function count(v: unknown): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+}
+
+const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
+const id = (v: unknown): string | null => (typeof v === "string" && v ? v : typeof v === "number" ? String(v) : null);
+const fromSeconds = (v: unknown): string | null => {
+  const seconds = count(v);
+  return seconds === null ? null : new Date(seconds * 1000).toISOString();
+};
+const metrics = (m: Partial<PostMetrics>): PostMetrics => ({ views: null, likes: null, comments: null, shares: null, saves: null, reach: null, views_paid: null, ...m });
+const listOf = (v: unknown): any[] => (Array.isArray(v) ? v : []);
+const addKnown = (a: number | null, b: number | null) => (a === null && b === null ? null : (a ?? 0) + (b ?? 0));
+
+export function mapTikTokProfile(json: any): MappedChannel {
+  return {
+    external_id: id(json?.user?.id),
+    display_name: text(json?.user?.nickname),
+    avatar_url: text(json?.user?.avatarLarger),
+    followers: count(json?.stats?.followerCount),
+  };
+}
+
+export function mapInstagramProfile(json: any): MappedChannel {
+  const user = json?.data?.user;
+  return {
+    external_id: id(user?.id),
+    display_name: text(user?.full_name),
+    avatar_url: text(user?.profile_pic_url_hd) ?? text(user?.profile_pic_url),
+    followers: count(user?.edge_followed_by?.count),
+  };
+}
+
+export function mapFacebookProfile(json: any): MappedChannel {
+  return {
+    external_id: id(json?.adLibrary?.pageId) ?? id(json?.id),
+    display_name: text(json?.name),
+    avatar_url: text(json?.profilePicLarge),
+    followers: count(json?.followerCount) ?? count(json?.likeCount),
+  };
+}
+
+export function mapTikTokVideos(json: any): MappedPage {
+  const posts: MappedPost[] = [];
+  for (const row of listOf(json?.aweme_list)) {
+    const external_id = id(row?.aweme_id);
+    if (!external_id) continue;
+    const s = row?.statistics ?? {};
+    posts.push({
+      external_id,
+      url: text(row?.url),
+      posted_at: fromSeconds(row?.create_time),
+      format: row?.image_post_info ? "photo" : "video",
+      caption: cleanCaption(row?.desc),
+      thumbnail_url: text(row?.video?.cover?.url_list?.[0]),
+      metrics: metrics({
+        views: count(s.play_count),
+        likes: count(s.digg_count),
+        comments: count(s.comment_count),
+        shares: addKnown(count(s.share_count), count(s.whatsapp_share_count)),
+        saves: count(s.collect_count),
+      }),
+    });
+  }
+  return { posts, cursor: json?.has_more === false ? null : id(json?.max_cursor) };
+}
+
+const INSTAGRAM_FORMAT: Record<number, PostFormat> = { 1: "photo", 2: "video", 8: "carousel" };
+
+export function mapInstagramPosts(json: any): MappedPage {
+  const posts: MappedPost[] = [];
+  for (const row of listOf(json?.items)) {
+    const external_id = id(row?.code);
+    if (!external_id) continue;
+    const format = INSTAGRAM_FORMAT[row?.media_type] ?? "other";
+    posts.push({
+      external_id,
+      url: text(row?.url),
+      posted_at: fromSeconds(row?.taken_at),
+      format,
+      caption: cleanCaption(row?.caption?.text),
+      thumbnail_url: text(row?.display_uri) ?? text(row?.image_versions2?.candidates?.[0]?.url),
+      metrics: metrics({
+        views: format === "video" ? count(row?.play_count) ?? count(row?.ig_play_count) : null,
+        likes: count(row?.like_count),
+        comments: count(row?.comment_count),
+      }),
+    });
+  }
+  return { posts, cursor: json?.more_available === false ? null : id(json?.next_max_id) };
+}
+
+/** Meta writes a post id as page_post and the public source as post, so the part after the last "_" keys a post on both routes. */
+export function facebookPostKey(postId: string): string {
+  return postId.slice(postId.lastIndexOf("_") + 1);
+}
+
+export function mapFacebookPosts(json: any): MappedPage {
+  const posts: MappedPost[] = [];
+  for (const row of listOf(json?.posts)) {
+    const rawId = id(row?.id);
+    if (!rawId) continue;
+    const url = text(row?.url) ?? text(row?.permalink);
+    const picture = text(row?.link_attachment?.image_url) ?? text(row?.images?.[0]?.url);
+    const video = !!row?.videoDetails || /\/reel\//.test(url ?? "");
+    posts.push({
+      external_id: facebookPostKey(rawId),
+      url,
+      posted_at: fromSeconds(row?.publishTime),
+      format: video ? "video" : picture ? "photo" : "text",
+      caption: cleanCaption(row?.text),
+      thumbnail_url: text(row?.videoDetails?.thumbnailUrl) ?? picture,
+      metrics: metrics({ views: count(row?.videoViewCount), likes: count(row?.reactionCount), comments: count(row?.commentCount) }),
+    });
+  }
+  return { posts, cursor: id(json?.cursor) };
+}
+
+export function mapFacebookReels(json: any): { reels: MappedReel[]; cursor: string | null; next_page_id: string | null } {
+  const reels: MappedReel[] = [];
+  for (const row of listOf(json?.reels)) {
+    const video_id = id(row?.video_id);
+    if (!video_id) continue;
+    reels.push({
+      video_id,
+      url: text(row?.url),
+      views: count(row?.view_count),
+      posted_at: text(row?.creation_time),
+      caption: cleanCaption(row?.description),
+      thumbnail_url: text(row?.thumbnail),
+    });
+  }
+  return { reels, cursor: id(json?.cursor), next_page_id: id(json?.next_page_id) };
+}
+
+/**
+ * The post list has reactions but rarely views, and the reel list has views but no reactions. A reel's views go on
+ * the post whose link holds that reel's id; a reel with no post in the list still counts, with its views alone.
+ */
+export function mergeFacebookReels(posts: MappedPost[], reels: MappedReel[]): MappedPost[] {
+  const merged = posts.map((p) => ({ ...p, metrics: { ...p.metrics } }));
+  for (const reel of reels) {
+    const match = merged.find((p) => p.url?.includes(`/reel/${reel.video_id}`) || p.external_id === reel.video_id);
+    if (match) {
+      match.metrics.views ??= reel.views;
+    } else {
+      merged.push({
+        external_id: reel.video_id,
+        url: reel.url,
+        posted_at: reel.posted_at,
+        format: "video",
+        caption: reel.caption,
+        thumbnail_url: reel.thumbnail_url,
+        metrics: metrics({ views: reel.views }),
+      });
+    }
+  }
+  return merged;
+}
