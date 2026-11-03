@@ -1,7 +1,7 @@
 // Brand channels: one channel's read, with the network passed in so tests can run it without Deno, and what a result
 // may write. A failed read writes nothing but the attempt: zeros would look like a collapse.
 import {
-  FACEBOOK_REEL_PAGES, PUBLIC_PAGE_CAPS, WINDOW_DAYS, facebookPageUrl, mapFacebookPosts, mapFacebookProfile, mapFacebookReels,
+  FACEBOOK_REEL_PAGES, PLATFORM_NAME, PUBLIC_PAGE_CAPS, WINDOW_DAYS, facebookPageUrl, mapFacebookPosts, mapFacebookProfile, mapFacebookReels,
   mapInstagramPosts, mapInstagramProfile, mapTikTokProfile, mapTikTokVideos, mergeFacebookReels,
   type ChannelPlatform, type MappedChannel, type MappedPage, type MappedPost, type MappedReel, type PostMetrics, type PullMode, type Raw,
 } from "./brand-sources.ts";
@@ -16,7 +16,6 @@ export type PullResult =
 export type ChannelRow = { platform: string; source: string; status: string; last_good_pull_at: string | null };
 
 const DAY = 86_400_000;
-const PLATFORM_NAME: Record<string, string> = { facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok" };
 const OUT_OF_CREDITS = "Public numbers are paused: the data provider is out of credits.";
 
 type Trouble = "out_of_credits" | "private" | "not_found" | "failed";
@@ -25,7 +24,7 @@ type Trouble = "out_of_credits" | "private" | "not_found" | "failed";
 function trouble(a: { status: number; json: Raw }): Trouble | null {
   if (a.status === 402) return "out_of_credits";
   const j = a.json;
-  if (j?.isPrivate === true || a.status === 403 || /private|age.?restricted/i.test(String(j?.message ?? ""))) return "private";
+  if (j?.isPrivate === true || /private|age.?restricted/i.test(String(j?.message ?? ""))) return "private";
   if (a.status === 404 || j?.accountDoesNotExist === true) return "not_found";
   if (a.status < 200 || a.status >= 300 || j?.success === false) return "failed";
   return null;
@@ -174,7 +173,8 @@ export function applyPull(row: ChannelRow, result: PullResult, now: number): {
     case "private":
       return { channel: { ...attempt, status: "error", status_note: "This account is private, so its public numbers can't be read." }, day: null };
     case "out_of_credits":
-      return { channel: { ...attempt, status: "paused", status_note: OUT_OF_CREDITS }, day: null };
+      // A page that needs reconnecting keeps saying so: that is the thing someone can act on.
+      return { channel: row.status === "needs_reconnect" ? attempt : { ...attempt, status: "paused", status_note: OUT_OF_CREDITS }, day: null };
     case "cap":
       return { channel: { ...attempt, status_note: "Today's allowance for public numbers is used. Tries again tonight." }, day: null };
     case "reconnect":

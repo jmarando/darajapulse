@@ -153,6 +153,11 @@ describe("buildOrganicReport: top posts and what worked", () => {
     expect(report.formats.map((f) => f.format)).toEqual(["video", "photo"]);
   });
 
+  it("leaves out the saves-and-shares pick when no source reported either, rather than showing 0", () => {
+    const { picks } = buildOrganicReport(doc({ channels: [tt], posts: [post("a", "tt", "video", { views: 500, likes: 5 })] }), now);
+    expect(picks.map((p) => p.kind)).toEqual(["views", "engagement"]);
+  });
+
   it("gives a format with no views a blank average, and sorts it last", () => {
     const { formats } = buildOrganicReport(doc({ posts: [post("a", "tt", "text", { likes: 1 }), post("b", "tt", "photo", { views: 5 })] }), now);
     expect(formats).toEqual([{ format: "photo", posts: 1, avgViews: 5 }, { format: "text", posts: 1, avgViews: null }]);
@@ -211,6 +216,11 @@ describe("buildOrganicReport: notes", () => {
     const { notes } = buildOrganicReport(doc(), now);
     expect(notes).toContain("TikTok (@acme.ke) was last updated 3 days ago.");
     expect(notes.some((n) => n.includes("@acme)"))).toBe(false);
+  });
+
+  it("counts a channel stale from just over two days, not three", () => {
+    const { notes } = buildOrganicReport(doc({ channels: [{ ...tt, last_good_pull_at: "2026-11-01T21:00:00Z" }], posts: [] }), now);
+    expect(notes).toContain("TikTok (@acme.ke) was last updated 2 days ago.");
   });
 
   it("names a channel never read", () => {

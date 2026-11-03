@@ -131,6 +131,10 @@ describe("pullPublic: when something goes wrong", () => {
     expect(failure(await public_("instagram", player([{ status: 403, json: { success: true, message: "Profile is age restricted" } }])))).toBe("private");
   });
 
+  it("reads a bare 403 as a failed read, not a private account, since it can be the provider refusing us", async () => {
+    expect(failure(await public_("tiktok", player([{ status: 403, json: { message: "Forbidden" } }])))).toBe("failed");
+  });
+
   it("fails when the profile call fails, keeping nothing", async () => {
     const result = await public_("tiktok", player([{ status: 500, json: {} }]));
     expect(failure(result)).toBe("failed");
@@ -212,6 +216,12 @@ describe("applyPull", () => {
 
   it("pauses when the provider is out of credits", () => {
     expect(applyPull(row(), bad("out_of_credits"), at).channel).toMatchObject({ status: "paused", status_note: "Public numbers are paused: the data provider is out of credits." });
+  });
+
+  it("keeps saying a page needs reconnecting when credits run out", () => {
+    const { channel } = applyPull(row({ source: "connected", status: "needs_reconnect" }), bad("out_of_credits"), at);
+    expect(channel).not.toHaveProperty("status");
+    expect(channel).not.toHaveProperty("status_note");
   });
 
   it("leaves the status alone when today's allowance is used", () => {

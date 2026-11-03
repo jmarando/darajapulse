@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  channelIsDue, cleanCaption, facebookPageUrl, facebookPostKey, mapFacebookPosts, mapFacebookProfile, mapFacebookReels,
+  channelIsDue, cleanCaption, count, facebookPageUrl, facebookPostKey, mapFacebookPosts, mapFacebookProfile, mapFacebookReels,
   mapInstagramPosts, mapInstagramProfile, mapTikTokProfile, mapTikTokVideos, maxPublicCalls, mergeFacebookReels,
   normaliseHandle, pullMode,
 } from "../../supabase/functions/_shared/brand-sources";
@@ -28,6 +28,8 @@ describe("normaliseHandle", () => {
     expect(err("facebook", "https://www.facebook.com/share/p/abc")).toMatch(/link to a post/);
     expect(err("facebook", "https://www.facebook.com/acmekenya/posts/pfbid02abc")).toMatch(/link to a post/);
     expect(err("tiktok", "https://www.tiktok.com/@acme/video/7517114944362499342")).toMatch(/link to a post/);
+    expect(err("facebook", "https://www.facebook.com/photo.php?fbid=123")).toMatch(/link to a post/);
+    expect(err("facebook", "https://www.facebook.com/video.php?v=123")).toMatch(/link to a post/);
   });
 
   it("refuses a link to another platform, and names it", () => {
@@ -194,6 +196,18 @@ describe("TikTok videos from ScrapeCreators", () => {
   it("copes with an answer that has no list", () => {
     expect(mapTikTokVideos({ success: true })).toEqual({ posts: [], cursor: null });
   });
+
+  it("stops at a has_more of 0, and treats a cursor of 0 as none, so a feed isn't read again from the start", () => {
+    expect(mapTikTokVideos({ has_more: 0, max_cursor: 123, aweme_list: [] }).cursor).toBeNull();
+    expect(mapTikTokVideos({ has_more: 1, max_cursor: 0, aweme_list: [] }).cursor).toBeNull();
+    expect(mapTikTokVideos({ has_more: 1, max_cursor: 123, aweme_list: [] }).cursor).toBe("123");
+  });
+
+  it("reads a timestamp in milliseconds as well as seconds", () => {
+    const json = fixture("tiktok-videos");
+    json.aweme_list[0].create_time = 1760000000000;
+    expect(mapTikTokVideos(json).posts[0].posted_at).toBe(new Date(1760000000 * 1000).toISOString());
+  });
 });
 
 describe("Instagram posts from ScrapeCreators", () => {
@@ -253,6 +267,12 @@ describe("Facebook posts from ScrapeCreators", () => {
     expect(page().posts[1].external_id).toBe("1204545088344464");
   });
 
+  it("doesn't call a post a video because of an empty video field", () => {
+    const json = fixture("facebook-posts");
+    json.posts[1].videoDetails = { sdUrl: null, hdUrl: null, thumbnailUrl: null };
+    expect(mapFacebookPosts(json).posts[1].format).toBe("photo");
+  });
+
   it("tells a photo from words alone, and reads the link from either field", () => {
     const [, photo, words] = page().posts;
     expect(photo.format).toBe("photo");
@@ -271,6 +291,7 @@ describe("Facebook reels from ScrapeCreators", () => {
     const { reels, cursor, next_page_id } = mapFacebookReels(fixture("facebook-reels"));
     expect(reels[0]).toEqual({
       video_id: "486651220706068",
+      post_id: "1203161005161463",
       url: "https://www.facebook.com/reel/486651220706068",
       views: 900,
       posted_at: "2026-10-09T08:53:20.000Z",
@@ -281,7 +302,7 @@ describe("Facebook reels from ScrapeCreators", () => {
     expect(next_page_id).toBe("YXBwX2NvbGxlY");
   });
 
-  const reel = (video_id: string, views: number) => ({ video_id, url: `https://www.facebook.com/reel/${video_id}`, views, posted_at: "2026-10-09T08:53:20.000Z", caption: "R", thumbnail_url: null });
+  const reel = (video_id: string, views: number, post_id: string | null = null) => ({ video_id, post_id, url: `https://www.facebook.com/reel/${video_id}`, views, posted_at: "2026-10-09T08:53:20.000Z", caption: "R", thumbnail_url: null });
 
   it("puts a reel's views on the post with that reel id, and adds a reel with no post", () => {
     const post = mapFacebookPosts(fixture("facebook-posts")).posts[0]; // its link holds reel 486651220706068
@@ -291,9 +312,39 @@ describe("Facebook reels from ScrapeCreators", () => {
     expect(merged[1]).toMatchObject({ external_id: "222", format: "video", metrics: { views: 50, likes: null } });
   });
 
+  it("finds a reel's post by its post id when the link doesn't show the reel", () => {
+    const post = mapFacebookPosts(fixture("facebook-posts")).posts[1]; // a /posts/ link, id 1204545088344464
+    const merged = mergeFacebookReels([post], [reel("999", 70, "1204545088344464")]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].metrics.views).toBe(70);
+  });
+
+  it("keys a reel with no post by its post id, so a later read of that post updates the same row", () => {
+    expect(mergeFacebookReels([], [reel("999", 70, "555")])[0].external_id).toBe("555");
+    expect(mergeFacebookReels([], [reel("999", 70, "100_555")])[0].external_id).toBe("555");
+    expect(mergeFacebookReels([], [reel("999", 70)])[0].external_id).toBe("999");
+  });
+
+  it("doesn't match a reel to a link holding a longer reel id", () => {
+    const post = { ...mapFacebookPosts(fixture("facebook-posts")).posts[0], url: "https://www.facebook.com/reel/1234/" };
+    expect(mergeFacebookReels([post], [reel("123", 70)])).toHaveLength(2);
+  });
+
   it("keeps a view count the post already has", () => {
     const post = mapFacebookPosts(fixture("facebook-posts")).posts[0];
     post.metrics.views = 1000;
     expect(mergeFacebookReels([post], [reel("486651220706068", 900)])[0].metrics.views).toBe(1000);
+  });
+});
+
+describe("count", () => {
+  it("takes a number or a numeric string, and a real 0", () => {
+    expect(count(12)).toBe(12);
+    expect(count("12")).toBe(12);
+    expect(count(0)).toBe(0);
+  });
+
+  it("treats anything else as unknown, never 0", () => {
+    for (const v of [null, undefined, "", " ", "abc", [], {}, true, -1]) expect(count(v)).toBeNull();
   });
 });

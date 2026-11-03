@@ -23,7 +23,7 @@ const HOUR = 3_600_000;
 const NAIROBI_OFFSET = 3 * HOUR;
 const DUE_AFTER = 20 * HOUR;
 
-const PLATFORM_NAME: Record<ChannelPlatform, string> = { facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok" };
+export const PLATFORM_NAME: Record<string, string> = { facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok" };
 const HOSTS: [ChannelPlatform, RegExp][] = [
   ["facebook", /(^|\.)(facebook\.com|fb\.com)$/],
   ["instagram", /(^|\.)instagram\.com$/],
@@ -34,7 +34,7 @@ const HANDLE = /^[a-z0-9._-]{1,100}$/;
 const POST_LINK = "That's a link to a post. Paste the account's handle or the link to its page.";
 
 const INSTAGRAM_POST_PATHS = new Set(["p", "reel", "reels", "tv", "stories", "explore"]);
-const FACEBOOK_POST_PATHS = new Set(["share", "watch", "groups", "reel", "photo", "permalink.php", "story.php", "events"]);
+const FACEBOOK_POST_PATHS = new Set(["share", "watch", "groups", "reel", "photo", "photo.php", "video.php", "permalink.php", "story.php", "events"]);
 const FACEBOOK_PAGE_POST_TABS = new Set(["videos", "photos", "reels", "reel"]);
 
 /** What a link's path says the handle is, or that it is a link to a post. */
@@ -138,20 +138,21 @@ export type MappedPost = {
   metrics: PostMetrics;
 };
 export type MappedPage = { posts: MappedPost[]; cursor: string | null };
-export type MappedReel = { video_id: string; url: string | null; views: number | null; posted_at: string | null; caption: string | null; thumbnail_url: string | null };
+export type MappedReel = { video_id: string; post_id: string | null; url: string | null; views: number | null; posted_at: string | null; caption: string | null; thumbnail_url: string | null };
 
 /** A count the source gave as a whole number, or null: a missing count must never turn into 0. A real 0 stays 0. */
 export function count(v: unknown): number | null {
-  if (v === null || v === undefined || v === "") return null;
-  const n = typeof v === "number" ? v : Number(v);
+  if (typeof v !== "number" && (typeof v !== "string" || !v.trim())) return null;
+  const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
 }
 
 const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
 const id = (v: unknown): string | null => (typeof v === "string" && v ? v : typeof v === "number" ? String(v) : null);
-const fromSeconds = (v: unknown): string | null => {
-  const seconds = count(v);
-  return seconds === null ? null : new Date(seconds * 1000).toISOString();
+/** Providers give seconds, and sometimes milliseconds. */
+const fromTimestamp = (v: unknown): string | null => {
+  const stamp = count(v);
+  return stamp === null ? null : new Date(stamp > 1e12 ? stamp : stamp * 1000).toISOString();
 };
 const metrics = (m: Partial<PostMetrics>): PostMetrics => ({ views: null, likes: null, comments: null, shares: null, saves: null, reach: null, views_paid: null, ...m });
 const listOf = (v: unknown): Raw[] => (Array.isArray(v) ? v : []);
@@ -194,7 +195,7 @@ export function mapTikTokVideos(json: Raw): MappedPage {
     posts.push({
       external_id,
       url: text(row?.url),
-      posted_at: fromSeconds(row?.create_time),
+      posted_at: fromTimestamp(row?.create_time),
       format: row?.image_post_info ? "photo" : "video",
       caption: cleanCaption(row?.desc),
       thumbnail_url: text(row?.video?.cover?.url_list?.[0]),
@@ -207,7 +208,9 @@ export function mapTikTokVideos(json: Raw): MappedPage {
       }),
     });
   }
-  return { posts, cursor: json?.has_more === false ? null : id(json?.max_cursor) };
+  // TikTok's own answers give has_more and max_cursor as numbers, so 0 means the end as much as false does.
+  const ended = json?.has_more === false || json?.has_more === 0 || !json?.max_cursor;
+  return { posts, cursor: ended ? null : id(json.max_cursor) };
 }
 
 const INSTAGRAM_FORMAT: Record<number, PostFormat> = { 1: "photo", 2: "video", 8: "carousel" };
@@ -221,7 +224,7 @@ export function mapInstagramPosts(json: Raw): MappedPage {
     posts.push({
       external_id,
       url: text(row?.url),
-      posted_at: fromSeconds(row?.taken_at),
+      posted_at: fromTimestamp(row?.taken_at),
       format,
       caption: cleanCaption(row?.caption?.text),
       thumbnail_url: text(row?.display_uri) ?? text(row?.image_versions2?.candidates?.[0]?.url),
@@ -247,11 +250,12 @@ export function mapFacebookPosts(json: Raw): MappedPage {
     if (!rawId) continue;
     const url = text(row?.url) ?? text(row?.permalink);
     const picture = text(row?.link_attachment?.image_url) ?? text(row?.images?.[0]?.url);
-    const video = !!row?.videoDetails || /\/reel\//.test(url ?? "");
+    const details = row?.videoDetails;
+    const video = !!(details?.sdUrl || details?.hdUrl || details?.thumbnailUrl) || /\/reel\//.test(url ?? "");
     posts.push({
       external_id: facebookPostKey(rawId),
       url,
-      posted_at: fromSeconds(row?.publishTime),
+      posted_at: fromTimestamp(row?.publishTime),
       format: video ? "video" : picture ? "photo" : "text",
       caption: cleanCaption(row?.text),
       thumbnail_url: text(row?.videoDetails?.thumbnailUrl) ?? picture,
@@ -268,6 +272,7 @@ export function mapFacebookReels(json: Raw): { reels: MappedReel[]; cursor: stri
     if (!video_id) continue;
     reels.push({
       video_id,
+      post_id: id(row?.post_id),
       url: text(row?.url),
       views: count(row?.view_count),
       posted_at: text(row?.creation_time),
@@ -278,19 +283,23 @@ export function mapFacebookReels(json: Raw): { reels: MappedReel[]; cursor: stri
   return { reels, cursor: id(json?.cursor), next_page_id: id(json?.next_page_id) };
 }
 
+const reelIdIn = (url: string | null) => url?.match(/\/reel\/(\d+)/)?.[1] ?? null;
+
 /**
  * The post list has reactions but rarely views, and the reel list has views but no reactions. A reel's views go on
- * the post whose link holds that reel's id; a reel with no post in the list still counts, with its views alone.
+ * its post, found by post id or by the reel id in the post's link. A reel with no post in the list still counts, with
+ * its views alone, keyed by its post id so a later read that reaches the post updates the same row.
  */
 export function mergeFacebookReels(posts: MappedPost[], reels: MappedReel[]): MappedPost[] {
   const merged = posts.map((p) => ({ ...p, metrics: { ...p.metrics } }));
   for (const reel of reels) {
-    const match = merged.find((p) => p.url?.includes(`/reel/${reel.video_id}`) || p.external_id === reel.video_id);
+    const postKey = reel.post_id ? facebookPostKey(reel.post_id) : null;
+    const match = merged.find((p) => p.external_id === postKey || reelIdIn(p.url) === reel.video_id);
     if (match) {
       match.metrics.views ??= reel.views;
     } else {
       merged.push({
-        external_id: reel.video_id,
+        external_id: postKey ?? reel.video_id,
         url: reel.url,
         posted_at: reel.posted_at,
         format: "video",

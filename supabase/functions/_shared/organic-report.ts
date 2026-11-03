@@ -2,7 +2,7 @@
 // all show. One module, so they cannot disagree. Pure, so the tests run without Deno. A number no source gave stays
 // null and reads as a dash, never 0, because a missing number is not a collapse.
 import type { Audience } from "./brand-pull.ts";
-import type { PostFormat, PostMetrics } from "./brand-sources.ts";
+import { PLATFORM_NAME, type PostFormat, type PostMetrics } from "./brand-sources.ts";
 import { buildCadence, type Cadence } from "./posting-cadence.ts";
 import { pickTopPosts, type TopPick } from "./top-posts.ts";
 
@@ -74,7 +74,6 @@ export type OrganicReport = {
   notes: string[];
 };
 
-const PLATFORM_NAME: Record<string, string> = { facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok" };
 const platformName = (p: string) => PLATFORM_NAME[p] ?? p;
 const NAIROBI_UTC_OFFSET = 3;
 const DAY = 86_400_000;
@@ -150,8 +149,8 @@ function notesOf(channels: ReportChannel[], posts: ReportPost[], now: number): s
     if (!c.last_good_pull_at) {
       notes.push(`${name} hasn't been read yet.`);
     } else {
-      const days = Math.floor((now - Date.parse(c.last_good_pull_at)) / DAY);
-      if (days > STALE_DAYS) notes.push(`${name} was last updated ${days} days ago.`);
+      const age = now - Date.parse(c.last_good_pull_at);
+      if (age > STALE_DAYS * DAY) notes.push(`${name} was last updated ${Math.floor(age / DAY)} days ago.`);
     }
   }
   return notes;
@@ -231,7 +230,8 @@ export function buildOrganicReport(doc: ReportDoc, now: number): OrganicReport {
         tag: onMeta(c) ? "Connected" : "Public",
       };
     }),
-    picks: pickTopPosts(refs, metrics),
+    // "0 saves and shares" would be a zero for numbers nobody reported.
+    picks: pickTopPosts(refs, metrics).filter((p) => p.kind !== "intent" || p.metrics.saves != null || p.metrics.shares != null),
     formats: formatsOf(current),
     cadence: buildCadence(cadencePosts, metrics, NAIROBI_UTC_OFFSET),
     connected: connectedOf(channels, current),
