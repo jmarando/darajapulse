@@ -90,3 +90,6 @@ verify_jwt = true
 
 [functions.handle-email-events]
 verify_jwt = false
+
+[functions.brand-channels-sync]
+verify_jwt = false

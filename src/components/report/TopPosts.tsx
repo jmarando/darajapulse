@@ -17,8 +17,14 @@ function Est({ className }: { className?: string }) {
   );
 }
 
-/** The posts that stood out, each a link to the post with its picture and figures. */
-export function TopPosts({ picks, className }: { picks: TopPick[]; className?: string }) {
+/** A figure the platform didn't report is a dash, never 0. */
+const shown = (v?: number | null) => (v == null ? "—" : compact(Number(v)));
+
+/**
+ * The posts that stood out, each a link to the post with its picture and figures. Brand posts aren't in
+ * the campaign `posts` table, so with `brandPosts` the picture isn't looked up by post id.
+ */
+export function TopPosts({ picks, className, brandPosts = false }: { picks: TopPick[]; className?: string; brandPosts?: boolean }) {
   if (picks.length === 0) return null;
   return (
     <ReportCard className={className} title="Top posts" subtitle="The most viewed, the most engaging and the strongest on saves and shares">
@@ -31,11 +37,11 @@ export function TopPosts({ picks, className }: { picks: TopPick[]; className?: s
           const handle = String(p.post.influencers?.handle ?? "").replace(/^@/, "");
           const meta = [handle && `@${handle}`, platformLabel(p.post.platform)].filter(Boolean).join(" · ");
           const figures: { label: string; value: string; estimated: boolean }[] = [
-            { label: "Views", value: compact(Number(m.views || 0)), estimated: false },
-            { label: "Likes", value: compact(Number(m.likes || 0)), estimated: false },
-            { label: "Comments", value: compact(Number(m.comments || 0)), estimated: false },
-            { label: "Shares", value: compact(Number(m.shares || 0)), estimated: estimated("shares") },
-            { label: "Saves", value: compact(Number(m.saves || 0)), estimated: estimated("saves") },
+            { label: "Views", value: shown(m.views), estimated: false },
+            { label: "Likes", value: shown(m.likes), estimated: false },
+            { label: "Comments", value: shown(m.comments), estimated: false },
+            { label: "Shares", value: shown(m.shares), estimated: estimated("shares") },
+            { label: "Saves", value: shown(m.saves), estimated: estimated("saves") },
             { label: "Engagement", value: `${p.rate.toFixed(1)}%`, estimated: interactionsEstimated },
           ];
           return (
@@ -48,7 +54,7 @@ export function TopPosts({ picks, className }: { picks: TopPick[]; className?: s
             >
               <div className="flex aspect-[4/5] items-center justify-center overflow-hidden bg-secondary">
                 <PostThumb
-                  postId={p.post.id}
+                  postId={brandPosts ? null : p.post.id}
                   url={p.post.post_url ?? ""}
                   platform={p.post.platform}
                   thumbnailUrl={p.post.thumbnail_url}

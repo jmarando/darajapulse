@@ -70,3 +70,13 @@ describe("slotLabel", () => {
     expect([0, 3, 9, 12, 15, 18, 23].map(slotLabel)).toEqual(["12am", "3am", "9am", "12pm", "3pm", "6pm", "11pm"]);
   });
 });
+
+describe("buildCadence at a fixed offset", () => {
+  it("reads the day and hour at that offset, whatever the viewer's time zone", () => {
+    // 21:30 UTC on Monday 13 July 2026 is 00:30 on Tuesday in Nairobi.
+    const posts = [{ id: "a", posted_at: "2026-07-13T21:30:00Z" }];
+    const metrics = new Map([["a", { views: 10 }]]);
+    expect(buildCadence(posts, metrics, 3).cells[0]).toMatchObject({ day: 1, hour: 0, views: 10 });
+    expect(buildCadence(posts, metrics, 0).cells[0]).toMatchObject({ day: 0, hour: 21, views: 10 });
+  });
+});

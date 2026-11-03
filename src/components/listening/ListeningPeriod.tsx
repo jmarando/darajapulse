@@ -34,13 +34,14 @@ const fromInput = (s: string) => {
  * stepped back or forward, or two picked dates — and whether to compare it with the
  * window before it.
  */
-export default function ListeningPeriod({ period, preset, compare, onPreset, onPeriod, onCompare }: {
+export default function ListeningPeriod({ period, preset, compare, onPreset, onPeriod, onCompare, hint = "Listening starts from the day a keyword was added, so earlier periods can be empty." }: {
   period: Period;
   preset: Preset;
   compare: boolean;
   onPreset: (preset: Preset) => void;
   onPeriod: (period: Period) => void;
   onCompare: (compare: boolean) => void;
+  hint?: string;
 }) {
   const todayEnd = lastDays(1).end;
   const canForward = period.end < todayEnd;
@@ -121,7 +122,7 @@ export default function ListeningPeriod({ period, preset, compare, onPreset, onP
             </div>
           </div>
           <p className="mt-2 max-w-[19rem] text-[12px] leading-relaxed text-muted-foreground">
-            Listening starts from the day a keyword was added, so earlier periods can be empty.
+            {hint}
           </p>
         </PopoverContent>
       </Popover>
