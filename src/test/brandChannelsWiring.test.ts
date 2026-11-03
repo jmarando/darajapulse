@@ -354,5 +354,6 @@ describe("share links", () => {
     expect(portal.indexOf('label: "Channels"')).toBeGreaterThan(portal.indexOf('label: "Listening"'));
     expect(read("../src/pages/PublicOrganicReport.tsx")).toContain('from "@/integrations/supabase/publicClient"');
     expect(read("../src/pages/PublicOrganicReport.tsx")).not.toContain('from "@/integrations/supabase/client"');
+    expect(read("../src/pages/PublicOrganicReport.tsx")).not.toContain('from "@/lib/brandChannels"'); // it holds the signed-in client
   });
 });

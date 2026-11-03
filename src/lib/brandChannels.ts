@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { publicOrigin } from "@/lib/appUrl";
-import { dayKey, type Period } from "@/lib/listening";
 import type { ChannelPlatform } from "../../supabase/functions/_shared/brand-sources";
 import type { ReportDoc } from "../../supabase/functions/_shared/organic-report";
 
@@ -25,9 +24,6 @@ export type BrandChannel = {
   last_good_pull_at: string | null;
   created_at: string;
 };
-
-/** The days a period covers, as the dates on screen. The report reads them as whole days in Nairobi. */
-export const periodToRange = (p: Period) => ({ from: dayKey(new Date(p.start)), to: dayKey(new Date(p.end)) });
 
 export async function loadChannels(clientId: string): Promise<BrandChannel[]> {
   const { data, error } = await db.from("brand_channels").select("*").eq("client_id", clientId).order("created_at");

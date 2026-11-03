@@ -6,8 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import PublicFooter from "@/components/PublicFooter";
 import ListeningPeriod, { type Preset } from "@/components/listening/ListeningPeriod";
 import OrganicReport from "@/components/channels/OrganicReport";
-import { dayPeriod, lastDays, periodLabel, type Period } from "@/lib/listening";
-import { periodToRange } from "@/lib/brandChannels";
+import { dayPeriod, lastDays, periodLabel, periodToRange, type Period } from "@/lib/listening";
 import { buildOrganicReport, type ReportDoc } from "../../supabase/functions/_shared/organic-report";
 
 // This function is newer than the generated database types.
