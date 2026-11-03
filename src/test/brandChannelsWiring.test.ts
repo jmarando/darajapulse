@@ -168,3 +168,145 @@ describe("the Channels page: where it lives", () => {
     }
   });
 });
+
+describe("connecting: where tokens live", () => {
+  const sql = read("migrations/20261106100000_brand_channel_connect.sql");
+
+  it("keeps the three server-only tables away from everyone but the service role", () => {
+    for (const table of ["brand_channel_secrets", "brand_oauth_states", "brand_connect_pending"]) {
+      expect(sql).toContain(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`);
+      expect(sql).toContain(`REVOKE ALL ON public.${table} FROM anon, authenticated;`);
+      expect(sql).not.toMatch(new RegExp(`POLICY[^;]*ON public\\.${table}`));
+    }
+  });
+
+  it("lets only the service role run the functions that touch tokens", () => {
+    const fns = [
+      "set_brand_channel_token(uuid, text, text, text[], text, text, uuid, text)", "brand_channel_token(uuid)",
+      "create_brand_connect_pending(text, uuid, jsonb, text, text, text, text[], uuid)", "brand_connect_pending_token(uuid, text)",
+      "clear_brand_connect_expired()", "revoke_brand_tokens_for_meta_user(text)",
+    ];
+    for (const fn of fns) {
+      expect(sql).toContain(`REVOKE EXECUTE ON FUNCTION public.${fn} FROM PUBLIC, anon, authenticated;`);
+      expect(sql).toContain(`GRANT EXECUTE ON FUNCTION public.${fn} TO service_role;`);
+    }
+  });
+
+  it("deletes the vault secret whenever a row holding one goes", () => {
+    expect(sql).toMatch(/DELETE FROM vault\.secrets WHERE id = OLD\.vault_secret_id/);
+    expect(sql).toMatch(/AFTER DELETE ON public\.brand_channel_secrets[\s\S]*brand_drop_vault_secret/);
+    expect(sql).toMatch(/AFTER DELETE ON public\.brand_connect_pending[\s\S]*brand_drop_vault_secret/);
+  });
+
+  it("gives a visitor nothing but a link's status and names", () => {
+    expect(sql).toContain("GRANT EXECUTE ON FUNCTION public.get_brand_connect_link(text) TO anon, authenticated;");
+    const links = sql.slice(sql.indexOf("brand_connect_links ENABLE"));
+    expect(links).toContain("REVOKE ALL ON public.brand_connect_links FROM anon, authenticated;");
+    expect(links).toContain("GRANT SELECT, INSERT (client_id), UPDATE (revoked_at) ON public.brand_connect_links TO authenticated;");
+  });
+
+  it("lets anyone who can see a brand disconnect it, and checks that first", () => {
+    const fn = sql.slice(sql.indexOf("FUNCTION public.disconnect_brand_channel"));
+    expect(fn.indexOf("can_view_brand_channels(auth.uid()")).toBeLessThan(fn.indexOf("DELETE FROM public.brand_channel_secrets"));
+    expect(sql).toContain("GRANT EXECUTE ON FUNCTION public.disconnect_brand_channel(uuid) TO authenticated;");
+  });
+
+  it("says how to roll it back", () => {
+    expect(sql).toMatch(/To roll back[\s\S]*DROP TABLE IF EXISTS public\.brand_connect_pending/);
+  });
+});
+
+describe("connecting: the functions", () => {
+  const start = read("functions/brand-connect-start/index.ts");
+  const callback = read("functions/brand-connect-callback/index.ts");
+  const confirm = read("functions/brand-connect-confirm/index.ts");
+  const deauth = read("functions/meta-deauthorize/index.ts");
+  const sync = read("functions/brand-channels-sync/index.ts");
+  const auth = read("functions/_shared/auth.ts");
+
+  it("start: refuses expired and cancelled links", () => {
+    expect(start).toMatch(/revoked_at[\s\S]*expires_at/);
+    expect(start).toContain("This link has expired or was cancelled.");
+  });
+
+  it("start: a signed-in person needs the view rule on that brand, whatever their role", () => {
+    expect(start).toContain("requireCaller(req, { anySignedIn: true })");
+    expect(start.indexOf('"can_view_brand_channels"')).toBeLessThan(start.indexOf('from("brand_oauth_states")'));
+  });
+
+  it("start: uses Login for Business only when its secret is set", () => {
+    expect(start).toContain('Deno.env.get("META_LOGIN_CONFIG_ID")');
+    expect(start).toContain("metaDialogUrl(");
+  });
+
+  it("callback: takes the state away before anything else, so it works once", () => {
+    expect(callback).toMatch(/from\("brand_oauth_states"\)\s*\.delete\(\)\s*\.eq\("state", state\)\s*\.select\(/);
+    expect(callback.indexOf('from("brand_oauth_states")')).toBeLessThan(callback.indexOf("oauth/access_token"));
+  });
+
+  it("callback: a cancelled login and an account with no pages store nothing and say why", () => {
+    expect(callback).toContain('"denied"');
+    expect(callback).toContain('"no_pages"');
+    expect(callback.indexOf('"no_pages"')).toBeLessThan(callback.indexOf("create_brand_connect_pending"));
+  });
+
+  it("confirm: takes the brand from the pending row, never from the request", () => {
+    expect(confirm).not.toMatch(/body\??\.client_id/);
+    expect(confirm).toMatch(/pending\.client_id/);
+  });
+
+  it("confirm: refuses anything not shared at login, and an empty list", () => {
+    expect(confirm).toMatch(/assets\.filter\(\(a\) => wanted\.has\(a\.id\)\)/);
+    expect(confirm).toMatch(/picked\.length !== wanted\.size|!picked\.length/);
+  });
+
+  it("confirm: deletes the pending row, and so the login token, once done", () => {
+    const flow = confirm.slice(confirm.indexOf("set_brand_channel_token"));
+    expect(flow).toMatch(/from\("brand_connect_pending"\)\s*\.delete\(\)/);
+  });
+
+  it("confirm: answers 410 for a step that's finished or expired", () => {
+    expect(confirm).toContain("This step is finished or has expired. Open the link again if you still need to connect.");
+    expect(confirm).toMatch(/, 410\)/);
+  });
+
+  it("deauthorise: checks the signature before touching the database", () => {
+    expect(deauth.indexOf("parseSignedRequest(")).toBeGreaterThan(-1);
+    expect(deauth.indexOf("parseSignedRequest(")).toBeLessThan(deauth.indexOf("revoke_brand_tokens_for_meta_user"));
+  });
+
+  it("never logs a token or an address that holds one", () => {
+    for (const fn of [start, callback, confirm, deauth, sync]) {
+      expect(fn).not.toMatch(/console\.\w+\([^)]*(token|url|code|secret)/i);
+    }
+  });
+
+  it("all four check their own callers, not the platform's JWT check", () => {
+    const config = read("config.toml");
+    for (const name of ["brand-connect-start", "brand-connect-callback", "brand-connect-confirm", "meta-deauthorize"]) {
+      expect(config).toMatch(new RegExp(`\\[functions\\.${name}\\]\\s+verify_jwt = false`));
+    }
+  });
+
+  it("auth: anySignedIn only skips the role check, and everyone else still needs a staff role", () => {
+    expect(auth).toContain("anySignedIn?: boolean");
+    expect(auth).toMatch(/!opts\.anySignedIn && !roles\.some/);
+  });
+
+  it("sync: reads connected channels from Meta with the token from the vault, public numbers standing in once it's rejected", () => {
+    expect(sync).toContain("pullRoute(row)");
+    expect(sync).toContain('rpc("brand_channel_token"');
+    expect(sync).toContain("reconcilePosts(");
+    expect(sync).toContain('rpc("clear_brand_connect_expired")');
+    expect(sync).not.toContain("access_token=");
+  });
+});
+
+describe("the privacy policy", () => {
+  it("says what connecting a brand's pages reads and how to undo it", () => {
+    const privacy = read("../src/pages/Privacy.tsx");
+    expect(privacy).toContain("When a brand connects its Facebook Pages or Instagram accounts");
+    expect(privacy).toContain("We can't post, comment or read messages.");
+    expect(privacy).toContain("deletes the token straight away");
+  });
+});

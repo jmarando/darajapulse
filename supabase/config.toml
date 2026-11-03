@@ -93,3 +93,15 @@ verify_jwt = false
 
 [functions.brand-channels-sync]
 verify_jwt = false
+
+[functions.brand-connect-start]
+verify_jwt = false
+
+[functions.brand-connect-callback]
+verify_jwt = false
+
+[functions.brand-connect-confirm]
+verify_jwt = false
+
+[functions.meta-deauthorize]
+verify_jwt = false

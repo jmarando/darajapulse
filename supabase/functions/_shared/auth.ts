@@ -25,6 +25,8 @@ export interface CallerOptions {
   job?: string;
   /** Roles a signed-in user needs (any of). Defaults to agency staff. */
   roles?: string[];
+  /** Any signed-in user passes, for a function that checks per-brand access itself: portal roles vary and some users have none. */
+  anySignedIn?: boolean;
 }
 
 const admin = () => createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
@@ -70,7 +72,7 @@ export async function requireCaller(req: Request, opts: CallerOptions = {}): Pro
   const { data: rows } = await db.from("user_roles").select("role").eq("user_id", userId);
   const roles = (rows ?? []).map((r: { role: string }) => r.role);
   const allowed = opts.roles ?? STAFF_ROLES;
-  if (!roles.some((r) => allowed.includes(r))) return denied(403, "You don't have permission to do this.");
+  if (!opts.anySignedIn && !roles.some((r) => allowed.includes(r))) return denied(403, "You don't have permission to do this.");
   return { kind: "user", userId, roles, isSuperAdmin: roles.includes("super_admin") };
 }
 

@@ -295,14 +295,15 @@ export function applyPull(row: ChannelRow, result: PullResult, now: number): {
   }
   const attempt = { last_pull_at: at };
   const everGood = !!row.last_good_pull_at;
+  // A page that needs reconnecting keeps saying so, whatever happens to the public read standing in for it.
+  if (row.status === "needs_reconnect" && result.kind !== "reconnect") return { channel: attempt, day: null };
   switch (result.kind) {
     case "not_found":
       return { channel: { ...attempt, status: "error", status_note: everGood ? `Not found on ${name} any more. It may have been renamed.` : `Not found on ${name}. Check the handle.` }, day: null };
     case "private":
       return { channel: { ...attempt, status: "error", status_note: "This account is private or age-restricted, so its public numbers can't be read." }, day: null };
     case "out_of_credits":
-      // A page that needs reconnecting keeps saying so: that is the thing someone can act on.
-      return { channel: row.status === "needs_reconnect" ? attempt : { ...attempt, status: "paused", status_note: OUT_OF_CREDITS }, day: null };
+      return { channel: { ...attempt, status: "paused", status_note: OUT_OF_CREDITS }, day: null };
     case "cap":
       return { channel: { ...attempt, status_note: "Today's allowance for public numbers is used. Tries again tonight." }, day: null };
     case "reconnect":

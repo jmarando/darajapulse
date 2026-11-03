@@ -241,10 +241,11 @@ describe("applyPull", () => {
     expect(applyPull(row(), bad("out_of_credits"), at).channel).toMatchObject({ status: "paused", status_note: "Public numbers are paused: the data provider is out of credits." });
   });
 
-  it("keeps saying a page needs reconnecting when credits run out", () => {
-    const { channel } = applyPull(row({ source: "connected", status: "needs_reconnect" }), bad("out_of_credits"), at);
-    expect(channel).not.toHaveProperty("status");
-    expect(channel).not.toHaveProperty("status_note");
+  it("keeps saying a page needs reconnecting, whatever happens to the public read standing in", () => {
+    for (const kind of ["out_of_credits", "cap", "failed", "not_found", "private"] as const) {
+      const { channel } = applyPull(row({ source: "connected", status: "needs_reconnect" }), bad(kind), at);
+      expect(channel).toEqual({ last_pull_at: iso });
+    }
   });
 
   it("leaves the status alone when today's allowance is used", () => {
