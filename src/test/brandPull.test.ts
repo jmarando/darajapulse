@@ -246,3 +246,16 @@ describe("snapshotRow", () => {
     expect(snapshotRow("p1", blank, "scrapecreators", 0)).toBeNull();
   });
 });
+
+describe("pullPublic: running out of time", () => {
+  it("stops paging when time is up and keeps what it read", async () => {
+    let left = 2; // the profile and one page
+    const call = vi.fn<ScCall>(async (path) => {
+      left--;
+      return path === "/v1/tiktok/profile" ? ttProfile : ttPage([tt("a", 1)]);
+    });
+    const result = await pullPublic({ platform: "tiktok", handle: "acme", mode: "first", now, call, outOfTime: () => left <= 0 });
+    expect(call).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ ok: true, calls: 2 });
+  });
+});

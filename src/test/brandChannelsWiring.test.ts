@@ -73,3 +73,77 @@ describe("the report rows", () => {
     for (const secret of ["status_note", "connected_by", "created_by"]) expect(doc).not.toContain(secret);
   });
 });
+
+describe("brand-channels-sync: who may call", () => {
+  const fn = read("functions/brand-channels-sync/index.ts");
+
+  it("checks the caller with the job key as the first thing its handler does", () => {
+    expect(fn).toContain('requireCaller(req, { job: "brand-channels-sync" })');
+    expect(fn).toMatch(/Deno\.serve\(async \(req\) => \{\s*if \(req\.method === "OPTIONS"\)[^\n]*\n\s*const caller = await requireCaller\(/);
+    expect(fn.indexOf("requireCaller(")).toBeLessThan(fn.indexOf("req.json()"));
+  });
+
+  it("lets a signed-in person read one channel of a brand they manage, and not again within minutes", () => {
+    const user = fn.slice(fn.indexOf('caller.kind === "user"'));
+    expect(user).toMatch(/ids\.length !== 1/);
+    expect(user.indexOf('"can_manage_brand_channels"')).toBeGreaterThan(-1);
+    expect(user.indexOf('"can_manage_brand_channels"')).toBeLessThan(user.indexOf("runChannels("));
+    expect(user.indexOf("THROTTLE_MS")).toBeLessThan(user.indexOf("runChannels("));
+  });
+});
+
+describe("brand-channels-sync: spending", () => {
+  const fn = read("functions/brand-channels-sync/index.ts");
+
+  it("takes the agency's allowance before it spends a call", () => {
+    expect(fn).toContain('rpc("take_brand_pull_credits"');
+    expect(fn).toContain("maxPublicCalls(platform, mode)");
+    expect(fn.indexOf('rpc("take_brand_pull_credits"')).toBeLessThan(fn.indexOf("pullPublic({"));
+  });
+
+  it("stops below the credit floor, so campaign metrics keep their credits", () => {
+    expect(fn).toMatch(/run\.balance < SC_CREDIT_FLOOR/);
+  });
+
+  it("logs what it spent where the other jobs do", () => {
+    expect(fn).toMatch(/scraper_credit_log[\s\S]*context: "brand_channels"/);
+  });
+
+  it("takes the job lock for a full run, and gives it back", () => {
+    expect(fn).toContain('rpc("take_job_lock", { _name: LOCK, _seconds: 170 })');
+    expect(fn).toMatch(/finally \{\s*await supabase\.rpc\("release_job_lock"/);
+  });
+
+  it("warns super admins at most once a day, through a lock it keeps on purpose", () => {
+    expect(fn).toContain('rpc("take_job_lock", { _name: "brand-channels-credits-warning", _seconds: 86_400 })');
+    expect(fn).toContain('templateName: "brand-channels-credits"');
+    expect(fn).not.toMatch(/release_job_lock[^\n]*credits-warning/);
+  });
+});
+
+describe("brand-channels-sync: writing", () => {
+  const fn = read("functions/brand-channels-sync/index.ts");
+
+  it("marks a read good only after its numbers are saved", () => {
+    const write = fn.slice(fn.indexOf("async function writePull"));
+    expect(write.indexOf('from("brand_post_metrics")')).toBeLessThan(write.indexOf('from("brand_channels")'));
+    expect(write.indexOf('from("brand_channel_days")')).toBeLessThan(write.indexOf('from("brand_channels")'));
+  });
+
+  it("writes readings only through snapshotRow, so an unknown post has no row of zeros", () => {
+    expect(fn).toContain("snapshotRow(");
+    expect(fn).not.toContain("withMetricFallbacks");
+  });
+});
+
+describe("brand-channels-sync: registered", () => {
+  it("is a function that checks its own caller, not the platform's JWT check", () => {
+    expect(read("config.toml")).toMatch(/\[functions\.brand-channels-sync\]\s+verify_jwt = false/);
+  });
+
+  it("has its warning email in the registry", () => {
+    const registry = read("functions/_shared/transactional-email-templates/registry.ts");
+    expect(registry).toContain("import { template as brandChannelsCredits } from './brand-channels-credits.tsx'");
+    expect(registry).toContain("'brand-channels-credits': brandChannelsCredits");
+  });
+});
