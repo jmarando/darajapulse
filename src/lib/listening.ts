@@ -208,6 +208,9 @@ export function dayPeriod(a: Date, b: Date): Period {
   return { start: startOfDay(from), end: endOfDay(to) };
 }
 
+/** The days a period covers, as the dates on screen. The organic report reads them as whole days in Nairobi. */
+export const periodToRange = (p: Period) => ({ from: dayKey(new Date(p.start)), to: dayKey(new Date(p.end)) });
+
 /** The window of the same length immediately before this one. */
 export function previousPeriod(p: Period): Period {
   const span = p.end - p.start + 1;

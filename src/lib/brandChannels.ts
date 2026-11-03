@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { publicOrigin } from "@/lib/appUrl";
-import { dayKey, type Period } from "@/lib/listening";
 import type { ChannelPlatform } from "../../supabase/functions/_shared/brand-sources";
 import type { ReportDoc } from "../../supabase/functions/_shared/organic-report";
 
@@ -25,9 +24,6 @@ export type BrandChannel = {
   last_good_pull_at: string | null;
   created_at: string;
 };
-
-/** The days a period covers, as the dates on screen. The report reads them as whole days in Nairobi. */
-export const periodToRange = (p: Period) => ({ from: dayKey(new Date(p.start)), to: dayKey(new Date(p.end)) });
 
 export async function loadChannels(clientId: string): Promise<BrandChannel[]> {
   const { data, error } = await db.from("brand_channels").select("*").eq("client_id", clientId).order("created_at");
@@ -101,6 +97,32 @@ export async function disconnectChannel(id: string): Promise<void> {
   const { error } = await db.rpc("disconnect_brand_channel", { _channel_id: id });
   if (error) throw error;
 }
+
+export type ShareLink = { id: string; token: string };
+
+/** The brand's one live share link, made if there is none. Two people pressing Share together end up with the same one. */
+export async function shareLink(clientId: string): Promise<ShareLink> {
+  const live = () => db.from("brand_report_links").select("id, token").eq("client_id", clientId).eq("is_active", true).maybeSingle();
+  const found = await live();
+  if (found.error) throw found.error;
+  if (found.data) return found.data as ShareLink;
+  const { data, error } = await db.from("brand_report_links").insert({ client_id: clientId }).select("id, token").single();
+  if (!error) return data as ShareLink;
+  if (error.code !== "23505") throw error;
+  const again = await live();
+  if (again.error || !again.data) throw again.error ?? error;
+  return again.data as ShareLink;
+}
+
+export async function turnOffShareLink(id: string): Promise<void> {
+  const { error } = await db.from("brand_report_links").update({ is_active: false }).eq("id", id);
+  if (error) throw error;
+}
+
+export const reportShareUrl = (token: string) => `${publicOrigin()}/o/${token}`;
+
+export const reportWhatsappUrl = (brandName: string, token: string) =>
+  `https://wa.me/?text=${encodeURIComponent(`Here is ${brandName}'s organic report: ${reportShareUrl(token)}`)}`;
 
 export function updatedLabel(iso: string | null, now = Date.now()): string {
   if (!iso) return "Not read yet";

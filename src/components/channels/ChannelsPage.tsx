@@ -9,12 +9,13 @@ import { toast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/dash/PageHeader";
 import { Panel } from "@/components/dash/Panel";
 import ListeningPeriod, { type Preset } from "@/components/listening/ListeningPeriod";
-import { lastDays, periodLabel, type Period } from "@/lib/listening";
-import { loadChannels, loadReportDoc, periodToRange, startConnect, type BrandChannel } from "@/lib/brandChannels";
+import { lastDays, periodLabel, periodToRange, type Period } from "@/lib/listening";
+import { loadChannels, loadReportDoc, startConnect, type BrandChannel } from "@/lib/brandChannels";
 import { buildOrganicReport, type ReportDoc } from "../../../supabase/functions/_shared/organic-report";
 import ChannelsCard from "./ChannelsCard";
 import ConnectMeta from "./ConnectMeta";
 import OrganicReport from "./OrganicReport";
+import ShareReport from "./ShareReport";
 
 type Brand = { id: string; name: string };
 
@@ -123,14 +124,17 @@ export default function ChannelsPage({ portal = false }: { portal?: boolean }) {
         title="Channels"
         subtitle={brand ? `How ${brand.name}'s own accounts are doing.` : "How a brand's own accounts are doing."}
         actions={
-          brands && brands.length > 1 ? (
-            <Select value={clientId ?? undefined} onValueChange={setBrand}>
-              <SelectTrigger className="h-9 w-[220px]" aria-label="Brand"><SelectValue placeholder="Pick a brand" /></SelectTrigger>
-              <SelectContent>
-                {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          ) : undefined
+          <>
+            {brands && brands.length > 1 && (
+              <Select value={clientId ?? undefined} onValueChange={setBrand}>
+                <SelectTrigger className="h-9 w-[220px]" aria-label="Brand"><SelectValue placeholder="Pick a brand" /></SelectTrigger>
+                <SelectContent>
+                  {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            {canManage && hasChannels && clientId && <ShareReport clientId={clientId} brandName={brand?.name ?? "This brand"} />}
+          </>
         }
       />
 
