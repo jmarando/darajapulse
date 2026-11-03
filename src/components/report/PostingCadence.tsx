@@ -8,7 +8,7 @@ const SHADES = [0.15, 0.35, 0.55, 0.8, 1];
 const count = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** When the posts went live: a weekday-by-hour grid shaded by the views each slot delivered. */
-export function PostingCadence({ cadence, className }: { cadence: Cadence; className?: string }) {
+export function PostingCadence({ cadence, className, subtitle }: { cadence: Cadence; className?: string; subtitle?: string }) {
   const { cells, best } = cadence;
   if (cells.length === 0) return null;
   const slot = new Map(cells.map((c) => [`${c.day}-${c.hour}`, c]));
@@ -18,7 +18,7 @@ export function PostingCadence({ cadence, className }: { cadence: Cadence; class
     <ReportCard
       className={className}
       title="When the posts went live"
-      subtitle="Views by the day and hour each post was published, in your time zone. Darker means more views."
+      subtitle={subtitle ?? "Views by the day and hour each post was published, in your time zone. Darker means more views."}
       action={
         best ? (
           <div className="shrink-0 text-right">
