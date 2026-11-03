@@ -3,6 +3,7 @@
 // null and reads as a dash, never 0, because a missing number is not a collapse.
 import type { Audience } from "./brand-pull.ts";
 import { PLATFORM_NAME, type PostFormat, type PostMetrics } from "./brand-sources.ts";
+import { views as shortViews } from "./listening-brief.ts";
 import { buildCadence, type Cadence } from "./posting-cadence.ts";
 import { pickTopPosts, type TopPick } from "./top-posts.ts";
 
@@ -237,5 +238,58 @@ export function buildOrganicReport(doc: ReportDoc, now: number): OrganicReport {
     connected: connectedOf(channels, current),
     sourcesLine: sourcesLineOf(channels),
     notes: notesOf(channels, current, now),
+  };
+}
+
+/** The last whole calendar month, in Nairobi time. */
+export function lastFullMonth(now: number): { from: string; to: string; label: string } {
+  const nairobi = new Date(now + NAIROBI_UTC_OFFSET * 3_600_000);
+  const first = new Date(Date.UTC(nairobi.getUTCFullYear(), nairobi.getUTCMonth() - 1, 1));
+  const last = new Date(Date.UTC(nairobi.getUTCFullYear(), nairobi.getUTCMonth(), 0));
+  return {
+    from: first.toISOString().slice(0, 10),
+    to: last.toISOString().slice(0, 10),
+    label: first.toLocaleDateString("en-GB", { timeZone: "UTC", month: "long", year: "numeric" }),
+  };
+}
+
+export type MonthlyEmailData = {
+  skip: boolean;
+  subject: string;
+  brand_name: string;
+  month_label: string;
+  tiles: { label: string; value: string; change: string | null }[];
+  top_post: { title: string; platform: string; views: string; url: string } | null;
+  notes: string[];
+  sources_line: string;
+};
+
+const signedText = (v: number | null, show: (n: number) => string) => (v === null ? null : `${v > 0 ? "+" : v < 0 ? "-" : ""}${show(Math.abs(v))}`);
+const percentText = (n: number) => `${n.toFixed(1)}%`;
+
+/** What the monthly email says. Nothing to say (no channels, or no numbers for the month) means nothing is sent. */
+export function monthlyEmailData(report: OrganicReport, ctx: { brandName: string; monthLabel: string }): MonthlyEmailData {
+  const { followers, posts, views, interactions, rate } = report.tiles;
+  const line = (label: string, tile: Tile, show: (n: number) => string) => ({ label, value: tile.value === null ? "—" : show(tile.value), change: signedText(tile.change, show) });
+  const count = posts.value ?? 0;
+  const postsWord = `${count} ${count === 1 ? "post" : "posts"}`;
+  const top = report.picks.find((p) => p.kind === "views");
+  return {
+    skip: report.isEmpty || (followers.value === null && count === 0),
+    subject: `${ctx.brandName} in ${ctx.monthLabel}: ${views.value === null ? postsWord : `${shortViews(views.value)} views on ${postsWord}`}`,
+    brand_name: ctx.brandName,
+    month_label: ctx.monthLabel,
+    tiles: [
+      line("Followers", followers, shortViews),
+      line("Posts", posts, (n) => String(n)),
+      line("Views", views, shortViews),
+      line("Interactions", interactions, shortViews),
+      line("Engagement rate", rate, percentText),
+    ],
+    top_post: top
+      ? { title: top.post.caption?.trim().slice(0, 80) || "A post", platform: platformName(top.post.platform), views: shortViews(Number(top.metrics.views)), url: top.post.post_url ?? "" }
+      : null,
+    notes: report.notes,
+    sources_line: report.sourcesLine,
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildOrganicReport, type ReportChannel, type ReportDoc, type ReportPost } from "../../supabase/functions/_shared/organic-report";
+import { buildOrganicReport, lastFullMonth, monthlyEmailData, type ReportChannel, type ReportDoc, type ReportPost } from "../../supabase/functions/_shared/organic-report";
 
 const now = Date.parse("2026-11-04T09:00:00Z");
 
@@ -244,5 +244,67 @@ describe("buildOrganicReport: notes", () => {
     expect(report.platforms.map((p) => p.channel_id)).toEqual(["fb"]);
     expect(report.sourcesLine).toBe("Facebook from Meta.");
     expect(report.notes.some((n) => n.includes("acme.ke"))).toBe(false);
+  });
+});
+
+describe("lastFullMonth", () => {
+  it("is the month before, in Nairobi time", () => {
+    expect(lastFullMonth(Date.parse("2026-11-01T05:00:00Z"))).toEqual({ from: "2026-10-01", to: "2026-10-31", label: "October 2026" });
+    expect(lastFullMonth(Date.parse("2027-01-01T05:00:00Z"))).toEqual({ from: "2026-12-01", to: "2026-12-31", label: "December 2026" });
+    expect(lastFullMonth(Date.parse("2026-03-15T05:00:00Z")).to).toBe("2026-02-28");
+  });
+
+  it("turns over at midnight in Nairobi, not UTC", () => {
+    expect(lastFullMonth(Date.parse("2026-10-31T21:30:00Z")).to).toBe("2026-10-31"); // 00:30 on 1 Nov in Nairobi
+    expect(lastFullMonth(Date.parse("2026-10-31T20:30:00Z")).to).toBe("2026-09-30"); // still 31 Oct in Nairobi
+  });
+});
+
+describe("monthlyEmailData", () => {
+  const ctx = { brandName: "Acme", monthLabel: "October 2026" };
+  const data = monthlyEmailData(buildOrganicReport(doc(), now), ctx);
+
+  it("names the month and the headline numbers in the subject", () => {
+    expect(data.subject).toBe("Acme in October 2026: 3.4k views on 4 posts");
+    expect(data.brand_name).toBe("Acme");
+    expect(data.month_label).toBe("October 2026");
+  });
+
+  it("leaves views out of the subject when none are known", () => {
+    const noViews = monthlyEmailData(buildOrganicReport(doc({ posts: [post("a", "tt", "photo", { likes: 2 })] }), now), ctx);
+    expect(noViews.subject).toBe("Acme in October 2026: 1 post");
+  });
+
+  it("gives the tiles as words, with a dash for what's unknown and never 0", () => {
+    expect(data.tiles).toEqual([
+      { label: "Followers", value: "1.6k", change: "+100" },
+      { label: "Posts", value: "4", change: "+3" },
+      { label: "Views", value: "3.4k", change: "+2.9k" },
+      { label: "Interactions", value: "360", change: "+330" },
+      { label: "Engagement rate", value: "9.1%", change: "+3.1%" },
+    ]);
+    const empty = monthlyEmailData(buildOrganicReport(doc({ posts: [], days: [] }), now), ctx);
+    expect(empty.tiles.find((t) => t.label === "Views")).toEqual({ label: "Views", value: "—", change: null });
+    expect(empty.tiles.find((t) => t.label === "Followers")).toEqual({ label: "Followers", value: "—", change: null });
+  });
+
+  it("picks the most viewed post", () => {
+    expect(data.top_post).toEqual({ title: "A post", platform: "TikTok", views: "2k", url: "https://example.test/p3" }); // p3 has no caption
+  });
+
+  it("gives no top post when nothing has views", () => {
+    expect(monthlyEmailData(buildOrganicReport(doc({ posts: [] }), now), ctx).top_post).toBeNull();
+  });
+
+  it("carries the notes and the sources line", () => {
+    expect(data.notes).toContain("TikTok (@acme.ke) was last updated 3 days ago.");
+    expect(data.sources_line).toBe("Facebook from Meta. TikTok from public numbers.");
+  });
+
+  it("sends nothing for a brand with no channels, or with nothing read for the month", () => {
+    expect(data.skip).toBe(false);
+    expect(monthlyEmailData(buildOrganicReport(doc({ channels: [], days: [], posts: [] }), now), ctx).skip).toBe(true);
+    expect(monthlyEmailData(buildOrganicReport(doc({ days: [], posts: [] }), now), ctx).skip).toBe(true);
+    expect(monthlyEmailData(buildOrganicReport(doc({ posts: [] }), now), ctx).skip).toBe(false); // followers alone are news
   });
 });

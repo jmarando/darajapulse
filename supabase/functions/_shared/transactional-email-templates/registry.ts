@@ -26,6 +26,7 @@ import { template as campaignDraftDecision } from './campaign-draft-decision.tsx
 import { template as roycoAgreementAmended } from './royco-agreement-amended.tsx'
 import { template as listeningAlert } from './listening-alert.tsx'
 import { template as brandChannelsCredits } from './brand-channels-credits.tsx'
+import { template as brandOrganicReport } from './brand-organic-report.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'royco-agreement-amended': roycoAgreementAmended,
@@ -45,4 +46,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'campaign-draft-decision': campaignDraftDecision,
   'listening-alert': listeningAlert,
   'brand-channels-credits': brandChannelsCredits,
+  'brand-organic-report': brandOrganicReport,
 }

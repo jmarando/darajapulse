@@ -357,3 +357,86 @@ describe("share links", () => {
     expect(read("../src/pages/PublicOrganicReport.tsx")).not.toContain('from "@/lib/brandChannels"'); // it holds the signed-in client
   });
 });
+
+describe("the monthly email", () => {
+  const sql = read("migrations/20261106120000_brand_report_email.sql");
+  const fn = read("functions/send-brand-report/index.ts");
+
+  it("starts off for every brand, with nobody on the list and at most 10 addresses", () => {
+    expect(sql).toMatch(/monthly_email\s+boolean NOT NULL DEFAULT false/);
+    expect(sql).toMatch(/recipients\s+text\[\] NOT NULL DEFAULT '\{\}'/);
+    expect(sql).toMatch(/cardinality\(recipients\) <= 10/);
+  });
+
+  it("lets anyone who can see a brand read the setting, and only agency staff change it", () => {
+    expect(sql).toMatch(/"Brand report settings: read"[\s\S]*can_view_brand_channels/);
+    expect(sql).toMatch(/"Brand report settings: add"[\s\S]*WITH CHECK \(public\.can_manage_brand_channels/);
+    expect(sql).toMatch(/"Brand report settings: edit"[\s\S]*USING \(public\.can_manage_brand_channels/);
+  });
+
+  it("keeps the log for the service role, with one row per brand and month", () => {
+    expect(sql).toContain("REVOKE ALL ON public.brand_report_sends FROM anon, authenticated;");
+    expect(sql).toMatch(/PRIMARY KEY \(client_id, month\)/);
+  });
+
+  it("first runs at 08:00 in Nairobi on the 1st, then hourly until 10:00 UTC so a failure isn't lost for a month", () => {
+    expect(sql).toContain("INSERT INTO public.internal_job_keys(name) VALUES ('send-brand-report') ON CONFLICT (name) DO NOTHING;");
+    expect(sql).toContain("cron.schedule('send-brand-report-monthly', '0 5-10 1 * *'");
+    expect(sql).toMatch(/To roll back:[\s\S]*cron\.unschedule\('send-brand-report-monthly'\)/);
+  });
+
+  it("checks the caller first", () => {
+    expect(fn).toContain('requireCaller(req, { job: "send-brand-report" })');
+    expect(fn).toMatch(/Deno\.serve\(async \(req\) => \{\s*if \(req\.method === "OPTIONS"\)[^\n]*\n\s*const caller = await requireCaller\(/);
+  });
+
+  it("lets a signed-in person do nothing but ask for a test of a brand they manage, sent only to them", () => {
+    expect(fn).toMatch(/caller\.kind === "user"[\s\S]*body\?\.test !== true[\s\S]*can_manage_brand_channels/);
+    const test = fn.slice(fn.indexOf("async function sendTest"), fn.indexOf("async function sendBrand"));
+    expect(test).toMatch(/getUserById\(userId\)/);
+    expect(test).toContain("recipientEmail: to");
+    expect(test).not.toContain("recipients");
+  });
+
+  it("only sends for brands switched on, with a valid address, and once a month", () => {
+    expect(fn).toMatch(/brand_report_settings[\s\S]*\.eq\("monthly_email", true\)/);
+    expect(fn).toContain("EMAIL_OK.test(");
+    expect(fn).toMatch(/brand_report_sends[\s\S]*\.eq\("month", month\.from\)/);
+    expect(fn).toMatch(/if \(data\.skip\)/);
+  });
+
+  it("reads each brand's own report, and links to its own share link for that month", () => {
+    expect(fn).toContain('rpc("brand_report_doc", { _client_id: clientId, _from: month.from, _to: month.to })');
+    expect(fn).toMatch(/\/o\/\$\{[^}]+\}\?from=\$\{month\.from\}&to=\$\{month\.to\}/);
+  });
+
+  it("logs a send only when every recipient was handled, so a failure is tried again in an hour", () => {
+    expect(fn).toMatch(/handled === recipients\.length[\s\S]*from\("brand_report_sends"\)/);
+    expect(fn).toContain("idempotencyKey:");
+  });
+
+  it("takes the job lock and gives it back", () => {
+    expect(fn).toContain('rpc("take_job_lock", { _name: LOCK, _seconds: 170 })');
+    expect(fn).toMatch(/finally \{\s*await supabase\.rpc\("release_job_lock"/);
+  });
+
+  it("is registered, with its template", () => {
+    expect(read("config.toml")).toMatch(/\[functions\.send-brand-report\]\s+verify_jwt = false/);
+    const registry = read("functions/_shared/transactional-email-templates/registry.ts");
+    expect(registry).toContain("import { template as brandOrganicReport } from './brand-organic-report.tsx'");
+    expect(registry).toContain("'brand-organic-report': brandOrganicReport");
+  });
+});
+
+describe("the deck", () => {
+  it("loads its drawing code only on export, so the public page doesn't carry it", () => {
+    const button = read("../src/components/channels/DownloadDeck.tsx");
+    expect(button).toContain('await import("@/lib/exportOrganic")');
+    expect(read("../src/lib/organicDeck.ts")).not.toContain("pptxgen");
+  });
+
+  it("shows wherever the report does", () => {
+    expect(read("../src/components/channels/ChannelsPage.tsx")).toContain("<DownloadDeck");
+    expect(read("../src/pages/PublicOrganicReport.tsx")).toContain("<DownloadDeck");
+  });
+});

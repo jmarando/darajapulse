@@ -2,7 +2,7 @@ import pptxgen from "pptxgenjs";
 import type { ListeningDeck } from "./listeningDeck";
 
 /** Daraja Pulse brand palette (mirrors the semantic tokens in index.css). */
-const BRAND = {
+export const BRAND = {
   ink: "1D1816",
   inkSoft: "332B27",
   paper: "FAF7F2",
@@ -13,7 +13,7 @@ const BRAND = {
   white: "FFFFFF",
 };
 
-const FONT = "Geist";
+export const FONT = "Geist";
 
 /** Mood colours from the app's --status-good/--status-bad tokens, so the chart reads like the page. */
 const MOOD = { positive: "23854E", neutral: "B9AFA8", negative: "BB2A5D" };
