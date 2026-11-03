@@ -10,9 +10,10 @@ import { PageHeader } from "@/components/dash/PageHeader";
 import { Panel } from "@/components/dash/Panel";
 import ListeningPeriod, { type Preset } from "@/components/listening/ListeningPeriod";
 import { lastDays, periodLabel, type Period } from "@/lib/listening";
-import { loadChannels, loadReportDoc, periodToRange, type BrandChannel } from "@/lib/brandChannels";
+import { loadChannels, loadReportDoc, periodToRange, startConnect, type BrandChannel } from "@/lib/brandChannels";
 import { buildOrganicReport, type ReportDoc } from "../../../supabase/functions/_shared/organic-report";
 import ChannelsCard from "./ChannelsCard";
+import ConnectMeta from "./ConnectMeta";
 import OrganicReport from "./OrganicReport";
 
 type Brand = { id: string; name: string };
@@ -93,6 +94,15 @@ export default function ChannelsPage({ portal = false }: { portal?: boolean }) {
     setPeriod(next);
   };
 
+  const reconnect = async () => {
+    if (!clientId) return;
+    try {
+      window.location.assign(await startConnect(clientId));
+    } catch (e) {
+      toast({ title: "Couldn't start the Facebook step", description: (e as Error).message, variant: "destructive" });
+    }
+  };
+
   if (brands && brands.length === 0) {
     return (
       <div className="mx-auto w-full min-w-0 max-w-7xl px-4 py-6 sm:p-8">
@@ -125,7 +135,16 @@ export default function ChannelsPage({ portal = false }: { portal?: boolean }) {
       />
 
       {clientId && channels ? (
-        <ChannelsCard clientId={clientId} brandName={brand?.name ?? "This brand"} channels={channels} canManage={canManage} onChanged={reload} />
+        <ChannelsCard
+          clientId={clientId}
+          brandName={brand?.name ?? "This brand"}
+          channels={channels}
+          canManage={canManage}
+          canConnect
+          onChanged={reload}
+          onReconnect={reconnect}
+          connect={<ConnectMeta clientId={clientId} brandName={brand?.name ?? "this brand"} canMakeLinks={canManage} />}
+        />
       ) : (
         <Skeleton className="mb-5 h-40 rounded-[20px]" />
       )}

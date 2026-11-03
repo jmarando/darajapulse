@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     if (body?.action === "read") {
       const { data: client } = await supabase.from("clients").select("name, agencies(name, display_name)").eq("id", pending.client_id).maybeSingle();
-      const agency = (client as { agencies?: { name: string; display_name: string | null } } | null)?.agencies;
+      const agency = (client as unknown as { agencies?: { name: string; display_name: string | null } } | null)?.agencies;
       return json({ brand_name: client?.name ?? "this brand", agency_name: agency?.display_name ?? agency?.name ?? null, assets: pending.assets });
     }
 

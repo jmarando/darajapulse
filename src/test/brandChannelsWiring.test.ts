@@ -241,7 +241,7 @@ describe("connecting: the functions", () => {
 
   it("callback: takes the state away before anything else, so it works once", () => {
     expect(callback).toMatch(/from\("brand_oauth_states"\)\s*\.delete\(\)\s*\.eq\("state", state\)\s*\.select\(/);
-    expect(callback.indexOf('from("brand_oauth_states")')).toBeLessThan(callback.indexOf("oauth/access_token"));
+    expect(callback.indexOf('from("brand_oauth_states")')).toBeLessThan(callback.indexOf("await swap({ client_id"));
   });
 
   it("callback: a cancelled login and an account with no pages store nothing and say why", () => {
