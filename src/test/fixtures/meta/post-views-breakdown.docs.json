@@ -1,0 +1,1 @@
+{"data":[{"name":"post_media_view","period":"lifetime","total_value":{"value":1000,"breakdowns":[{"dimension_keys":["is_from_ads"],"results":[{"dimension_values":["true"],"value":200},{"dimension_values":["false"],"value":800}]}]},"id":"x/insights/post_media_view/lifetime"}]}

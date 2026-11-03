@@ -26,7 +26,7 @@ const Privacy = () => (
           <p>We do not sell personal data. Campaign data is shared only with the contracting brand, the relevant agency, and the creators on the campaign, or via tokenized public links you generate. We use trusted infrastructure providers (hosting, database, email delivery) who process data on our behalf under written agreements.</p>
 
           <h2 className="font-semibold text-base mt-6">4. Connected platforms</h2>
-          <p>When you connect a TikTok, Instagram, YouTube or X account, we receive only the data permitted by that platform and the scopes you approve. You can disconnect at any time from your account settings.</p>
+          <p>When you connect a TikTok, Instagram, YouTube or X account, we receive only the data permitted by that platform and the scopes you approve. You can disconnect at any time from your account settings. When a brand connects its Facebook Pages or Instagram accounts, we read those accounts' posts, views, likes, comments, shares, followers and audience, to report on them. We can't post, comment or read messages. Connection tokens are encrypted. Disconnecting in Pulse, or removing Daraja Pulse in Facebook settings, deletes the token straight away.</p>
 
           <h2 className="font-semibold text-base mt-6">5. Retention</h2>
           <p>We retain account and campaign data for as long as your account is active or as needed to provide the Service, comply with legal obligations, resolve disputes, and enforce agreements. You can request deletion at any time.</p>

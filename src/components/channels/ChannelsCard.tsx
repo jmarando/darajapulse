@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { Panel } from "@/components/dash/Panel";
 import { StatusChip, type Tone } from "@/components/dash/chips";
-import { addChannel, pullChannel, removeChannel, updatedLabel, type BrandChannel } from "@/lib/brandChannels";
+import { addChannel, disconnectChannel, pullChannel, removeChannel, updatedLabel, type BrandChannel } from "@/lib/brandChannels";
 import { platformLabel } from "@/lib/reportInsights";
 import { normaliseHandle, type ChannelPlatform } from "../../../supabase/functions/_shared/brand-sources";
 
@@ -23,12 +23,14 @@ function chipFor(c: BrandChannel): { tone: Tone; label: string } {
  * A brand's accounts: where each one's numbers come from, when they were last read and why they might be out of date.
  * Agency staff add and remove handles; the brand's own users only read the list.
  */
-export default function ChannelsCard({ clientId, brandName, channels, canManage, onChanged, connect }: {
+export default function ChannelsCard({ clientId, brandName, channels, canManage, canConnect = false, onChanged, onReconnect, connect }: {
   clientId: string;
   brandName: string;
   channels: BrandChannel[];
   canManage: boolean;
+  canConnect?: boolean;
   onChanged: () => void;
+  onReconnect?: () => void;
   connect?: React.ReactNode;
 }) {
   const [platform, setPlatform] = useState<ChannelPlatform>("facebook");
@@ -72,8 +74,18 @@ export default function ChannelsCard({ clientId, brandName, channels, canManage,
     }
   };
 
+  const disconnect = async (c: BrandChannel) => {
+    if (!window.confirm(`Disconnect @${c.handle}? Its token is deleted now and it goes back to public numbers.`)) return;
+    try {
+      await disconnectChannel(c.id);
+      onChanged();
+    } catch (e) {
+      toast({ title: "Couldn't disconnect it", description: (e as Error).message, variant: "destructive" });
+    }
+  };
+
   return (
-    <Panel title="Accounts" subtitle={`${brandName}'s own pages. Public numbers from the day a handle is added; Meta's official numbers once connected.`} action={connect} className="mb-5">
+    <Panel title="Accounts" subtitle={`${brandName}'s own pages. Public numbers from the day a handle is added; Meta's official numbers once connected.`} className="mb-5">
       {channels.length > 0 && (
         <ul className="divide-y divide-border/70">
           {channels.map((c) => {
@@ -93,6 +105,14 @@ export default function ChannelsCard({ clientId, brandName, channels, canManage,
                     <span className="text-[12px] text-muted-foreground">{updatedLabel(c.last_good_pull_at)}</span>
                   </div>
                   {c.status_note && <p className="mt-1.5 text-[12.5px] text-muted-foreground">{c.status_note}</p>}
+                  {canConnect && c.source === "connected" && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {c.status === "needs_reconnect" && onReconnect && (
+                        <Button variant="ghost" size="sm" className="-ml-2 h-8" aria-label={`Reconnect @${c.handle}`} onClick={onReconnect}>Reconnect</Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="-ml-2 h-8" aria-label={`Disconnect @${c.handle}`} onClick={() => disconnect(c)}>Disconnect</Button>
+                    </div>
+                  )}
                 </div>
                 {canManage && (
                   <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label={`Remove @${c.handle}`} onClick={() => remove(c)}>
@@ -104,8 +124,9 @@ export default function ChannelsCard({ clientId, brandName, channels, canManage,
           })}
         </ul>
       )}
+      {connect && <div className={channels.length > 0 ? "mt-4 border-t border-border/70 pt-4" : ""}>{connect}</div>}
       {canManage && (
-        <div className={channels.length > 0 ? "mt-4 border-t border-border/70 pt-4" : ""}>
+        <div className={channels.length > 0 || connect ? "mt-4 border-t border-border/70 pt-4" : ""}>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select value={platform} onValueChange={(v) => setPlatform(v as ChannelPlatform)}>
               <SelectTrigger className="h-9 sm:w-[140px]" aria-label="Platform"><SelectValue /></SelectTrigger>

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { publicOrigin } from "@/lib/appUrl";
 import { dayKey, type Period } from "@/lib/listening";
 import type { ChannelPlatform } from "../../supabase/functions/_shared/brand-sources";
 import type { ReportDoc } from "../../supabase/functions/_shared/organic-report";
@@ -56,6 +57,49 @@ export async function pullChannel(id: string): Promise<{ status?: string; note?:
   const { data, error } = await supabase.functions.invoke("brand-channels-sync", { body: { channel_ids: [id] } });
   if (error) throw error;
   return data ?? {};
+}
+
+export type ConnectLink = { id: string; token: string; expires_at: string; created_at: string };
+
+/** Links still working. Staff only: the table's rules keep them from anyone else. */
+export async function loadOpenLinks(clientId: string): Promise<ConnectLink[]> {
+  const { data, error } = await db
+    .from("brand_connect_links")
+    .select("id, token, expires_at, created_at")
+    .eq("client_id", clientId)
+    .is("revoked_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ConnectLink[];
+}
+
+export async function createConnectLink(clientId: string): Promise<ConnectLink> {
+  const { data, error } = await db.from("brand_connect_links").insert({ client_id: clientId }).select("id, token, expires_at, created_at").single();
+  if (error) throw error;
+  return data as ConnectLink;
+}
+
+export async function cancelConnectLink(id: string): Promise<void> {
+  const { error } = await db.from("brand_connect_links").update({ revoked_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+
+export const connectUrl = (token: string) => `${publicOrigin()}/connect/brand/${token}`;
+
+export const whatsappUrl = (brandName: string, token: string) =>
+  `https://wa.me/?text=${encodeURIComponent(`Please connect ${brandName}'s Facebook and Instagram to Daraja Pulse so we can report on them. It's read-only: we can't post or see messages. The link works for 7 days: ${connectUrl(token)}`)}`;
+
+/** The address to send a signed-in person to for the Facebook login. */
+export async function startConnect(clientId: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("brand-connect-start", { body: { client_id: clientId } });
+  if (error || !data?.url) throw new Error(error?.message ?? "No address came back.");
+  return data.url as string;
+}
+
+export async function disconnectChannel(id: string): Promise<void> {
+  const { error } = await db.rpc("disconnect_brand_channel", { _channel_id: id });
+  if (error) throw error;
 }
 
 export function updatedLabel(iso: string | null, now = Date.now()): string {

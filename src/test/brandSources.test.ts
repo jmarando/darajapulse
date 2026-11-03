@@ -273,11 +273,19 @@ describe("Facebook posts from ScrapeCreators", () => {
     expect(mapFacebookPosts(json).posts[1].format).toBe("photo");
   });
 
+  it("finds a picture however the list gives it", () => {
+    const json = fixture("facebook-posts");
+    json.posts[1].images = ["https://cdn.example.test/as-text.jpg"];
+    expect(mapFacebookPosts(json).posts[1]).toMatchObject({ format: "photo", thumbnail_url: "https://cdn.example.test/as-text.jpg" });
+    json.posts[1].images = [{ uri: "https://cdn.example.test/as-uri.jpg" }];
+    expect(mapFacebookPosts(json).posts[1].thumbnail_url).toBe("https://cdn.example.test/as-uri.jpg");
+  });
+
   it("tells a photo from words alone, and reads the link from either field", () => {
     const [, photo, words] = page().posts;
     expect(photo.format).toBe("photo");
     expect(photo.metrics.likes).toBe(0);
-    expect(words.format).toBe("text");
+    expect(words.format).toBe("other"); // the public list can't tell words alone from a picture it doesn't show
     expect(words.url).toBe("https://www.facebook.com/acmekenya/posts/pfbid02def");
   });
 

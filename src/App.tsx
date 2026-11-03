@@ -50,6 +50,7 @@ const ConnectInstagram = lazy(() => import("./pages/ConnectInstagram"));
 const ConnectYouTube = lazy(() => import("./pages/ConnectYouTube"));
 const ConnectTwitter = lazy(() => import("./pages/ConnectTwitter"));
 const ConnectFacebook = lazy(() => import("./pages/ConnectFacebook"));
+const ConnectBrand = lazy(() => import("./pages/ConnectBrand"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const DataDeletion = lazy(() => import("./pages/DataDeletion"));
 const LandingPicker = lazy(() => import("./pages/landings/LandingPicker"));
@@ -136,6 +137,8 @@ const App = () => (
             <Route path="/connect/twitter/done" element={<ConnectTwitter />} />
             <Route path="/connect/facebook/:influencerId" element={<ConnectFacebook />} />
             <Route path="/connect/facebook/done" element={<ConnectFacebook />} />
+            <Route path="/connect/brand/done" element={<ConnectBrand />} />
+            <Route path="/connect/brand/:token" element={<ConnectBrand />} />
             <Route path="/shop/:agencySlug" element={<PublicStorefront />} />
             <Route path="/invoice/:token" element={<PublicInvoice />} />
             <Route path="/pay/:token" element={<PayInvoice />} />

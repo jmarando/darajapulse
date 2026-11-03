@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ChannelsCard from "@/components/channels/ChannelsCard";
 import { updatedLabel, type BrandChannel } from "@/lib/brandChannels";
 
-const mocks = vi.hoisted(() => ({ insert: vi.fn(), remove: vi.fn(), invoke: vi.fn(), toast: vi.fn() }));
+const mocks = vi.hoisted(() => ({ insert: vi.fn(), remove: vi.fn(), invoke: vi.fn(), toast: vi.fn(), rpc: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) => ({
@@ -11,6 +11,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       delete: () => ({ eq: (column: string, id: string) => mocks.remove(table, column, id) }),
     }),
     functions: { invoke: (name: string, options: unknown) => mocks.invoke(name, options) },
+    rpc: (name: string, args: unknown) => mocks.rpc(name, args),
   },
 }));
 vi.mock("@/hooks/use-toast", () => ({ toast: mocks.toast }));
@@ -139,5 +140,37 @@ describe("updatedLabel", () => {
     expect(updatedLabel(ago(180), now)).toBe("Updated 3 h ago");
     expect(updatedLabel(ago(60 * 24), now)).toBe("Updated 1 day ago");
     expect(updatedLabel(ago(60 * 24 * 3), now)).toBe("Updated 3 days ago");
+  });
+});
+
+describe("connecting from the card", () => {
+  it("offers Disconnect on a connected account, and asks first", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    mocks.rpc.mockResolvedValue({ error: null });
+    const { onChanged } = renderCard({ canManage: false, canConnect: true, channels: [channel({ source: "connected" })] });
+    press("Disconnect @acmekenya");
+    await waitFor(() => expect(mocks.rpc).toHaveBeenCalledWith("disconnect_brand_channel", { _channel_id: "ch1" }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
+    confirm.mockRestore();
+  });
+
+  it("offers no Disconnect on a public account, or without the right to connect", () => {
+    renderCard({ canConnect: true, channels: [channel()] });
+    expect(screen.queryByRole("button", { name: /Disconnect/ })).toBeNull();
+  });
+
+  it("offers Reconnect on a page whose token was rejected, as well as its note", () => {
+    const onReconnect = vi.fn();
+    renderCard({ canConnect: true, onReconnect, channels: [channel({ source: "connected", status: "needs_reconnect", status_note: "Removed in Facebook settings" })] });
+    press("Reconnect @acmekenya");
+    expect(onReconnect).toHaveBeenCalled();
+  });
+});
+
+describe("the connect control", () => {
+  it("sits in the card's body, so it can't squeeze the title on a phone", () => {
+    renderCard({ connect: <button>Connect here</button> });
+    const button = screen.getByRole("button", { name: "Connect here" });
+    expect(button.closest("header")).toBeNull();
   });
 });

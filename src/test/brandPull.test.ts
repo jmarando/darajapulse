@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyPull, pullPublic, snapshotRow, type PullResult, type ScCall } from "../../supabase/functions/_shared/brand-pull";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { applyPull, pullMetaFacebook, pullMetaInstagram, pullPublic, pullRoute, snapshotRow, type GraphCall, type PullResult, type ScCall } from "../../supabase/functions/_shared/brand-pull";
 
 const now = Date.parse("2026-11-03T02:00:00Z");
 const daysAgo = (n: number) => Math.floor((now - n * 86_400_000) / 1000);
@@ -98,6 +100,27 @@ describe("pullPublic: when it stops", () => {
     const call = player([ttProfile, ttPage([tt("a", 1)]), ttPage([tt("a", 1), tt("b", 2)], null)]);
     const result = await public_("tiktok", call);
     expect(result.ok && result.posts.map((p) => p.external_id)).toEqual(["a", "b"]);
+  });
+
+  it("leaves out a post another page wrote, because its numbers aren't this brand's", async () => {
+    const call = player([
+      fbProfile,
+      ok({ posts: [
+        { ...fb("own", 1), url: "https://www.facebook.com/Acme/posts/pfbid1" },
+        { ...fb("other", 1), url: "https://www.facebook.com/SomeoneElse/posts/pfbid2" },
+        { ...fb("reel", 1), url: "https://www.facebook.com/reel/77/" },
+        { ...fb("nolink", 1) },
+      ] }),
+      ok({ reels: [] }),
+    ]);
+    const result = await public_("facebook", call);
+    expect(result.ok && result.posts.map((p) => p.external_id)).toEqual(["own", "reel", "nolink"]);
+  });
+
+  it("can't tell whose post it is on a page with no username, so it keeps them all", async () => {
+    const call = player([fbProfile, ok({ posts: [{ ...fb("a", 1), url: "https://www.facebook.com/SomeoneElse/posts/pfbid2" }] }), ok({ reels: [] })]);
+    const result = await pullPublic({ platform: "facebook", handle: "61551234567890", mode: "first", now, call });
+    expect(result.ok && result.posts).toHaveLength(1);
   });
 
   it("puts reel views on the Facebook posts", async () => {
@@ -210,18 +233,19 @@ describe("applyPull", () => {
     expect(applyPull(row(), bad("not_found"), at).channel).toMatchObject({ status: "error", status_note: "Not found on TikTok any more. It may have been renamed." });
   });
 
-  it("says a private account can't be read", () => {
-    expect(applyPull(row(), bad("private"), at).channel).toMatchObject({ status: "error", status_note: "This account is private, so its public numbers can't be read." });
+  it("says a private or age-restricted account can't be read", () => {
+    expect(applyPull(row(), bad("private"), at).channel).toMatchObject({ status: "error", status_note: "This account is private or age-restricted, so its public numbers can't be read." });
   });
 
   it("pauses when the provider is out of credits", () => {
     expect(applyPull(row(), bad("out_of_credits"), at).channel).toMatchObject({ status: "paused", status_note: "Public numbers are paused: the data provider is out of credits." });
   });
 
-  it("keeps saying a page needs reconnecting when credits run out", () => {
-    const { channel } = applyPull(row({ source: "connected", status: "needs_reconnect" }), bad("out_of_credits"), at);
-    expect(channel).not.toHaveProperty("status");
-    expect(channel).not.toHaveProperty("status_note");
+  it("keeps saying a page needs reconnecting, whatever happens to the public read standing in", () => {
+    for (const kind of ["out_of_credits", "cap", "failed", "not_found", "private"] as const) {
+      const { channel } = applyPull(row({ source: "connected", status: "needs_reconnect" }), bad(kind), at);
+      expect(channel).toEqual({ last_pull_at: iso });
+    }
   });
 
   it("leaves the status alone when today's allowance is used", () => {
@@ -239,6 +263,32 @@ describe("applyPull", () => {
     expect(channel).not.toHaveProperty("status");
     expect(channel).not.toHaveProperty("status_note");
     expect(channel.last_good_pull_at).toBe(iso);
+  });
+
+  it("keeps the page id Meta knows when public numbers stand in", () => {
+    const { channel } = applyPull(row({ source: "connected", status: "needs_reconnect" }), good(), at);
+    expect(channel).not.toHaveProperty("external_id");
+  });
+
+  it("clears needs_reconnect on a read from Meta", () => {
+    expect(applyPull(row({ source: "connected", status: "needs_reconnect" }), good(100, "meta"), at).channel).toMatchObject({ status: "ok", status_note: null });
+  });
+
+  it("marks a rejected token and writes no line", () => {
+    const { channel, day } = applyPull(row({ source: "connected" }), bad("reconnect", "Reconnect it."), at);
+    expect(channel).toEqual({ last_pull_at: iso, status: "needs_reconnect", status_note: "Reconnect it." });
+    expect(day).toBeNull();
+  });
+
+  it("leaves the status alone when Facebook asks us to slow down", () => {
+    expect(applyPull(row({ source: "connected" }), bad("retry"), at).channel).toEqual({ last_pull_at: iso, status_note: "Facebook asked us to slow down. Tries again tonight." });
+  });
+
+  it("saves an audience when a read brings one, and keeps the old one when it doesn't", () => {
+    const audience = { country: [{ key: "KE", value: 1 }], age: [], gender: [] };
+    const result: PullResult = { ok: true, source: "meta", calls: 1, posts: [], audience, channel: { external_id: "1", display_name: null, avatar_url: null, followers: 5 } };
+    expect(applyPull(row({ source: "connected" }), result, at).channel).toMatchObject({ audience, audience_at: iso });
+    expect(applyPull(row({ source: "connected" }), { ...result, audience: null }, at).channel).not.toHaveProperty("audience");
   });
 });
 
@@ -267,5 +317,146 @@ describe("pullPublic: running out of time", () => {
     const result = await pullPublic({ platform: "tiktok", handle: "acme", mode: "first", now, call, outOfTime: () => left <= 0 });
     expect(call).toHaveBeenCalledTimes(2);
     expect(result).toMatchObject({ ok: true, calls: 2 });
+  });
+});
+
+const metaFixture = (name: string) => JSON.parse(readFileSync(resolve(__dirname, `fixtures/meta/${name}.docs.json`), "utf8"));
+
+/** Answers by path and params, and records every call. */
+function graphStub(answer: (path: string, params: Record<string, string>) => { ok: boolean; json?: unknown; error?: { code?: number } }) {
+  return vi.fn<GraphCall>(async (path, params) => ({ json: null, ...answer(path, params) }));
+}
+
+describe("pullMetaFacebook", () => {
+  const healthy = (path: string, params: Record<string, string>) => {
+    if (path === "104359362513119") return { ok: true, json: metaFixture("page") };
+    if (path.endsWith("/posts")) return { ok: true, json: { data: metaFixture("page-posts").data.map((p: object) => ({ ...p, created_time: new Date(now - 86_400_000).toISOString() })) } };
+    if (params.breakdown) return { ok: true, json: metaFixture("post-views-breakdown") };
+    return { ok: true, json: metaFixture("post-insights") };
+  };
+  const pull = (graph: GraphCall, mode: "first" | "deep" | "nightly" = "nightly") => pullMetaFacebook({ pageId: "104359362513119", mode, now, graph });
+
+  it("reads followers, posts, views, reach and paid views from Meta", async () => {
+    const result = await pull(graphStub(healthy));
+    expect(result).toMatchObject({ ok: true, source: "meta", channel: { followers: 3200 } });
+    expect(result.ok && result.posts[0].metrics).toMatchObject({ views: 1000, reach: 800, views_paid: 200, likes: 133, comments: 12, shares: 7 });
+  });
+
+  it("asks for the window it needs, and for insights by the post's full id", async () => {
+    const graph = graphStub(healthy);
+    await pull(graph);
+    const posts = graph.mock.calls.find(([path]) => path.endsWith("/posts"));
+    expect(posts?.[1].since).toBe(String(Math.floor((now - 45 * 86_400_000) / 1000)));
+    expect(graph).toHaveBeenCalledWith("104359362513119_1204545088344463/insights", { metric: "post_media_view,post_total_media_view_unique" });
+    expect(graph).toHaveBeenCalledWith("104359362513119_1204545088344463/insights", { metric: "post_media_view", breakdown: "is_from_ads" });
+  });
+
+  it("follows the after cursor while Meta says there is more, and never a link holding a token", async () => {
+    let page = 0;
+    const graph = graphStub((path, params) => {
+      if (path.endsWith("/posts")) {
+        page++;
+        return { ok: true, json: { data: [], paging: page < 3 ? { cursors: { after: `c${page}` }, next: "https://graph.facebook.com/next?access_token=x" } : { cursors: { after: "end" } } } };
+      }
+      return healthy(path, params);
+    });
+    await pull(graph);
+    expect(page).toBe(3);
+    const after = graph.mock.calls.filter(([path]) => path.endsWith("/posts")).map(([, params]) => params.after);
+    expect(after).toEqual([undefined, "c1", "c2"]);
+  });
+
+  it("asks for a reconnect when the token is rejected", async () => {
+    const result = await pull(graphStub(() => ({ ok: false, error: { code: 190 } })));
+    expect(result).toMatchObject({ ok: false, kind: "reconnect", note: "Facebook no longer accepts this connection. Reconnect it to get official numbers back." });
+  });
+
+  it("tries again tomorrow when told to slow down", async () => {
+    expect(await pull(graphStub(() => ({ ok: false, error: { code: 4 } })))).toMatchObject({ ok: false, kind: "retry" });
+  });
+
+  it("treats a network error or anything else as a failed read", async () => {
+    expect(await pull(vi.fn<GraphCall>(async () => { throw new Error("reset"); }))).toMatchObject({ ok: false, kind: "failed" });
+    expect(await pull(graphStub(() => ({ ok: false, error: { code: 100 } })))).toMatchObject({ ok: false, kind: "failed" });
+  });
+
+  it("leaves one post's numbers null when its insights fail, and the rest fine", async () => {
+    const graph = graphStub((path, params) => (path.startsWith("104359362513119_1204545088344464") ? { ok: false, error: { code: 100 } } : healthy(path, params)));
+    const result = await pull(graph);
+    expect(result.ok && result.posts[1].metrics).toMatchObject({ views: null, reach: null, views_paid: null, likes: 0 });
+    expect(result.ok && result.posts[0].metrics.views).toBe(1000);
+  });
+
+  it("keeps the channel fine when one post answers code 10, which Meta also uses for too few viewers", async () => {
+    const graph = graphStub((path, params) => (path.startsWith("104359362513119_1204545088344464") ? { ok: false, error: { code: 10 } } : healthy(path, params)));
+    expect(await pull(graph)).toMatchObject({ ok: true });
+  });
+
+  it("asks for a reconnect when every post refuses its insights", async () => {
+    const graph = graphStub((path, params) => (path.endsWith("/insights") ? { ok: false, error: { code: 10 } } : healthy(path, params)));
+    expect(await pull(graph)).toMatchObject({ ok: false, kind: "reconnect", note: "Facebook isn't sharing this page's insights any more. Reconnect to see views and reach." });
+  });
+
+  it("keeps views when only the paid split fails", async () => {
+    const graph = graphStub((path, params) => (params.breakdown ? { ok: false, error: { code: 100 } } : healthy(path, params)));
+    const result = await pull(graph);
+    expect(result.ok && result.posts[0].metrics).toMatchObject({ views: 1000, views_paid: null });
+  });
+});
+
+describe("pullMetaInstagram", () => {
+  const demographics = (breakdown: string) => ({
+    data: [{ name: "follower_demographics", total_value: { breakdowns: [{ results: [{ dimension_values: [breakdown], value: 5 }] }] } }],
+  });
+  const healthy = (path: string, params: Record<string, string>) => {
+    if (path === "17841402777077586") return { ok: true, json: metaFixture("ig-user") };
+    if (path.endsWith("/media")) return { ok: true, json: { data: metaFixture("ig-media").data.map((m: object) => ({ ...m, timestamp: new Date(now - 86_400_000).toISOString() })) } };
+    if (params.metric === "follower_demographics") return { ok: true, json: demographics(params.breakdown) };
+    return { ok: true, json: metaFixture("media-insights") };
+  };
+  const pull = (graph: GraphCall, mode: "first" | "deep" | "nightly" = "nightly") => pullMetaInstagram({ igUserId: "17841402777077586", mode, now, graph });
+
+  it("reads followers, posts and insights, with saved as saves", async () => {
+    const result = await pull(graphStub(healthy));
+    expect(result).toMatchObject({ ok: true, source: "meta", channel: { followers: 24555 } });
+    expect(result.ok && result.posts[0].metrics).toMatchObject({ views: 2647, reach: 2000, saves: 15, shares: 0, likes: 29, comments: 7 });
+    expect(result.ok && result.posts[0].external_id).toBe("DKSMEpKRd6h");
+  });
+
+  it("reads the audience only on first and weekly reads", async () => {
+    const nightly = graphStub(healthy);
+    await pull(nightly);
+    expect(nightly.mock.calls.some(([, params]) => params.metric === "follower_demographics")).toBe(false);
+    const deep = graphStub(healthy);
+    const result = await pull(deep, "deep");
+    expect(result.ok && result.audience).toEqual({ country: [{ key: "country", value: 5 }], age: [{ key: "age", value: 5 }], gender: [{ key: "gender", value: 5 }] });
+    expect(deep).toHaveBeenCalledWith("17841402777077586/insights", { metric: "follower_demographics", period: "lifetime", timeframe: "this_month", metric_type: "total_value", breakdown: "country" });
+  });
+
+  it("gives no audience for an account too small for one, without failing the read", async () => {
+    const graph = graphStub((path, params) => (params.metric === "follower_demographics" ? { ok: true, json: { data: [] } } : healthy(path, params)));
+    const result = await pull(graph, "first");
+    expect(result).toMatchObject({ ok: true, audience: null });
+  });
+
+  it("asks for a reconnect when the token is rejected, or every post refuses its insights", async () => {
+    expect(await pull(graphStub(() => ({ ok: false, error: { code: 190 } })))).toMatchObject({ ok: false, kind: "reconnect" });
+    const graph = graphStub((path, params) => (path.endsWith("/insights") ? { ok: false, error: { code: 200 } } : healthy(path, params)));
+    expect(await pull(graph)).toMatchObject({ ok: false, kind: "reconnect" });
+  });
+
+  it("leaves a post with no insights null, never 0", async () => {
+    const graph = graphStub((path, params) => (path === "17900000000000002/insights" ? { ok: true, json: { data: [] } } : healthy(path, params)));
+    const result = await pull(graph);
+    expect(result.ok && result.posts[1].metrics).toMatchObject({ views: null, reach: null, saves: null, shares: null, likes: 12 });
+  });
+});
+
+describe("pullRoute", () => {
+  it("reads a connected channel from Meta, and from public numbers once its token is rejected", () => {
+    expect(pullRoute({ source: "connected", status: "ok" })).toBe("meta");
+    expect(pullRoute({ source: "connected", status: "paused" })).toBe("meta");
+    expect(pullRoute({ source: "connected", status: "needs_reconnect" })).toBe("public");
+    expect(pullRoute({ source: "public", status: "ok" })).toBe("public");
   });
 });

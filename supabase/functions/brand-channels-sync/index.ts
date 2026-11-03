@@ -5,12 +5,16 @@
 //   - the night's job (x-job-key "brand-channels-sync", every 15 minutes from 01:00 to 02:45 UTC): whatever is due
 //   - agency staff, after adding a handle (body { channel_ids: [id] }): that one account
 //   - another function, with the service key (body { channel_ids }): those accounts
+//
+// A connected channel reads from Meta with its token from the vault. When Meta rejects the token the channel says so,
+// and public numbers stand in until someone reconnects it.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { sendAppEmail } from "../_shared/app-email.ts";
 import { denied, requireCaller } from "../_shared/auth.ts";
-import { applyPull, pullPublic, snapshotRow, type PullResult, type ScCall } from "../_shared/brand-pull.ts";
-import { PUBLIC_PULL_DAILY_CAP, SC_CREDIT_FLOOR, channelIsDue, maxPublicCalls, pullMode, type ChannelPlatform, type MappedPost } from "../_shared/brand-sources.ts";
+import { applyPull, pullMetaFacebook, pullMetaInstagram, pullPublic, pullRoute, snapshotRow, type PullResult, type ScCall } from "../_shared/brand-pull.ts";
+import { PUBLIC_PULL_DAILY_CAP, SC_CREDIT_FLOOR, channelIsDue, maxPublicCalls, pullMode, type ChannelPlatform, type MappedPost, type PullMode } from "../_shared/brand-sources.ts";
+import { graphCall, reconcilePosts, reconnectNote } from "../_shared/meta-graph.ts";
 import { scrapeCreatorsGet } from "../_shared/scrapecreators.ts";
 
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -24,13 +28,14 @@ const ON_DEMAND_MS = 45_000;
 const THROTTLE_MS = 10 * 60_000;
 const AT_ONCE = 3;
 const CHUNK = 200;
-const COLUMNS = "id, client_id, platform, handle, source, status, display_name, last_pull_at, last_good_pull_at, clients(agency_id)";
+const COLUMNS = "id, client_id, platform, handle, external_id, source, status, display_name, last_pull_at, last_good_pull_at, clients(agency_id)";
 
 type Channel = {
   id: string;
   client_id: string;
   platform: string;
   handle: string;
+  external_id: string | null;
   source: string;
   status: string;
   display_name: string | null;
@@ -53,9 +58,38 @@ const scCall = (run: Run): ScCall => async (path, params) => {
   return answer;
 };
 
-async function pullOne(row: Channel, run: Run, now: number): Promise<PullResult> {
+async function pullFromMeta(row: Channel, mode: PullMode, now: number, outOfTime: () => boolean): Promise<PullResult> {
+  const { data: token, error } = await supabase.rpc("brand_channel_token", { _channel_id: row.id });
+  if (error) throw error;
+  if (!token || !row.external_id) return { ok: false, kind: "reconnect", note: reconnectNote(190), calls: 0 };
+  const graph = graphCall(token as string);
+  return row.platform === "instagram"
+    ? pullMetaInstagram({ igUserId: row.external_id, mode, now, graph, outOfTime })
+    : pullMetaFacebook({ pageId: row.external_id, mode, now, graph, outOfTime });
+}
+
+/** A page's posts first came from the public source. Where a link matches under another id, re-key them, so nothing counts twice. */
+async function rekeyPosts(channelId: string, posts: MappedPost[]) {
+  const { data, error } = await supabase.from("brand_posts").select("id, external_id, url").eq("channel_id", channelId).order("posted_at", { ascending: false }).limit(1000);
+  if (error) throw error;
+  for (const change of reconcilePosts(data ?? [], posts)) {
+    const { error: updateError } = await supabase.from("brand_posts").update({ external_id: change.external_id }).eq("id", change.id);
+    if (updateError) throw updateError;
+  }
+}
+
+async function pullOne(row: Channel, run: Run, now: number, forceFirst: boolean): Promise<PullResult> {
   const platform = row.platform as ChannelPlatform;
-  const mode = pullMode(row, now);
+  const mode: PullMode = forceFirst ? "first" : pullMode(row, now);
+  const outOfTime = () => Date.now() > run.deadline;
+  if (pullRoute(row) === "meta") {
+    const result = await pullFromMeta(row, mode, now, outOfTime);
+    if (result.ok === true) await rekeyPosts(row.id, result.posts);
+    if (result.ok === true || result.kind !== "reconnect") return result;
+    const { error } = await supabase.from("brand_channels").update(applyPull(row, result, now).channel).eq("id", row.id);
+    if (error) throw error;
+    row.status = "needs_reconnect"; // public numbers stand in from this run on
+  }
   if (run.outOfCredits || (run.balance !== null && run.balance < SC_CREDIT_FLOOR)) {
     run.outOfCredits = true;
     return { ok: false, kind: "out_of_credits", note: "Out of credits.", calls: 0 };
@@ -67,7 +101,7 @@ async function pullOne(row: Channel, run: Run, now: number): Promise<PullResult>
   });
   if (error) throw error;
   if (allowed !== true) return { ok: false, kind: "cap", note: "Allowance used.", calls: 0 };
-  return pullPublic({ platform, handle: row.handle, mode, now, call: scCall(run), outOfTime: () => Date.now() > run.deadline });
+  return pullPublic({ platform, handle: row.handle, mode, now, call: scCall(run), outOfTime });
 }
 
 async function writePosts(channelId: string, posts: MappedPost[], source: string, now: number) {
@@ -124,7 +158,7 @@ async function warnSuperAdmins() {
   }
 }
 
-async function runChannels(rows: Channel[], limitMs: number) {
+async function runChannels(rows: Channel[], limitMs: number, forceFirst = false) {
   const now = Date.now();
   const run: Run = { used: 0, balance: null, outOfCredits: false, deadline: now + limitMs };
   const summary = { ran: true, channels: 0, ok: 0, failed: 0, credits_used: 0, notes: [] as string[] };
@@ -133,7 +167,7 @@ async function runChannels(rows: Channel[], limitMs: number) {
     await Promise.all(rows.slice(i, i + AT_ONCE).map(async (row) => {
       summary.channels++;
       try {
-        const { outcome, channel } = await writePull(row, await pullOne(row, run, now), now);
+        const { outcome, channel } = await writePull(row, await pullOne(row, run, now, forceFirst), now);
         if (outcome.ok === true) summary.ok++;
         else summary.failed++;
         finished.push(channel);
@@ -178,13 +212,14 @@ Deno.serve(async (req) => {
     if (ids.length) {
       const { data: rows, error } = await supabase.from("brand_channels").select(COLUMNS).in("id", ids);
       if (error) throw error;
-      return json((await runChannels((rows ?? []) as unknown as Channel[], RUN_MS)).summary);
+      return json((await runChannels((rows ?? []) as unknown as Channel[], RUN_MS, body?.first_read === true)).summary);
     }
 
     const { data: locked, error: lockErr } = await supabase.rpc("take_job_lock", { _name: LOCK, _seconds: 170 });
     if (lockErr) throw lockErr;
     if (!locked) return json({ ran: false, note: "Another run is still going." });
     try {
+      await supabase.rpc("clear_brand_connect_expired"); // a login nobody finished leaves no token behind
       const { data: rows, error } = await supabase.from("brand_channels").select(COLUMNS);
       if (error) throw error;
       const due = ((rows ?? []) as unknown as Channel[]).filter((row) => channelIsDue(row, Date.now()));
