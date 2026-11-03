@@ -32,6 +32,7 @@ const Approvals = lazy(() => import("./pages/app/Approvals"));
 const Reports = lazy(() => import("./pages/app/Reports"));
 const Moderation = lazy(() => import("./pages/app/Moderation"));
 const Listening = lazy(() => import("./pages/app/Listening"));
+const Channels = lazy(() => import("./pages/app/Channels"));
 const Team = lazy(() => import("./pages/app/Team"));
 const AdminBilling = lazy(() => import("./pages/app/AdminBilling"));
 const Admin = lazy(() => import("./pages/app/Admin"));
@@ -161,6 +162,7 @@ const App = () => (
               <Route path="reports" element={<Reports />} />
               <Route path="moderation" element={<Moderation />} />
               <Route path="listening" element={<Listening />} />
+              <Route path="channels" element={<Channels />} />
               <Route path="team" element={<Team />} />
               <Route path="inventory" element={<Inventory />} />
               <Route path="admin" element={<Admin />} />

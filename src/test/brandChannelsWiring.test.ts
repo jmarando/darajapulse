@@ -147,3 +147,24 @@ describe("brand-channels-sync: registered", () => {
     expect(registry).toContain("'brand-channels-credits': brandChannelsCredits");
   });
 });
+
+describe("the Channels page: where it lives", () => {
+  const src = (path: string) => read(`../src/${path}`);
+
+  it("is on the menu after Listening, and has its route", () => {
+    const shell = src("components/AppShell.tsx");
+    expect(shell.indexOf('label: "Channels"')).toBeGreaterThan(shell.indexOf('label: "Listening"'));
+    expect(shell.indexOf('label: "Channels"')).toBeLessThan(shell.indexOf('label: "Approvals"'));
+    expect(src("App.tsx")).toContain('<Route path="channels" element={<Channels />} />');
+  });
+
+  it("works out staff from the role, and never shows the brand portal staff tools", () => {
+    expect(src("components/channels/ChannelsPage.tsx")).toContain("const canManage = !portal && (isAgency || isSuperAdmin);");
+  });
+
+  it("never fills in a brand post's numbers", () => {
+    for (const file of ["components/channels/OrganicReport.tsx", "components/channels/ChannelsPage.tsx", "lib/brandChannels.ts"]) {
+      expect(src(file)).not.toContain("withMetricFallbacks");
+    }
+  });
+});

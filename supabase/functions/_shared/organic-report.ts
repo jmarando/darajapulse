@@ -53,11 +53,20 @@ export type PlatformRow = {
   tag: "Connected" | "Public";
 };
 export type FormatRow = { format: PostFormat; posts: number; avgViews: number | null };
+/** A brand post, named so the campaign's top-post card can show it: its channel stands where a creator would. */
+export type ReportPostRef = {
+  id: string;
+  post_url: string | null;
+  platform: string;
+  thumbnail_url: string | null;
+  caption: string | null;
+  influencers: { full_name: string; handle: string };
+};
 export type OrganicReport = {
   isEmpty: boolean;
   tiles: { followers: Tile; posts: Tile; views: Tile; interactions: Tile; rate: Tile };
   platforms: PlatformRow[];
-  picks: TopPick<any>[];
+  picks: TopPick<ReportPostRef>[];
   formats: FormatRow[];
   cadence: Cadence;
   connected: { any: boolean; avgReach: number | null; organicViews: number | null; paidViews: number | null; audience: Audience | null };
@@ -185,7 +194,7 @@ export function buildOrganicReport(doc: ReportDoc, now: number): OrganicReport {
 
   const followers = channels.map((c) => followersOf(doc, c.id));
   const metrics = new Map(current.flatMap((p) => (p.snapshot ? [[p.id, p.snapshot] as const] : [])));
-  const refs = current.map((p) => {
+  const refs = current.map((p): ReportPostRef => {
     const c = byId.get(p.channel_id)!;
     return {
       id: p.id,

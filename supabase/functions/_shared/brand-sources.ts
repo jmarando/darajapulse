@@ -113,6 +113,10 @@ export function cleanCaption(raw: unknown): string | null {
   return characters.slice(0, 500).join("").trim() || null;
 }
 
+/** A provider's JSON. Every field is read defensively below, so a missing one comes out null. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Raw = any;
+
 export type PostFormat = "video" | "photo" | "carousel" | "text" | "other";
 export type PostMetrics = {
   views: number | null;
@@ -150,10 +154,10 @@ const fromSeconds = (v: unknown): string | null => {
   return seconds === null ? null : new Date(seconds * 1000).toISOString();
 };
 const metrics = (m: Partial<PostMetrics>): PostMetrics => ({ views: null, likes: null, comments: null, shares: null, saves: null, reach: null, views_paid: null, ...m });
-const listOf = (v: unknown): any[] => (Array.isArray(v) ? v : []);
+const listOf = (v: unknown): Raw[] => (Array.isArray(v) ? v : []);
 const addKnown = (a: number | null, b: number | null) => (a === null && b === null ? null : (a ?? 0) + (b ?? 0));
 
-export function mapTikTokProfile(json: any): MappedChannel {
+export function mapTikTokProfile(json: Raw): MappedChannel {
   return {
     external_id: id(json?.user?.id),
     display_name: text(json?.user?.nickname),
@@ -162,7 +166,7 @@ export function mapTikTokProfile(json: any): MappedChannel {
   };
 }
 
-export function mapInstagramProfile(json: any): MappedChannel {
+export function mapInstagramProfile(json: Raw): MappedChannel {
   const user = json?.data?.user;
   return {
     external_id: id(user?.id),
@@ -172,7 +176,7 @@ export function mapInstagramProfile(json: any): MappedChannel {
   };
 }
 
-export function mapFacebookProfile(json: any): MappedChannel {
+export function mapFacebookProfile(json: Raw): MappedChannel {
   return {
     external_id: id(json?.adLibrary?.pageId) ?? id(json?.id),
     display_name: text(json?.name),
@@ -181,7 +185,7 @@ export function mapFacebookProfile(json: any): MappedChannel {
   };
 }
 
-export function mapTikTokVideos(json: any): MappedPage {
+export function mapTikTokVideos(json: Raw): MappedPage {
   const posts: MappedPost[] = [];
   for (const row of listOf(json?.aweme_list)) {
     const external_id = id(row?.aweme_id);
@@ -208,7 +212,7 @@ export function mapTikTokVideos(json: any): MappedPage {
 
 const INSTAGRAM_FORMAT: Record<number, PostFormat> = { 1: "photo", 2: "video", 8: "carousel" };
 
-export function mapInstagramPosts(json: any): MappedPage {
+export function mapInstagramPosts(json: Raw): MappedPage {
   const posts: MappedPost[] = [];
   for (const row of listOf(json?.items)) {
     const external_id = id(row?.code);
@@ -236,7 +240,7 @@ export function facebookPostKey(postId: string): string {
   return postId.slice(postId.lastIndexOf("_") + 1);
 }
 
-export function mapFacebookPosts(json: any): MappedPage {
+export function mapFacebookPosts(json: Raw): MappedPage {
   const posts: MappedPost[] = [];
   for (const row of listOf(json?.posts)) {
     const rawId = id(row?.id);
@@ -257,7 +261,7 @@ export function mapFacebookPosts(json: any): MappedPage {
   return { posts, cursor: id(json?.cursor) };
 }
 
-export function mapFacebookReels(json: any): { reels: MappedReel[]; cursor: string | null; next_page_id: string | null } {
+export function mapFacebookReels(json: Raw): { reels: MappedReel[]; cursor: string | null; next_page_id: string | null } {
   const reels: MappedReel[] = [];
   for (const row of listOf(json?.reels)) {
     const video_id = id(row?.video_id);

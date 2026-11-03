@@ -7,6 +7,7 @@ export type Snapshot = {
   saves?: number | null;
   reach?: number | null;
   captured_at?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 };
 

@@ -3,11 +3,11 @@
 import {
   FACEBOOK_REEL_PAGES, PUBLIC_PAGE_CAPS, WINDOW_DAYS, facebookPageUrl, mapFacebookPosts, mapFacebookProfile, mapFacebookReels,
   mapInstagramPosts, mapInstagramProfile, mapTikTokProfile, mapTikTokVideos, mergeFacebookReels,
-  type ChannelPlatform, type MappedChannel, type MappedPage, type MappedPost, type MappedReel, type PostMetrics, type PullMode,
+  type ChannelPlatform, type MappedChannel, type MappedPage, type MappedPost, type MappedReel, type PostMetrics, type PullMode, type Raw,
 } from "./brand-sources.ts";
 import { nairobiDay } from "./listening-alerts.ts";
 
-export type ScCall = (path: string, params: Record<string, string>) => Promise<{ status: number; json: any }>;
+export type ScCall = (path: string, params: Record<string, string>) => Promise<{ status: number; json: Raw }>;
 export type AudienceRow = { key: string; value: number };
 export type Audience = { country: AudienceRow[]; age: AudienceRow[]; gender: AudienceRow[] };
 export type PullResult =
@@ -22,7 +22,7 @@ const OUT_OF_CREDITS = "Public numbers are paused: the data provider is out of c
 type Trouble = "out_of_credits" | "private" | "not_found" | "failed";
 
 /** What an answer's status and body say went wrong, if anything. The provider answers some refusals with success: true. */
-function trouble(a: { status: number; json: any }): Trouble | null {
+function trouble(a: { status: number; json: Raw }): Trouble | null {
   if (a.status === 402) return "out_of_credits";
   const j = a.json;
   if (j?.isPrivate === true || a.status === 403 || /private|age.?restricted/i.test(String(j?.message ?? ""))) return "private";
@@ -40,10 +40,10 @@ const failed = (kind: Trouble, calls: number): PullResult => ({
 
 type Route = {
   profile: [string, Record<string, string>];
-  mapProfile: (json: any) => MappedChannel;
+  mapProfile: (json: Raw) => MappedChannel;
   posts: [string, Record<string, string>];
   cursorParam: string;
-  mapPosts: (json: any) => MappedPage;
+  mapPosts: (json: Raw) => MappedPage;
 };
 
 function routeFor(platform: ChannelPlatform, handle: string): Route {
