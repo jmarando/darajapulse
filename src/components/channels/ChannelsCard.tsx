@@ -13,7 +13,7 @@ import { normaliseHandle, type ChannelPlatform } from "../../../supabase/functio
 const PLATFORMS: ChannelPlatform[] = ["facebook", "instagram", "tiktok"];
 
 function chipFor(c: BrandChannel): { tone: Tone; label: string } {
-  if (c.status === "error") return { tone: "bad", label: "Not found" };
+  if (c.status === "error") return { tone: "bad", label: "Can't be read" };
   if (c.status === "needs_reconnect") return { tone: "warn", label: "Needs reconnecting" };
   if (c.status === "paused") return { tone: "warn", label: "Paused" };
   return c.source === "connected" ? { tone: "good", label: "Connected" } : { tone: "neutral", label: "Public" };

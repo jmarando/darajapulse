@@ -42,7 +42,7 @@ export function TopPosts({ picks, className, brandPosts = false }: { picks: TopP
             { label: "Comments", value: shown(m.comments), estimated: false },
             { label: "Shares", value: shown(m.shares), estimated: estimated("shares") },
             { label: "Saves", value: shown(m.saves), estimated: estimated("saves") },
-            { label: "Engagement", value: `${p.rate.toFixed(1)}%`, estimated: interactionsEstimated },
+            { label: "Engagement", value: [m.likes, m.comments, m.shares, m.saves].every((v) => v == null) ? "—" : `${p.rate.toFixed(1)}%`, estimated: interactionsEstimated },
           ];
           return (
             <a

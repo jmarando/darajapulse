@@ -97,12 +97,15 @@ const interactionsOf = (p: ReportPost) => {
   return s ? sumKnown([s.likes, s.comments, s.shares, s.saves]) : null;
 };
 
-/** Interactions ÷ views × 100, counting only posts with views on both sides of the division. */
+/**
+ * Interactions ÷ views × 100, counting only posts with numbers on both sides of the division. A post with views and no
+ * reactions, as Facebook's public reel list gives, would drag the rate down for want of a number nobody reported.
+ */
 function rateOf(posts: ReportPost[]): number | null {
-  const withViews = posts.filter((p) => (p.snapshot?.views ?? 0) > 0);
-  if (!withViews.length) return null;
-  const views = withViews.reduce((sum, p) => sum + (p.snapshot?.views ?? 0), 0);
-  return (withViews.reduce((sum, p) => sum + (interactionsOf(p) ?? 0), 0) / views) * 100;
+  const both = posts.filter((p) => (p.snapshot?.views ?? 0) > 0 && interactionsOf(p) !== null);
+  if (!both.length) return null;
+  const views = both.reduce((sum, p) => sum + (p.snapshot?.views ?? 0), 0);
+  return (both.reduce((sum, p) => sum + (interactionsOf(p) ?? 0), 0) / views) * 100;
 }
 
 const viewsOf = (posts: ReportPost[]) => sumKnown(posts.map((p) => p.snapshot?.views));
@@ -231,8 +234,13 @@ export function buildOrganicReport(doc: ReportDoc, now: number): OrganicReport {
         tag: onMeta(c) ? "Connected" : "Public",
       };
     }),
-    // "0 saves and shares" would be a zero for numbers nobody reported.
-    picks: pickTopPosts(refs, metrics).filter((p) => p.kind !== "intent" || p.metrics.saves != null || p.metrics.shares != null),
+    // "0 saves and shares" or "0.0% engagement" would be a zero for numbers nobody reported.
+    picks: pickTopPosts(refs, metrics).filter((p) => {
+      const { likes, comments, shares, saves } = p.metrics;
+      if (p.kind === "intent") return saves != null || shares != null;
+      if (p.kind === "engagement") return likes != null || comments != null || shares != null || saves != null;
+      return true;
+    }),
     formats: formatsOf(current),
     cadence: buildCadence(cadencePosts, metrics, NAIROBI_UTC_OFFSET),
     connected: connectedOf(channels, current),

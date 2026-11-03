@@ -107,7 +107,7 @@ describe("the accounts on the card", () => {
         channel({ id: "d", status: "paused", status_note: "Public numbers are paused: the data provider is out of credits.", handle: "d" }),
       ],
     });
-    expect(screen.getByText("Not found")).toBeInTheDocument();
+    expect(screen.getByText("Can't be read")).toBeInTheDocument();
     expect(screen.getByText("Not found on TikTok. Check the handle.")).toBeInTheDocument();
     expect(screen.getByText("Not read yet")).toBeInTheDocument();
     expect(screen.getByText("Connected")).toBeInTheDocument();
