@@ -201,6 +201,47 @@ export type Database = {
           },
         ]
       }
+      brand_channel_secrets: {
+        Row: {
+          business_id: string | null
+          channel_id: string
+          expires_at: string | null
+          meta_user_id: string | null
+          scopes: string[]
+          token_kind: string
+          updated_at: string
+          vault_secret_id: string
+        }
+        Insert: {
+          business_id?: string | null
+          channel_id: string
+          expires_at?: string | null
+          meta_user_id?: string | null
+          scopes?: string[]
+          token_kind?: string
+          updated_at?: string
+          vault_secret_id: string
+        }
+        Update: {
+          business_id?: string | null
+          channel_id?: string
+          expires_at?: string | null
+          meta_user_id?: string | null
+          scopes?: string[]
+          token_kind?: string
+          updated_at?: string
+          vault_secret_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_channel_secrets_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: true
+            referencedRelation: "brand_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_channels: {
         Row: {
           audience: Json | null
@@ -271,6 +312,133 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_connect_links: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          last_used_at: string | null
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_connect_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_connect_pending: {
+        Row: {
+          assets: Json
+          client_id: string
+          expires_at: string
+          id: string
+          meta_user_id: string | null
+          person_name: string | null
+          scopes: string[]
+          started_by: string | null
+          state: string
+          vault_secret_id: string
+        }
+        Insert: {
+          assets: Json
+          client_id: string
+          expires_at?: string
+          id?: string
+          meta_user_id?: string | null
+          person_name?: string | null
+          scopes?: string[]
+          started_by?: string | null
+          state: string
+          vault_secret_id: string
+        }
+        Update: {
+          assets?: Json
+          client_id?: string
+          expires_at?: string
+          id?: string
+          meta_user_id?: string | null
+          person_name?: string | null
+          scopes?: string[]
+          started_by?: string | null
+          state?: string
+          vault_secret_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_connect_pending_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_oauth_states: {
+        Row: {
+          client_id: string
+          connect_link_id: string | null
+          created_at: string
+          started_by: string | null
+          state: string
+        }
+        Insert: {
+          client_id: string
+          connect_link_id?: string | null
+          created_at?: string
+          started_by?: string | null
+          state: string
+        }
+        Update: {
+          client_id?: string
+          connect_link_id?: string | null
+          created_at?: string
+          started_by?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_oauth_states_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_oauth_states_connect_link_id_fkey"
+            columns: ["connect_link_id"]
+            isOneToOne: false
+            referencedRelation: "brand_connect_links"
             referencedColumns: ["id"]
           },
         ]
@@ -4361,6 +4529,11 @@ export type Database = {
         Args: { _post_id: string; _user_id: string }
         Returns: boolean
       }
+      brand_channel_token: { Args: { _channel_id: string }; Returns: string }
+      brand_connect_pending_token: {
+        Args: { _pending_id: string; _state: string }
+        Returns: string
+      }
       brand_report_doc: {
         Args: { _client_id: string; _from: string; _to: string }
         Returns: Json
@@ -4439,6 +4612,20 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      clear_brand_connect_expired: { Args: never; Returns: undefined }
+      create_brand_connect_pending: {
+        Args: {
+          _assets: Json
+          _client_id: string
+          _meta_user_id: string
+          _person_name: string
+          _scopes: string[]
+          _started_by: string
+          _state: string
+          _token: string
+        }
+        Returns: string
+      }
       dashboard_overview: {
         Args: { _from: string; _to: string }
         Returns: Json
@@ -4446,6 +4633,10 @@ export type Database = {
       detach_post_to_own_deliverable: {
         Args: { _post_id: string }
         Returns: string
+      }
+      disconnect_brand_channel: {
+        Args: { _channel_id: string }
+        Returns: undefined
       }
       drain_amendment_pdf_retries: { Args: never; Returns: undefined }
       enforce_billing_status: { Args: never; Returns: undefined }
@@ -4458,6 +4649,7 @@ export type Database = {
           id: string
         }[]
       }
+      get_brand_connect_link: { Args: { _token: string }; Returns: Json }
       get_brand_report_rows: {
         Args: { _client_id: string; _from: string; _to: string }
         Returns: Json
@@ -4684,8 +4876,25 @@ export type Database = {
         Args: { _decision: string; _entry_id: string }
         Returns: Json
       }
+      revoke_brand_tokens_for_meta_user: {
+        Args: { _meta_user_id: string }
+        Returns: number
+      }
       run_amendment_pdf_jobs: { Args: never; Returns: undefined }
       run_contest_auto_polling: { Args: never; Returns: undefined }
+      set_brand_channel_token: {
+        Args: {
+          _business_id: string
+          _channel_id: string
+          _connected_by: string
+          _connected_by_name: string
+          _kind: string
+          _meta_user_id: string
+          _scopes: string[]
+          _token: string
+        }
+        Returns: undefined
+      }
       sign_contract_amendment_by_token: {
         Args: {
           _amendment_id: string
