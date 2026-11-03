@@ -1,0 +1,1 @@
+{"data":[{"name":"follower_demographics","period":"lifetime","title":"Follower demographics","total_value":{"breakdowns":[{"dimension_keys":["country"],"results":[{"dimension_values":["KE"],"value":900},{"dimension_values":["UG"],"value":100}]}]},"id":"x/insights/follower_demographics/lifetime"}]}
