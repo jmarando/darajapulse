@@ -1,5 +1,7 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 
+// The function runs on Deno, which has AbortSignal.timeout; jsdom's AbortSignal doesn't.
+Object.defineProperty(AbortSignal, "timeout", { configurable: true, value: () => new AbortController().signal });
 vi.stubGlobal("Deno", { env: { get: (name: string) => (name === "SCRAPECREATORS_API_KEY" ? "test-key" : undefined) } });
 const { scrapeCreatorsGet } = await import("../../supabase/functions/_shared/scrapecreators");
 afterAll(() => vi.unstubAllGlobals());
@@ -17,6 +19,14 @@ describe("scrapeCreatorsGet", () => {
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string> }];
     expect(url).toBe("https://api.scrapecreators.com/v1/tiktok/profile?handle=a+b");
     expect(init.headers["x-api-key"]).toBe("test-key");
+  });
+
+  it("gives up on a provider that hangs, so one stuck call can't use up a whole run", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await scrapeCreatorsGet("/v1/tiktok/profile", { handle: "acme" });
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, { signal?: AbortSignal }];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("copes with an answer that isn't JSON", async () => {

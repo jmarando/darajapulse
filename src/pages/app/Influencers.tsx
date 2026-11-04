@@ -181,7 +181,7 @@ const Influencers = () => {
               toast.message("Refreshing stats…", { description: "Pulling live follower counts and engagement" });
               const { data, error } = await supabase.functions.invoke("refresh-influencer-stats", { body: { force: true, limit: 200 } });
               if (error) return toast.error(error.message);
-              toast.success(`Refreshed ${data?.updated ?? 0} of ${data?.checked ?? 0}`);
+              toast.success(`Refreshed ${data?.updated ?? 0} of ${data?.checked ?? 0}`, { description: data?.note ?? undefined });
               load();
             }}
           >

@@ -27,7 +27,7 @@ const OUT_OF_CREDITS = "Public numbers are paused: the data provider is out of c
 type Trouble = "out_of_credits" | "private" | "not_found" | "failed";
 
 /** What an answer's status and body say went wrong, if anything. The provider answers some refusals with success: true. */
-function trouble(a: { status: number; json: Raw }): Trouble | null {
+export function trouble(a: { status: number; json: Raw }): Trouble | null {
   if (a.status === 402) return "out_of_credits";
   const j = a.json;
   if (j?.isPrivate === true || /private|age.?restricted/i.test(String(j?.message ?? ""))) return "private";
@@ -51,7 +51,7 @@ type Route = {
   mapPosts: (json: Raw) => MappedPage;
 };
 
-function routeFor(platform: ChannelPlatform, handle: string): Route {
+export function routeFor(platform: ChannelPlatform, handle: string): Route {
   if (platform === "tiktok") {
     return {
       profile: ["/v1/tiktok/profile", { handle }],
