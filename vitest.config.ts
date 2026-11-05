@@ -11,6 +11,10 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      // Edge functions import this on Deno. Tests stand in for it with vi.mock on the esm.sh address.
+      "npm:@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.95.0",
+    },
   },
 });
