@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { GRAPH_VERSION } from "../_shared/meta-graph.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
 
   // 1. Exchange code for short-lived user token
   const tokRes = await fetch(
-    `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`,
+    `https://graph.facebook.com/${GRAPH_VERSION}/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`,
   );
   const tok = await tokRes.json();
   if (!tok.access_token) {
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
 
   // 2. Long-lived user token (~60 days)
   const llRes = await fetch(
-    `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${APP_ID}&client_secret=${APP_SECRET}&fb_exchange_token=${tok.access_token}`,
+    `https://graph.facebook.com/${GRAPH_VERSION}/oauth/access_token?grant_type=fb_exchange_token&client_id=${APP_ID}&client_secret=${APP_SECRET}&fb_exchange_token=${tok.access_token}`,
   );
   const ll = await llRes.json();
   const userToken = ll.access_token ?? tok.access_token;
@@ -69,7 +70,8 @@ Deno.serve(async (req) => {
 
   // 3. List pages → grab first Page with linked IG Business/Creator account
   const pagesRes = await fetch(
-    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,profile_picture_url},connected_instagram_account{id,username}&access_token=${userToken}`,
+    `https://graph.facebook.com/${GRAPH_VERSION}/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,profile_picture_url},connected_instagram_account{id,username}`,
+    { headers: { Authorization: `Bearer ${userToken}` } },
   );
   const pages = await pagesRes.json();
   if (!pagesRes.ok || pages.error) {

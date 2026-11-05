@@ -3,6 +3,7 @@
 // Creators without a connected account are covered by manual screenshot logging in the UI.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { canManageCampaign, denied, requireCaller } from "../_shared/auth.ts";
+import { graphCall, readStoryInsights } from "../_shared/meta-graph.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,40 +13,16 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-const GRAPH = "https://graph.facebook.com/v21.0";
-
-async function graph(path: string, params: Record<string, string>) {
-  const qs = new URLSearchParams(params).toString();
-  const r = await fetch(`${GRAPH}/${path}?${qs}`);
-  const json = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`Graph ${path} ${r.status}: ${JSON.stringify(json).slice(0, 240)}`);
-  return json;
-}
-
-function readInsights(payload: any) {
-  const out: Record<string, number> = {};
-  for (const m of payload?.data ?? []) {
-    const v = m?.values?.[0]?.value;
-    if (typeof v === "number") out[m.name] = v;
-  }
-  return out;
-}
 
 async function syncInstagram(acct: any, influencerId: string, campaignIds: string[]) {
-  const token = acct.page_access_token;
+  const graph = graphCall(acct.page_access_token);
   const frames = await graph(`${acct.ig_user_id}/stories`, {
     fields: "id,media_type,media_url,thumbnail_url,permalink,timestamp,caption",
-    access_token: token,
   });
+  if (!frames.ok) throw new Error(`Graph ${acct.ig_user_id}/stories: ${JSON.stringify(frames.json).slice(0, 240)}`);
   let captured = 0;
-  for (const f of frames?.data ?? []) {
-    let ins: Record<string, number> = {};
-    try {
-      ins = readInsights(await graph(`${f.id}/insights`, {
-        metric: "impressions,reach,replies,exits,taps_forward,taps_back",
-        access_token: token,
-      }));
-    } catch (_) { /* insights unavailable for some media types */ }
+  for (const f of frames.json?.data ?? []) {
+    const ins = await readStoryInsights(graph, f.id);
 
     const postedAt = f.timestamp ? new Date(f.timestamp).toISOString() : new Date().toISOString();
     for (const campaignId of campaignIds) {
@@ -59,12 +36,12 @@ async function syncInstagram(acct: any, influencerId: string, campaignIds: strin
         media_url: f.thumbnail_url ?? f.media_url ?? null,
         permalink: f.permalink ?? null,
         caption: f.caption ?? null,
-        reach: ins.reach ?? null,
-        impressions: ins.impressions ?? null,
-        replies: ins.replies ?? null,
-        taps_forward: ins.taps_forward ?? null,
-        taps_back: ins.taps_back ?? null,
-        exits: ins.exits ?? null,
+        reach: ins.reach,
+        impressions: ins.views, // Meta replaced impressions with views
+        replies: ins.replies,
+        taps_forward: ins.taps_forward,
+        taps_back: ins.taps_back,
+        exits: ins.exits,
         source: "instagram_api",
         verified: true,
       }, { onConflict: "platform,external_id" });

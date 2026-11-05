@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   READ_SCOPES, assetHandle, classifyMetaError, graphCall, listAccounts, mapMetaFacebookPost, mapMetaMedia, mapMetaPage, mapMetaInstagram, matchChannel, metaDialogUrl,
-  normalisePostUrl, parseDemographics, parseMediaInsights, parsePostInsights, parsePostViewsSplit, parseSignedRequest, reconcilePosts, reconnectNote, shapeAssets,
+  normalisePostUrl, parseDemographics, parseMediaInsights, parsePostInsights, parsePostViewsSplit, parseSignedRequest, parseStoryInsights, readStoryInsights, reconcilePosts, reconnectNote, shapeAssets,
 } from "../../supabase/functions/_shared/meta-graph";
 
 // These shapes come from Meta's docs and have not yet been checked against a live answer: see BRAND_CHANNELS_PLAN.md, Task 10.
@@ -250,6 +250,56 @@ describe("mapMetaMedia and parseMediaInsights", () => {
 
   it("also reads a metric given as a total", () => {
     expect(parseMediaInsights({ data: [{ name: "views", total_value: { value: 9 } }] }).views).toBe(9);
+  });
+});
+
+describe("parseStoryInsights", () => {
+  it("reads views, reach and replies, and the three navigation actions the table has columns for", () => {
+    expect(parseStoryInsights(fixture("story-insights"), fixture("story-navigation"))).toEqual({ views: 310, reach: 240, replies: 0, taps_forward: 19, taps_back: 4, exits: 1 });
+  });
+
+  it("reads the navigation actions in Meta's other spelling", () => {
+    const row = { name: "navigation", total_value: { breakdowns: [{ results: [{ dimension_values: ["TAP_FORWARD"], value: 7 }] }] } };
+    expect(parseStoryInsights(null, { data: [row] }).taps_forward).toBe(7);
+  });
+
+  it("leaves what Meta didn't answer null, never 0", () => {
+    expect(parseStoryInsights(null, null)).toEqual({ views: null, reach: null, replies: null, taps_forward: null, taps_back: null, exits: null });
+    expect(parseStoryInsights(fixture("story-insights"), { data: [{ name: "navigation", values: [{ value: 25 }] }] })).toMatchObject({ views: 310, taps_forward: null, exits: null });
+  });
+});
+
+describe("readStoryInsights", () => {
+  const refused = (code: number, message: string) => ({ ok: false, json: { error: { code, message } }, error: { code, message } });
+
+  it("makes two calls, because a breakdown on a metric that doesn't take one fails the whole request", async () => {
+    const graph = vi.fn(async (_path: string, params: Record<string, string>) => ({ ok: true, json: fixture(params.breakdown ? "story-navigation" : "story-insights") }));
+    await expect(readStoryInsights(graph, "s1")).resolves.toEqual({ views: 310, reach: 240, replies: 0, taps_forward: 19, taps_back: 4, exits: 1 });
+    expect(graph.mock.calls).toEqual([
+      ["s1/insights", { metric: "views,reach,replies" }],
+      ["s1/insights", { metric: "navigation", breakdown: "story_navigation_action_type" }],
+    ]);
+  });
+
+  it("keeps one call's numbers when the other is refused", async () => {
+    const graph = async (_path: string, params: Record<string, string>) => (params.breakdown ? refused(10, "(#10) Not enough viewers") : { ok: true, json: fixture("story-insights") });
+    await expect(readStoryInsights(graph, "s1")).resolves.toMatchObject({ views: 310, reach: 240, taps_forward: null, exits: null });
+  });
+
+  it("logs a refusal it doesn't expect, so a metric Meta removes shows up in the logs, but not a story with too few viewers", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await readStoryInsights(async () => refused(10, "(#10) Not enough viewers"), "s1");
+    expect(warn).not.toHaveBeenCalled();
+    await readStoryInsights(async () => refused(100, "(#100) metric[0] must be one of"), "s1");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("(#100) metric[0] must be one of"));
+    warn.mockClear();
+    await readStoryInsights(async () => refused(10, "(#10) Application does not have permission for this action"), "s1");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("does not have permission"));
+    warn.mockRestore();
+  });
+
+  it("gives empty numbers when the network fails, so the story itself is still saved", async () => {
+    await expect(readStoryInsights(async () => { throw new Error("connection reset"); }, "s1")).resolves.toMatchObject({ views: null, exits: null });
   });
 });
 

@@ -13,6 +13,8 @@ import {
 } from "../_shared/influencer-stats.ts";
 import { scrapeCreatorsGet } from "../_shared/scrapecreators.ts";
 
+import { GRAPH_VERSION } from "../_shared/meta-graph.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -34,14 +36,17 @@ type Stats = {
 
 // ---------- OAuth-backed fetchers ----------
 async function fetchIG_OAuth(igUserId: string, token: string): Promise<Stats | null> {
+  const headers = { Authorization: `Bearer ${token}` };
   const infoRes = await fetch(
-    `https://graph.facebook.com/v21.0/${igUserId}?fields=username,followers_count&access_token=${token}`,
+    `https://graph.facebook.com/${GRAPH_VERSION}/${igUserId}?fields=username,followers_count`,
+    { headers },
   );
   const info = await infoRes.json();
   if (!infoRes.ok || info.error) return null;
   const followers = Number(info.followers_count ?? 0);
   const mediaRes = await fetch(
-    `https://graph.facebook.com/v21.0/${igUserId}/media?fields=like_count,comments_count&limit=12&access_token=${token}`,
+    `https://graph.facebook.com/${GRAPH_VERSION}/${igUserId}/media?fields=like_count,comments_count&limit=12`,
+    { headers },
   );
   const media = await mediaRes.json();
   const posts: any[] = media.data ?? [];
@@ -52,14 +57,17 @@ async function fetchIG_OAuth(igUserId: string, token: string): Promise<Stats | n
 }
 
 async function fetchFB_OAuth(pageId: string, token: string): Promise<Stats | null> {
+  const headers = { Authorization: `Bearer ${token}` };
   const infoRes = await fetch(
-    `https://graph.facebook.com/v21.0/${pageId}?fields=username,followers_count,fan_count&access_token=${token}`,
+    `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}?fields=username,followers_count,fan_count`,
+    { headers },
   );
   const info = await infoRes.json();
   if (!infoRes.ok || info.error) return null;
   const followers = Number(info.followers_count ?? info.fan_count ?? 0);
   const postsRes = await fetch(
-    `https://graph.facebook.com/v21.0/${pageId}/posts?fields=likes.summary(true),comments.summary(true),shares&limit=12&access_token=${token}`,
+    `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/posts?fields=likes.summary(true),comments.summary(true),shares&limit=12`,
+    { headers },
   );
   const postsJson = await postsRes.json();
   const posts: any[] = postsJson.data ?? [];
