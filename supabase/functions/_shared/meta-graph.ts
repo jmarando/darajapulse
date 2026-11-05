@@ -188,6 +188,32 @@ export function parseMediaInsights(json: Raw): Pick<PostMetrics, "views" | "reac
   return { views: read("views"), reach: read("reach"), saves: read("saved"), shares: read("shares") };
 }
 
+export type StoryInsights = { views: number | null; reach: number | null; replies: number | null; taps_forward: number | null; taps_back: number | null; exits: number | null };
+
+/** A story's numbers. Meta replaced impressions with views, and exits and the two taps with navigation's breakdown. */
+export function parseStoryInsights(totals: Raw, navigation: Raw): StoryInsights {
+  const read = (name: string) => count(insightValue(insightRow(totals, name)));
+  const results = insightRow(navigation, "navigation")?.total_value?.breakdowns?.[0]?.results;
+  // Meta's docs spell these in lowercase in their samples and in capitals in their table.
+  const action = (name: string) => count((Array.isArray(results) ? results : []).find((r: Raw) => String(r?.dimension_values?.[0]).toLowerCase() === name)?.value);
+  return { views: read("views"), reach: read("reach"), replies: read("replies"), taps_forward: action("tap_forward"), taps_back: action("tap_back"), exits: action("tap_exit") };
+}
+
+/**
+ * Two calls, because a breakdown on a metric that doesn't take one fails the whole request. Either can fail alone, and a
+ * story with under 5 viewers is refused with code 10, so what doesn't answer stays null and the story is still saved.
+ */
+export async function readStoryInsights(graph: GraphCall, storyId: string): Promise<StoryInsights> {
+  const read = async (params: Record<string, string>) => {
+    const answer = await graph(`${storyId}/insights`, params).catch(() => null);
+    // Code 10 also means a permission was refused, so only this message is expected.
+    if (answer && !answer.ok && !/not enough viewers/i.test(answer.error?.message ?? "")) console.warn(`Story insights ${params.metric}: ${answer.error?.message}`);
+    return answer?.ok ? answer.json : null;
+  };
+  const [totals, navigation] = await Promise.all([read({ metric: "views,reach,replies" }), read({ metric: "navigation", breakdown: "story_navigation_action_type" })]);
+  return parseStoryInsights(totals, navigation);
+}
+
 /** One breakdown of follower_demographics. Meta gives nothing for an account under 100 followers. */
 export function parseDemographics(json: Raw): AudienceRow[] {
   const results = insightRow(json, "follower_demographics")?.total_value?.breakdowns?.[0]?.results;

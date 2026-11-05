@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { GRAPH_VERSION } from "../_shared/meta-graph.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,7 +51,7 @@ Deno.serve(async (req) => {
   }
 
   const redirectUri = `${SUPABASE_URL}/functions/v1/facebook-oauth-callback`;
-  const auth = new URL("https://www.facebook.com/v21.0/dialog/oauth");
+  const auth = new URL(`https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth`);
   auth.searchParams.set("client_id", APP_ID);
   auth.searchParams.set("redirect_uri", redirectUri);
   auth.searchParams.set("response_type", "code");
