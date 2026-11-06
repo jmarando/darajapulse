@@ -52,7 +52,10 @@ async function call(path: string, url: string, trim = true): Promise<any> {
 
 /** A GET to any path. Hands back the status instead of throwing, so a caller can tell out of credits (402) from not found (404). */
 export async function scrapeCreatorsGet(path: string, params: Record<string, string>): Promise<{ status: number; json: any }> {
-  const r = await fetch(`${BASE}${path}?${new URLSearchParams(params).toString()}`, { headers: { "x-api-key": SC_KEY, Accept: "application/json" } });
+  const r = await fetch(`${BASE}${path}?${new URLSearchParams(params).toString()}`, {
+    headers: { "x-api-key": SC_KEY, Accept: "application/json" },
+    signal: AbortSignal.timeout(30_000),
+  });
   const text = await r.text();
   try {
     return { status: r.status, json: JSON.parse(text) };
