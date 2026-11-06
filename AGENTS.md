@@ -1,6 +1,7 @@
 Campaign email brand resolution lives in `supabase/functions/_shared/campaign-brand.ts` and is imported by the dashboard and review function, so both sending paths choose the same template and identity without cross-brand fallback.
 OMO payments use campaign roster fee/count and approved draft IDs, while Royco retains view tiers, because the two contracts have distinct payment rules.
 A campaign's submission link is its oldest `contests` row: the brief, the personal `/c/<token>?k=<brief>` page and the brief email all read that row's token, so turning on video approval in `DraftsPanel` creates it (named after the campaign, filed under the campaign's own agency) or reopens it, because approval without it leaves creators no way to upload or submit.
+Creator submissions require the brief and submission link to belong to the same campaign, an original signature before draft upload when an agreement is attached, and one unlinked approved draft per new video; grouped cross-posts share that video's approval.
 Contract dates are additive display/reporting fields, never implicit payment filters, so historical eligibility survives agreement corrections.
 Agreement amendments and their signatures use separate tables linked to immutable original signatures, so existing submission and payment gates remain unchanged.
 Amended PDFs are generated from signed text snapshots into private storage and dispatched on signing, so signatures never attach to revised wording retroactively.

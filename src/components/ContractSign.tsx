@@ -109,6 +109,7 @@ const ContractSign = ({
   onSigned?: () => void;
 }) => {
   const [c, setC] = useState<Contract | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [name, setName] = useState(creatorName || "");
   const [agree, setAgree] = useState(false);
   const [sig, setSig] = useState<string | null>(null);
