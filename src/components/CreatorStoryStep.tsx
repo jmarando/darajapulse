@@ -18,10 +18,13 @@ const readAsDataUrl = (file: File): Promise<string> =>
     r.readAsDataURL(file);
   });
 
+/** What a datetime-local input shows for `d` on the creator's own clock; the input has no time zone and is read back as local. */
+const localInputValue = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+
 /** Creators send their story insights screenshot from the brief page. We read the numbers; the team confirms them. */
 const CreatorStoryStep = ({ briefToken, locked }: { briefToken: string; locked: boolean }) => {
   const [platform, setPlatform] = useState("instagram");
-  const [postedAt, setPostedAt] = useState(() => new Date().toISOString().slice(0, 16));
+  const [postedAt, setPostedAt] = useState(() => localInputValue(new Date()));
   const [file, setFile] = useState<File | null>(null);
   const [reach, setReach] = useState("");
   const [impressions, setImpressions] = useState("");
@@ -62,7 +65,7 @@ const CreatorStoryStep = ({ briefToken, locked }: { briefToken: string; locked: 
         typeof ai.views === "number" ? `${ai.views.toLocaleString()} views` : null,
         typeof ai.replies === "number" ? `${ai.replies.toLocaleString()} replies` : null,
       ].filter(Boolean).join(" · ");
-      setSent(summary || "Your screenshot is with the team.");
+      setSent(summary ? `We read ${summary}. The team will confirm it.` : "Your screenshot is with the team, who will confirm it.");
       setFile(null);
       setReach("");
       setImpressions("");
@@ -90,7 +93,7 @@ const CreatorStoryStep = ({ briefToken, locked }: { briefToken: string; locked: 
           <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
           <div>
             <div className="text-sm font-medium">Got it — thank you.</div>
-            <p className="text-sm text-muted-foreground mt-0.5">We read {sent} The team will confirm it.</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{sent}</p>
             <Button variant="outline" size="sm" className="mt-3" onClick={() => setSent(null)}>Send another</Button>
           </div>
         </div>

@@ -7,8 +7,9 @@ DECLARE
   _pred text;
   _cols text;
   _ai text;
+  _s uuid;
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_index WHERE indexname = 'stories_external_uniq') THEN
+  IF EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'stories_external_uniq') THEN
     RAISE EXCEPTION 'FAILED: stories_external_uniq should be dropped';
   END IF;
   SELECT i.indpred::text, i.indkey::text INTO _pred, _cols
@@ -48,8 +49,11 @@ BEGIN
   VALUES (_c, _i, 'instagram', 'manual', true), (_c, _i, 'instagram', 'creator', false);
   -- The AI reading round-trips separately from the row numbers.
   INSERT INTO public.stories (campaign_id, influencer_id, platform, reach, ai_reading, source, verified)
-  VALUES (_c, _i, 'instagram', 4100, '{"reach":4200,"views":5100,"model":"test","read_at":"2026-11-06T00:00:00Z"}'::jsonb, 'creator', false);
-  IF (SELECT ai_reading #>> '{reach}' FROM public.stories WHERE source = 'creator' ORDER BY created_at DESC LIMIT 1) <> '4200' THEN
+  VALUES (_c, _i, 'instagram', 4100, '{"reach":4200,"views":5100,"model":"test","read_at":"2026-11-06T00:00:00Z"}'::jsonb, 'creator', false)
+  RETURNING id INTO _s;
+  -- By id: every row above shares one created_at (one transaction), so "newest creator row" could pick the one with no reading.
+  IF (SELECT ai_reading #>> '{reach}' FROM public.stories WHERE id = _s) IS DISTINCT FROM '4200'
+     OR (SELECT reach FROM public.stories WHERE id = _s) IS DISTINCT FROM 4100 THEN
     RAISE EXCEPTION 'FAILED: ai_reading did not round trip';
   END IF;
   RAISE EXCEPTION 'stories checks passed';
