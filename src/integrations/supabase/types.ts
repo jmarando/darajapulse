@@ -1040,6 +1040,7 @@ export type Database = {
           objective: string | null
           paid_for_by: string | null
           payment_eligibility_notes: string | null
+          payment_terms_days: number | null
           political: boolean
           references_urls: string[] | null
           require_draft_approval: boolean
@@ -1075,6 +1076,7 @@ export type Database = {
           objective?: string | null
           paid_for_by?: string | null
           payment_eligibility_notes?: string | null
+          payment_terms_days?: number | null
           political?: boolean
           references_urls?: string[] | null
           require_draft_approval?: boolean
@@ -1110,6 +1112,7 @@ export type Database = {
           objective?: string | null
           paid_for_by?: string | null
           payment_eligibility_notes?: string | null
+          payment_terms_days?: number | null
           political?: boolean
           references_urls?: string[] | null
           require_draft_approval?: boolean
@@ -2110,6 +2113,116 @@ export type Database = {
           },
           {
             foreignKeyName: "creator_drafts_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_payout_detail_events: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_kind: string
+          details_id: string
+          fields: string[]
+          id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_kind: string
+          details_id: string
+          fields: string[]
+          id?: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_kind?: string
+          details_id?: string
+          fields?: string[]
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_payout_detail_events_details_id_fkey"
+            columns: ["details_id"]
+            isOneToOne: false
+            referencedRelation: "creator_payout_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_payout_details: {
+        Row: {
+          agency_id: string
+          bii_consent_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          id: string
+          id_number: string
+          influencer_id: string
+          kra_pin: string
+          last_changed_by: string | null
+          last_changed_by_kind: string
+          legal_name: string
+          mpesa_changed_at: string | null
+          mpesa_changed_by_kind: string | null
+          mpesa_name: string
+          mpesa_number: string
+          updated_at: string
+          vat_registered: boolean
+        }
+        Insert: {
+          agency_id: string
+          bii_consent_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          id_number: string
+          influencer_id: string
+          kra_pin: string
+          last_changed_by?: string | null
+          last_changed_by_kind: string
+          legal_name: string
+          mpesa_changed_at?: string | null
+          mpesa_changed_by_kind?: string | null
+          mpesa_name: string
+          mpesa_number: string
+          updated_at?: string
+          vat_registered?: boolean
+        }
+        Update: {
+          agency_id?: string
+          bii_consent_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          id_number?: string
+          influencer_id?: string
+          kra_pin?: string
+          last_changed_by?: string | null
+          last_changed_by_kind?: string
+          legal_name?: string
+          mpesa_changed_at?: string | null
+          mpesa_changed_by_kind?: string | null
+          mpesa_name?: string
+          mpesa_number?: string
+          updated_at?: string
+          vat_registered?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creator_payout_details_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creator_payout_details_influencer_id_fkey"
             columns: ["influencer_id"]
             isOneToOne: false
             referencedRelation: "influencers"
@@ -3782,9 +3895,16 @@ export type Database = {
           gross_kes: number
           id: string
           influencer_id: string
+          invoice_decided_at: string | null
+          invoice_file_path: string | null
+          invoice_number: string | null
+          invoice_raised_at: string | null
+          invoice_route: string | null
+          invoice_status: string
           mpesa_ref: string | null
           net_kes: number
           paid_at: string | null
+          report_approved_at: string
           status: Database["public"]["Enums"]["payout_status"]
           wht_kes: number | null
         }
@@ -3794,9 +3914,16 @@ export type Database = {
           gross_kes: number
           id?: string
           influencer_id: string
+          invoice_decided_at?: string | null
+          invoice_file_path?: string | null
+          invoice_number?: string | null
+          invoice_raised_at?: string | null
+          invoice_route?: string | null
+          invoice_status?: string
           mpesa_ref?: string | null
           net_kes: number
           paid_at?: string | null
+          report_approved_at?: string
           status?: Database["public"]["Enums"]["payout_status"]
           wht_kes?: number | null
         }
@@ -3806,9 +3933,16 @@ export type Database = {
           gross_kes?: number
           id?: string
           influencer_id?: string
+          invoice_decided_at?: string | null
+          invoice_file_path?: string | null
+          invoice_number?: string | null
+          invoice_raised_at?: string | null
+          invoice_route?: string | null
+          invoice_status?: string
           mpesa_ref?: string | null
           net_kes?: number
           paid_at?: string | null
+          report_approved_at?: string
           status?: Database["public"]["Enums"]["payout_status"]
           wht_kes?: number | null
         }
@@ -4619,6 +4753,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agency_staff_on_agency: {
+        Args: { _agency_id: string; _user_id: string }
+        Returns: boolean
+      }
       agency_staff_on_campaign: {
         Args: { _campaign_id: string; _user_id: string }
         Returns: boolean
@@ -4843,6 +4981,7 @@ export type Database = {
       get_my_workspace_subdomain: { Args: never; Returns: string }
       get_payment_link_campaign: { Args: { _token: string }; Returns: string }
       get_payments_public_data: { Args: { _token: string }; Returns: Json }
+      get_payout_card_by_token: { Args: { _token: string }; Returns: Json }
       get_plan_link_campaign: { Args: { _token: string }; Returns: string }
       get_profiles_by_ids: {
         Args: { _ids: string[] }
@@ -4923,6 +5062,7 @@ export type Database = {
           total_due: number
         }[]
       }
+      payout_invoice_agency: { Args: { _object_name: string }; Returns: string }
       rebuild_post_metric_peaks: {
         Args: { _post_ids?: string[] }
         Returns: undefined
@@ -4988,6 +5128,10 @@ export type Database = {
       }
       run_amendment_pdf_jobs: { Args: never; Returns: undefined }
       run_contest_auto_polling: { Args: never; Returns: undefined }
+      save_payout_details_by_token: {
+        Args: { _details: Json; _token: string }
+        Returns: Json
+      }
       set_brand_channel_token: {
         Args: {
           _business_id: string

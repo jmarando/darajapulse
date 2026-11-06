@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  const { data: contestByToken } = await admin.from("contests").select("id").eq("submission_token", body.token).eq("is_active", true).maybeSingle();
+  const { data: contestByToken } = await admin.from("contests").select("id, campaign_id").eq("submission_token", body.token).eq("is_active", true).maybeSingle();
   if (!contestByToken) return json({ error: "This submission link is no longer active." }, 404);
   const { data: existingLinks } = await admin.from("contest_entries").select("post_url").eq("contest_id", contestByToken.id).in("post_url", body.links.map((link) => link.post_url));
   if ((existingLinks ?? []).length) return json({ error: "One or more of these links were already submitted." }, 409);
@@ -64,8 +64,11 @@ Deno.serve(async (req) => {
   // Attach mode: add platforms to a video the creator already posted (approved draft already used).
   if (body.attach_to_post_url) {
     if (!body.brief_token) return json({ error: "Open this page from your personal link to add platforms." }, 400);
-    const { data: ci } = await admin.from("campaign_influencers").select("id, influencer_id").eq("brief_token", body.brief_token).maybeSingle();
+    const { data: ci } = await admin.from("campaign_influencers").select("id, influencer_id, campaign_id").eq("brief_token", body.brief_token).maybeSingle();
     if (!ci) return json({ error: "Creator link not recognised." }, 404);
+    if (ci.campaign_id !== contestByToken.campaign_id) {
+      return json({ error: "This personal link does not belong to this campaign. Open the submission link from your own brief." }, 400);
+    }
     const { data: base } = await admin.from("contest_entries")
       .select("id, contest_id, influencer_id, handle, submitter_name, submitter_email, source, status, full_name, creative_group_id, platform")
       .eq("contest_id", contestByToken.id).eq("post_url", body.attach_to_post_url).eq("influencer_id", ci.influencer_id).maybeSingle();

@@ -1,5 +1,10 @@
 # Roadmap
 
+- [x] Compare Royco Q3 and Yellow/Uber creator submission, approval and contract-signing flows
+- [x] Repair creator brief signing and pre-post draft approval gaps without changing signed agreements or payment rules
+- [x] Verify all four Uber campaign settings, Radhika's real brief/upload/locked-post pages, 47 UI tests, client-review code and rolled-back database success/failure checks; no real video or decision email sent
+- [ ] Add agreement signing to Uber briefs — blocked: Yellow has no Uber contract template; needs the approved agreement wording
+
 - [ ] Apply migrations 20261110090000 and 20261111090000, then run both requested verification scripts — blocked: current main e75b895 still contains none of the four requested files, and remote migration history confirms neither version is applied; needs PR #35 merged and synced into this workspace
 
 - [x] Replace ScrapeCreators key and refresh all campaigns with submitted posts regardless of status, starting with Pakakumi Aug–Oct Influencers — verified 23 Oct: 1,831/1,914 posts updated across 13 campaigns; Pakakumi 207/242; 4,269 credits remaining
