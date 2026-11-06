@@ -5,8 +5,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getPayoutCard, savePayoutDetails, type PayoutCard } from "@/lib/payouts/api";
+import { getPayoutCard, savePayoutDetails, type PayoutCard, type PayoutCardPayout } from "@/lib/payouts/api";
 import { validateDetailsInput, type DetailsInput } from "@/lib/payouts/details";
+import { daysLeft, dueDate, formatNairobiDate, invoiceDeadline } from "../../../supabase/functions/_shared/payout-rules";
+
+/** One plain sentence on where the creator's finalised payment stands. */
+function payoutStatusLine(p: PayoutCardPayout, now = new Date()): string {
+  switch (p.invoice_status) {
+    case "raised": {
+      if (p.invoice_route === "creator" || !p.invoice_raised_at) return "We're checking the invoice you sent.";
+      const deadline = invoiceDeadline(p.invoice_raised_at);
+      const left = daysLeft(deadline, now);
+      return `Approve your invoice on *222# by ${formatNairobiDate(deadline)} (${left} day${left === 1 ? "" : "s"} left).`;
+    }
+    case "approved": {
+      const due = dueDate({ invoiceApprovedAt: p.invoice_decided_at, reportApprovedAt: p.report_approved_at, paymentTermsDays: p.payment_terms_days });
+      return due ? `Invoice approved. Payment due ${formatNairobiDate(due)}.` : "Invoice approved. Payment due date to be confirmed.";
+    }
+    case "declined":
+    case "expired":
+      return "Your invoice wasn't approved. We'll raise it again, so watch for KRA's text.";
+    default:
+      return `Your figure is final: KES ${Math.round(Number(p.gross_kes)).toLocaleString("en-GB")}. We'll raise your eTIMS invoice next.`;
+  }
+}
 
 const CONSENT = "I agree that the company paying me raises my eTIMS invoice through KRA, and that I will approve it on *222#.";
 const blank: DetailsInput = {
@@ -72,6 +94,7 @@ export default function GetPaidCard({ token }: { token: string }) {
     <Card className="p-6 mt-6">
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5" /> Payment</div>
       <h3 className="font-display text-xl mt-1">Get paid</h3>
+      {card.payout && <p className="mt-2 text-sm font-medium">{payoutStatusLine(card.payout)}</p>}
 
       {details && !editing ? (
         <div className="mt-4 space-y-2 text-sm">
