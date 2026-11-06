@@ -1,9 +1,11 @@
 // Pulls live story frames + insights from connected Instagram / Facebook accounts.
 // Stories expire after 24h, so this is meant to run on a schedule (every few hours).
-// Creators without a connected account are covered by manual screenshot logging in the UI.
+// Creators without a connected account are covered by manual screenshot logging in the UI
+// and by creator screenshots sent from their brief link (source "creator").
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { canManageCampaign, denied, requireCaller } from "../_shared/auth.ts";
 import { graphCall, readStoryInsights } from "../_shared/meta-graph.ts";
+import { STORY_FRAME_KEY, campaignsRunningOn, type CampaignWindow } from "../_shared/stories.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,18 +16,21 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-async function syncInstagram(acct: any, influencerId: string, campaignIds: string[]) {
+async function syncInstagram(acct: any, influencerId: string, campaigns: CampaignWindow[]) {
   const graph = graphCall(acct.page_access_token);
   const frames = await graph(`${acct.ig_user_id}/stories`, {
     fields: "id,media_type,media_url,thumbnail_url,permalink,timestamp,caption",
   });
   if (!frames.ok) throw new Error(`Graph ${acct.ig_user_id}/stories: ${JSON.stringify(frames.json).slice(0, 240)}`);
   let captured = 0;
+  const failures: string[] = [];
   for (const f of frames.json?.data ?? []) {
     const ins = await readStoryInsights(graph, f.id);
 
     const postedAt = f.timestamp ? new Date(f.timestamp).toISOString() : new Date().toISOString();
-    for (const campaignId of campaignIds) {
+    // One row per campaign that's running on the frame's day; a creator on two campaigns
+    // months apart gets the frame on the one that's running, not moved between them.
+    for (const campaignId of campaignsRunningOn(postedAt, campaigns)) {
       const { error } = await supabase.from("stories").upsert({
         campaign_id: campaignId,
         influencer_id: influencerId,
@@ -44,10 +49,16 @@ async function syncInstagram(acct: any, influencerId: string, campaignIds: strin
         exits: ins.exits,
         source: "instagram_api",
         verified: true,
-      }, { onConflict: "platform,external_id" });
-      if (!error) captured++;
+      }, { onConflict: STORY_FRAME_KEY });
+      if (error) {
+        console.error(`stories-sync failed to save frame ${f.id} for campaign ${campaignId}:`, error.message);
+        failures.push(error.message);
+      } else {
+        captured++;
+      }
     }
   }
+  if (failures.length) throw new Error(`Saved ${captured} frame(s) but ${failures.length} failed: ${failures[0]}`);
   return captured;
 }
 
@@ -64,15 +75,22 @@ Deno.serve(async (req) => {
     }
 
     // Which creators are we covering, and which campaigns should each frame land on?
-    let ciq = supabase.from("campaign_influencers").select("campaign_id, influencer_id");
+    let ciq = supabase.from("campaign_influencers").select("campaign_id, influencer_id, campaigns(status, start_date, end_date)");
     if (campaign_id) ciq = ciq.eq("campaign_id", campaign_id);
     const { data: ci, error: ciErr } = await ciq;
     if (ciErr) throw ciErr;
 
-    const byInfluencer = new Map<string, string[]>();
+    const byInfluencer = new Map<string, CampaignWindow[]>();
     for (const row of ci ?? []) {
+      const c: any = (row as any).campaigns ?? {};
+      const win: CampaignWindow = {
+        campaign_id: row.campaign_id,
+        status: c.status ?? null,
+        start_date: c.start_date ?? null,
+        end_date: c.end_date ?? null,
+      };
       const list = byInfluencer.get(row.influencer_id) ?? [];
-      list.push(row.campaign_id);
+      list.push(win);
       byInfluencer.set(row.influencer_id, list);
     }
     const influencerIds = [...byInfluencer.keys()];

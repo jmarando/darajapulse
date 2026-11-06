@@ -133,6 +133,13 @@ export function StoriesSection({ campaignId, roster, posts, startDate, endDate }
     load();
   };
 
+  const confirm = async (row: any) => {
+    const { error } = await supabase.from("stories").update({ verified: true }).eq("id", row.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Confirmed");
+    load();
+  };
+
   const syncConnected = async () => {
     setSyncing(true);
     toast.loading("Pulling stories from connected accounts…", { id: "story-sync" });
@@ -356,9 +363,29 @@ export function StoriesSection({ campaignId, roster, posts, startDate, endDate }
                   </div>
                   <div className="flex items-center gap-1.5 mt-2">
                     <Badge variant="outline" className="text-[10px] capitalize">{r.platform}</Badge>
-                    <Badge variant="outline" className="text-[10px]">{r.source === "manual" ? "Manual" : "Auto"}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{r.source === "manual" ? "Manual" : r.source === "creator" ? "Creator" : "Auto"}</Badge>
                     {r.verified && <span className="inline-flex items-center gap-1 text-[10px] text-primary"><CheckCircle2 className="w-3 h-3" /> Verified</span>}
+                    {r.source === "creator" && !r.verified && (
+                      <button onClick={() => confirm(r)} className="text-[10px] font-medium text-primary underline underline-offset-2">Confirm</button>
+                    )}
                   </div>
+                  {((r as unknown as { ai_reading?: { error?: unknown; reach?: unknown; views?: unknown; replies?: unknown; link_taps?: unknown } }).ai_reading) && (
+                    <div className="text-[10px] text-muted-foreground mt-1.5">
+                      AI read: {(() => {
+                        const ai = (r as unknown as { ai_reading: { error?: unknown; reach?: unknown; views?: unknown; replies?: unknown; link_taps?: unknown } }).ai_reading;
+                        if (ai.error) return String(ai.error);
+                        const parts: string[] = [];
+                        if (typeof ai.reach === "number") parts.push(`reach ${fmt(ai.reach)}`);
+                        if (typeof ai.views === "number") parts.push(`${fmt(ai.views)} views`);
+                        if (typeof ai.replies === "number") parts.push(`${fmt(ai.replies)} replies`);
+                        if (typeof ai.link_taps === "number") parts.push(`${fmt(ai.link_taps)} taps`);
+                        const base = parts.length ? parts.join(" · ") : "No numbers visible";
+                        const differs = (typeof ai.reach === "number" && (r.reach ?? null) !== ai.reach)
+                          || (typeof ai.views === "number" && (r.impressions ?? null) !== ai.views);
+                        return differs ? `${base} — creator typed different numbers` : base;
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
             );

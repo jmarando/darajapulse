@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { normalizeBreakdown, DEFAULT_PLATFORMS } from "@/components/DeliverablesEditor";
 import ContractSign from "@/components/ContractSign";
 import { contractPeriodLabel } from "@/lib/contractDates";
+import BriefSubmitSteps, { type CreatorDraftState } from "@/components/BriefSubmitSteps";
+import CreatorStoryStep from "@/components/CreatorStoryStep";
 
 
 const PLATFORM_ICON: Record<string, any> = {
@@ -23,11 +25,17 @@ const PublicBrief = () => {
   const [b, setB] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [draftState, setDraftState] = useState<CreatorDraftState | null>(null);
 
   const load = async () => {
     const { data, error } = await supabase.rpc("get_brief_by_token", { _token: token });
     if (error) toast.error(error.message);
-    const { data: dates } = await supabase.rpc("get_campaign_contract_dates", { _token: token });
+    // If the approval check fails the plain post link still shows, and the next page checks approval again.
+    const [{ data: dates }, { data: drafts }] = await Promise.all([
+      supabase.rpc("get_campaign_contract_dates", { _token: token }),
+      supabase.rpc("get_creator_draft_state", { _brief_token: token }),
+    ]);
+    setDraftState((drafts ?? null) as CreatorDraftState | null);
     setB(data ? { ...(data as any), campaign: { ...(data as any).campaign, ...(dates as any) } } : null); setLoading(false);
   };
   useEffect(() => { load(); }, [token]);
@@ -249,7 +257,15 @@ const PublicBrief = () => {
         <ContractSign token={String(b.brief_token || token)} creatorName={creatorName} onSigned={load} />
 
         {/* Personal submission link — how the creator sends us their post */}
-        {b.submission_token && (
+        {draftState?.required && (
+          <BriefSubmitSteps
+            submitUrl={b.submission_token ? `/c/${b.submission_token}?k=${b.brief_token || token}` : null}
+            locked={!!b.contract_required && !b.contract_signed}
+            deliverables={Number(b.deliverables_count) || 0}
+            state={draftState}
+          />
+        )}
+        {b.submission_token && !draftState?.required && (
           <Card className={`p-6 mt-6 border-accent/40 bg-accent/5 ${b.contract_required && !b.contract_signed ? "opacity-60" : ""}`}>
             <div className="text-[10px] uppercase tracking-widest text-accent">After you post</div>
             <h3 className="font-display text-xl mt-1">Send us your post link</h3>
@@ -289,11 +305,11 @@ const PublicBrief = () => {
           </Card>
         )}
 
+        <CreatorStoryStep briefToken={String(b.brief_token || token)} locked={!!b.contract_required && !b.contract_signed} />
 
         {/* Status indicator on page (sticky bar handles primary CTAs) */}
         <div className="mt-8 flex items-center gap-3 flex-wrap">
           <Badge variant="outline" className="capitalize">Status: {b.status}</Badge>
-          {final && b.status === "confirmed" && <span className="text-sm text-success">You're confirmed — see next step below.</span>}
           {final && b.status === "declined" && <span className="text-sm text-muted-foreground">Thanks — your response has been recorded.</span>}
         </div>
 

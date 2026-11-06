@@ -108,3 +108,6 @@ verify_jwt = false
 
 [functions.send-brand-report]
 verify_jwt = false
+
+[functions.submit-creator-story]
+verify_jwt = false

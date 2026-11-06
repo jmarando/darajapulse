@@ -519,13 +519,14 @@ async function scrape(platform: string, rawUrl: string) {
   const isInsta = p === "instagram" || /instagram\.com/.test(url);
   const isYouTube = p === "youtube" || /youtu\.?be/.test(url);
   const isFacebook = p === "facebook" || /facebook\.com|fb\.watch/.test(url);
+  const isX = p === "twitter" || p === "x" || /(^|\/\/|\.)(x|twitter)\.com\//.test(url);
 
   // ScrapeCreators is the primary provider (paid per-post, credit-budgeted).
   if (sc.enabled && SCRAPECREATORS_ENABLED) {
     if (sc.used >= sc.budget) {
       sc.capped = true;
     } else {
-      const plat = isTikTok ? "tiktok" : isInsta ? "instagram" : isYouTube ? "youtube" : isFacebook ? "facebook" : null;
+      const plat = isTikTok ? "tiktok" : isInsta ? "instagram" : isYouTube ? "youtube" : isFacebook ? "facebook" : isX ? "twitter" : null;
       if (plat) {
         try {
           const res = await scrapeCreatorsPost(plat, url);
@@ -584,6 +585,7 @@ async function scrape(platform: string, rawUrl: string) {
   if (isYouTube) return await scrapeYouTubeHtml(url);
   if (isInsta) throw new Error("Instagram fetch failed — Apify returned nothing and Ensemble fallback is unavailable");
   if (isFacebook) throw new Error("Facebook scrapers returned no data for this URL — it may be private/age-restricted. Enter metrics manually or connect the Page.");
+  if (isX) throw new Error("X lookup returned nothing for this post. It may be deleted or private, or enter the numbers by hand.");
   throw new Error(`No scraper for platform: ${platform}`);
 }
 
