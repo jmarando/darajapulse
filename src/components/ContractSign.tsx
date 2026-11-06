@@ -116,10 +116,16 @@ const ContractSign = ({
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
+    setLoadError(null);
     const [original, amendment] = await Promise.all([
       supabase.rpc("get_contract_by_token", { _token: token }),
       supabase.rpc("get_contract_amendment_by_token", { _token: token }),
     ]);
+    if (original.error || amendment.error) {
+      setC(null);
+      setLoadError("We couldn't load your agreement. Please check your connection and try again.");
+      return;
+    }
     setC((amendment.data as Contract | null) ?? (original.data as Contract | null));
   };
   useEffect(() => {
@@ -129,6 +135,19 @@ const ContractSign = ({
   useEffect(() => {
     if (creatorName && !name) setName(creatorName);
   }, [creatorName]);
+
+  if (loadError) {
+    return (
+      <Card className="p-6 mt-6 border-destructive/40">
+        <div className="flex items-center gap-2">
+          <FileSignature className="w-5 h-5 text-destructive" />
+          <h3 className="font-display text-xl">Agreement unavailable</h3>
+        </div>
+        <p className="text-sm text-muted-foreground mt-2">{loadError}</p>
+        <Button variant="outline" className="mt-4" onClick={load}>Try again</Button>
+      </Card>
+    );
+  }
 
   if (!c || !c.required) return null;
 
