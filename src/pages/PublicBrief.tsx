@@ -10,6 +10,7 @@ import { normalizeBreakdown, DEFAULT_PLATFORMS } from "@/components/Deliverables
 import ContractSign from "@/components/ContractSign";
 import { contractPeriodLabel } from "@/lib/contractDates";
 import BriefSubmitSteps, { type CreatorDraftState } from "@/components/BriefSubmitSteps";
+import CreatorStoryStep from "@/components/CreatorStoryStep";
 
 
 const PLATFORM_ICON: Record<string, any> = {
@@ -304,6 +305,7 @@ const PublicBrief = () => {
           </Card>
         )}
 
+        <CreatorStoryStep briefToken={String(b.brief_token || token)} locked={!!b.contract_required && !b.contract_signed} />
 
         {/* Status indicator on page (sticky bar handles primary CTAs) */}
         <div className="mt-8 flex items-center gap-3 flex-wrap">
