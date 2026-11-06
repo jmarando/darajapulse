@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Apply migrations 20261110090000 and 20261111090000, then run both requested verification scripts — blocked: neither migration nor verification file is present on main (PR #33), and the Supabase CLI has no access token; remote migration history confirms neither version is applied
+
 - [x] Replace ScrapeCreators key and refresh all campaigns with submitted posts regardless of status, starting with Pakakumi Aug–Oct Influencers — verified 23 Oct: 1,831/1,914 posts updated across 13 campaigns; Pakakumi 207/242; 4,269 credits remaining
 - [ ] Recover 83 failed post statistics from the 23 Oct sweep — blocked/restricted or unsupported links, malformed URLs, missing provider statistics and one rate-limit response; needs targeted investigation and accessible links/manual evidence where providers cannot retrieve data
 
