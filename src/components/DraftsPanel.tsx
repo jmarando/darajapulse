@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { downloadFile } from "@/lib/downloadFile";
 import { DraftVideo } from "@/components/DraftVideo";
 import { resolveCampaignBrand } from "../../supabase/functions/_shared/campaign-brand";
+import { submissionContestRow, type CampaignForLink } from "@/lib/submissionLink";
 
 
 type Draft = {
@@ -57,7 +58,7 @@ const TABS = [
   ["all", "All"],
 ] as const;
 
-export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
+export const DraftsPanel = ({ campaignId, campaignStatus, onLinkChange }: { campaignId: string; campaignStatus?: string | null; onLinkChange?: () => void }) => {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [posters, setPosters] = useState<Record<string, string>>({});
@@ -67,19 +68,27 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
   const [busy, setBusy] = useState<string | null>(null);
   const [reviewLink, setReviewLink] = useState<string | null>(null);
   const [required, setRequired] = useState(false);
+  const [campaign, setCampaign] = useState<CampaignForLink | null>(null);
+  // The campaign's oldest contest: the one whose token the brief hands to creators.
+  const [linkContest, setLinkContest] = useState<{ id: string; is_active: boolean } | null>(null);
+  const linkOpen = !!linkContest?.is_active;
 
   const load = async () => {
-    const [{ data }, { data: link }, { data: camp }] = await Promise.all([
+    const [{ data }, { data: link }, { data: camp }, { data: contest }] = await Promise.all([
       supabase
         .from("creator_drafts" as any)
         .select("*, influencers(full_name, handle)")
         .eq("campaign_id", campaignId)
         .order("created_at", { ascending: false }),
       supabase.from("draft_links" as any).select("token").eq("campaign_id", campaignId).eq("is_active", true).limit(1).maybeSingle(),
-      supabase.from("campaigns").select("require_draft_approval" as any).eq("id", campaignId).maybeSingle(),
+      supabase.from("campaigns").select("require_draft_approval, name, hashtag, start_date, end_date, agency_id, client_id").eq("id", campaignId).maybeSingle(),
+      supabase.from("contests").select("id, is_active").eq("campaign_id", campaignId).order("created_at", { ascending: true }).limit(1).maybeSingle(),
     ]);
     const list = ((data as any) ?? []) as Draft[];
     setDrafts(list);
+    setRequired(Boolean(camp?.require_draft_approval));
+    setCampaign(camp ? { ...camp, id: campaignId } : null);
+    setLinkContest(contest ?? null);
     // Sign the small poster stills up front so the grid paints instantly.
     const posterPaths = list.map((d) => d.poster_path).filter(Boolean) as string[];
     if (posterPaths.length) {
@@ -96,7 +105,6 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
       const p = (res as any)?.posters;
       if (p && typeof p === "object") setStreamPosters(p as Record<string, string>);
     }
-    setRequired(Boolean((camp as any)?.require_draft_approval));
     setReviewLink((link as any)?.token ? `${publicOrigin()}/d/${(link as any).token}` : null);
   };
 
@@ -229,11 +237,35 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
     toast.success("Client review link created");
   };
 
+  /** Creators reach the upload and the post link through this contest's token, so it has to exist and be open. */
+  const ensureSubmissionLink = async (): Promise<boolean> => {
+    if (!campaign) return false;
+    const { error } = linkContest
+      ? await supabase.from("contests").update({ is_active: true }).eq("id", linkContest.id)
+      : await supabase.from("contests").insert(submissionContestRow(campaign));
+    if (error) {
+      toast.error(`Couldn't set up the submission link: ${error.message}`);
+      return false;
+    }
+    onLinkChange?.();
+    return true;
+  };
+
+  const setUpLink = async () => {
+    if (!(await ensureSubmissionLink())) return;
+    toast.success("Submission link ready — creators can reach it from their brief");
+    load();
+  };
+
   const toggleRequired = async (v: boolean) => {
+    // Approval without the link would tell creators to upload with nowhere to go, so the link comes first.
+    const needsLink = v && !linkOpen;
+    if (needsLink && !(await ensureSubmissionLink())) return;
     const { error } = await supabase.from("campaigns").update({ require_draft_approval: v } as any).eq("id", campaignId);
     if (error) return toast.error(error.message);
     setRequired(v);
-    toast.success(v ? "Creators must get a video approved before posting" : "Draft approval is now optional");
+    toast.success(v ? "Creators now upload their video from the brief and need it approved before posting" : "Draft approval is now optional");
+    if (needsLink) load();
   };
 
   return (
@@ -245,7 +277,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
             <h3 className="font-display text-xl mt-1">Video approvals</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
               Creators upload the MP4 from their brief link. Approve it here — or share the client review link so
-              Unilever can watch and sign off without logging in. Only once a video is approved can that creator
+              the client can watch and sign off without logging in. Only once a video is approved can that creator
               submit the live post URL.
             </p>
           </div>
@@ -254,7 +286,7 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
 
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 rounded-md border border-border p-2 px-3">
-            <Switch id="req" checked={required} onCheckedChange={toggleRequired} />
+            <Switch id="req" checked={required} disabled={!campaign} onCheckedChange={toggleRequired} />
             <Label htmlFor="req" className="text-xs">Require an approved video before a live link</Label>
           </div>
           {reviewLink ? (
@@ -272,6 +304,18 @@ export const DraftsPanel = ({ campaignId }: { campaignId: string }) => {
             <Button size="sm" onClick={createLink}>Create client review link</Button>
           )}
         </div>
+
+        {required && !linkOpen && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+            <p className="text-xs">Creators can't reach the upload page yet: this campaign has no open submission link.</p>
+            <Button size="sm" variant="outline" className="h-7" onClick={setUpLink}>Set up the link</Button>
+          </div>
+        )}
+        {required && campaignStatus === "draft" && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            This campaign is still a Draft. Its posts get one reading, then stop refreshing until you set it to Live at the top of this page.
+          </p>
+        )}
       </Card>
 
       <div className="flex gap-1 rounded-md border border-border p-1 overflow-x-auto">
