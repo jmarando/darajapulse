@@ -122,5 +122,72 @@ BEGIN
 
 END $$;
 
+-- A signed creator can still upload successfully.
+DO $$
+DECLARE
+  _brief text;
+  _draft_id uuid;
+BEGIN
+  SELECT ci.brief_token INTO _brief
+  FROM public.campaign_influencers ci
+  JOIN public.campaigns c ON c.id = ci.campaign_id
+  WHERE c.contract_template_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM public.contract_signatures cs
+      WHERE cs.campaign_influencer_id = ci.id
+    )
+  LIMIT 1;
+
+  SELECT public.submit_creator_draft(
+    _brief, 'signed-check.mp4', 'signed-check.mp4', 'video/mp4',
+    1000, 'instagram', NULL, NULL, NULL, 'stream-check'
+  ) INTO _draft_id;
+  IF _draft_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.creator_drafts d WHERE d.id = _draft_id
+  ) THEN
+    RAISE EXCEPTION 'signed creator upload did not save';
+  END IF;
+END $$;
+
+-- An approved, unlinked video can be posted once and becomes a live campaign post.
+DO $$
+DECLARE
+  _token text;
+  _brief text;
+  _draft_id uuid;
+  _result jsonb;
+BEGIN
+  SELECT ct.submission_token, ci.brief_token, d.id INTO _token, _brief, _draft_id
+  FROM public.campaign_influencers ci
+  JOIN public.campaigns c ON c.id = ci.campaign_id
+  JOIN public.contests ct ON ct.campaign_id = c.id AND ct.is_active
+  JOIN public.creator_drafts d ON d.campaign_influencer_id = ci.id
+  WHERE c.require_draft_approval
+    AND d.status = 'approved'
+    AND d.post_url IS NULL
+    AND (
+      c.contract_template_id IS NULL OR EXISTS (
+        SELECT 1 FROM public.contract_signatures cs
+        WHERE cs.campaign_influencer_id = ci.id
+      )
+    )
+  ORDER BY c.name, d.created_at
+  LIMIT 1;
+
+  SELECT public.submit_contest_entry(
+    _token, 'instagram', 'https://instagram.com/reel/approved-video-check',
+    'test', 'Test', 'test@example.com', _brief
+  ) INTO _result;
+  IF _result->>'entry_id' IS NULL OR _result->>'post_id' IS NULL THEN
+    RAISE EXCEPTION 'approved video did not create its entry and live post';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.creator_drafts d
+    WHERE d.id = _draft_id AND d.post_url = 'https://instagram.com/reel/approved-video-check'
+  ) THEN
+    RAISE EXCEPTION 'approved draft was not linked to its live URL';
+  END IF;
+END $$;
+
 ROLLBACK;
 SELECT 'creator approval checks passed' AS result;
