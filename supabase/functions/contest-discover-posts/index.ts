@@ -172,7 +172,8 @@ Deno.serve(async (req) => {
     // Pull all influencer handles from the agency roster — these are paid
     // creators and must NEVER appear as contestants in any contest.
     const cleanH = (s?: string | null) =>
-      (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || "";
+      // alt_handles holds "platform:handle", and a paid creator's other accounts must be caught too.
+      (s || "").trim().replace(/^(tiktok|instagram|facebook|twitter|youtube|linkedin|threads|snapchat):/i, "").replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\/@?/i, "").replace(/[/?#].*$/, "").toLowerCase() || "";
     const { data: roster } = await sb.from("influencers").select("handle, alt_handles");
     const rosterHandles = new Set<string>();
     for (const r of (roster ?? []) as any[]) {
