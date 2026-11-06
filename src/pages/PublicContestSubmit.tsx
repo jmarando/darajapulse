@@ -28,10 +28,12 @@ const PublicContestSubmit = () => {
   const [params] = useSearchParams();
   // `k` is the creator's personal brief token — when present the form knows who is posting.
   const creatorToken = params.get("k");
+  // The brief's two buttons say which step they opened.
+  const askedStep = params.get("step");
   const [contest, setContest] = useState<any>(null);
   const [brief, setBrief] = useState<any>(null);
   const [draftState, setDraftState] = useState<any>(null);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2>(askedStep === "2" ? 2 : 1);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [again, setAgain] = useState(0);
@@ -69,7 +71,7 @@ const PublicContestSubmit = () => {
   const [attachTo, setAttachTo] = useState("");
   const [attachUrl, setAttachUrl] = useState("");
   // Land the creator on the step that's actually actionable.
-  useEffect(() => { if (draftApproved) setStep(2); }, [draftApproved]);
+  useEffect(() => { if (draftApproved && askedStep !== "1") setStep(2); }, [draftApproved, askedStep]);
 
   // Contract gate — a campaign with an agreement can't accept posts until it's signed.
   const contractBlocked = !!(brief as any)?.contract_required && !(brief as any)?.contract_signed;
@@ -77,6 +79,8 @@ const PublicContestSubmit = () => {
 
   // Campaigns without a prize are collaborations, not contests — copy adapts.
   const isCollab = useMemo(() => !contest?.prize, [contest]);
+  // A campaign without a hashtag has an empty one here; don't ask creators to post with nothing.
+  const hashtag = String(contest?.hashtag || "").trim().replace(/^#+$/, "");
   const platform = detectPlatform(form.post_url);
 
   const creator = brief?.influencer ?? null;
@@ -173,12 +177,12 @@ const PublicContestSubmit = () => {
           <p className="text-muted-foreground mt-2">
             {isCollab ? (
               <>
-                Post with <span className="font-mono font-semibold text-foreground">{contest.hashtag}</span>, then drop the link here so
+                Post{hashtag && <> with <span className="font-mono font-semibold text-foreground">{hashtag}</span></>}, then drop the link here so
                 it's tracked against your deliverables.
               </>
             ) : (
               <>
-                Post with <span className="font-mono font-semibold text-foreground">{contest.hashtag}</span> and submit below.
+                Post{hashtag && <> with <span className="font-mono font-semibold text-foreground">{hashtag}</span></>} and submit below.
               </>
             )}
           </p>
@@ -329,8 +333,7 @@ const PublicContestSubmit = () => {
               <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer">
                 <Checkbox checked={confirmed} onCheckedChange={(v) => setConfirmed(v === true)} className="mt-0.5" />
                 <span className="text-sm leading-snug">
-                  This post is live and follows the brief — includes{" "}
-                  <span className="font-mono font-medium">{contest.hashtag}</span> and the required brand mentions.
+                  This post is live and follows the brief — includes{hashtag && <> <span className="font-mono font-medium">{hashtag}</span> and</>} the required brand mentions.
                 </span>
               </label>
             ) : (

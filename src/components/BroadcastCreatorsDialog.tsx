@@ -33,6 +33,8 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
 
   const [open, setOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  // What the brief email may promise: an agreement to sign, an approval step. Null until read, and the template then uses its fullest wording.
+  const [emailFlags, setEmailFlags] = useState<{ has_agreement: boolean; needs_approval: boolean } | null>(null);
   const [subject, setSubject] = useState(`${campaignName} — update`);
   const [body, setBody] = useState("");
 
@@ -158,6 +160,12 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
       .limit(1)
       .maybeSingle()
       .then(({ data }) => setToken(data?.submission_token ?? null));
+    supabase
+      .from("campaigns")
+      .select("require_draft_approval, contract_template_id")
+      .eq("id", campaignId)
+      .maybeSingle()
+      .then(({ data }) => setEmailFlags(data ? { has_agreement: !!data.contract_template_id, needs_approval: !!data.require_draft_approval } : null));
   }, [open, campaignId]);
 
   const submitUrl = token ? `${publicOrigin()}/c/${token}` : "";
@@ -410,6 +418,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     first_post_by: blFirstPost.trim() || undefined,
     custom_note: blNote.trim() || undefined,
     rsvp_email: replyTo.trim() || undefined,
+    ...emailFlags,
   });
 
   const blLoadPreview = async () => {
@@ -460,7 +469,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
     if (missing) {
       return toast.error(`${missing} creator(s) have no personal brief link. Add their links before sending.`);
     }
-    if (!token) return toast.error("This campaign has no active submission link yet.");
+    if (!token) return toast.error("This campaign has no active submission link yet. Turn on the approval switch in Video approvals, or add a contest in Contests.");
     if (brand.kind === "omo" && blRecipients.some((r) => r.fee == null || !r.videos)) return toast.error("Each OMO creator needs a fee and video count before sending.");
     setBlSending(true);
     setBlProgress({ done: 0, total: blRecipients.length });
@@ -539,7 +548,7 @@ export const BroadcastCreatorsDialog = ({ campaignId, campaignName, clientName, 
 
           <TabsContent value="brieflive" className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Sends each creator their <strong>personal</strong> brief link (where they also sign the contract) and their
+              Sends each creator their <strong>personal</strong> brief link{emailFlags?.has_agreement === false ? "" : " (where they also sign the contract)"} and their
               own submission link, plus deliverables and how payment works.
             </p>
 
