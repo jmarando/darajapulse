@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -15,6 +16,10 @@ import { toast } from "sonner";
 import ShowsTab from "./ShowsTab";
 import { Combobox } from "@/components/ui/combobox";
 import { UNKNOWN, cityItems, countryItems, useGeo } from "@/lib/geo";
+import { AddCreatorsDialog } from "@/components/creators/AddCreatorsDialog";
+import { accountKey, accountsOf, personNameKey, storedAccount } from "@/lib/creatorAccounts";
+import type { Candidate } from "@/lib/creatorCandidates";
+import { peopleFromProfiles } from "@/lib/creatorSave";
 
 const ALL = "__all__";
 
@@ -64,7 +69,7 @@ const Discovery = () => {
   const [cityOptions, setCityOptions] = useState<string[]>([]);
 
   // Matchmaker
-  const [brief, setBrief] = useState({ brand: "", category: "", audience: "", platforms: [] as string[], budget_tier: "any", goal: "awareness", notes: "" });
+  const [brief, setBrief] = useState({ brand: "", category: "", audience: "", platforms: [] as string[], budget_tier: "any", goal: "awareness", notes: "", political: false });
   const [matching, setMatching] = useState(false);
   const [matches, setMatches] = useState<Array<{ creator_id: string; score: number; reason: string; angle: string }>>([]);
 
@@ -72,6 +77,25 @@ const Discovery = () => {
   const [openCreator, setOpenCreator] = useState<Creator | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [harvesting, setHarvesting] = useState(false);
+
+  // Adding people: who is ticked, and the roster to check them against.
+  const [roster, setRoster] = useState<any[]>([]);
+  const [ticked, setTicked] = useState<Record<string, Creator[]>>({});
+  const [preparing, setPreparing] = useState(false);
+  const [adding, setAdding] = useState<Candidate[] | null>(null);
+  const loadRoster = useCallback(async () => {
+    const { data } = await supabase.from("influencers").select("*");
+    setRoster(data ?? []);
+  }, []);
+  useEffect(() => { loadRoster(); }, [loadRoster]);
+  const rosterAccounts = useMemo(
+    () => new Set(roster.flatMap((r) => accountsOf(r).filter((a) => a.readable).map((a) => accountKey(a.platform, a.handle)))),
+    [roster],
+  );
+  const isOnRoster = (profiles: Creator[]) => profiles.some((pr) => {
+    const account = storedAccount(pr.handle ?? "", pr.platform);
+    return account.readable && rosterAccounts.has(accountKey(account.platform, account.handle));
+  });
 
   // Country/city are applied in the database query so results stay accurate
   // even when a market has more profiles than one page can hold. The backend
@@ -199,9 +223,6 @@ const Discovery = () => {
   };
 
   // Group rows that are clearly the same person across platforms / handle variants.
-  const normalizeName = (s: string) =>
-    (s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean).slice(0, 3).join(" ");
-
   type Person = {
     key: string;
     full_name: string;
@@ -221,7 +242,7 @@ const Discovery = () => {
   const people = useMemo<Person[]>(() => {
     const map = new Map<string, Creator[]>();
     for (const r of filtered) {
-      const k = normalizeName(r.full_name) || `id:${r.id}`;
+      const k = personNameKey(r.full_name) || `id:${r.id}`;
       (map.get(k) || map.set(k, []).get(k)!).push(r);
     }
     return Array.from(map.entries()).map(([key, list]) => {
@@ -389,19 +410,24 @@ const Discovery = () => {
     load();
   };
 
-  const addToRoster = async (c: Creator) => {
-    const payload = {
-      full_name: c.full_name, handle: c.handle, primary_platform: c.platform as any,
-      niche: (c.niche || []).join(", "), follower_count: c.follower_count,
-      engagement_rate: c.engagement_rate, region: c.region || "Kenya",
-      country_code: c.country_code || null, city: c.city || null,
-      // Carried over from the discovery profile, so it is imported rather than confirmed.
-      country_source: c.country_code ? "imported" : null,
-    };
-    const { error } = await (supabase.from("influencers") as any).insert(payload);
-    if (error) return toast.error(error.message);
-    toast.success(`${c.full_name} added to roster`);
+  /** Opens the check-and-add step for these people, with every account and contact they have. */
+  const startAdding = async (profiles: Creator[]) => {
+    setPreparing(true);
+    try {
+      setAdding(await peopleFromProfiles(profiles));
+    } catch (e: any) {
+      toast.error(e.message || "Couldn't load them");
+    } finally {
+      setPreparing(false);
+    }
   };
+  const toggleTicked = (p: Person) => setTicked((all) => {
+    const next = { ...all };
+    if (next[p.key]) delete next[p.key];
+    else next[p.key] = p.profiles;
+    return next;
+  });
+  const tickedPeople = Object.values(ticked);
 
   const addContact = async (creatorId: string, kind: string, value: string, is_public: boolean) => {
     if (!value.trim()) return;
@@ -516,6 +542,7 @@ const Discovery = () => {
           </div>
         </div>
         <div className="mt-3"><Label>Notes</Label><Textarea rows={2} value={brief.notes} onChange={e => setBrief({ ...brief, notes: e.target.value })} placeholder="Anything else to weigh in the match" /></div>
+        <label className="mt-3 flex items-center gap-2 text-sm"><Switch checked={brief.political} onCheckedChange={political => setBrief({ ...brief, political })} /> Political campaign: keep political and news creators in the match</label>
         <div className="mt-3 flex gap-2">
           <Button onClick={runMatch} disabled={matching} className="bg-primary">
             {matching ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}Rank matches
@@ -661,17 +688,21 @@ const Discovery = () => {
                         </p>
                       </div>
                     </div>
-                    {p.verified_at ? (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/10 border border-success/20 shrink-0">
-                        <BadgeCheck className="w-3 h-3 text-success" />
-                        <span className="text-[10px] font-bold text-success uppercase tracking-widest">Verified</span>
-                      </div>
-                    ) : null}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {p.verified_at ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/10 border border-success/20 shrink-0">
+                          <BadgeCheck className="w-3 h-3 text-success" />
+                          <span className="text-[10px] font-bold text-success uppercase tracking-widest">Verified</span>
+                        </div>
+                      ) : null}
+                      <Checkbox aria-label={`Select ${p.full_name}`} checked={!!ticked[p.key]} onCheckedChange={() => toggleTicked(p)} />
+                    </div>
                   </div>
 
                   <h2 className="font-display text-2xl md:text-[1.6rem] font-semibold text-foreground leading-[1.15] break-words mb-3 group-hover:text-primary transition-colors duration-300">
                     {p.full_name}
                   </h2>
+                  {isOnRoster(p.profiles) && <Badge variant="outline" className="mb-3 text-[10px]">On your roster</Badge>}
 
                   <div className="flex flex-wrap gap-1.5">
                     {p.profiles.map(pr => {
@@ -745,7 +776,7 @@ const Discovery = () => {
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => setOpenCreator(p.primary)}>
                       Details {contacts.length > 0 && <span className="ml-1 text-[10px] text-muted-foreground">({contacts.length})</span>}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => addToRoster(p.primary)} title="Add to influencer roster"><Plus className="w-3 h-3" /></Button>
+                    <Button variant="outline" size="sm" disabled={preparing} onClick={() => void startAdding(p.profiles)} title="Add to the roster or a campaign" aria-label={`Add ${p.full_name}`}><Plus className="w-3 h-3" /></Button>
                   </div>
                 </div>
 
@@ -829,12 +860,35 @@ const Discovery = () => {
                   <ContactAdder creatorId={openCreator.id} onAdd={addContact} />
                 </div>
 
-                <Button className="w-full" onClick={() => addToRoster(openCreator)}><Plus className="w-3 h-3 mr-1" /> Add to influencer roster</Button>
+                <Button className="w-full" disabled={preparing} onClick={() => void startAdding(openProfiles)}><Plus className="w-3 h-3 mr-1" /> Add to the roster or a campaign</Button>
               </div>
             </>
           )}
         </SheetContent>
       </Sheet>
+
+      {tickedPeople.length > 0 && (
+        <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-background p-3 shadow-lg">
+          <span className="text-sm font-medium">{tickedPeople.length} selected</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setTicked({})}>Clear</Button>
+            <Button size="sm" className="bg-primary" disabled={preparing} onClick={() => void startAdding(tickedPeople.flat())}>
+              {preparing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null} Add to the roster or a campaign
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {adding && (
+        <AddCreatorsDialog
+          open
+          onOpenChange={(v) => { if (!v) setAdding(null); }}
+          campaign={null}
+          roster={roster}
+          initial={adding}
+          onDone={() => { setAdding(null); setTicked({}); setOpenCreator(null); void loadRoster(); }}
+        />
+      )}
 
         </TabsContent>
       </Tabs>

@@ -1,4 +1,4 @@
-// ScrapeCreators keyword search for social listening: TikTok, YouTube and Reddit.
+// ScrapeCreators keyword search for social listening: TikTok, YouTube, Reddit and Instagram.
 // Ported from Groundwork's scrapecreators.server.ts. One request is one credit.
 // Docs: https://docs.scrapecreators.com  (auth via x-api-key header)
 
@@ -11,7 +11,7 @@ const BASE = "https://api.scrapecreators.com";
 
 export type Found = {
   url: string;
-  source: "tiktok" | "youtube" | "reddit";
+  source: "tiktok" | "youtube" | "reddit" | "instagram";
   title: string | null;
   snippet: string | null;
   publishedAt: string | null;
@@ -36,6 +36,15 @@ const isoFromSeconds = (v: unknown): string | null => {
   return Number.isFinite(n) && n > 0 ? new Date(n * 1000).toISOString() : null;
 };
 
+/** A date the platform gives as an ISO string or as epoch seconds, in ISO form. */
+const isoFrom = (v: unknown): string | null => {
+  if (typeof v === "string") {
+    const t = Date.parse(v);
+    return Number.isFinite(t) ? new Date(t).toISOString() : null;
+  }
+  return isoFromSeconds(v);
+};
+
 async function scGet(path: string, params: Record<string, string>): Promise<any> {
   if (!SC_KEY) throw new OutOfCreditsError("ScrapeCreators key is not set.");
   const res = await fetch(`${BASE}${path}?${new URLSearchParams(params)}`, {
@@ -57,10 +66,13 @@ async function scGet(path: string, params: Record<string, string>): Promise<any>
 }
 
 export async function searchTikTok(query: string, limit = 10): Promise<Found[]> {
-  const json = await scGet("/v1/tiktok/search/keyword", { query });
+  // Without date_posted TikTok returns videos of any age; YouTube and Reddit already ask for the last week.
+  const json = await scGet("/v1/tiktok/search/keyword", { query, date_posted: "this-week" });
   const items: any[] = json?.search_item_list ?? [];
-  return items
-    .map((it: any): Found => {
+  const videos = items
+    .map((item: any): Found => {
+      // ScrapeCreators wraps each result as { aweme_info: {...} }; a bare video is read too.
+      const it = item?.aweme_info ?? item;
       const id = typeof it?.aweme_id === "string" ? it.aweme_id : "";
       const handle = it?.author?.unique_id || "";
       const desc = typeof it?.desc === "string" ? it.desc : "";
@@ -75,8 +87,10 @@ export async function searchTikTok(query: string, limit = 10): Promise<Found[]> 
         shares: count(it?.statistics?.share_count),
       };
     })
-    .filter((h) => Boolean(h.url))
-    .slice(0, limit);
+    .filter((h) => Boolean(h.url));
+  // Results that all fail to read mean the reply's shape changed, not that nobody posted: say so.
+  if (items.length && !videos.length) throw new Error("TikTok search returned results that could not be read.");
+  return videos.slice(0, limit);
 }
 
 export async function searchYouTube(query: string, limit = 10): Promise<Found[]> {
@@ -122,5 +136,36 @@ export async function searchReddit(query: string, limit = 10): Promise<Found[]> 
     .slice(0, limit);
 }
 
+/**
+ * Instagram reels by keyword. ScrapeCreators finds these through Google rather than an
+ * Instagram search, so it returns reels only and the date window is best-effort: treat
+ * the list as a sample of what was indexed, not every reel posted. It reports no views,
+ * so those posts count in mentions only.
+ */
+export async function searchInstagram(query: string, limit = 10): Promise<Found[]> {
+  const json = await scGet("/v2/instagram/reels/search", { query, date_posted: "last-week" });
+  const items: any[] = Array.isArray(json?.reels) ? json.reels : [];
+  const reels = items
+    .map((r: any): Found => {
+      const caption = typeof r?.caption === "string" ? r.caption : "";
+      const handle = typeof r?.owner?.username === "string" ? r.owner.username : "";
+      const shortcode = typeof r?.shortcode === "string" ? r.shortcode : "";
+      const url = typeof r?.url === "string" && r.url ? r.url : shortcode ? `https://www.instagram.com/reel/${shortcode}/` : "";
+      return {
+        url,
+        source: "instagram",
+        title: caption.slice(0, 300) || null,
+        snippet: caption.slice(0, 1200) || null,
+        publishedAt: isoFrom(r?.taken_at),
+        author: handle ? `@${handle}` : null,
+        reach: null,
+        shares: null,
+      };
+    })
+    .filter((h) => Boolean(h.url));
+  if (items.length && !reels.length) throw new Error("Instagram search returned results that could not be read.");
+  return reels.slice(0, limit);
+}
+
 /** The searches one keyword runs, each costing one credit. */
-export const SEARCHES = [searchTikTok, searchYouTube, searchReddit];
+export const SEARCHES = [searchTikTok, searchYouTube, searchReddit, searchInstagram];

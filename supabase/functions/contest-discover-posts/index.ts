@@ -5,13 +5,13 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 import { canManageContest, denied, requireCaller } from "../_shared/auth.ts";
+import { graphCall } from "../_shared/meta-graph.ts";
 
 const ED_TOKENS = [
   Deno.env.get("ENSEMBLEDATA_API_TOKEN"),
   Deno.env.get("ENSEMBLE_DATA_API_TOKEN"),
 ].filter((t): t is string => !!t && t.length > 0);
 const ENSEMBLEDATA_TOKEN = ED_TOKENS[0];
-const META_GRAPH_VERSION = "v21.0";
 
 const score = (e: { shares?: any; comments?: any; likes?: any; views?: any }) =>
   Number(e.shares || 0) * 3 + Number(e.comments || 0) * 2 + Number(e.likes || 0) + Number(e.views || 0);
@@ -58,6 +58,7 @@ async function discoverInstagram(sb: any, tags: string[]) {
   const userId = igAcct.ig_user_id;
   if (!token || !userId) return { upserted: 0, fetched: 0, error: "ig_account_missing_token" };
 
+  const graph = graphCall(token);
   const posts: any[] = [];
   const errors: any[] = [];
 
@@ -65,28 +66,25 @@ async function discoverInstagram(sb: any, tags: string[]) {
     const tag = stripHash(rawTag);
     try {
       // 1) Resolve hashtag id
-      const idRes = await fetch(
-        `https://graph.facebook.com/${META_GRAPH_VERSION}/ig_hashtag_search?user_id=${userId}&q=${encodeURIComponent(tag)}&access_token=${token}`,
-      );
-      const idJson = await idRes.json();
-      const tagId = idJson?.data?.[0]?.id;
+      const found = await graph("ig_hashtag_search", { user_id: userId, q: tag });
+      const tagId = found.json?.data?.[0]?.id;
       if (!tagId) {
-        errors.push({ tag, msg: idJson?.error?.message || "hashtag_not_found" });
+        errors.push({ tag, msg: found.error?.message || "hashtag_not_found" });
         continue;
       }
 
       // 2) Pull recent + top media for that hashtag
+      // thumbnail_url isn't a hashtag media field, so Meta refuses this with (#100) and the branch adds nothing. Left as it is
+      // on purpose: without it posts would start arriving, and hashtag media doesn't say who posted it, so neither the roster
+      // check nor the one-entry-per-handle check below could work.
       const fields = "id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count,children{media_url,thumbnail_url},thumbnail_url";
       for (const endpoint of ["recent_media", "top_media"]) {
-        const r = await fetch(
-          `https://graph.facebook.com/${META_GRAPH_VERSION}/${tagId}/${endpoint}?user_id=${userId}&fields=${fields}&access_token=${token}`,
-        );
-        const j = await r.json();
-        if (j?.error) {
-          errors.push({ tag, endpoint, msg: j.error.message });
+        const media = await graph(`${tagId}/${endpoint}`, { user_id: userId, fields });
+        if (!media.ok) {
+          errors.push({ tag, endpoint, msg: media.error?.message });
           continue;
         }
-        for (const m of j?.data ?? []) posts.push(m);
+        for (const m of media.json?.data ?? []) posts.push(m);
       }
     } catch (e) {
       errors.push({ tag, msg: e instanceof Error ? e.message : String(e) });
@@ -174,7 +172,8 @@ Deno.serve(async (req) => {
     // Pull all influencer handles from the agency roster — these are paid
     // creators and must NEVER appear as contestants in any contest.
     const cleanH = (s?: string | null) =>
-      (s || "").trim().replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//i, "").replace(/[/?#].*$/, "").toLowerCase() || "";
+      // alt_handles holds "platform:handle", and a paid creator's other accounts must be caught too.
+      (s || "").trim().replace(/^(tiktok|instagram|facebook|twitter|youtube|linkedin|threads|snapchat):/i, "").replace(/^@+/, "").replace(/^https?:\/\/(www\.)?(instagram|tiktok|facebook)\.com\/@?/i, "").replace(/[/?#].*$/, "").toLowerCase() || "";
     const { data: roster } = await sb.from("influencers").select("handle, alt_handles");
     const rosterHandles = new Set<string>();
     for (const r of (roster ?? []) as any[]) {

@@ -111,7 +111,7 @@ export default function ListeningMentions({ topics, mentions }: { topics: Listen
         </ul>
       ) : (
         <p className="py-6 text-[13.5px] text-muted-foreground">
-          {mentions.length ? "No posts match these filters." : "No posts yet. New keywords are searched within the hour."}
+          {mentions.length ? "No posts match these filters." : "No posts in this period."}
         </p>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-3">

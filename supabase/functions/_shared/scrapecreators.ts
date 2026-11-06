@@ -1,4 +1,4 @@
-// ScrapeCreators provider — per-post lookups for TikTok / Instagram / YouTube / Facebook.
+// ScrapeCreators provider — per-post lookups for TikTok / Instagram / YouTube / Facebook / X.
 // Docs: https://docs.scrapecreators.com  (auth via x-api-key header)
 // Failed lookups are not charged; each successful lookup costs 1 credit.
 
@@ -37,9 +37,9 @@ function num(v: any): number {
   return Number.isFinite(n) ? Math.round(n) : 0;
 }
 
-async function call(path: string, url: string): Promise<any> {
+async function call(path: string, url: string, trim = true): Promise<any> {
   if (!SC_KEY) throw new Error("SCRAPECREATORS_API_KEY not configured");
-  const qs = new URLSearchParams({ url, trim: "true" }).toString();
+  const qs = new URLSearchParams(trim ? { url, trim: "true" } : { url }).toString();
   const r = await fetch(`${BASE}${path}?${qs}`, { headers: { "x-api-key": SC_KEY, Accept: "application/json" } });
   const text = await r.text();
   let json: any;
@@ -48,6 +48,20 @@ async function call(path: string, url: string): Promise<any> {
     throw new Error(`ScrapeCreators ${path} ${r.status}: ${String(json?.message ?? json?.error ?? "failed").slice(0, 200)}`);
   }
   return json;
+}
+
+/** A GET to any path. Hands back the status instead of throwing, so a caller can tell out of credits (402) from not found (404). */
+export async function scrapeCreatorsGet(path: string, params: Record<string, string>): Promise<{ status: number; json: any }> {
+  const r = await fetch(`${BASE}${path}?${new URLSearchParams(params).toString()}`, {
+    headers: { "x-api-key": SC_KEY, Accept: "application/json" },
+    signal: AbortSignal.timeout(30_000),
+  });
+  const text = await r.text();
+  try {
+    return { status: r.status, json: JSON.parse(text) };
+  } catch {
+    return { status: r.status, json: null };
+  }
 }
 
 // ---- Public profile lookup (bio, business email/phone, avatar, followers) ----
@@ -168,11 +182,36 @@ export function mapFacebookPost(j: any): ScrapedPost {
   };
 }
 
-export async function scrapeCreatorsPost(platform: "tiktok" | "instagram" | "youtube" | "facebook", url: string): Promise<ScrapedPost> {
+async function tweet(url: string): Promise<ScrapedPost> {
+  // Untrimmed, because the docs only show the shape of the full answer.
+  return mapTweet(await call("/v1/twitter/tweet", url, false));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the provider's JSON, read defensively below.
+export function mapTweet(j: any): ScrapedPost {
+  const l = j?.legacy ?? {};
+  return {
+    stats: {
+      views: num(j?.views?.count),
+      likes: num(l.favorite_count),
+      comments: num(l.reply_count),
+      shares: num(l.retweet_count) + num(l.quote_count),
+      saves: num(l.bookmark_count),
+    },
+    thumb: l.extended_entities?.media?.[0]?.media_url_https ?? l.entities?.media?.[0]?.media_url_https ?? null,
+    caption: l.full_text ?? null,
+    postedAt: toIso(l.created_at),
+    creditsCharged: num(j?.credits_charged),
+    creditsRemaining: j?.credits_remaining != null ? num(j.credits_remaining) : null,
+  };
+}
+
+export async function scrapeCreatorsPost(platform: "tiktok" | "instagram" | "youtube" | "facebook" | "twitter", url: string): Promise<ScrapedPost> {
   switch (platform) {
     case "tiktok": return await tiktok(url);
     case "instagram": return await instagram(url);
     case "youtube": return await youtube(url);
     case "facebook": return await facebook(url);
+    case "twitter": return await tweet(url);
   }
 }
