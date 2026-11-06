@@ -1687,7 +1687,7 @@ const CampaignDetail = () => {
         </TabsContent>
 
         <TabsContent value="drafts" className="space-y-6 mt-0">
-          <DraftsPanel campaignId={id!} />
+          <DraftsPanel campaignId={id!} campaignStatus={c?.status} onLinkChange={load} />
         </TabsContent>
 
         <TabsContent value="payments" className="space-y-6 mt-0">
