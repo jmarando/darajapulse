@@ -3,13 +3,13 @@
 // FB: /{page_id}_{post_id} on the post's page using its connected page token (when available)
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { requireCaller, SUPER_ADMIN } from "../_shared/auth.ts";
+import { graphCall } from "../_shared/meta-graph.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GRAPH = "https://graph.facebook.com/v21.0";
 const num = (v: any) => { const n = typeof v === "number" ? v : parseInt(String(v ?? "0").replace(/[,_]/g, ""), 10); return Number.isFinite(n) ? n : 0; };
 const scoreOf = (s: any) => num(s.shares) * 3 + num(s.comments) * 2 + num(s.likes) + num(s.views);
 
@@ -34,12 +34,10 @@ function fbParse(url: string): { page: string | null; post: string | null } {
   return { page: null, post: null };
 }
 
-async function gget(path: string, params: Record<string, string>) {
-  const qs = new URLSearchParams(params).toString();
-  const r = await fetch(`${GRAPH}${path}?${qs}`);
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`Graph ${path} ${r.status}: ${JSON.stringify(j).slice(0, 300)}`);
-  return j;
+async function gget(token: string, path: string, params: Record<string, string>) {
+  const r = await graphCall(token)(path, params);
+  if (!r.ok) throw new Error(`Graph ${path}: ${JSON.stringify(r.json).slice(0, 300)}`);
+  return r.json;
 }
 
 Deno.serve(async (req) => {
@@ -87,8 +85,7 @@ Deno.serve(async (req) => {
       const key = handle.toLowerCase();
       if (igCache.has(key)) return igCache.get(key)!;
       if (!viewer) throw new Error("no_ig_viewer");
-      const j = await gget(`/${viewer.ig_user_id}`, {
-        access_token: viewer.page_access_token,
+      const j = await gget(viewer.page_access_token, viewer.ig_user_id, {
         fields: `business_discovery.username(${key}){media.limit(50){shortcode,permalink,like_count,comments_count,media_type,media_product_type,caption,thumbnail_url,media_url,timestamp}}`,
       });
       const arr = j?.business_discovery?.media?.data ?? [];
@@ -123,11 +120,10 @@ Deno.serve(async (req) => {
       // Use any connected token to resolve the page numeric id from handle if needed
       let pageId = handleKey;
       if (!/^\d+$/.test(pageId)) {
-        try { const pj = await gget(`/${pageId}`, { access_token: token, fields: "id" }); pageId = pj.id; } catch {}
+        try { const pj = await gget(token, pageId, { fields: "id" }); pageId = pj.id; } catch {}
       }
       const id = `${pageId}_${post}`;
-      const j = await gget(`/${id}`, {
-        access_token: token,
+      const j = await gget(token, id, {
         fields: "message,full_picture,permalink_url,reactions.summary(total_count).limit(0),comments.summary(total_count).limit(0),shares",
       });
       return {

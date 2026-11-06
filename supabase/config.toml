@@ -17,6 +17,14 @@ project_id = "ucxlveehobmeywkiynpy"
     verify_jwt = false
   [functions.listening-sweep]
     verify_jwt = false
+  [functions.listening-alerts]
+    verify_jwt = false
+  [functions.groundwork-brief]
+    verify_jwt = false
+  [functions.groundwork-report]
+    verify_jwt = false
+  [functions.groundwork-prospect]
+    verify_jwt = false
   [functions.instagram-oauth-start]
     verify_jwt = false
   [functions.instagram-oauth-callback]
@@ -81,4 +89,25 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.handle-email-events]
+verify_jwt = false
+
+[functions.brand-channels-sync]
+verify_jwt = false
+
+[functions.brand-connect-start]
+verify_jwt = false
+
+[functions.brand-connect-callback]
+verify_jwt = false
+
+[functions.brand-connect-confirm]
+verify_jwt = false
+
+[functions.meta-deauthorize]
+verify_jwt = false
+
+[functions.send-brand-report]
+verify_jwt = false
+
+[functions.submit-creator-story]
 verify_jwt = false

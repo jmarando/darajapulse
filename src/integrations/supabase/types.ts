@@ -169,6 +169,280 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_channel_days: {
+        Row: {
+          channel_id: string
+          day: string
+          followers: number | null
+          pulled_at: string
+          source: string
+        }
+        Insert: {
+          channel_id: string
+          day: string
+          followers?: number | null
+          pulled_at?: string
+          source: string
+        }
+        Update: {
+          channel_id?: string
+          day?: string
+          followers?: number | null
+          pulled_at?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_channel_days_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "brand_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_channel_secrets: {
+        Row: {
+          business_id: string | null
+          channel_id: string
+          expires_at: string | null
+          meta_user_id: string | null
+          scopes: string[]
+          token_kind: string
+          updated_at: string
+          vault_secret_id: string
+        }
+        Insert: {
+          business_id?: string | null
+          channel_id: string
+          expires_at?: string | null
+          meta_user_id?: string | null
+          scopes?: string[]
+          token_kind?: string
+          updated_at?: string
+          vault_secret_id: string
+        }
+        Update: {
+          business_id?: string | null
+          channel_id?: string
+          expires_at?: string | null
+          meta_user_id?: string | null
+          scopes?: string[]
+          token_kind?: string
+          updated_at?: string
+          vault_secret_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_channel_secrets_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: true
+            referencedRelation: "brand_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_channels: {
+        Row: {
+          audience: Json | null
+          audience_at: string | null
+          avatar_url: string | null
+          client_id: string
+          connected_at: string | null
+          connected_by: string | null
+          connected_by_name: string | null
+          created_at: string
+          created_by: string | null
+          display_name: string | null
+          external_id: string | null
+          handle: string
+          id: string
+          last_good_pull_at: string | null
+          last_pull_at: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          source: string
+          status: string
+          status_note: string | null
+        }
+        Insert: {
+          audience?: Json | null
+          audience_at?: string | null
+          avatar_url?: string | null
+          client_id: string
+          connected_at?: string | null
+          connected_by?: string | null
+          connected_by_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          external_id?: string | null
+          handle: string
+          id?: string
+          last_good_pull_at?: string | null
+          last_pull_at?: string | null
+          platform: Database["public"]["Enums"]["platform"]
+          source?: string
+          status?: string
+          status_note?: string | null
+        }
+        Update: {
+          audience?: Json | null
+          audience_at?: string | null
+          avatar_url?: string | null
+          client_id?: string
+          connected_at?: string | null
+          connected_by?: string | null
+          connected_by_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          external_id?: string | null
+          handle?: string
+          id?: string
+          last_good_pull_at?: string | null
+          last_pull_at?: string | null
+          platform?: Database["public"]["Enums"]["platform"]
+          source?: string
+          status?: string
+          status_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_channels_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_connect_links: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          last_used_at: string | null
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_connect_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_connect_pending: {
+        Row: {
+          assets: Json
+          client_id: string
+          expires_at: string
+          id: string
+          meta_user_id: string | null
+          person_name: string | null
+          scopes: string[]
+          started_by: string | null
+          state: string
+          vault_secret_id: string
+        }
+        Insert: {
+          assets: Json
+          client_id: string
+          expires_at?: string
+          id?: string
+          meta_user_id?: string | null
+          person_name?: string | null
+          scopes?: string[]
+          started_by?: string | null
+          state: string
+          vault_secret_id: string
+        }
+        Update: {
+          assets?: Json
+          client_id?: string
+          expires_at?: string
+          id?: string
+          meta_user_id?: string | null
+          person_name?: string | null
+          scopes?: string[]
+          started_by?: string | null
+          state?: string
+          vault_secret_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_connect_pending_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_oauth_states: {
+        Row: {
+          client_id: string
+          connect_link_id: string | null
+          created_at: string
+          started_by: string | null
+          state: string
+        }
+        Insert: {
+          client_id: string
+          connect_link_id?: string | null
+          created_at?: string
+          started_by?: string | null
+          state: string
+        }
+        Update: {
+          client_id?: string
+          connect_link_id?: string | null
+          created_at?: string
+          started_by?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_oauth_states_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_oauth_states_connect_link_id_fkey"
+            columns: ["connect_link_id"]
+            isOneToOne: false
+            referencedRelation: "brand_connect_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_org_agencies: {
         Row: {
           agency_id: string
@@ -276,6 +550,222 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      brand_post_metrics: {
+        Row: {
+          captured_at: string
+          comments: number | null
+          id: string
+          likes: number | null
+          post_id: string
+          reach: number | null
+          saves: number | null
+          shares: number | null
+          source: string
+          views: number | null
+          views_paid: number | null
+        }
+        Insert: {
+          captured_at?: string
+          comments?: number | null
+          id?: string
+          likes?: number | null
+          post_id: string
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          source: string
+          views?: number | null
+          views_paid?: number | null
+        }
+        Update: {
+          captured_at?: string
+          comments?: number | null
+          id?: string
+          likes?: number | null
+          post_id?: string
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          source?: string
+          views?: number | null
+          views_paid?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_post_metrics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "brand_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_posts: {
+        Row: {
+          caption: string | null
+          channel_id: string
+          created_at: string
+          external_id: string
+          format: string
+          id: string
+          posted_at: string | null
+          thumbnail_url: string | null
+          url: string | null
+        }
+        Insert: {
+          caption?: string | null
+          channel_id: string
+          created_at?: string
+          external_id: string
+          format?: string
+          id?: string
+          posted_at?: string | null
+          thumbnail_url?: string | null
+          url?: string | null
+        }
+        Update: {
+          caption?: string | null
+          channel_id?: string
+          created_at?: string
+          external_id?: string
+          format?: string
+          id?: string
+          posted_at?: string | null
+          thumbnail_url?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_posts_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "brand_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_pull_credits: {
+        Row: {
+          agency_id: string
+          day: string
+          used: number
+        }
+        Insert: {
+          agency_id: string
+          day: string
+          used?: number
+        }
+        Update: {
+          agency_id?: string
+          day?: string
+          used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_pull_credits_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_report_links: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          token: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          token?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_report_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_report_sends: {
+        Row: {
+          client_id: string
+          month: string
+          recipients: number
+          sent_at: string
+        }
+        Insert: {
+          client_id: string
+          month: string
+          recipients?: number
+          sent_at?: string
+        }
+        Update: {
+          client_id?: string
+          month?: string
+          recipients?: number
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_report_sends_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_report_settings: {
+        Row: {
+          client_id: string
+          monthly_email: boolean
+          recipients: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          monthly_email?: boolean
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          monthly_email?: boolean
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_report_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       brief_templates: {
         Row: {
@@ -548,7 +1038,9 @@ export type Database = {
           mandatory_mentions: string[] | null
           name: string
           objective: string | null
+          paid_for_by: string | null
           payment_eligibility_notes: string | null
+          political: boolean
           references_urls: string[] | null
           require_draft_approval: boolean
           slug: string | null
@@ -581,7 +1073,9 @@ export type Database = {
           mandatory_mentions?: string[] | null
           name: string
           objective?: string | null
+          paid_for_by?: string | null
           payment_eligibility_notes?: string | null
+          political?: boolean
           references_urls?: string[] | null
           require_draft_approval?: boolean
           slug?: string | null
@@ -614,7 +1108,9 @@ export type Database = {
           mandatory_mentions?: string[] | null
           name?: string
           objective?: string | null
+          paid_for_by?: string | null
           payment_eligibility_notes?: string | null
+          political?: boolean
           references_urls?: string[] | null
           require_draft_approval?: boolean
           slug?: string | null
@@ -2415,6 +2911,118 @@ export type Database = {
         }
         Relationships: []
       }
+      groundwork_links: {
+        Row: {
+          agency_id: string
+          campaign_id: string
+          client_id: string
+          created_at: string
+          groundwork_campaign_id: string
+        }
+        Insert: {
+          agency_id: string
+          campaign_id: string
+          client_id: string
+          created_at?: string
+          groundwork_campaign_id: string
+        }
+        Update: {
+          agency_id?: string
+          campaign_id?: string
+          client_id?: string
+          created_at?: string
+          groundwork_campaign_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groundwork_links_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groundwork_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groundwork_links_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groundwork_prospects: {
+        Row: {
+          agency_id: string
+          campaign_id: string
+          created_at: string
+          followers: number | null
+          handle: string
+          id: string
+          invitation: string | null
+          name: string | null
+          paid_for_by: string
+          platform: string
+          status: string
+          updated_at: string
+          url: string | null
+          why: string[]
+        }
+        Insert: {
+          agency_id: string
+          campaign_id: string
+          created_at?: string
+          followers?: number | null
+          handle: string
+          id?: string
+          invitation?: string | null
+          name?: string | null
+          paid_for_by: string
+          platform: string
+          status?: string
+          updated_at?: string
+          url?: string | null
+          why?: string[]
+        }
+        Update: {
+          agency_id?: string
+          campaign_id?: string
+          created_at?: string
+          followers?: number | null
+          handle?: string
+          id?: string
+          invitation?: string | null
+          name?: string | null
+          paid_for_by?: string
+          platform?: string
+          status?: string
+          updated_at?: string
+          url?: string | null
+          why?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groundwork_prospects_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groundwork_prospects_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       influencers: {
         Row: {
           agency_id: string
@@ -2866,6 +3474,73 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      listening_alert_log: {
+        Row: {
+          client_id: string
+          id: string
+          key: string
+          level: string
+          recipients: number
+          sent_at: string
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          key: string
+          level: string
+          recipients?: number
+          sent_at?: string
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          key?: string
+          level?: string
+          recipients?: number
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listening_alert_log_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listening_alert_rules: {
+        Row: {
+          client_id: string
+          enabled: boolean
+          recipients: string[]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          enabled?: boolean
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          enabled?: boolean
+          recipients?: string[]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listening_alert_rules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       listening_credits: {
         Row: {
@@ -3950,6 +4625,15 @@ export type Database = {
         Args: { _post_id: string; _user_id: string }
         Returns: boolean
       }
+      brand_channel_token: { Args: { _channel_id: string }; Returns: string }
+      brand_connect_pending_token: {
+        Args: { _pending_id: string; _state: string }
+        Returns: string
+      }
+      brand_report_doc: {
+        Args: { _client_id: string; _from: string; _to: string }
+        Returns: Json
+      }
       campaign_has_active_plan_link: {
         Args: { _campaign_id: string }
         Returns: boolean
@@ -3985,6 +4669,18 @@ export type Database = {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
+      can_edit_listening_alerts: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_manage_brand_channels: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_view_brand_channels: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
       caption_key: { Args: { _s: string }; Returns: string }
       claim_amendment_pdf_jobs: {
         Args: never
@@ -4012,6 +4708,20 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      clear_brand_connect_expired: { Args: never; Returns: undefined }
+      create_brand_connect_pending: {
+        Args: {
+          _assets: Json
+          _client_id: string
+          _meta_user_id: string
+          _person_name: string
+          _scopes: string[]
+          _started_by: string
+          _state: string
+          _token: string
+        }
+        Returns: string
+      }
       dashboard_overview: {
         Args: { _from: string; _to: string }
         Returns: Json
@@ -4019,6 +4729,10 @@ export type Database = {
       detach_post_to_own_deliverable: {
         Args: { _post_id: string }
         Returns: string
+      }
+      disconnect_brand_channel: {
+        Args: { _channel_id: string }
+        Returns: undefined
       }
       drain_amendment_pdf_retries: { Args: never; Returns: undefined }
       enforce_billing_status: { Args: never; Returns: undefined }
@@ -4030,6 +4744,15 @@ export type Database = {
           full_name: string
           id: string
         }[]
+      }
+      get_brand_connect_link: { Args: { _token: string }; Returns: Json }
+      get_brand_report_rows: {
+        Args: { _client_id: string; _from: string; _to: string }
+        Returns: Json
+      }
+      get_brand_report_rows_by_token: {
+        Args: { _from: string; _to: string; _token: string }
+        Returns: Json
       }
       get_brief_by_token: { Args: { _token: string }; Returns: Json }
       get_campaign_contract_dates: { Args: { _token: string }; Returns: Json }
@@ -4253,8 +4976,25 @@ export type Database = {
         Args: { _decision: string; _entry_id: string }
         Returns: Json
       }
+      revoke_brand_tokens_for_meta_user: {
+        Args: { _meta_user_id: string }
+        Returns: number
+      }
       run_amendment_pdf_jobs: { Args: never; Returns: undefined }
       run_contest_auto_polling: { Args: never; Returns: undefined }
+      set_brand_channel_token: {
+        Args: {
+          _business_id: string
+          _channel_id: string
+          _connected_by: string
+          _connected_by_name: string
+          _kind: string
+          _meta_user_id: string
+          _scopes: string[]
+          _token: string
+        }
+        Returns: undefined
+      }
       sign_contract_amendment_by_token: {
         Args: {
           _amendment_id: string
@@ -4321,6 +5061,10 @@ export type Database = {
             }
             Returns: string
           }
+      take_brand_pull_credits: {
+        Args: { _agency_id: string; _cap: number; _n: number }
+        Returns: boolean
+      }
       take_job_lock: {
         Args: { _name: string; _seconds: number }
         Returns: boolean

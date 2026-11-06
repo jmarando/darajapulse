@@ -1,7 +1,7 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { LayoutDashboard, Megaphone, HelpCircle, Menu, Ear } from "lucide-react";
+import { LayoutDashboard, Megaphone, HelpCircle, Menu, Ear, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import GettingStartedDialog from "@/components/GettingStartedDialog";
@@ -17,6 +17,7 @@ const nav = [
   { to: "/portal", icon: LayoutDashboard, label: "Overview", end: true },
   { to: "/portal/campaigns", icon: Megaphone, label: "Campaigns" },
   { to: "/portal/listening", icon: Ear, label: "Listening" },
+  { to: "/portal/channels", icon: Radio, label: "Channels" },
 ];
 
 const PortalShell = () => {

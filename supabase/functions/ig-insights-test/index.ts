@@ -4,8 +4,9 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireCaller, SUPER_ADMIN } from "../_shared/auth.ts";
+import { GRAPH_VERSION } from "../_shared/meta-graph.ts";
 
-const GRAPH = "https://graph.facebook.com/v21.0";
+const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -42,33 +43,35 @@ Deno.serve(async (req) => {
     for (const acct of accounts) {
       const token = acct.page_access_token || acct.user_access_token;
       const calls: Record<string, unknown> = {};
+      const headers = { Authorization: `Bearer ${token}` };
 
       const hit = async (label: string, url: string) => {
-        const r = await fetch(url);
+        const r = await fetch(url, { headers });
         calls[label] = { status: r.status, body: await r.json().catch(() => null) };
       };
 
       // Account-level insights (each requires instagram_manage_insights)
       await hit(
         "insights_day",
-        `${GRAPH}/${acct.ig_user_id}/insights?metric=views,profile_views&period=day&metric_type=total_value&access_token=${token}`,
+        `${GRAPH}/${acct.ig_user_id}/insights?metric=views,accounts_engaged&period=day&metric_type=total_value`,
       );
       await hit(
-        "insights_week",
-        `${GRAPH}/${acct.ig_user_id}/insights?metric=reach&period=week&access_token=${token}`,
+        "insights_reach",
+        `${GRAPH}/${acct.ig_user_id}/insights?metric=reach&period=day&metric_type=total_value`,
       );
       await hit(
         "insights_lifetime_audience",
-        `${GRAPH}/${acct.ig_user_id}/insights?metric=follower_count&period=day&access_token=${token}`,
+        `${GRAPH}/${acct.ig_user_id}/insights?metric=follower_count&period=day`,
       );
       await hit(
         "insights_demographics",
-        `${GRAPH}/${acct.ig_user_id}/insights?metric=follower_demographics&period=lifetime&metric_type=total_value&breakdown=country&access_token=${token}`,
+        `${GRAPH}/${acct.ig_user_id}/insights?metric=follower_demographics&period=lifetime&timeframe=this_month&metric_type=total_value&breakdown=country`,
       );
 
       // Media, then per-media insights (also instagram_manage_insights)
       const r2 = await fetch(
-        `${GRAPH}/${acct.ig_user_id}/media?fields=id,caption,media_type,permalink&limit=5&access_token=${token}`,
+        `${GRAPH}/${acct.ig_user_id}/media?fields=id,caption,media_type,permalink&limit=5`,
+        { headers },
       );
       const media = await r2.json().catch(() => null);
       calls.media = { status: r2.status, count: media?.data?.length ?? 0 };
@@ -76,7 +79,7 @@ Deno.serve(async (req) => {
       for (const m of (media?.data ?? []).slice(0, 5)) {
         await hit(
           `media_insights_${m.id}`,
-          `${GRAPH}/${m.id}/insights?metric=reach,likes,comments,shares,saved&access_token=${token}`,
+          `${GRAPH}/${m.id}/insights?metric=reach,likes,comments,shares,saved`,
         );
       }
 
