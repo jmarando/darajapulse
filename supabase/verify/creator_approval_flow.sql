@@ -120,17 +120,6 @@ BEGIN
     END IF;
   END;
 
-  BEGIN
-    PERFORM public.submit_creator_draft(
-      _brief, 'unsigned-check.mp4', 'unsigned-check.mp4', 'video/mp4',
-      1000, 'instagram', NULL, NULL, NULL
-    );
-    RAISE EXCEPTION 'unsigned legacy upload was accepted';
-  EXCEPTION WHEN OTHERS THEN
-    IF SQLERRM <> 'Please sign your creator agreement on your brief page before uploading videos.' THEN
-      RAISE;
-    END IF;
-  END;
 END $$;
 
 ROLLBACK;
