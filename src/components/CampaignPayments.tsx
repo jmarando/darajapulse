@@ -10,9 +10,14 @@ import { toast } from "sonner";
 import { contractPeriodLabel, type ContractDates } from "@/lib/contractDates";
 import { contractGrossForViews } from "@/lib/contractPayment";
 import { resolveCampaignBrand } from "../../supabase/functions/_shared/campaign-brand";
+import { isDetailsComplete, type DetailsLike } from "../../supabase/functions/_shared/payout-rules";
+import { listPayoutDetails } from "@/lib/payouts/staffApi";
+import PayoutDetailsCell from "@/components/payouts/PayoutDetailsCell";
+import PayoutDetailsDialog from "@/components/payouts/PayoutDetailsDialog";
 
 type Props = {
   campaignId: string;
+  agencyId: string;
   contractDates?: ContractDates;
   campaignName: string;
   clientName?: string | null;
@@ -27,7 +32,7 @@ type Props = {
 const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 const money = (value: number) => `KES ${Math.round(value).toLocaleString()}`;
 
-const CampaignPayments = ({ contractDates, campaignId, campaignName, clientName, roster, signatures, posts, metrics, whtPercent, onRefreshMetrics }: Props) => {
+const CampaignPayments = ({ contractDates, campaignId, agencyId, campaignName, clientName, roster, signatures, posts, metrics, whtPercent, onRefreshMetrics }: Props) => {
   const fixedFee = resolveCampaignBrand(campaignName, clientName).kind === "omo";
   const [payouts, setPayouts] = useState<any[]>([]);
   const [approvedDrafts, setApprovedDrafts] = useState<{ id: string; influencer_id: string | null; post_url: string | null }[]>([]);
@@ -36,7 +41,7 @@ const CampaignPayments = ({ contractDates, campaignId, campaignName, clientName,
   const [busy, setBusy] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<"name" | "performance" | "gross" | "net">("net");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [statusFilter, setStatusFilter] = useState<"all" | "provisional" | "ready" | "finalised" | "paid">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "provisional" | "ready" | "finalised" | "paid" | "missing_details">("all");
 
   const loadPayouts = async () => {
     const { data, error } = await supabase.from("payouts").select("*").eq("campaign_id", campaignId);
@@ -44,6 +49,21 @@ const CampaignPayments = ({ contractDates, campaignId, campaignName, clientName,
     setPayouts(data ?? []);
   };
   useEffect(() => { void loadPayouts(); }, [campaignId]);
+
+  const [details, setDetails] = useState<DetailsLike[]>([]);
+  const [detailsUnavailable, setDetailsUnavailable] = useState(false);
+  const [detailsVersion, setDetailsVersion] = useState(0);
+  const [editing, setEditing] = useState<{ influencerId: string; name: string } | null>(null);
+  const rosterIds = useMemo(() => roster.map((item) => item.influencer_id).filter(Boolean).sort().join(","), [roster]);
+  useEffect(() => {
+    if (!agencyId || !rosterIds) return;
+    let active = true;
+    listPayoutDetails(agencyId, rosterIds.split(","))
+      .then((loaded) => { if (active) { setDetails(loaded); setDetailsUnavailable(false); } })
+      .catch(() => { if (active) setDetailsUnavailable(true); }); // for example before the payout details migration is applied
+    return () => { active = false; };
+  }, [agencyId, rosterIds, detailsVersion]);
+  const detailsByCreator = useMemo(() => new Map(details.map((d) => [d.influencerId, d])), [details]);
   useEffect(() => {
     if (!fixedFee) return;
     let active = true;
@@ -104,6 +124,7 @@ const CampaignPayments = ({ contractDates, campaignId, campaignName, clientName,
       if (statusFilter === "provisional") return row.provisional;
       if (statusFilter === "ready") return !row.provisional && !row.payout;
       if (statusFilter === "finalised") return !!row.payout && row.payout.status !== "paid";
+      if (statusFilter === "missing_details") return !isDetailsComplete(detailsByCreator.get(row.item.influencer_id));
       return row.payout?.status === "paid";
     });
     const value = (row: typeof rows[number]) =>
@@ -115,7 +136,7 @@ const CampaignPayments = ({ contractDates, campaignId, campaignName, clientName,
       const cmp = typeof va === "string" ? va.localeCompare(vb as string) : (va as number) - (vb as number);
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [rows, sortKey, sortDir, statusFilter, fixedFee]);
+  }, [rows, sortKey, sortDir, statusFilter, fixedFee, detailsByCreator]);
 
   const coverage = useMemo(() => {
     const current = posts.filter((post) => {
@@ -213,6 +234,7 @@ const CampaignPayments = ({ contractDates, campaignId, campaignName, clientName,
           <SelectItem value="ready">Ready to finalise</SelectItem>
           <SelectItem value="finalised">Finalised, unpaid</SelectItem>
           <SelectItem value="paid">Paid</SelectItem>
+          <SelectItem value="missing_details">Missing details</SelectItem>
         </SelectContent>
       </Select>
       <Select value={sortKey} onValueChange={(value) => setSortKey(value as typeof sortKey)}>
@@ -229,22 +251,25 @@ const CampaignPayments = ({ contractDates, campaignId, campaignName, clientName,
       </Button>
       <span className="text-xs text-muted-foreground">{visibleRows.length} of {rows.length} shown</span>
     </div>
+    {detailsUnavailable && <p className="text-xs text-muted-foreground">Payout details aren't available yet.</p>}
 
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-border text-[10px] uppercase tracking-widest text-muted-foreground">
-              <th className="px-4 py-3 text-left">Creator</th><th className="px-3 py-3 text-left">{fixedFee ? "Agreement" : "Best reel"}</th><th className="px-3 py-3 text-right">{fixedFee ? "Posted / due" : "Views / reach"}</th><th className="px-3 py-3 text-right">Gross</th><th className="px-3 py-3 text-right">WHT</th><th className="px-3 py-3 text-right">Net</th><th className="px-4 py-3 text-right">Payment</th>
+              <th className="px-4 py-3 text-left">Creator</th><th className="px-3 py-3 text-left">{fixedFee ? "Agreement" : "Best reel"}</th><th className="px-3 py-3 text-right">{fixedFee ? "Posted / due" : "Views / reach"}</th><th className="px-3 py-3 text-right">Gross</th><th className="px-3 py-3 text-right">WHT</th><th className="px-3 py-3 text-right">Net</th><th className="px-3 py-3 text-left">Payout details</th><th className="px-4 py-3 text-right">Payment</th>
           </tr></thead>
           <tbody>{visibleRows.map((row) => <tr key={row.item.id} className="border-b border-border last:border-0">
              <td className="px-4 py-3"><div className="font-medium">{row.item.influencers?.full_name}</div><div className="text-xs text-muted-foreground">{fixedFee ? `${row.creatorPosts.length} publication(s)` : `${row.creatorPosts.length} publication${row.creatorPosts.length === 1 ? "" : "s"}`}</div></td>
              <td className="px-3 py-3 capitalize">{fixedFee ? money(row.agreedFee) : row.bestPost ? <a className="inline-flex items-center gap-1 text-accent" href={row.bestPost.post_url} target="_blank" rel="noreferrer">{row.bestPost.platform}<ExternalLink className="w-3 h-3" /></a> : "—"}<div className="mt-1"><Badge variant="outline" className={row.provisional ? "text-highlight border-highlight/40" : "text-success border-success/40"}>{row.provisional ? "Provisional" : fixedFee ? "Complete" : "Current"}</Badge></div></td>
              <td className="px-3 py-3 text-right tabular-nums">{fixedFee ? `${row.credited} / ${row.target || "—"}` : row.bestPerformance.toLocaleString()}</td><td className="px-3 py-3 text-right tabular-nums">{money(row.gross)}</td><td className="px-3 py-3 text-right tabular-nums">{money(row.wht)}</td><td className="px-3 py-3 text-right font-medium tabular-nums">{money(row.net)}</td>
+            <td className="px-3 py-3">{detailsUnavailable ? <span className="text-muted-foreground">—</span> : <PayoutDetailsCell details={detailsByCreator.get(row.item.influencer_id)} onEdit={() => setEditing({ influencerId: row.item.influencer_id, name: row.item.influencers?.full_name ?? "Creator" })} />}</td>
             <td className="px-4 py-3 text-right">{row.payout?.status === "paid" ? <div><Badge className="bg-success/15 text-success border-success/30">Paid</Badge><div className="text-[10px] text-muted-foreground mt-1">{row.payout.mpesa_ref}</div></div> : row.payout ? <Button size="sm" variant="outline" disabled={busy === row.item.id} onClick={() => void markPaid(row)}>Mark paid</Button> : <Button size="sm" disabled={row.provisional || busy === row.item.id} onClick={() => void finalize(row)}><Wallet className="w-3.5 h-3.5 mr-1.5" /> Finalise</Button>}</td>
           </tr>)}</tbody>
         </table>
       </div>
     </Card>
+    {editing && <PayoutDetailsDialog open onOpenChange={(isOpen) => { if (!isOpen) setEditing(null); }} agencyId={agencyId} influencerId={editing.influencerId} creatorName={editing.name} existing={detailsByCreator.get(editing.influencerId)} onSaved={() => setDetailsVersion((v) => v + 1)} />}
   </div>;
 };
 
