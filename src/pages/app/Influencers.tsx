@@ -3,14 +3,18 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Users, Search, ShieldCheck, Link2, Pencil, ChevronDown, Instagram, Music2, Youtube, Twitter, Facebook, MapPin, TrendingUp, RefreshCw } from "lucide-react";
+import { Plus, Users, Search, ShieldCheck, Link2, Pencil, ChevronDown, Instagram, Music2, Facebook, MapPin, TrendingUp, RefreshCw, ListPlus } from "lucide-react";
 import { toast } from "sonner";
-import { PlatformPicker } from "@/components/PlatformPicker";
+import { AccountChips } from "@/components/creators/AccountChips";
+import { AddCreatorsDialog } from "@/components/creators/AddCreatorsDialog";
+import { CreatorForm } from "@/components/creators/CreatorForm";
+import { accountsOf, CREATOR_PLATFORMS, platformName } from "@/lib/creatorAccounts";
+import { candidateFromRow } from "@/lib/creatorCandidates";
 import { Combobox } from "@/components/ui/combobox";
 import { UNKNOWN, cityItems, countryItems, matchesGeo, useGeo } from "@/lib/geo";
 
@@ -37,10 +41,8 @@ const fmtAgo = (iso?: string | null) => {
   return `${d}d ago`;
 };
 
-const PLATFORM_ICON: Record<string, any> = { tiktok: Music2, instagram: Instagram, youtube: Youtube, twitter: Twitter, facebook: Facebook };
-
-// Country is left blank on purpose — we don't want to assume Kenya for a new creator.
-const blankForm = { full_name: "", handle: "", primary_platform: "tiktok", niche: "", follower_count: 0, engagement_rate: 0, region: "Kenya", country_code: "", city: "", phone_mpesa: "", email: "" };
+// The platforms with a working connect page. X and YouTube's pages only say "coming soon", so they aren't offered.
+const INVITE_PLATFORMS = ["tiktok", "instagram", "facebook"];
 
 const InlineNumber = ({ value, format, onSave, step = 1 }: { value: number; format: (v: number) => string; onSave: (v: number) => void; step?: number }) => {
   const [editing, setEditing] = useState(false);
@@ -78,13 +80,15 @@ const Influencers = () => {
   const [searchParams] = useSearchParams();
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");
   const [open, setOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<any>(blankForm);
+  const [editing, setEditing] = useState<any>(null);
+  const [platform, setPlatform] = useState(ALL);
+  const [selected, setSelected] = useState<Record<string, any>>({});
+  const [adding, setAdding] = useState<"campaign" | "paste" | null>(null);
   const [sort, setSort] = useState<"recent" | "followers" | "name">("recent");
   const [country, setCountry] = useState(ALL);
   const [city, setCity] = useState(ALL);
   const [unconfirmedOnly, setUnconfirmedOnly] = useState(false);
-  const { countries, nameOf, citiesOf } = useGeo();
+  const { countries, nameOf } = useGeo();
 
   const load = async () => {
     const { data } = await supabase.from("influencers").select("*").order("created_at", { ascending: false });
@@ -92,49 +96,15 @@ const Influencers = () => {
   };
   useEffect(() => { load(); }, []);
 
-  const openAdd = () => { setEditingId(null); setForm(blankForm); setOpen(true); };
-  const openEdit = (r: any) => {
-    setEditingId(r.id);
-    setForm({
-      full_name: r.full_name ?? "",
-      handle: r.handle ?? "",
-      primary_platform: r.primary_platform ?? "tiktok",
-      niche: r.niche ?? "",
-      follower_count: r.follower_count ?? 0,
-      engagement_rate: r.engagement_rate ?? 0,
-      region: r.region ?? "Kenya",
-      country_code: r.country_code ?? "",
-      city: r.city ?? "",
-      phone_mpesa: r.phone_mpesa ?? "",
-      email: r.email ?? "",
-    });
-    setOpen(true);
-  };
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const email = String(form.email ?? "").trim().toLowerCase();
-    if (!email) return toast.error("Email is required — it's how briefs, contracts and invites reach the creator.");
-    const payload = {
-      ...form, email,
-      follower_count: Number(form.follower_count),
-      engagement_rate: Number(form.engagement_rate),
-      country_code: form.country_code || null,
-      city: form.city || null,
-      // A person chose this country in the form, so it counts as confirmed.
-      country_source: form.country_code ? "verified" : null,
-    };
-    if (editingId) {
-      const { error } = await (supabase.from("influencers") as any).update(payload).eq("id", editingId);
-      if (error) return toast.error(error.message);
-      toast.success("Influencer updated");
-    } else {
-      const { error } = await (supabase.from("influencers") as any).insert(payload);
-      if (error) return toast.error(error.message);
-      toast.success("Influencer added");
-    }
-    setOpen(false); load();
-  };
+  const openAdd = () => { setEditing(null); setOpen(true); };
+  const openEdit = (r: any) => { setEditing(r); setOpen(true); };
+  const toggleSelected = (r: any) => setSelected((all) => {
+    const next = { ...all };
+    if (next[r.id]) delete next[r.id];
+    else next[r.id] = r;
+    return next;
+  });
+  const selectedRows = Object.values(selected);
 
   const updateField = async (id: string, field: string, value: number) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
@@ -142,11 +112,10 @@ const Influencers = () => {
     if (error) { toast.error(error.message); load(); }
   };
 
-  const copyInvite = (r: any, platform: string) => {
-    const link = `${window.location.origin}/connect/${platform}/${r.id}`;
+  const copyInvite = (r: any, invitePlatform: string) => {
+    const link = `${window.location.origin}/connect/${invitePlatform}/${r.id}`;
     navigator.clipboard.writeText(link);
-    const labels: Record<string, string> = { tiktok: "TikTok", instagram: "Instagram", facebook: "Facebook", youtube: "YouTube", twitter: "X / Twitter" };
-    toast.success(`${labels[platform] ?? platform} invite link copied`);
+    toast.success(`${platformName(invitePlatform)} invite link copied`);
   };
 
   const missingEmail = rows.filter(r => !r.email).length;
@@ -160,7 +129,8 @@ const Influencers = () => {
   const filtered = rows
     .filter(r => !unconfirmedOnly || (r.country_code && r.country_source !== "verified"))
     .filter(r => matchesGeo({ country: r.country_code, city: r.city }, country, city, ALL))
-    .filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || (r.handle ?? "").toLowerCase().includes(q.toLowerCase()) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()) || (r.city ?? "").toLowerCase().includes(q.toLowerCase()))
+    .filter(r => platform === ALL || accountsOf(r).some(a => a.platform === platform))
+    .filter(r => !q || r.full_name.toLowerCase().includes(q.toLowerCase()) || accountsOf(r).some(a => a.handle.toLowerCase().includes(q.toLowerCase().replace(/^@/, ""))) || (r.niche ?? "").toLowerCase().includes(q.toLowerCase()) || (r.city ?? "").toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => {
       if (sort === "followers") return Number(b.follower_count ?? 0) - Number(a.follower_count ?? 0);
       if (sort === "name") return String(a.full_name).localeCompare(String(b.full_name));
@@ -187,53 +157,14 @@ const Influencers = () => {
           >
             <RefreshCw className="w-4 h-4 mr-2" /> Refresh stats
           </Button>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingId(null); } }}>
+          <Button variant="outline" onClick={() => setAdding("paste")}>
+            <ListPlus className="w-4 h-4 mr-2" /> Paste a list
+          </Button>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); } }}>
           <DialogTrigger asChild><Button className="bg-primary" onClick={openAdd}><Plus className="w-4 h-4 mr-2" /> Add influencer</Button></DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle className="font-display text-2xl">{editingId ? "Edit influencer" : "Add to roster"}</DialogTitle></DialogHeader>
-            <form onSubmit={submit} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Full name</Label><Input required value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} /></div>
-                <div><Label>Handle</Label><Input value={form.handle} onChange={e => setForm({ ...form, handle: e.target.value })} placeholder="@..." /></div>
-              </div>
-              <div className="col-span-2">
-                <Label>Platform</Label>
-                <PlatformPicker value={form.primary_platform} onChange={v => setForm({ ...form, primary_platform: v })} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Niche</Label><Input value={form.niche} onChange={e => setForm({ ...form, niche: e.target.value })} placeholder="Food / Beauty / Comedy" /></div>
-                <div><Label>Followers</Label><Input type="number" value={form.follower_count} onChange={e => setForm({ ...form, follower_count: e.target.value })} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Engagement %</Label><Input type="number" step="0.1" value={form.engagement_rate} onChange={e => setForm({ ...form, engagement_rate: e.target.value })} /></div>
-                <div><Label>Region (notes)</Label><Input value={form.region} onChange={e => setForm({ ...form, region: e.target.value })} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Country</Label>
-                  <Combobox className="w-full md:w-full mt-1" allValue="" value={form.country_code || ""}
-                    onChange={(v) => setForm({ ...form, country_code: v, city: "" })}
-                    placeholder="Not specified"
-                    items={countries.map(c => ({ id: c.code, label: c.name }))} />
-                </div>
-                <div>
-                  <Label>City</Label>
-                  <Combobox className="w-full md:w-full mt-1" allValue="" value={form.city || ""}
-                    onChange={(v) => setForm({ ...form, city: v })}
-                    placeholder="Not specified"
-                    items={citiesOf(form.country_code).map(c => ({ id: c, label: c }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Email <span className="text-destructive">*</span></Label>
-                  <Input required type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="creator@email.com" />
-                </div>
-                <div><Label>Phone (WhatsApp)</Label><Input value={form.phone_mpesa} onChange={e => setForm({ ...form, phone_mpesa: e.target.value })} placeholder="2547..." /></div>
-              </div>
-              <p className="text-xs text-muted-foreground">Briefs, contracts, kick-off invites and approval notices are all sent by email — a creator without one can't be contacted from the platform.</p>
-              <Button type="submit" className="w-full bg-primary">{editingId ? "Save changes" : "Save"}</Button>
-            </form>
+          <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader><DialogTitle className="font-display text-2xl">{editing ? "Edit influencer" : "Add to roster"}</DialogTitle></DialogHeader>
+            <CreatorForm key={editing?.id ?? "new"} row={editing ?? undefined} roster={rows} onSaved={() => { setOpen(false); load(); }} />
           </DialogContent>
         </Dialog>
         </div>
@@ -244,6 +175,8 @@ const Influencers = () => {
           <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
           <Input className="pl-9" placeholder="Search name, handle, niche, city…" value={q} onChange={e => setQ(e.target.value)} />
         </div>
+        <Combobox allValue={ALL} value={platform} onChange={setPlatform}
+          placeholder="All platforms" items={CREATOR_PLATFORMS.map((p) => ({ id: p.key, label: p.label }))} />
         <Combobox allValue={ALL} value={country} onChange={(v) => { setCountry(v); setCity(ALL); }}
           placeholder="All countries" items={countryItems(usedCountries)} />
         <Combobox allValue={ALL} value={city} onChange={setCity}
@@ -272,11 +205,10 @@ const Influencers = () => {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(r => {
-            const primary = (r.primary_platform as string) || "tiktok";
-            const PIcon = PLATFORM_ICON[primary] || Music2;
+            const accounts = accountsOf(r);
+            // Invite through their main platform when it has a connect page, or else the first of theirs that does.
+            const invitePlatform = accounts.map((a) => a.platform).find((p) => INVITE_PLATFORMS.includes(p)) ?? "tiktok";
             const niches = (r.niche || "").split(/[•,·|\/]+/).map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
-            const handleRaw = (r.handle ?? "").replace(/^@?/, "");
-            const looksLikeUrl = /^https?:\/\//i.test(handleRaw);
             return (
             <Card key={r.id} className="p-5 flex flex-col group hover:shadow-md hover:border-accent/40 transition-all">
               {/* Header: avatar + name + edit */}
@@ -286,19 +218,15 @@ const Influencers = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="font-display text-base leading-tight truncate" title={r.full_name}>{r.full_name}</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1 min-w-0">
-                    <PIcon className="w-3 h-3 shrink-0" />
-                    <span className="truncate" title={handleRaw}>
-                      {looksLikeUrl ? handleRaw : handleRaw ? `@${handleRaw}` : "—"}
-                    </span>
-                  </div>
+                  <div className="mt-1 min-w-0"><AccountChips accounts={accounts} /></div>
                   {r.email ? (
                     <div className="text-[11px] text-muted-foreground truncate mt-0.5" title={r.email}>{r.email}</div>
                   ) : (
                     <button type="button" onClick={() => openEdit(r)} className="text-[11px] text-destructive mt-0.5 hover:underline">Add email</button>
                   )}
                 </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => openEdit(r)} title="Edit influencer">
+                <Checkbox className="mt-1 shrink-0" aria-label={`Select ${r.full_name}`} checked={!!selected[r.id]} onCheckedChange={() => toggleSelected(r)} />
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openEdit(r)} title="Edit influencer" aria-label={`Edit ${r.full_name}`}>
                   <Pencil className="w-3.5 h-3.5" />
                 </Button>
               </div>
@@ -349,8 +277,8 @@ const Influencers = () => {
 
               {/* Invite action — split button keeps copy intent visible while platform picker is one tap away */}
               <div className="mt-3 flex gap-1">
-                <Button variant="outline" size="sm" className="flex-1 min-w-0" onClick={() => copyInvite(r, primary)}>
-                  <Link2 className="w-3 h-3 mr-1.5 shrink-0" /> <span className="truncate">Invite via {primary}</span>
+                <Button variant="outline" size="sm" className="flex-1 min-w-0" onClick={() => copyInvite(r, invitePlatform)}>
+                  <Link2 className="w-3 h-3 mr-1.5 shrink-0" /> <span className="truncate">Invite via {platformName(invitePlatform)}</span>
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -361,8 +289,6 @@ const Influencers = () => {
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem onClick={() => copyInvite(r, "tiktok")}><Music2 className="w-3 h-3 mr-2" /> TikTok</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => copyInvite(r, "instagram")}><Instagram className="w-3 h-3 mr-2" /> Instagram</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => copyInvite(r, "youtube")}><Youtube className="w-3 h-3 mr-2" /> YouTube</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => copyInvite(r, "twitter")}><Twitter className="w-3 h-3 mr-2" /> X / Twitter</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => copyInvite(r, "facebook")}><Facebook className="w-3 h-3 mr-2" /> Facebook</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -371,6 +297,28 @@ const Influencers = () => {
             );
           })}
         </div>
+      )}
+
+      {selectedRows.length > 0 && (
+        <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-background p-3 shadow-lg">
+          <span className="text-sm font-medium">{selectedRows.length} selected</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setSelected({})}>Clear</Button>
+            <Button size="sm" className="bg-primary" onClick={() => setAdding("campaign")}>Add to a campaign</Button>
+          </div>
+        </div>
+      )}
+
+      {adding && (
+        <AddCreatorsDialog
+          open
+          onOpenChange={(v) => { if (!v) setAdding(null); }}
+          campaign={null}
+          roster={rows}
+          initial={adding === "campaign" ? selectedRows.map(candidateFromRow) : undefined}
+          startAt={adding === "paste" ? "paste" : undefined}
+          onDone={() => { setAdding(null); setSelected({}); load(); }}
+        />
       )}
     </div>
   );
