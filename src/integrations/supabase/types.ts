@@ -3025,6 +3025,7 @@ export type Database = {
       }
       influencers: {
         Row: {
+          account_stats: Json
           agency_id: string
           alt_handles: string[]
           audience_age_breakdown: Json | null
@@ -3062,6 +3063,7 @@ export type Database = {
           region: string | null
         }
         Insert: {
+          account_stats?: Json
           agency_id: string
           alt_handles?: string[]
           audience_age_breakdown?: Json | null
@@ -3099,6 +3101,7 @@ export type Database = {
           region?: string | null
         }
         Update: {
+          account_stats?: Json
           agency_id?: string
           alt_handles?: string[]
           audience_age_breakdown?: Json | null
@@ -4388,6 +4391,7 @@ export type Database = {
       }
       stories: {
         Row: {
+          ai_reading: Json | null
           campaign_id: string
           caption: string | null
           created_at: string
@@ -4413,6 +4417,7 @@ export type Database = {
           verified: boolean
         }
         Insert: {
+          ai_reading?: Json | null
           campaign_id: string
           caption?: string | null
           created_at?: string
@@ -4438,6 +4443,7 @@ export type Database = {
           verified?: boolean
         }
         Update: {
+          ai_reading?: Json | null
           campaign_id?: string
           caption?: string | null
           created_at?: string
