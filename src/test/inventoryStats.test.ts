@@ -21,7 +21,7 @@ describe("storefront ScrapeCreators refresh", () => {
   });
   it("preserves YouTube channel ID casing and rejects video links", () => {
     expect(inventoryTarget("youtube", "https://youtube.com/channel/UCAbCd123")).toEqual({ platform: "youtube", handle: "UCAbCd123" });
-    expect(inventoryTarget("youtube", "https://youtube.com/watch?v=123")).toEqual({ platform: "youtube", handle: "watch" });
+    expect(inventoryTarget("youtube", "https://youtube.com/watch?v=123")).toBeNull();
     expect(inventoryTarget("twitter", "https://x.com/person/status/123")).toBeNull();
   });
 });

@@ -18,6 +18,7 @@ export function inventoryTarget(platform: string, input: string): { platform: st
       if (p === "twitter" && !["twitter.com", "x.com"].includes(host)) return null;
       if (p === "youtube" && host !== "youtube.com") return null;
       const parts = url.pathname.split("/").filter(Boolean);
+      if (p === "youtube" && ["watch", "shorts", "playlist", "live"].includes(parts[0])) return null;
       if (p === "youtube" && parts[0] === "channel" && parts.length === 2) handle = parts[1];
       else if (parts.length === 1) handle = parts[0].replace(/^@/, "");
       else return null;
