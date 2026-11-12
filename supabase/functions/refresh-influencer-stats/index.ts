@@ -32,6 +32,7 @@ type Stats = {
   engagement_rate: number | null; // percent; null when the source can't measure it
   posts_sampled: number;
   measured_at?: string | null;
+  posts_error?: string; // why Meta refused a connected page's posts
 };
 
 // ---------- OAuth-backed fetchers ----------
@@ -70,6 +71,13 @@ async function fetchFB_OAuth(pageId: string, token: string): Promise<Stats | nul
     { headers },
   );
   const postsJson = await postsRes.json();
+  // A refusal isn't a page with no posts (Meta refuses these counts without pages_read_user_content): keep the followers,
+  // leave the stored rate alone, and say why.
+  if (!postsRes.ok || postsJson.error) {
+    const why = String(postsJson.error?.message ?? `HTTP ${postsRes.status}`);
+    console.warn(`refresh-influencer-stats: Facebook page ${pageId} refused its posts: ${why}`);
+    return { platform: "facebook", username: info.username, followers, engagement_rate: null, posts_sampled: 0, posts_error: why };
+  }
   const posts: any[] = postsJson.data ?? [];
   const total = posts.reduce((s, p) => s + (p.likes?.summary?.total_count ?? 0) + (p.comments?.summary?.total_count ?? 0) + (p.shares?.count ?? 0), 0);
   const avg = posts.length ? total / posts.length : 0;
