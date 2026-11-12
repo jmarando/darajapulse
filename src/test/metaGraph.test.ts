@@ -11,15 +11,21 @@ import {
 const fixture = (name: string) => JSON.parse(readFileSync(resolve(__dirname, `fixtures/meta/${name}.docs.json`), "utf8"));
 
 describe("metaDialogUrl", () => {
-  it("asks for exactly the six read permissions on the standard login", () => {
+  it("asks for exactly the seven read permissions on the standard login", () => {
     const u = new URL(metaDialogUrl({ appId: "1", redirectUri: "https://x/cb", state: "s" }));
     expect(u.origin + u.pathname).toBe("https://www.facebook.com/v26.0/dialog/oauth");
     expect(u.searchParams.get("client_id")).toBe("1");
     expect(u.searchParams.get("redirect_uri")).toBe("https://x/cb");
     expect(u.searchParams.get("state")).toBe("s");
     expect(u.searchParams.get("response_type")).toBe("code");
-    expect(u.searchParams.get("scope")).toBe("pages_show_list,pages_read_engagement,read_insights,instagram_basic,instagram_manage_insights,business_management");
+    expect(u.searchParams.get("scope")).toBe("pages_show_list,pages_read_engagement,pages_read_user_content,read_insights,instagram_basic,instagram_manage_insights,business_management");
     expect(u.searchParams.has("config_id")).toBe(false);
+  });
+
+  // Without it, Meta refuses the reaction and comment counts on a Page's /posts with "(#10) This endpoint requires the
+  // 'pages_read_user_content' permission", and the whole Facebook read fails (first real connect, 12 Nov 2026).
+  it("asks for the permission that a Page's reaction and comment counts need", () => {
+    expect(READ_SCOPES).toContain("pages_read_user_content");
   });
 
   it("uses the configuration instead of a scope list on Facebook Login for Business", () => {

@@ -29,7 +29,8 @@ export async function listAccounts(graph: GraphCall, fields: string): Promise<{ 
 }
 
 export const GRAPH_VERSION = "v26.0";
-export const READ_SCOPES = ["pages_show_list", "pages_read_engagement", "read_insights", "instagram_basic", "instagram_manage_insights", "business_management"];
+// pages_read_user_content: Meta refuses a Page's reaction and comment counts on /posts without it (#10).
+export const READ_SCOPES = ["pages_show_list", "pages_read_engagement", "pages_read_user_content", "read_insights", "instagram_basic", "instagram_manage_insights", "business_management"];
 
 /** Standard login with a scope list, or Facebook Login for Business once a configuration id is set. */
 export function metaDialogUrl(i: { appId: string; redirectUri: string; state: string; configId?: string | null }): string {
