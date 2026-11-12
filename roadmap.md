@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Move storefront account refreshes to the current ScrapeCreators key and verify MediaMax's refreshed numbers
+- [ ] Refresh Radio Africa's storefront — locate its storefront; no Radio Africa agency or inventory is present in the connected data
+
 - [x] Compare Royco Q3 and Yellow/Uber creator submission, approval and contract-signing flows
 - [x] Repair creator brief signing and pre-post draft approval gaps without changing signed agreements or payment rules
 - [x] Verify all four Uber campaign settings, Radhika's real brief/upload/locked-post pages, 47 UI tests, client-review code and rolled-back database success/failure checks; no real video or decision email sent
