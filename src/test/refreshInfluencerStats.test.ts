@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Edge functions can't run here, so this runs the real handler with Deno, the database and the network stood in for:
 // what it calls, what it writes and what it logs are all real. The creators and handles are invented.
@@ -360,6 +360,63 @@ describe("refresh-influencer-stats: connected creators", () => {
     expect(providerCalls).toHaveLength(1);
     expect(providerCalls[0]).toContain("expired-old");
     expect(result).toMatchObject({ checked: 2, updated: 1 });
+  });
+});
+
+describe("refresh-influencer-stats: a connected Facebook page", () => {
+  // What Meta answers a Page's /posts when the login didn't grant pages_read_user_content (a brand's page, 12 Nov 2026).
+  const REFUSED = { status: 400, json: { error: { message: "(#10) This endpoint requires the 'pages_read_user_content' permission or the 'Page Public Content Access' feature", type: "OAuthException", code: 10, fbtrace_id: "trace-for-tests" } } };
+  const ANSWERED = { status: 200, json: { data: [{ likes: { summary: { total_count: 40 } }, comments: { summary: { total_count: 5 } }, shares: { count: 5 } }] } };
+  let posts: { status: number; json: unknown };
+
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Instagram: 2,000 followers and 100 interactions on its one post (5%). The page: 500 followers and 50 on its one post (10%).
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const answers: Record<string, { status: number; json: unknown }> = {
+        "/v26.0/ig-1": { status: 200, json: { username: "acreator", followers_count: 2000 } },
+        "/v26.0/ig-1/media": { status: 200, json: { data: [{ like_count: 90, comments_count: 10 }] } },
+        "/v26.0/page-1": { status: 200, json: { username: "apage", followers_count: 500, fan_count: 400 } },
+        "/v26.0/page-1/posts": posts,
+      };
+      const answer = answers[new URL(input).pathname] ?? { status: 400, json: { error: { code: 803, message: "Unknown path" } } };
+      return new Response(JSON.stringify(answer.json), { status: answer.status });
+    }));
+  });
+  afterEach(() => vi.mocked(console.warn).mockRestore());
+
+  const connectPage = (id: string) => tables.facebook_accounts.push({ influencer_id: id, page_id: "page-1", page_access_token: "page-token" });
+  const connectInstagram = (id: string) => tables.instagram_accounts.push({ influencer_id: id, ig_user_id: "ig-1", page_access_token: "page-token" });
+
+  it("keeps the page's followers and the stored rate when Meta refuses its posts, and says why", async () => {
+    posts = REFUSED;
+    tables.influencers.push(creator("conn", { primary_platform: "facebook" }));
+    connectPage("conn");
+    const result = await run();
+    const logged = vi.mocked(console.warn).mock.calls.flat().join(" ");
+
+    expect(byId("conn").follower_count).toBe(500);
+    expect(byId("conn").engagement_rate).toBe(3.5);
+    expect(result.results[0].breakdown[0]).toMatchObject({ platform: "facebook", followers: 500, engagement_rate: null, posts_sampled: 0 });
+    expect(result.results[0].breakdown[0].posts_error).toMatch(/pages_read_user_content/);
+    expect(logged).toMatch(/pages_read_user_content/);
+    expect(JSON.stringify(result) + logged).not.toContain("page-token");
+  });
+
+  it.each<[string, { status: number; json: unknown }, number]>([
+    // (5% × 2,000 + 10% × 500) / 2,500
+    ["answers", ANSWERED, 6],
+    // Instagram's own 5%. Counted as a page with no posts, the refusal would pull it down to 4.
+    ["refuses", REFUSED, 5],
+  ])("rates a creator with Instagram and a page when Meta %s the page's posts", async (_, answer, rate) => {
+    posts = answer;
+    tables.influencers.push(creator("conn", { primary_platform: "instagram" }));
+    connectInstagram("conn");
+    connectPage("conn");
+    await run();
+
+    expect(byId("conn").follower_count).toBe(2000);
+    expect(byId("conn").engagement_rate).toBe(rate);
   });
 });
 

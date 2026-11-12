@@ -118,14 +118,17 @@ describe("one Graph version", () => {
 });
 
 describe("the login addresses", () => {
-  it.each(["facebook", "instagram"])("%s-oauth-start sends the person to the v26.0 dialog, with the same scopes as before", async (platform) => {
+  // Facebook: without pages_read_user_content Meta refuses a Page's reaction and comment counts ("(#10) This endpoint
+  // requires the 'pages_read_user_content' permission", seen on a brand's page on 12 Nov 2026), and read_insights is
+  // what a Page's post insights need.
+  it.each(["facebook", "instagram"])("%s-oauth-start sends the person to the v26.0 dialog, with the scopes its reads need", async (platform) => {
     const handler = await load(`${platform}-oauth-start`);
     const res = await handler(new Request("https://fn.example.test/?influencer_id=creator-1"));
     const to = new URL(res.headers.get("location")!);
     expect(to.origin + to.pathname).toBe("https://www.facebook.com/v26.0/dialog/oauth");
     expect(to.searchParams.get("redirect_uri")).toBe(`https://project.example.test/functions/v1/${platform}-oauth-callback`);
     expect(to.searchParams.get("scope")).toBe(platform === "facebook"
-      ? "public_profile,email,pages_show_list,pages_read_engagement,business_management"
+      ? "public_profile,email,pages_show_list,pages_read_engagement,pages_read_user_content,read_insights,business_management"
       : "public_profile,pages_show_list,pages_read_engagement,instagram_basic,instagram_manage_insights");
   });
 });
@@ -276,6 +279,22 @@ describe("contest-refresh-metrics-meta", () => {
     expect(JSON.parse(text)).toMatchObject({ updated: 0, failed: 1 });
     expect(text).toContain("Cannot find user");
     expect(text).not.toContain("viewer-token");
+  });
+
+  it("gives a Page's refused reaction and comment counts back as the entry's error, and writes no zeros over its numbers", async () => {
+    state.tables.facebook_accounts = [{ page_id: "111", page_username: "apage", page_access_token: "page-token" }];
+    state.tables.contest_entries = [{ id: "e-fb", platform: "facebook", post_url: "https://www.facebook.com/apage/posts/1234567", handle: "apage", likes: 12, comments: 4 }];
+    meta({
+      apage: { id: "111" },
+      "111_1234567": { error: { code: 10, type: "OAuthException", message: "(#10) This endpoint requires the 'pages_read_user_content' permission or the 'Page Public Content Access' feature" } },
+    });
+    const handler = await load("contest-refresh-metrics-meta");
+    const text = await (await handler(post({ contest_id: "contest-1" }))).text();
+
+    expect(JSON.parse(text)).toMatchObject({ updated: 0, failed: 1 });
+    expect(text).toContain("pages_read_user_content");
+    expect(text).not.toContain("page-token");
+    expect(writesTo("contest_entries")).toEqual([]);
   });
 });
 
