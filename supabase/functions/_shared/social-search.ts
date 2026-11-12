@@ -1,6 +1,7 @@
 // ScrapeCreators keyword search for social listening: TikTok, YouTube, Reddit and Instagram.
 // Ported from Groundwork's scrapecreators.server.ts. One request is one credit.
 // Docs: https://docs.scrapecreators.com  (auth via x-api-key header)
+import { clip } from "./clip.ts";
 
 declare const Deno: { env: { get(name: string): string | undefined } };
 
@@ -79,8 +80,8 @@ export async function searchTikTok(query: string, limit = 10): Promise<Found[]> 
       return {
         url: id ? `https://www.tiktok.com/@${handle || "-"}/video/${id}` : (it?.share_url ?? ""),
         source: "tiktok",
-        title: desc.slice(0, 300) || null,
-        snippet: desc.slice(0, 1200) || null,
+        title: clip(desc, 300),
+        snippet: clip(desc, 1200),
         publishedAt: isoFromSeconds(it?.create_time),
         author: handle ? `@${handle}` : null,
         reach: count(it?.statistics?.play_count),
@@ -102,8 +103,8 @@ export async function searchYouTube(query: string, limit = 10): Promise<Found[]>
       return {
         url: v?.url ?? "",
         source: "youtube",
-        title: (v?.title ?? "").slice(0, 300) || null,
-        snippet: typeof v?.description === "string" ? v.description.slice(0, 1200) || null : null,
+        title: clip(v?.title, 300),
+        snippet: clip(v?.description, 1200),
         publishedAt: Number.isFinite(when) ? new Date(when).toISOString() : null,
         author: (typeof v?.channel?.title === "string" && v.channel.title) ||
           (typeof v?.channel?.handle === "string" && v.channel.handle) || null,
@@ -124,8 +125,8 @@ export async function searchReddit(query: string, limit = 10): Promise<Found[]> 
       return {
         url: p?.permalink ? `https://www.reddit.com${p.permalink}` : (p?.url ?? ""),
         source: "reddit",
-        title: (p?.title ?? "").slice(0, 300) || null,
-        snippet: (self || p?.title || "").slice(0, 1200) || null,
+        title: clip(p?.title, 300),
+        snippet: clip(self || p?.title, 1200),
         publishedAt: isoFromSeconds(p?.created_utc),
         author: typeof p?.author === "string" && p.author ? `u/${p.author}` : null,
         reach: null,
@@ -154,8 +155,8 @@ export async function searchInstagram(query: string, limit = 10): Promise<Found[
       return {
         url,
         source: "instagram",
-        title: caption.slice(0, 300) || null,
-        snippet: caption.slice(0, 1200) || null,
+        title: clip(caption, 300),
+        snippet: clip(caption, 1200),
         publishedAt: isoFrom(r?.taken_at),
         author: handle ? `@${handle}` : null,
         reach: null,

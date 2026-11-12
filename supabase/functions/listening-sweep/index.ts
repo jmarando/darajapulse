@@ -12,6 +12,8 @@
 // (LISTENING_DAILY_CREDITS overrides), logged to scraper_credit_log.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { denied, requireCaller } from "../_shared/auth.ts";
+import { clip } from "../_shared/clip.ts";
+import { type MentionRow, storeMentions } from "../_shared/listening-store.ts";
 import { type Found, OutOfCreditsError, SEARCHES, SOCIAL_SEARCH_ENABLED } from "../_shared/social-search.ts";
 
 const corsHeaders = {
@@ -73,37 +75,36 @@ async function sweepTopic(topic: Topic, credits: { blocked: Set<string>; used: M
     } else problems.push(String((r.reason as Error)?.message ?? r.reason).slice(0, 160));
   }
 
-  const rows = hits.filter((h) => !excluded(h, topic.exclude_terms ?? [])).map((h) => ({
+  const rows: MentionRow[] = hits.filter((h) => !excluded(h, topic.exclude_terms ?? [])).map((h) => ({
     client_id: topic.client_id,
     topic_id: topic.id,
     source: h.source,
     url: h.url,
     title: h.title,
     snippet: h.snippet,
-    author: h.author?.slice(0, 120) ?? null,
+    author: h.author,
     reach: h.reach,
     shares: h.shares,
     published_at: h.publishedAt,
   }));
 
-  let stored = 0;
-  if (rows.length) {
-    const { data: ins, error } = await supabase
+  const { stored, problem } = await storeMentions(rows, async (batch) => {
+    const { data, error } = await supabase
       .from("listening_mentions")
-      .upsert(rows, { onConflict: "topic_id,url", ignoreDuplicates: true })
+      .upsert(batch, { onConflict: "topic_id,url", ignoreDuplicates: true })
       .select("id");
-    if (error) problems.push(`Could not store what was found (${error.message}).`);
-    stored = ins?.length ?? 0;
-    // A post found again keeps its latest views, so a spreading post shows it.
-    for (const r of rows.filter((x) => x.reach !== null)) {
-      await supabase.from("listening_mentions").update({ reach: r.reach, shares: r.shares })
-        .eq("topic_id", topic.id).eq("url", r.url).or(`reach.is.null,reach.lt.${r.reach}`);
-    }
+    return { count: data?.length ?? 0, error };
+  });
+  if (problem) problems.push(problem);
+  // A post found again keeps its latest views, so a spreading post shows it.
+  for (const r of rows.filter((x) => x.reach !== null)) {
+    await supabase.from("listening_mentions").update({ reach: r.reach, shares: r.shares })
+      .eq("topic_id", topic.id).eq("url", r.url).or(`reach.is.null,reach.lt.${r.reach}`);
   }
 
   const note = problems.length ? problems.join(" ") : null;
   await supabase.from("listening_topics")
-    .update({ last_scanned_at: new Date().toISOString(), last_note: note?.slice(0, 300) ?? null })
+    .update({ last_scanned_at: new Date().toISOString(), last_note: clip(note, 300) })
     .eq("id", topic.id);
   return { found: hits.length, stored, note };
 }
@@ -164,7 +165,7 @@ async function classifyPending(clientId: string | null, limit: number) {
       brand: m.clients?.name ?? "",
       keyword: m.listening_topics ? `${m.listening_topics.label} (${m.listening_topics.query})` : "",
       kind: m.listening_topics?.kind ?? "brand",
-      text: `${m.title ?? ""} — ${m.snippet ?? ""}`.slice(0, 600),
+      text: clip(`${m.title ?? ""} — ${m.snippet ?? ""}`, 600) ?? "",
     }));
     const known = new Set(batch.map((b) => b.id));
     for (const v of await readMoods(batch)) {
