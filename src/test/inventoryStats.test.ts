@@ -20,6 +20,7 @@ describe("storefront ScrapeCreators refresh", () => {
     expect(call).not.toHaveBeenCalled();
   });
   it("preserves YouTube channel ID casing and rejects video links", () => {
+    expect(inventoryTarget("facebook", "/K24TV")).toEqual({ platform: "facebook", handle: "k24tv" });
     expect(inventoryTarget("youtube", "https://youtube.com/channel/UCAbCd123")).toEqual({ platform: "youtube", handle: "UCAbCd123" });
     expect(inventoryTarget("youtube", "https://youtube.com/watch?v=123")).toBeNull();
     expect(inventoryTarget("twitter", "https://x.com/person/status/123")).toBeNull();

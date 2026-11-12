@@ -6,7 +6,7 @@ import { trouble, type ScCall } from "./brand-pull.ts";
 export function inventoryTarget(platform: string, input: string): { platform: string; handle: string } | null {
   const p = platform.toLowerCase() === "x" ? "twitter" : platform.toLowerCase();
   if (["instagram", "tiktok", "facebook"].includes(p)) {
-    const found = normaliseHandle(p as ChannelPlatform, input);
+    const found = normaliseHandle(p as ChannelPlatform, input.trim().replace(/^\/(?=[a-zA-Z0-9._-]+$)/, ""));
     return "handle" in found ? { platform: p, handle: found.handle } : null;
   }
   if (!["youtube", "twitter"].includes(p)) return null;
