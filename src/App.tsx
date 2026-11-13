@@ -12,6 +12,7 @@ import { applyPageMeta, metaForPath } from "@/lib/seo";
 import PageFallback from "@/components/PageFallback";
 // The homepage ships in the main bundle; every other page loads on demand.
 import LandingDashboard from "./pages/landings/LandingDashboard";
+import TenantHome from "@/components/TenantHome";
 
 const Auth = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
@@ -103,7 +104,7 @@ const App = () => (
         <AuthProvider><TenantProvider>
           <Suspense fallback={<PageFallback />}>
           <Routes>
-            <Route path="/" element={<LandingDashboard />} />
+            <Route path="/" element={<TenantHome />} />
             <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />

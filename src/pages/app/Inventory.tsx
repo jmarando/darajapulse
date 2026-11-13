@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 const KINDS = [
   { value: "owned_account", label: "Owned channel" },
-  { value: "influencer", label: "Signed creator" },
+  { value: "influencer", label: "Talent" },
   { value: "ad_slot", label: "Ad slot" },
   { value: "bundle", label: "Bundle" },
 ];
