@@ -46,11 +46,14 @@ const SidebarBody = ({ user, displayName, roles, isAdmin, isSuper, counts, onSig
   const { tenant } = useTenant();
   const isMediaHouse = tenant?.agency_kind === "media_house";
   const brandName = tenant?.display_name || tenant?.name || "Daraja Pulse";
+  // Media houses sell their own inventory and super admins run storefronts for them, so for them the Storefront,
+  // with its count of new quote requests, sits in the main menu next to Approvals and Inbox.
+  const groups: NavItem[][] = isSuper || isMediaHouse
+    ? navGroups.map((g, i) => (i === 1 ? [...g, { to: "/app/inventory", icon: Store, label: "Storefront", badge: "newRequests" }] : g))
+    : navGroups;
   const accountLinks = [
     isAdmin && { to: "/app/team", icon: UserCog, label: "Team" },
     { to: "/app/briefs", icon: FileSignature, label: "Brief templates" },
-    // Media houses sell their own inventory; super admins run storefronts for them.
-    (isSuper || isMediaHouse) && { to: "/app/inventory", icon: Store, label: "Storefront" },
     { to: "/app/moderation", icon: MessageSquare, label: "Moderation" },
     isSuper && { to: "/app/admin", icon: Shield, label: "Super Admin" },
   ].filter(Boolean) as { to: string; icon: any; label: string }[];
@@ -60,10 +63,10 @@ const SidebarBody = ({ user, displayName, roles, isAdmin, isSuper, counts, onSig
       <div className="px-1.5">
         <BrandMark name={brandName} logoUrl={tenant?.logo_url} caption={tenant ? "Powered by Daraja Pulse" : undefined} />
       </div>
-      <GlobalSearch pages={[...navGroups.flat(), ...accountLinks]} />
+      <GlobalSearch pages={[...groups.flat(), ...accountLinks]} />
     </div>
     <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-3" aria-label="Main">
-      {navGroups.map((group, gi) => (
+      {groups.map((group, gi) => (
         <div key={gi} className="space-y-0.5">
           {group.map(({ to, icon, label, end, badge }) => (
             <SideLink key={to} to={to} end={end} icon={icon} label={label} count={badge ? counts?.[badge] : undefined} onNavigate={onNavigate} />

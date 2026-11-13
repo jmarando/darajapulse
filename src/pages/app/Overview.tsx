@@ -11,6 +11,7 @@ import { AddUpBars, ReportCard } from "@/components/report/ReportOverview";
 import { campaignBreakdown, type CampaignViews } from "@/lib/overviewBreakdown";
 
 import OnboardingChecklist from "@/components/OnboardingChecklist";
+import RequestsOverviewCard from "@/components/storefront/RequestsOverviewCard";
 import { useNavCounts } from "@/hooks/useNavCounts";
 
 const fmt = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : `${n}`;
@@ -246,6 +247,8 @@ const Overview = () => {
           </ReportCard>
         </div>
       )}
+
+      <RequestsOverviewCard />
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
