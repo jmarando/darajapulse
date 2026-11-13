@@ -40,7 +40,7 @@ export default function ChannelInsights({ item, accent }: { item: Listing; accen
   }
   const s = data.summary;
   if (!s.posts) {
-    return <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No public posts in the last 90 days.</p>;
+    return <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">No public posts came back for this account in the last 90 days.</p>;
   }
 
   const byViews = data.recent.filter((p) => p.views !== null).length >= 3;
