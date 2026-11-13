@@ -268,7 +268,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
           <div className="flex flex-wrap items-end justify-between gap-4 mt-1">
             <div>
               <h2 className="font-display text-4xl">Pick what fits your brief.</h2>
-              <p className="text-muted-foreground mt-2 max-w-2xl">Browse our owned channels, signed creators and ad slots. Filter by audience, or paste your brief and let our AI shortlist the best fits — we'll quote within 24 hours.</p>
+              <p className="text-muted-foreground mt-2 max-w-2xl">Browse our owned channels, talent and ad slots. Filter by audience, or paste your brief and let our AI shortlist the best fits — we'll quote within 24 hours.</p>
             </div>
             <Button onClick={() => setMatchOpen(true)} size="lg" style={{ background: accent }} className="text-white shadow-sm">
               <Wand2 className="w-4 h-4 mr-2" /> Match to my brief
