@@ -123,7 +123,7 @@ export default function ChannelInsights({ item, accent }: { item: Listing; accen
       )}
 
       <p className="text-xs leading-relaxed text-muted-foreground">
-        From {s.posts} public post{s.posts === 1 ? "" : "s"} in the last 90 days, read {day(data.read_at)}.
+        From the latest {s.posts} public post{s.posts === 1 ? "" : "s"} (nothing older than 90 days), read {day(data.read_at)}.
         {s.engagement_rate ? ` Engagement is likes, comments and shares as a share of ${s.engagement_basis === "views" ? "views" : "followers"}.` : ""}
       </p>
     </div>
