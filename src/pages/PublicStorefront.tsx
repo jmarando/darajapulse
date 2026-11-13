@@ -10,7 +10,7 @@ import { Globe, Search, ShoppingCart, SlidersHorizontal, Sparkles, X } from "luc
 import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
 import { applyPageMeta, metaForPath } from "@/lib/seo";
-import { KIND_LABEL, type Listing, type PlanMatch, type RequestForm } from "@/lib/storefront";
+import { KIND_LABEL, platformLabel, type Listing, type PlanMatch, type RequestForm } from "@/lib/storefront";
 import ListingCard from "@/components/storefront/ListingCard";
 import ListingSheet from "@/components/storefront/ListingSheet";
 import RequestSheet from "@/components/storefront/RequestSheet";
@@ -264,7 +264,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
             <Button size="sm" variant={platformFilter === "all" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setPlatformFilter("all")}>All platforms</Button>
             {platforms.map(p => {
               const Icon = PLATFORM_ICON[p] || Globe;
-              return <Button key={p} size="sm" variant={platformFilter === p ? "default" : "outline"} className="h-7 text-xs capitalize" onClick={() => setPlatformFilter(p)}><Icon className="w-3 h-3 mr-1" aria-hidden />{p === "twitter" ? "X" : p}</Button>;
+              return <Button key={p} size="sm" variant={platformFilter === p ? "default" : "outline"} className="h-7 text-xs" onClick={() => setPlatformFilter(p)}><Icon className="w-3 h-3 mr-1" aria-hidden />{platformLabel(p)}</Button>;
             })}
           </div>
 

@@ -75,6 +75,13 @@ export function BriefStudio({ accent, houseName, brief, setBrief, running, onRun
   );
 }
 
+const PICK_WORDS: Record<string, [string, string]> = {
+  owned_account: ["social account", "social accounts"],
+  influencer: ["presenter", "presenters"],
+  ad_slot: ["on-air format", "on-air formats"],
+  bundle: ["package", "packages"],
+};
+
 /** The planner's picks, inline under the studio: each with its reason, one tap to add, or all at once. */
 export function PlanResults({ matches, items, accent, cart, onToggle, onOpen, onAddAll, onClear }: {
   matches: PlanMatch[]; items: Listing[]; accent: string; cart: string[];
@@ -91,7 +98,7 @@ export function PlanResults({ matches, items, accent, cart, onToggle, onOpen, on
   }
   const reach = combinedReach(picked.map((p) => p.item));
   const kinds = Object.entries(picked.reduce<Record<string, number>>((acc, p) => ({ ...acc, [p.item.kind]: (acc[p.item.kind] ?? 0) + 1 }), {}))
-    .map(([k, n]) => `${n} ${(KIND_LABEL[k] ?? k).toLowerCase()}${n === 1 ? "" : k === "bundle" ? "s" : ""}`).join(", ");
+    .map(([k, n]) => `${n} ${(PICK_WORDS[k] ?? [KIND_LABEL[k] ?? k, KIND_LABEL[k] ?? k])[n === 1 ? 0 : 1]}`).join(", ");
   const allIn = picked.every((p) => cart.includes(p.item.id));
   return (
     <section className="mt-6" aria-labelledby="plan-title">
