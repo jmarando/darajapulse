@@ -60,6 +60,7 @@ export default function Inventory() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(blank);
   const [refreshingAll, setRefreshingAll] = useState(false);
+  const [refreshStep, setRefreshStep] = useState("");
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   // ?tab=requests opens the Requests tab and ?agency=<slug> picks the storefront: the request emails link here.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -138,8 +139,11 @@ export default function Inventory() {
       const { data, error } = await supabase.functions.invoke("inventory-refresh", { body: { item_ids: [id] } });
       if (error) throw error;
       const r = data?.results?.[0];
-      if (r?.skipped) toast.warning("No fresh data available for this handle");
-      else toast.success(`Updated · ${fmtCompact(r?.follower_count ?? 0)} reach`);
+      // The latest posts too, for the storefront's detail panel. Accounts whose posts can't be read are passed over.
+      const { data: posts } = await supabase.functions.invoke("inventory-insights", { body: { item_ids: [id] } });
+      const read = posts?.results?.[0];
+      if (r?.skipped && !read?.posts) toast.warning("No fresh data available for this handle");
+      else toast.success(`Updated · ${fmtCompact(r?.follower_count ?? read?.followers ?? 0)} reach${read?.posts ? ` · ${read.posts} recent posts read` : ""}`);
       load();
     } catch (e: any) {
       toast.error(e?.message || "Refresh failed");
@@ -152,14 +156,25 @@ export default function Inventory() {
     if (!agencyId) return;
     setRefreshingAll(true);
     try {
+      setRefreshStep("Refreshing followers…");
       const { data, error } = await supabase.functions.invoke("inventory-refresh", { body: { agency_id: agencyId } });
       if (error) throw error;
-      toast.success(`Refreshed ${data?.updated ?? 0} of ${data?.checked ?? 0} items`);
+      // Then each account's latest posts, a batch per call until none is left. Accounts read today are skipped.
+      let read = 0;
+      for (let round = 0; round < 12; round++) {
+        setRefreshStep(`Reading recent posts… ${read} done`);
+        const { data: posts, error: postsError } = await supabase.functions.invoke("inventory-insights", { body: { agency_id: agencyId } });
+        if (postsError) break;
+        read += posts?.read ?? 0;
+        if (!(posts?.remaining > 0) || posts?.stopped !== "time") break;
+      }
+      toast.success(`Refreshed ${data?.updated ?? 0} of ${data?.checked ?? 0} items · recent posts read for ${read} account${read === 1 ? "" : "s"}`);
       load();
     } catch (e: any) {
       toast.error(e?.message || "Refresh failed");
     } finally {
       setRefreshingAll(false);
+      setRefreshStep("");
     }
   };
 
@@ -204,7 +219,7 @@ export default function Inventory() {
           <div className="flex justify-end mb-4 gap-2">
             <Button variant="outline" onClick={refreshAll} disabled={refreshingAll || items.length === 0}>
               <RefreshCw className={`w-4 h-4 mr-2 ${refreshingAll ? "animate-spin" : ""}`} />
-              {refreshingAll ? "Refreshing…" : "Refresh data"}
+              {refreshingAll ? refreshStep || "Refreshing…" : "Refresh data"}
             </Button>
             <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) setEditingId(null); }}>
               <DialogTrigger asChild><Button onClick={openAdd}><Plus className="w-4 h-4 mr-2" /> Add inventory</Button></DialogTrigger>

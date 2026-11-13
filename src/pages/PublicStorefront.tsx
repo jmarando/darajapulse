@@ -10,7 +10,7 @@ import { Globe, Search, ShoppingCart, SlidersHorizontal, Sparkles, X } from "luc
 import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
 import { applyPageMeta, metaForPath } from "@/lib/seo";
-import { KIND_LABEL, platformLabel, type Listing, type PlanMatch, type RequestForm } from "@/lib/storefront";
+import { groupListings, KIND_LABEL, platformLabel, type Listing, type ListingGroup, type PlanMatch, type RequestForm } from "@/lib/storefront";
 import ListingCard from "@/components/storefront/ListingCard";
 import ListingSheet from "@/components/storefront/ListingSheet";
 import RequestSheet from "@/components/storefront/RequestSheet";
@@ -44,7 +44,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   const [cart, setCart] = useState<string[]>([]);
 
   // Detail panel and request panel
-  const [detail, setDetail] = useState<Listing | null>(null);
+  const [detail, setDetail] = useState<{ group: ListingGroup; focusId: string | null } | null>(null);
   const [requestOpen, setRequestOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [sentTo, setSentTo] = useState<{ email: string; count: number } | null>(null);
@@ -131,6 +131,15 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   }), [items]);
 
   const toggle = (id: string) => setCart(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
+  const addMany = (ids: string[], add: boolean) => setCart(c => add ? Array.from(new Set([...c, ...ids])) : c.filter(x => !ids.includes(x)));
+
+  // A planner pick or any one account opens the card it belongs to, with that account open.
+  const groupOf = useMemo(() => {
+    const byId = new Map<string, ListingGroup>();
+    groupListings(items).forEach(g => g.items.forEach(i => byId.set(i.id, g)));
+    return byId;
+  }, [items]);
+  const openItem = (item: Listing) => setDetail({ group: groupOf.get(item.id) ?? { key: item.id, name: item.title, lead: item, items: [item], cover: item.cover_url ?? null }, focusId: item.id });
   const cartItems = useMemo(() => cart.map(id => items.find(i => i.id === id)).filter((i): i is Listing => Boolean(i)), [items, cart]);
 
   const filtered = useMemo(() => {
@@ -161,7 +170,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   const groups = useMemo(() => {
     const out: Record<string, Listing[]> = {};
     filtered.forEach(i => { (out[i.kind] = out[i.kind] || []).push(i); });
-    return GROUP_ORDER.filter(k => out[k]?.length).map(k => ({ kind: k, items: out[k] }));
+    return GROUP_ORDER.filter(k => out[k]?.length).map(k => ({ kind: k, cards: groupListings(out[k]) }));
   }, [filtered]);
 
   const activeFilters = [
@@ -230,7 +239,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
               accent={accent}
               cart={cart}
               onToggle={toggle}
-              onOpen={setDetail}
+              onOpen={openItem}
               onAddAll={() => { setCart(c => Array.from(new Set([...c, ...matches.map(m => m.item_id).filter(id => items.some(i => i.id === id))]))); toast.success("Added to your request"); }}
               onClear={() => setMatches(null)}
             />
@@ -322,11 +331,12 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
           <section key={group.kind} className="mb-12" aria-labelledby={`group-${group.kind}`}>
             <div className="flex items-baseline justify-between mb-4">
               <h3 id={`group-${group.kind}`} className="font-display text-xl">{GROUP_TITLE[group.kind] || KIND_LABEL[group.kind]}</h3>
-              <span className="text-xs text-muted-foreground">{group.items.length} option{group.items.length === 1 ? "" : "s"}</span>
+              <span className="text-xs text-muted-foreground">{group.cards.length} option{group.cards.length === 1 ? "" : "s"}</span>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {group.items.map(i => (
-                <ListingCard key={i.id} item={i} accent={accent} inCart={cart.includes(i.id)} inPlan={matchById.has(i.id)} onOpen={setDetail} onToggle={toggle} />
+              {group.cards.map(card => (
+                <ListingCard key={card.key} group={card} accent={accent} cart={cart} inPlan={card.items.some(i => matchById.has(i.id))}
+                  onOpen={g => setDetail({ group: g, focusId: null })} onToggle={toggle} />
               ))}
             </div>
           </section>
@@ -348,12 +358,14 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
       )}
 
       <ListingSheet
-        item={detail}
-        match={detail ? matchById.get(detail.id) ?? null : null}
+        group={detail?.group ?? null}
+        focusId={detail?.focusId ?? null}
+        matches={matchById}
         accent={accent}
-        inCart={!!detail && cart.includes(detail.id)}
+        cart={cart}
         onClose={() => setDetail(null)}
         onToggle={toggle}
+        onAddMany={addMany}
         onRequest={() => { setDetail(null); setRequestOpen(true); }}
       />
 
