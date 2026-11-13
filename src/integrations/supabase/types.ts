@@ -3424,6 +3424,38 @@ export type Database = {
           },
         ]
       }
+      inventory_item_insights: {
+        Row: {
+          insights: Json | null
+          item_id: string
+          last_attempt_at: string
+          last_error: string | null
+          read_at: string | null
+        }
+        Insert: {
+          insights?: Json | null
+          item_id: string
+          last_attempt_at?: string
+          last_error?: string | null
+          read_at?: string | null
+        }
+        Update: {
+          insights?: Json | null
+          item_id?: string
+          last_attempt_at?: string
+          last_error?: string | null
+          read_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_insights_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: true
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           agency_id: string
