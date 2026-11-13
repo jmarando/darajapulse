@@ -12,6 +12,7 @@ import { Instagram, Music2, Youtube, Twitter, Facebook, Tv, Radio, Globe, Sparkl
 import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
 import { applyPageMeta, metaForPath } from "@/lib/seo";
+import { fmtEngagement } from "@/lib/storefront";
 
 const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, tv: Tv, radio: Radio, web: Globe };
 const PLATFORM_BRAND: Record<string, { bg: string; fg: string }> = {
@@ -24,7 +25,7 @@ const PLATFORM_BRAND: Record<string, { bg: string; fg: string }> = {
   radio:     { bg: "linear-gradient(135deg, hsl(190,70%,40%), hsl(210,70%,50%))", fg: "#fff" },
   web:       { bg: "linear-gradient(135deg, hsl(200,20%,25%), hsl(215,25%,40%))", fg: "#fff" },
 };
-const KIND_LABEL: Record<string, string> = { owned_account: "Owned channel", influencer: "Signed creator", ad_slot: "Ad slot", bundle: "Bundle" };
+const KIND_LABEL: Record<string, string> = { owned_account: "Owned channel", influencer: "Talent", ad_slot: "Ad slot", bundle: "Bundle" };
 
 const fmtCompact = (n: number) => {
   if (!Number.isFinite(n) || n === 0) return "0";
@@ -59,8 +60,10 @@ const genderLean = (demo: any): { label: string; pct: number } | null => {
   return { label: `${Math.round(m)}% male`, pct: m };
 };
 
-export default function PublicStorefront() {
-  const { agencySlug } = useParams();
+/** A media house's storefront, by the slug in the address, or by `slug` when shown on the house's own subdomain. */
+export default function PublicStorefront({ slug }: { slug?: string } = {}) {
+  const params = useParams();
+  const agencySlug = slug ?? params.agencySlug;
   const navigate = useNavigate();
   const [agency, setAgency] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -127,12 +130,12 @@ export default function PublicStorefront() {
       setAgency(loadedAgency);
       setItems(payload.items ?? []);
       setLoading(false);
-      // Normalize URL to the agency's canonical slug casing
-      if (loadedAgency?.slug && loadedAgency.slug !== agencySlug) {
+      // Normalize URL to the agency's canonical slug casing (not on the house's own subdomain, whose address has no slug)
+      if (!slug && loadedAgency?.slug && loadedAgency.slug !== agencySlug) {
         navigate(`/shop/${loadedAgency.slug}`, { replace: true });
       }
     })();
-  }, [agencySlug, navigate]);
+  }, [agencySlug, slug, navigate]);
 
   // Title the page after the storefront once it loads, and keep unknown slugs out of
   // search. Runs on path changes too, so the slug-casing redirect above can't reset it.
@@ -144,7 +147,7 @@ export default function PublicStorefront() {
       ? {
           ...metaForPath(pathname),
           title: `${name} media kit | Daraja Pulse`,
-          description: `Browse ${name}'s channels, signed creators and ad slots, and request a quote within 24 hours.`,
+          description: `Browse ${name}'s channels, talent and ad slots, and request a quote within 24 hours.`,
         }
       : { title: "Storefront not found | Daraja Pulse" });
   }, [loading, agency, pathname]);
@@ -411,7 +414,7 @@ export default function PublicStorefront() {
                           <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Reach</div>
                         </div>
                         <div className="p-2 text-center">
-                          <div className="font-display text-base">{Number(i.engagement_rate || 0).toFixed(1)}%</div>
+                          <div className="font-display text-base">{fmtEngagement(i.engagement_rate)}</div>
                           <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Engagement</div>
                         </div>
                       </div>

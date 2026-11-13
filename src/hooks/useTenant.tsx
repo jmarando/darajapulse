@@ -107,7 +107,9 @@ const TenantCtx = createContext<Ctx>({ tenant: null, loading: false, scoped: fal
 export const TenantProvider = ({ children }: { children: ReactNode }) => {
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [scoped, setScoped] = useState(false);
+  // Known from the address alone, so the first paint on a workspace subdomain waits for the workspace instead of
+  // briefly showing the main site.
+  const [scoped, setScoped] = useState(() => typeof window !== "undefined" && Boolean(getSubdomainLabel(window.location.hostname)));
 
   useEffect(() => {
     const sub = getSubdomainLabel(window.location.hostname);
