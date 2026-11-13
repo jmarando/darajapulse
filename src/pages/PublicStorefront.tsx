@@ -1,77 +1,53 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/publicClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Instagram, Music2, Youtube, Twitter, Facebook, Tv, Radio, Globe, Sparkles, Check, ShoppingCart, X, Users, Search, SlidersHorizontal, Wand2, Loader2 } from "lucide-react";
+import { Globe, Search, ShoppingCart, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
 import { applyPageMeta, metaForPath } from "@/lib/seo";
-import { fmtEngagement } from "@/lib/storefront";
-
-const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, tv: Tv, radio: Radio, web: Globe };
-const PLATFORM_BRAND: Record<string, { bg: string; fg: string }> = {
-  instagram: { bg: "linear-gradient(135deg, hsl(330,80%,55%), hsl(20,90%,55%) 55%, hsl(45,95%,55%))", fg: "#fff" },
-  tiktok:    { bg: "linear-gradient(135deg, #010101 0%, #25F4EE 50%, #FE2C55 100%)", fg: "#fff" },
-  youtube:   { bg: "linear-gradient(135deg, hsl(0,85%,45%), hsl(0,85%,55%))", fg: "#fff" },
-  twitter:   { bg: "linear-gradient(135deg, #000, #1a1a1a)", fg: "#fff" },
-  facebook:  { bg: "linear-gradient(135deg, hsl(220,85%,45%), hsl(220,85%,55%))", fg: "#fff" },
-  tv:        { bg: "linear-gradient(135deg, hsl(260,50%,35%), hsl(280,60%,45%))", fg: "#fff" },
-  radio:     { bg: "linear-gradient(135deg, hsl(190,70%,40%), hsl(210,70%,50%))", fg: "#fff" },
-  web:       { bg: "linear-gradient(135deg, hsl(200,20%,25%), hsl(215,25%,40%))", fg: "#fff" },
-};
-const KIND_LABEL: Record<string, string> = { owned_account: "Owned channel", influencer: "Talent", ad_slot: "Ad slot", bundle: "Bundle" };
-
-const fmtCompact = (n: number) => {
-  if (!Number.isFinite(n) || n === 0) return "0";
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (abs >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return n.toLocaleString();
-};
+import { KIND_LABEL, type Listing, type PlanMatch, type RequestForm } from "@/lib/storefront";
+import ListingCard from "@/components/storefront/ListingCard";
+import ListingSheet from "@/components/storefront/ListingSheet";
+import RequestSheet from "@/components/storefront/RequestSheet";
+import { BriefStudio, PlanResults } from "@/components/storefront/BriefStudio";
+import { PLATFORM_ICON } from "@/components/storefront/platformIcons";
 
 const AGE_BANDS = ["18-24", "25-34", "35-44", "45+"];
+const GROUP_ORDER = ["owned_account", "influencer", "ad_slot", "bundle"];
+const GROUP_TITLE: Record<string, string> = { owned_account: "Social accounts", influencer: "On-air talent", ad_slot: "On-air formats", bundle: "Packages" };
 
-// Pull the dominant age band from an audience_demo blob
-const topAgeBand = (demo: any): { band: string; pct: number } | null => {
-  const bands = demo?.age_bands;
-  if (!bands || typeof bands !== "object") return null;
-  let best: { band: string; pct: number } | null = null;
-  for (const [b, v] of Object.entries(bands)) {
-    const pct = Number(v);
-    if (!Number.isFinite(pct)) continue;
-    if (!best || pct > best.pct) best = { band: b, pct };
-  }
-  return best;
-};
+type Agency = { id: string; name: string; slug: string; display_name?: string | null; logo_url?: string | null; primary_color?: string | null; support_email?: string | null };
 
-const genderLean = (demo: any): { label: string; pct: number } | null => {
-  const g = demo?.gender;
-  if (!g) return null;
-  const f = Number(g.female) || 0;
-  const m = Number(g.male) || 0;
-  if (!f && !m) return null;
-  if (f >= m) return { label: `${Math.round(f)}% female`, pct: f };
-  return { label: `${Math.round(m)}% male`, pct: m };
-};
+/** The message a failed function call carries, read from its response body when there is one. */
+async function functionError(error: unknown, fallback: string): Promise<string> {
+  try {
+    const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } })?.context;
+    const body = ctx?.json ? await ctx.json() : null;
+    if (body?.error) return body.error;
+  } catch { /* the body wasn't JSON */ }
+  return fallback;
+}
 
 /** A media house's storefront, by the slug in the address, or by `slug` when shown on the house's own subdomain. */
 export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   const params = useParams();
   const agencySlug = slug ?? params.agencySlug;
   const navigate = useNavigate();
-  const [agency, setAgency] = useState<any>(null);
-  const [items, setItems] = useState<any[]>([]);
+  const [agency, setAgency] = useState<Agency | null>(null);
+  const [items, setItems] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ contact_name: "", contact_email: "", contact_phone: "", company: "", budget_kes: "", target_start: "", target_end: "", message: "" });
+
+  // Detail panel and request panel
+  const [detail, setDetail] = useState<Listing | null>(null);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sentTo, setSentTo] = useState<{ email: string; count: number } | null>(null);
 
   // Filters
   const [q, setQ] = useState("");
@@ -86,46 +62,36 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   const [cityFilter, setCityFilter] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
 
-  // AI match-to-brief
-  const [matchOpen, setMatchOpen] = useState(false);
-  const [matchBrief, setMatchBrief] = useState("");
+  // The brief planner
+  const [brief, setBrief] = useState("");
   const [matching, setMatching] = useState(false);
-  const [matches, setMatches] = useState<any[] | null>(null);
+  const [matches, setMatches] = useState<PlanMatch[] | null>(null);
+  const planRef = useRef<HTMLDivElement>(null);
 
   const runMatch = async () => {
-    if (!matchBrief.trim() || matchBrief.trim().length < 20) {
-      toast.error("Add a bit more detail so we can match well");
+    if (brief.trim().length < 20) {
+      toast.error("Say a little more: what it is, who it's for and what you need.");
       return;
     }
     setMatching(true);
     setMatches(null);
+    window.setTimeout(() => planRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     try {
-      const { data, error } = await supabase.functions.invoke("storefront-match", {
-        body: { agency_slug: agencySlug, brief: { brief: matchBrief } },
-      });
+      const { data, error } = await supabase.functions.invoke("storefront-match", { body: { agency_slug: agencySlug, brief: { brief } } });
       if (error) throw error;
-      const list = (data as any)?.matches ?? [];
-      setMatches(list);
-      if (!list.length) toast.info("No strong matches — try a broader brief");
-    } catch (e: any) {
-      toast.error(e?.message || "Match failed");
+      setMatches(((data as { matches?: PlanMatch[] })?.matches ?? []).map(({ item_id, score, reason, angle }) => ({ item_id, score, reason, angle })));
+    } catch (e) {
+      toast.error(await functionError(e, "The planner couldn't read that brief. Try again in a moment."));
     } finally {
       setMatching(false);
     }
-  };
-
-  const addAllMatchesToCart = () => {
-    if (!matches?.length) return;
-    setCart(c => Array.from(new Set([...c, ...matches!.map(m => m.item_id)])));
-    toast.success(`${matches.length} added to your request`);
-    setMatchOpen(false);
   };
 
   useEffect(() => {
     (async () => {
       const { data, error } = await supabase.rpc("get_public_storefront", { _agency_slug: agencySlug });
       if (error) toast.error(error.message);
-      const payload: any = data ?? {};
+      const payload = (data ?? {}) as { agency?: Agency | null; items?: Listing[] };
       const loadedAgency = payload.agency ?? null;
       setAgency(loadedAgency);
       setItems(payload.items ?? []);
@@ -147,17 +113,25 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
       ? {
           ...metaForPath(pathname),
           title: `${name} media kit | Daraja Pulse`,
-          description: `Browse ${name}'s channels, talent and ad slots, and request a quote within 24 hours.`,
+          description: `Browse ${name}'s channels, talent and ad slots, plan with AI, and request a quote within 24 hours.`,
         }
       : { title: "Storefront not found | Daraja Pulse" });
   }, [loading, agency, pathname]);
 
-  const platforms = useMemo(() => Array.from(new Set(items.map(i => i.platform).filter(Boolean))), [items]);
-  const kinds = useMemo(() => Array.from(new Set(items.map(i => i.kind).filter(Boolean))), [items]);
-  const categories = useMemo(() => Array.from(new Set(items.flatMap((i: any) => i.tags || []))).sort(), [items]);
+  const platforms = useMemo(() => Array.from(new Set(items.map(i => i.platform).filter(Boolean))) as string[], [items]);
+  const kinds = useMemo(() => GROUP_ORDER.filter(k => items.some(i => i.kind === k)), [items]);
+  const categories = useMemo(() => Array.from(new Set(items.flatMap(i => i.tags || []))).sort(), [items]);
+  const matchById = useMemo(() => new Map((matches ?? []).map(m => [m.item_id, m])), [matches]);
+
+  const stats = useMemo(() => ({
+    following: items.filter(i => i.kind === "owned_account").reduce((sum, i) => sum + (Number(i.follower_count) || 0), 0),
+    channels: items.filter(i => i.kind === "owned_account").length,
+    talent: items.filter(i => i.kind === "influencer").length,
+    formats: items.filter(i => i.kind === "ad_slot" || i.kind === "bundle").length,
+  }), [items]);
 
   const toggle = (id: string) => setCart(c => c.includes(id) ? c.filter(x => x !== id) : [...c, id]);
-  const cartItems = useMemo(() => items.filter(i => cart.includes(i.id)), [items, cart]);
+  const cartItems = useMemo(() => cart.map(id => items.find(i => i.id === id)).filter((i): i is Listing => Boolean(i)), [items, cart]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -174,35 +148,20 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
       if (kindFilter !== "all" && i.kind !== kindFilter) return false;
       if (categoryFilter !== "all" && !(i.tags || []).includes(categoryFilter)) return false;
       const fc = Number(i.follower_count) || 0;
-      if (fc < minF) return false;
-      if (fc > maxF) return false;
-      const er = Number(i.engagement_rate) || 0;
-      if (er < minE) return false;
-      if (ageBands.length) {
-        const bands = i.audience_demo?.age_bands || {};
-        // require at least one selected band to have ≥25%
-        const ok = ageBands.some(b => Number(bands[b]) >= 25);
-        if (!ok) return false;
-      }
-      if (genderPref !== "any") {
-        const g = i.audience_demo?.gender;
-        if (!g) return false;
-        const target = Number(g[genderPref]) || 0;
-        if (target < 55) return false;
-      }
-      if (city) {
-        const cities = (i.audience_demo?.top_cities || []).map((c: string) => (c || "").toLowerCase());
-        if (!cities.some((c: string) => c.includes(city))) return false;
-      }
+      if (fc < minF || fc > maxF) return false;
+      if ((Number(i.engagement_rate) || 0) < minE) return false;
+      const demo = (i.audience_demo ?? {}) as { age_bands?: Record<string, number>; gender?: Record<string, number>; top_cities?: string[] };
+      if (ageBands.length && !ageBands.some(b => Number(demo.age_bands?.[b]) >= 25)) return false;
+      if (genderPref !== "any" && (Number(demo.gender?.[genderPref]) || 0) < 55) return false;
+      if (city && !(demo.top_cities || []).some(c => (c || "").toLowerCase().includes(city))) return false;
       return true;
     });
   }, [items, q, platformFilter, kindFilter, categoryFilter, minFollowers, maxFollowers, minER, ageBands, genderPref, cityFilter]);
 
   const groups = useMemo(() => {
-    const order = ["owned_account", "influencer", "ad_slot", "bundle"];
-    const out: Record<string, any[]> = {};
+    const out: Record<string, Listing[]> = {};
     filtered.forEach(i => { (out[i.kind] = out[i.kind] || []).push(i); });
-    return order.filter(k => out[k]?.length).map(k => ({ kind: k, items: out[k] }));
+    return GROUP_ORDER.filter(k => out[k]?.length).map(k => ({ kind: k, items: out[k] }));
   }, [filtered]);
 
   const activeFilters = [
@@ -218,99 +177,102 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
     setAgeBands([]); setGenderPref("any"); setCityFilter("");
   };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!agency) return;
-    if (cart.length === 0) return toast.error("Pick at least one item");
-    setSubmitting(true);
-    const payload = {
-      agency_id: agency.id,
-      inventory_item_id: cart[0],
-      items: cartItems.map(i => ({ id: i.id, title: i.title, deliverable_type: i.deliverable_type, platform: i.platform, handle: i.handle })),
-      contact_name: form.contact_name,
-      contact_email: form.contact_email,
-      contact_phone: form.contact_phone || null,
-      company: form.company || null,
-      budget_kes: form.budget_kes ? Number(form.budget_kes) : null,
-      target_start: form.target_start || null,
-      target_end: form.target_end || null,
-      message: form.message || null,
-    };
-    const { error } = await (supabase.from("inventory_bookings") as any).insert(payload);
-    setSubmitting(false);
-    if (error) return toast.error(error.message);
-    toast.success("Request sent — we'll be in touch shortly");
-    setOpen(false); setCart([]);
-    setForm({ contact_name: "", contact_email: "", contact_phone: "", company: "", budget_kes: "", target_start: "", target_end: "", message: "" });
+  const send = async (form: RequestForm, website: string) => {
+    if (!cart.length) return toast.error("Pick at least one item.");
+    setSending(true);
+    const { error } = await supabase.functions.invoke("storefront-request", {
+      body: { agency_slug: agencySlug, item_ids: cart, ...form, brief: matches ? brief : null, website },
+    });
+    setSending(false);
+    if (error) return toast.error(await functionError(error, "Your request couldn't be sent. Try again."));
+    setSentTo({ email: form.contact_email, count: cart.length });
+    setCart([]);
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (!agency) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Storefront not found</div>;
 
   const accent = agency.primary_color || "hsl(var(--primary))";
+  const houseName = agency.display_name || agency.name;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b border-border bg-card">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex items-center gap-4">
-          {agency.logo_url && <img src={agency.logo_url} alt={agency.display_name || agency.name} className="h-12 w-auto max-w-[200px] rounded-lg object-contain" />}
+        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center gap-4">
+          {agency.logo_url && <img src={agency.logo_url} alt={houseName} className="h-12 w-auto max-w-[200px] rounded-lg object-contain" />}
           <div className="flex-1 min-w-0">
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Media kit · Book now</div>
-            <h1 className="font-display text-2xl font-semibold truncate">{agency.display_name || agency.name}</h1>
+            <h1 className="font-display text-2xl font-semibold truncate">{houseName}</h1>
           </div>
           {agency.support_email && <a className="text-sm text-muted-foreground hover:text-foreground hidden sm:inline" href={`mailto:${agency.support_email}`}>{agency.support_email}</a>}
+          {cart.length > 0 && (
+            <Button size="sm" variant="outline" onClick={() => setRequestOpen(true)}>
+              <ShoppingCart className="w-3.5 h-3.5 mr-1.5" aria-hidden /> Request ({cart.length})
+            </Button>
+          )}
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10">
-        <section className="mb-8">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">Our inventory</div>
-          <div className="flex flex-wrap items-end justify-between gap-4 mt-1">
-            <div>
-              <h2 className="font-display text-4xl">Pick what fits your brief.</h2>
-              <p className="text-muted-foreground mt-2 max-w-2xl">Browse our owned channels, talent and ad slots. Filter by audience, or paste your brief and let our AI shortlist the best fits — we'll quote within 24 hours.</p>
-            </div>
-            <Button onClick={() => setMatchOpen(true)} size="lg" style={{ background: accent }} className="text-white shadow-sm">
-              <Wand2 className="w-4 h-4 mr-2" /> Match to my brief
-            </Button>
-          </div>
-        </section>
+      <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">
+        <BriefStudio accent={accent} houseName={houseName} brief={brief} setBrief={setBrief} running={matching} onRun={runMatch} stats={stats} />
 
+        <div ref={planRef} className="scroll-mt-6">
+          {matching && (
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-live="polite">
+              <p className="sr-only">Building your plan</p>
+              {[0, 1, 2].map(n => <div key={n} className="h-28 animate-pulse rounded-2xl bg-secondary" />)}
+            </div>
+          )}
+          {matches && (
+            <PlanResults
+              matches={matches}
+              items={items}
+              accent={accent}
+              cart={cart}
+              onToggle={toggle}
+              onOpen={setDetail}
+              onAddAll={() => { setCart(c => Array.from(new Set([...c, ...matches.map(m => m.item_id).filter(id => items.some(i => i.id === id))]))); toast.success("Added to your request"); }}
+              onClear={() => setMatches(null)}
+            />
+          )}
+        </div>
 
         {/* Filter bar */}
-        <div className="mb-6 space-y-3">
+        <div className="mt-10 mb-6 space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-2xl">Everything on offer</h2>
+            <div className="text-xs text-muted-foreground">{filtered.length} of {items.length}</div>
+          </div>
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[220px] max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-              <Input className="pl-9" placeholder="Search title, handle, tag…" value={q} onChange={e => setQ(e.target.value)} />
+              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" aria-hidden />
+              <Input className="pl-9" placeholder="Search a station, presenter, show or platform" aria-label="Search the storefront" value={q} onChange={e => setQ(e.target.value)} />
             </div>
-            <Button variant="outline" size="sm" onClick={() => setShowFilters(v => !v)}>
-              <SlidersHorizontal className="w-4 h-4 mr-1.5" />
+            <Button variant="outline" size="sm" onClick={() => setShowFilters(v => !v)} aria-expanded={showFilters}>
+              <SlidersHorizontal className="w-4 h-4 mr-1.5" aria-hidden />
               Filters {activeFilters > 0 && <Badge variant="secondary" className="ml-1.5 h-5">{activeFilters}</Badge>}
             </Button>
             {activeFilters > 0 && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>}
-            <div className="ml-auto text-xs text-muted-foreground">{filtered.length} of {items.length}</div>
           </div>
 
-          {/* Platform + kind pills — always visible */}
           <div className="flex flex-wrap gap-1.5">
+            <Button size="sm" variant={kindFilter === "all" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setKindFilter("all")}>Everything</Button>
+            {kinds.map(k => (
+              <Button key={k} size="sm" variant={kindFilter === k ? "default" : "outline"} className="h-7 text-xs" onClick={() => setKindFilter(k)}>{GROUP_TITLE[k] || KIND_LABEL[k] || k}</Button>
+            ))}
+            <div className="w-px h-6 bg-border mx-1" />
             <Button size="sm" variant={platformFilter === "all" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setPlatformFilter("all")}>All platforms</Button>
             {platforms.map(p => {
               const Icon = PLATFORM_ICON[p] || Globe;
-              return <Button key={p} size="sm" variant={platformFilter === p ? "default" : "outline"} className="h-7 text-xs capitalize" onClick={() => setPlatformFilter(p)}><Icon className="w-3 h-3 mr-1" />{p}</Button>;
+              return <Button key={p} size="sm" variant={platformFilter === p ? "default" : "outline"} className="h-7 text-xs capitalize" onClick={() => setPlatformFilter(p)}><Icon className="w-3 h-3 mr-1" aria-hidden />{p === "twitter" ? "X" : p}</Button>;
             })}
-            <div className="w-px h-6 bg-border mx-1" />
-            <Button size="sm" variant={kindFilter === "all" ? "default" : "outline"} className="h-7 text-xs" onClick={() => setKindFilter("all")}>All types</Button>
-            {kinds.map(k => (
-              <Button key={k} size="sm" variant={kindFilter === k ? "default" : "outline"} className="h-7 text-xs" onClick={() => setKindFilter(k)}>{KIND_LABEL[k] || k}</Button>
-            ))}
           </div>
 
           {showFilters && (
             <Card className="p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3 bg-secondary/30">
               <div>
-                <Label className="text-xs">Category</Label>
-                <select className="mt-1 w-full h-9 rounded-md border bg-background px-2 text-sm" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+                <Label className="text-xs" htmlFor="sf-category">Category</Label>
+                <select id="sf-category" className="mt-1 w-full h-9 rounded-md border bg-background px-2 text-sm" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
                   <option value="all">All categories</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -318,21 +280,20 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
               <div>
                 <Label className="text-xs">Followers</Label>
                 <div className="flex gap-2 mt-1">
-                  <Input placeholder="Min" type="number" value={minFollowers} onChange={e => setMinFollowers(e.target.value)} className="h-9" />
-                  <Input placeholder="Max" type="number" value={maxFollowers} onChange={e => setMaxFollowers(e.target.value)} className="h-9" />
+                  <Input placeholder="Min" aria-label="Minimum followers" type="number" value={minFollowers} onChange={e => setMinFollowers(e.target.value)} className="h-9" />
+                  <Input placeholder="Max" aria-label="Maximum followers" type="number" value={maxFollowers} onChange={e => setMaxFollowers(e.target.value)} className="h-9" />
                 </div>
               </div>
               <div>
-                <Label className="text-xs">Min engagement %</Label>
-                <Input placeholder="e.g. 2" type="number" step="0.1" value={minER} onChange={e => setMinER(e.target.value)} className="h-9 mt-1" />
+                <Label className="text-xs" htmlFor="sf-er">Min engagement %</Label>
+                <Input id="sf-er" placeholder="e.g. 2" type="number" step="0.1" value={minER} onChange={e => setMinER(e.target.value)} className="h-9 mt-1" />
               </div>
               <div className="md:col-span-2">
-                <Label className="text-xs">Audience age bands (≥25% of audience)</Label>
+                <Label className="text-xs">Audience age bands (25% or more of the audience)</Label>
                 <div className="flex gap-1.5 mt-1 flex-wrap">
                   {AGE_BANDS.map(b => {
                     const on = ageBands.includes(b);
-                    return <Button key={b} size="sm" variant={on ? "default" : "outline"} className="h-7 text-xs"
-                      onClick={() => setAgeBands(v => on ? v.filter(x => x !== b) : [...v, b])}>{b}</Button>;
+                    return <Button key={b} size="sm" variant={on ? "default" : "outline"} className="h-7 text-xs" onClick={() => setAgeBands(v => on ? v.filter(x => x !== b) : [...v, b])}>{b}</Button>;
                   })}
                 </div>
               </div>
@@ -345,8 +306,8 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
                 </div>
               </div>
               <div>
-                <Label className="text-xs">Top city</Label>
-                <Input placeholder="e.g. Mombasa" value={cityFilter} onChange={e => setCityFilter(e.target.value)} className="h-9 mt-1" />
+                <Label className="text-xs" htmlFor="sf-city">Top city</Label>
+                <Input id="sf-city" placeholder="e.g. Mombasa" value={cityFilter} onChange={e => setCityFilter(e.target.value)} className="h-9 mt-1" />
               </div>
             </Card>
           )}
@@ -354,231 +315,62 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
 
         {groups.length === 0 ? (
           <Card className="p-16 text-center text-muted-foreground">
-            <Sparkles className="w-10 h-10 mx-auto opacity-50" />
-            <p className="mt-3">{items.length === 0 ? "No active inventory is published for this storefront yet. Contact the team to add items." : "No items match those filters."}</p>
+            <Sparkles className="w-10 h-10 mx-auto opacity-50" aria-hidden />
+            <p className="mt-3">{items.length === 0 ? "No active inventory is published for this storefront yet. Contact the team to add items." : "Nothing matches those filters."}</p>
           </Card>
         ) : groups.map(group => (
-          <section key={group.kind} className="mb-10">
+          <section key={group.kind} className="mb-12" aria-labelledby={`group-${group.kind}`}>
             <div className="flex items-baseline justify-between mb-4">
-              <h3 className="font-display text-xl">{KIND_LABEL[group.kind]}</h3>
+              <h3 id={`group-${group.kind}`} className="font-display text-xl">{GROUP_TITLE[group.kind] || KIND_LABEL[group.kind]}</h3>
               <span className="text-xs text-muted-foreground">{group.items.length} option{group.items.length === 1 ? "" : "s"}</span>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {group.items.map((i: any) => {
-                const PIcon = PLATFORM_ICON[i.platform] || Globe;
-                const inCart = cart.includes(i.id);
-                const age = topAgeBand(i.audience_demo);
-                const gender = genderLean(i.audience_demo);
-                const topCity = i.audience_demo?.top_cities?.[0];
-                const hasDemo = !!(age || gender || topCity);
-                const estimated = i.demo_source === "ai_estimated";
-                return (
-                  <Card key={i.id} className={`p-5 flex flex-col transition-all ${inCart ? "border-accent ring-1 ring-accent" : "hover:border-accent/40"}`}>
-                    {i.cover_url ? (
-                      <div className="aspect-video rounded-md bg-secondary overflow-hidden mb-4 border border-border">
-                        <img src={i.cover_url} alt={i.title} className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div
-                        className="aspect-video rounded-md border border-border mb-4 relative overflow-hidden flex items-center justify-center"
-                        style={{ background: (PLATFORM_BRAND[i.platform] || PLATFORM_BRAND.web).bg }}
-                      >
-                        <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6), transparent 60%)" }} />
-                        <PIcon
-                          className="w-14 h-14 relative drop-shadow-lg"
-                          style={{ color: (PLATFORM_BRAND[i.platform] || PLATFORM_BRAND.web).fg }}
-                          strokeWidth={1.75}
-                        />
-                        {i.handle && (
-                          <div
-                            className="absolute bottom-2 left-2 right-2 text-[11px] font-medium tracking-tight truncate px-2 py-1 rounded backdrop-blur-sm"
-                            style={{ color: (PLATFORM_BRAND[i.platform] || PLATFORM_BRAND.web).fg, background: "rgba(0,0,0,0.25)" }}
-                          >
-                            {i.handle}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    <div className="flex items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-display text-base leading-tight truncate" title={i.title}>{i.title}</div>
-                        {i.handle && <div className="text-xs text-muted-foreground inline-flex items-center gap-1.5 mt-1"><PIcon className="w-3 h-3" /> {i.handle}</div>}
-                      </div>
-                    </div>
-                    {i.subtitle && <div className="text-sm text-muted-foreground mt-2 line-clamp-2">{i.subtitle}</div>}
-
-                    {(i.follower_count > 0 || i.engagement_rate > 0) && (
-                      <div className="grid grid-cols-2 mt-4 rounded-md border border-border bg-secondary/30 divide-x divide-border overflow-hidden">
-                        <div className="p-2 text-center">
-                          <div className="font-display text-base">{fmtCompact(Number(i.follower_count))}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Reach</div>
-                        </div>
-                        <div className="p-2 text-center">
-                          <div className="font-display text-base">{fmtEngagement(i.engagement_rate)}</div>
-                          <div className="text-[9px] uppercase tracking-widest text-muted-foreground">Engagement</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {hasDemo && (
-                      <div className="mt-3 rounded-md border border-dashed border-border/60 bg-secondary/20 p-2">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="inline-flex items-center gap-1 text-[9px] uppercase tracking-widest text-muted-foreground">
-                            <Users className="w-2.5 h-2.5" /> Audience
-                          </div>
-                          {estimated && <span className="text-[8px] uppercase tracking-wider text-muted-foreground/70">estimated</span>}
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {age && <Badge variant="secondary" className="text-[10px]">{age.band} · {Math.round(age.pct)}%</Badge>}
-                          {gender && <Badge variant="secondary" className="text-[10px]">{gender.label}</Badge>}
-                          {topCity && <Badge variant="secondary" className="text-[10px]">{topCity}</Badge>}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex flex-wrap gap-1">
-                      {i.deliverable_type && <Badge variant="outline" className="text-[10px]">{i.deliverable_type}</Badge>}
-                      {i.turnaround_days != null && <Badge variant="outline" className="text-[10px]">{i.turnaround_days}d turnaround</Badge>}
-                      {i.revisions != null && <Badge variant="outline" className="text-[10px]">{i.revisions} revisions</Badge>}
-                      {(i.tags || []).slice(0, 2).map((t: string) => (
-                        <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
-                      ))}
-                    </div>
-
-                    <Button onClick={() => toggle(i.id)} variant={inCart ? "default" : "outline"} size="sm" className="mt-4 w-full" style={inCart ? { background: accent } : undefined}>
-                      {inCart ? <><Check className="w-3 h-3 mr-1.5" /> Added</> : "Add to request"}
-                    </Button>
-                  </Card>
-                );
-              })}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {group.items.map(i => (
+                <ListingCard key={i.id} item={i} accent={accent} inCart={cart.includes(i.id)} inPlan={matchById.has(i.id)} onOpen={setDetail} onToggle={toggle} />
+              ))}
             </div>
           </section>
         ))}
       </main>
 
-      {cart.length > 0 && (
+      {cart.length > 0 && !requestOpen && (
         <div className="sticky bottom-4 z-30 px-6">
-          <div className="max-w-6xl mx-auto bg-card border border-border rounded-xl shadow-lg p-4 flex items-center justify-between gap-4">
+          <div className="max-w-6xl mx-auto bg-card border border-border rounded-2xl shadow-lg p-3 pl-5 flex items-center justify-between gap-4">
             <div className="text-sm">
-              <span className="font-medium">{cart.length}</span> item{cart.length === 1 ? "" : "s"} selected
+              <span className="font-semibold">{cart.length}</span> in your request
             </div>
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setCart([])}><X className="w-3 h-3 mr-1.5" /> Clear</Button>
-              <Button size="sm" onClick={() => setOpen(true)} style={{ background: accent }}><ShoppingCart className="w-3 h-3 mr-1.5" /> Request quote</Button>
+              <Button variant="ghost" size="sm" onClick={() => setCart([])}><X className="w-3 h-3 mr-1.5" aria-hidden /> Clear</Button>
+              <Button size="sm" className="text-white" onClick={() => setRequestOpen(true)} style={{ background: accent }}><ShoppingCart className="w-3 h-3 mr-1.5" aria-hidden /> Review and send</Button>
             </div>
           </div>
         </div>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle className="font-display text-2xl">Request a quote</DialogTitle></DialogHeader>
-          <form onSubmit={submit} className="space-y-3">
-            <div className="rounded-md bg-secondary/40 p-3 text-xs space-y-1 max-h-32 overflow-auto">
-              {cartItems.map(i => (
-                <div key={i.id} className="flex justify-between gap-2">
-                  <span className="truncate">{i.title}</span>
-                  {i.deliverable_type && <span className="text-muted-foreground shrink-0">{i.deliverable_type}</span>}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Your name *</Label><Input required value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} /></div>
-              <div><Label>Company</Label><Input value={form.company} onChange={e => setForm({ ...form, company: e.target.value })} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Email *</Label><Input type="email" required value={form.contact_email} onChange={e => setForm({ ...form, contact_email: e.target.value })} /></div>
-              <div><Label>Phone</Label><Input value={form.contact_phone} onChange={e => setForm({ ...form, contact_phone: e.target.value })} /></div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><Label>Budget (KES)</Label><Input type="number" value={form.budget_kes} onChange={e => setForm({ ...form, budget_kes: e.target.value })} /></div>
-              <div><Label>Start</Label><Input type="date" value={form.target_start} onChange={e => setForm({ ...form, target_start: e.target.value })} /></div>
-              <div><Label>End</Label><Input type="date" value={form.target_end} onChange={e => setForm({ ...form, target_end: e.target.value })} /></div>
-            </div>
-            <div><Label>Brief / notes</Label><Textarea rows={4} value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} placeholder="Campaign goals, key messages, deadlines…" /></div>
-            <Button type="submit" disabled={submitting} className="w-full" style={{ background: accent }}>
-              {submitting ? "Sending…" : "Send request"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ListingSheet
+        item={detail}
+        match={detail ? matchById.get(detail.id) ?? null : null}
+        accent={accent}
+        inCart={!!detail && cart.includes(detail.id)}
+        onClose={() => setDetail(null)}
+        onToggle={toggle}
+        onRequest={() => { setDetail(null); setRequestOpen(true); }}
+      />
 
-      {/* AI Match dialog */}
-      <Dialog open={matchOpen} onOpenChange={(v) => { setMatchOpen(v); if (!v) { setMatches(null); } }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display text-2xl flex items-center gap-2">
-              <Wand2 className="w-5 h-5" style={{ color: accent }} /> Match creators to your brief
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <Label className="text-xs">Paste your brief — brand, product, audience, goal, tone</Label>
-              <Textarea
-                rows={5}
-                value={matchBrief}
-                onChange={e => setMatchBrief(e.target.value)}
-                placeholder="e.g. Launching a new Royco cooking sauce for busy young mums 25-40 in Nairobi & Mombasa. Need warm, funny food-focused creators who can shoot recipe reels in Sheng / Swahili."
-                className="mt-1"
-              />
-              <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-muted-foreground">Our AI reads your brief against every active card and picks only the ones that genuinely fit.</p>
-                <Button onClick={runMatch} disabled={matching} style={{ background: accent }} className="text-white">
-                  {matching ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching…</> : <><Sparkles className="w-4 h-4 mr-2" /> Find matches</>}
-                </Button>
-              </div>
-            </div>
-
-            {matches && matches.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium">{matches.length} match{matches.length === 1 ? "" : "es"}</div>
-                  <Button size="sm" variant="outline" onClick={addAllMatchesToCart}>
-                    <ShoppingCart className="w-3.5 h-3.5 mr-1.5" /> Add all to request
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {matches.map((m: any) => {
-                    const it = m.item || {};
-                    const PIcon = PLATFORM_ICON[it.platform] || Globe;
-                    const inCart = cart.includes(m.item_id);
-                    return (
-                      <Card key={m.item_id} className={`p-3 flex items-start gap-3 ${inCart ? "border-accent ring-1 ring-accent" : ""}`}>
-                        <div className="w-10 h-10 rounded-md flex items-center justify-center shrink-0 text-white" style={{ background: (PLATFORM_BRAND[it.platform] || PLATFORM_BRAND.web).bg }}>
-                          <PIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm truncate">{it.title}</span>
-                            {it.handle && <span className="text-xs text-muted-foreground truncate">· @{it.handle}</span>}
-                            <Badge variant="secondary" className="text-[10px]">{fmtCompact(Number(it.follower_count || 0))} on {it.platform}</Badge>
-                            <Badge variant="outline" className="text-[10px]" style={{ borderColor: accent, color: accent }}>{m.score}/100</Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">{m.reason}</p>
-                          {m.angle && <p className="text-xs italic mt-0.5 text-foreground/70">💡 {m.angle}</p>}
-                        </div>
-                        <Button size="sm" variant={inCart ? "default" : "outline"} onClick={() => toggle(m.item_id)} style={inCart ? { background: accent } : undefined}>
-                          {inCart ? <Check className="w-3.5 h-3.5" /> : "Add"}
-                        </Button>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {matches && matches.length === 0 && (
-              <Card className="p-6 text-center text-muted-foreground text-sm">
-                No strong matches found. Try broadening the brief or removing very specific constraints.
-              </Card>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <RequestSheet
+        open={requestOpen}
+        onOpenChange={(o) => { setRequestOpen(o); if (!o) setSentTo(null); }}
+        houseName={houseName}
+        accent={accent}
+        items={cartItems}
+        onRemove={toggle}
+        onSend={send}
+        sending={sending}
+        sentTo={sentTo}
+        onDone={() => { setRequestOpen(false); setSentTo(null); }}
+      />
 
       <PublicFooter />
-
     </div>
   );
 }

@@ -27,6 +27,8 @@ import { template as roycoAgreementAmended } from './royco-agreement-amended.tsx
 import { template as listeningAlert } from './listening-alert.tsx'
 import { template as brandChannelsCredits } from './brand-channels-credits.tsx'
 import { template as brandOrganicReport } from './brand-organic-report.tsx'
+import { template as storefrontRequest } from './storefront-request.tsx'
+import { template as storefrontRequestReceived } from './storefront-request-received.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'royco-agreement-amended': roycoAgreementAmended,
@@ -47,4 +49,6 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'listening-alert': listeningAlert,
   'brand-channels-credits': brandChannelsCredits,
   'brand-organic-report': brandOrganicReport,
+  'storefront-request': storefrontRequest,
+  'storefront-request-received': storefrontRequestReceived,
 }

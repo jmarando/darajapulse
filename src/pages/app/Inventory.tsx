@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import RequestsBoard from "@/components/storefront/RequestsBoard";
+import { refreshNavCounts } from "@/hooks/useNavCounts";
+import type { StorefrontRequest } from "@/lib/storefrontRequests";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +25,6 @@ const KINDS = [
   { value: "bundle", label: "Bundle" },
 ];
 const PLATFORMS = ["instagram", "tiktok", "youtube", "twitter", "facebook", "tv", "radio", "web", "mixed"];
-const STATUSES = ["new", "reviewing", "quoted", "won", "lost"];
 
 const PLATFORM_ICON: Record<string, any> = { instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook, tv: Tv, radio: Radio, web: Globe, mixed: Layers };
 
@@ -58,6 +61,14 @@ export default function Inventory() {
   const [form, setForm] = useState<any>(blank);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
+  // ?tab=requests opens the Requests tab and ?agency=<slug> picks the storefront: the request emails link here.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") === "requests" ? "bookings" : "items";
+  const setTab = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "bookings") next.set("tab", "requests"); else next.delete("tab");
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     (async () => {
@@ -65,7 +76,10 @@ export default function Inventory() {
       const { data } = await q;
       const list = (data ?? []).filter((a: any) => isSuperAdmin || agencyIds.includes(a.id));
       setAgencies(list);
-      if (list[0] && !agencyId) setAgencyId(list[0].id);
+      const wanted = (searchParams.get("agency") ?? "").toLowerCase();
+      const fromLink = wanted ? list.find((a: any) => (a.slug ?? "").toLowerCase() === wanted) : null;
+      if (fromLink) setAgencyId(fromLink.id);
+      else if (list[0] && !agencyId) setAgencyId(list[0].id);
     })();
   }, [isSuperAdmin, agencyIds]);
 
@@ -149,12 +163,6 @@ export default function Inventory() {
     }
   };
 
-  const updateBookingStatus = async (id: string, status: string) => {
-    const { error } = await (supabase.from("inventory_bookings") as any).update({ status }).eq("id", id);
-    if (error) return toast.error(error.message);
-    load();
-  };
-
   const copyLink = () => {
     if (!agency?.slug) return toast.error("Agency missing slug");
     const url = `${window.location.origin}/shop/${agency.slug}`;
@@ -186,10 +194,10 @@ export default function Inventory() {
         </div>
       </div>
 
-      <Tabs defaultValue="items">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="items"><Megaphone className="w-3 h-3 mr-1.5" /> Inventory ({items.length})</TabsTrigger>
-          <TabsTrigger value="bookings"><Inbox className="w-3 h-3 mr-1.5" /> Requests ({bookings.filter(b => b.status === "new").length})</TabsTrigger>
+          <TabsTrigger value="bookings"><Inbox className="w-3 h-3 mr-1.5" /> Requests ({bookings.filter(b => b.status === "new").length} new)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="mt-6">
@@ -341,51 +349,7 @@ export default function Inventory() {
         </TabsContent>
 
         <TabsContent value="bookings" className="mt-6">
-          {bookings.length === 0 ? (
-            <Card className="p-16 text-center text-muted-foreground">
-              <Inbox className="w-10 h-10 mx-auto opacity-50" />
-              <p className="mt-3">No requests yet. Share your storefront link to get the first one.</p>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {bookings.map(b => (
-                <Card key={b.id} className="p-4">
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-display text-base">{b.contact_name}</span>
-                        {b.company && <span className="text-sm text-muted-foreground">· {b.company}</span>}
-                        <Badge variant={b.status === "new" ? "default" : "outline"} className="text-[10px]">{b.status}</Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        <a href={`mailto:${b.contact_email}`} className="hover:text-foreground">{b.contact_email}</a>
-                        {b.contact_phone && <> · {b.contact_phone}</>}
-                        {" · "}{new Date(b.created_at).toLocaleString()}
-                      </div>
-                      {(b.budget_kes || b.target_start) && (
-                        <div className="text-xs mt-2">
-                          {b.budget_kes && <>Budget: <span className="font-medium">KES {Number(b.budget_kes).toLocaleString()}</span> · </>}
-                          {b.target_start && <>Dates: {b.target_start}{b.target_end ? ` → ${b.target_end}` : ""}</>}
-                        </div>
-                      )}
-                      {b.message && <div className="text-sm mt-2 whitespace-pre-wrap">{b.message}</div>}
-                      {Array.isArray(b.items) && b.items.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {b.items.map((it: any, idx: number) => (
-                            <Badge key={idx} variant="secondary" className="text-[10px]">{it.title}{it.deliverable_type ? ` · ${it.deliverable_type}` : ""}</Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <Select value={b.status} onValueChange={(v) => updateBookingStatus(b.id, v)}>
-                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                      <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
+          <RequestsBoard requests={bookings as StorefrontRequest[]} onChanged={() => { load(); refreshNavCounts(); }} />
         </TabsContent>
       </Tabs>
     </div>
