@@ -98,9 +98,16 @@ function writtenByAnotherPage(post: MappedPost, handle: string): boolean {
   return !!page && page.toLowerCase() !== handle;
 }
 
-/** One public account: its profile, then pages of posts back to the window, then on Facebook the reel list for views. */
-export async function pullPublic(i: { platform: ChannelPlatform; handle: string; mode: PullMode; now: number; call: ScCall; outOfTime?: () => boolean }): Promise<PullResult> {
+/**
+ * One public account: its profile, then pages of posts back to the window, then on Facebook the reel list for views.
+ * `pages` and `reelPages` cap the reads below the mode's own caps, for a caller that only needs the latest posts.
+ */
+export async function pullPublic(i: {
+  platform: ChannelPlatform; handle: string; mode: PullMode; now: number; call: ScCall; outOfTime?: () => boolean; pages?: number; reelPages?: number;
+}): Promise<PullResult> {
   const { platform, handle, mode, now, call, outOfTime = () => false } = i;
+  const postPages = Math.min(i.pages ?? Infinity, PUBLIC_PAGE_CAPS[platform][mode]);
+  const reelPages = Math.min(i.reelPages ?? Infinity, FACEBOOK_REEL_PAGES[mode]);
   const since = now - WINDOW_DAYS[mode] * DAY;
   const route = routeFor(platform, handle);
   let calls = 0;
@@ -121,7 +128,7 @@ export async function pullPublic(i: { platform: ChannelPlatform; handle: string;
 
   const read: MappedPost[] = [];
   let cursor: string | null = null;
-  for (let page = 0; page < PUBLIC_PAGE_CAPS[platform][mode] && !outOfTime(); page++) {
+  for (let page = 0; page < postPages && !outOfTime(); page++) {
     const answer = await get(route.posts[0], cursor ? { ...route.posts[1], [route.cursorParam]: cursor } : route.posts[1]);
     const pageTrouble = trouble(answer);
     if (pageTrouble === "out_of_credits") return failed(pageTrouble, calls);
@@ -138,7 +145,7 @@ export async function pullPublic(i: { platform: ChannelPlatform; handle: string;
   if (platform === "facebook") {
     const reels: MappedReel[] = [];
     let reelCursor: { cursor: string; next_page_id?: string } | null = null;
-    for (let page = 0; page < FACEBOOK_REEL_PAGES[mode] && !outOfTime(); page++) {
+    for (let page = 0; page < reelPages && !outOfTime(); page++) {
       const answer = await get("/v1/facebook/profile/reels", { ...route.posts[1], ...(reelCursor ?? {}) });
       const reelTrouble = trouble(answer);
       if (reelTrouble === "out_of_credits") return failed(reelTrouble, calls);

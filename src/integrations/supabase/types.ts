@@ -4993,6 +4993,7 @@ export type Database = {
           title: string
         }[]
       }
+      get_public_listing_insights: { Args: { _item_id: string }; Returns: Json }
       get_public_storefront: { Args: { _agency_slug: string }; Returns: Json }
       get_report_link_campaign: { Args: { _token: string }; Returns: string }
       get_report_post_metrics: {

@@ -16,7 +16,38 @@ export type Listing = {
   turnaround_days?: number | null;
   revisions?: number | null;
   tags?: string[] | null;
+  /** What the account's latest public posts say, when they've been read. The posts themselves load on opening. */
+  insights_summary?: InsightsSummary | null;
 };
+
+/** The summary inventory-insights saves for an account (see supabase/functions/_shared/channel-insights.ts). */
+export type InsightsSummary = {
+  posts: number;
+  posts_per_week: number | null;
+  median_views: number | null;
+  median_interactions: number | null;
+  engagement_rate: number | null;
+  engagement_basis: "views" | "followers" | null;
+  latest_post_at: string | null;
+};
+
+export type InsightPost = {
+  url: string | null; posted_at: string; format: string;
+  views: number | null; likes: number | null; comments: number | null; shares: number | null; interactions: number | null;
+  caption: string | null; thumbnail_url: string | null;
+};
+
+/** One account's full reading, as get_public_listing_insights returns it. */
+export type ChannelInsights = {
+  read_at: string;
+  account: { name: string | null; followers: number | null; avatar_url: string | null };
+  summary: InsightsSummary;
+  recent: InsightPost[];
+  top: InsightPost[];
+};
+
+/** The platforms whose posts the storefront can read: a listing elsewhere has no recent-posts section. */
+export const READABLE_PLATFORMS = ["tiktok", "instagram", "facebook", "youtube"];
 
 /** What the storefront's request form collects. */
 export type RequestForm = {
@@ -104,4 +135,56 @@ export function combinedReach(items: { follower_count?: number | null; kind?: st
     total += n;
   }
   return total;
+}
+
+/** A storefront card: one listing, or the accounts of one station or person shown together. Cart and plan stay per listing. */
+export type ListingGroup = { key: string; name: string; lead: Listing; items: Listing[]; cover: string | null };
+
+const PLATFORM_SUFFIX = /\s+(?:on|—|–|-)\s+(?:facebook|instagram|tiktok|youtube|x|twitter)$/i;
+
+/** "Kiss 100 on Instagram" and "Jeff Kuria — TikTok" name the station or person, Kiss 100 and Jeff Kuria. */
+export const baseName = (title: string): string => title.replace(PLATFORM_SUFFIX, "").trim() || title;
+
+/**
+ * Social accounts and talent of the same name become one card, so a station on five platforms shows once. Other
+ * listings stay one card each. Cards keep the order of first appearance; inside a card the accounts run biggest first
+ * and the biggest leads, so the order doesn't depend on how the rows arrive.
+ */
+export function groupListings(items: Listing[]): ListingGroup[] {
+  const groups: ListingGroup[] = [];
+  const byKey = new Map<string, ListingGroup>();
+  for (const item of items) {
+    const joins = item.kind === "owned_account" || item.kind === "influencer";
+    const name = joins ? baseName(item.title) : item.title;
+    const key = joins ? `${item.kind}:${name.toLowerCase()}` : `item:${item.id}`;
+    const found = byKey.get(key);
+    if (found) { found.items.push(item); continue; }
+    const group = { key, name, lead: item, items: [item], cover: null };
+    byKey.set(key, group);
+    groups.push(group);
+  }
+  for (const g of groups) {
+    g.items.sort((a, b) => (Number(b.follower_count) || 0) - (Number(a.follower_count) || 0));
+    g.lead = g.items[0];
+    g.cover = g.lead.cover_url ?? g.items.find((i) => i.cover_url)?.cover_url ?? null;
+  }
+  return groups;
+}
+
+/** A group's following: each account's followers added up. */
+export const groupReach = (g: ListingGroup): number => g.items.reduce((sum, i) => sum + (Number(i.follower_count) || 0), 0);
+
+/** The most a typical post gets on any of a group's accounts, or null when none has been read. */
+export function bestTypicalViews(items: Listing[]): number | null {
+  const views = items.map((i) => i.insights_summary?.median_views).filter((v): v is number => typeof v === "number" && v > 0);
+  return views.length ? Math.max(...views) : null;
+}
+
+/** "9.5 a week", "3 a day": how often an account posts, in the unit that reads naturally. */
+export function fmtCadence(perWeek: number | null | undefined): string {
+  const n = Number(perWeek);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  if (n >= 14) return `${Math.round(n / 7)} a day`;
+  if (n >= 1) return `${n % 1 === 0 ? n : n.toFixed(1)} a week`;
+  return `${Math.max(1, Math.round(n * 4.3))} a month`;
 }
