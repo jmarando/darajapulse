@@ -7,7 +7,7 @@ import {
   BOOKING_LIMITS, BOOKING_RATE_LIMITS, earliestStart, newRef, newToken, safeFileName,
   type Material, type OfferedItem, type ProductionFees,
 } from "../_shared/storefront-booking.ts";
-import { checkFiles, priceBooking, readCreate, type FileInput } from "../_shared/storefront-booking-check.ts";
+import { checkFiles, priceBooking, readCreate, readUploaded, type FileInput } from "../_shared/storefront-booking-check.ts";
 import { bookingRow, pickLines, type StorefrontItem } from "../_shared/storefront-request.ts";
 import { bookingUrl, houseById, logEvent, settleFromPesapal, type House } from "../_shared/storefront-booking-actions.ts";
 import { mailerFor, type MailBooking } from "../_shared/storefront-booking-mail.ts";
@@ -29,6 +29,8 @@ const today = () => new Date(Date.now() + 3 * 3_600_000).toISOString().slice(0, 
 type HouseRow = House & { show_prices: boolean; booking: string; production: ProductionFees };
 
 async function houseBySlug(slug: string): Promise<HouseRow | null> {
+  // Letters, digits and hyphens only, so the case-insensitive match below can't be given a wildcard.
+  if (!/^[A-Za-z0-9-]{1,80}$/.test(slug)) return null;
   const { data } = await sb.from("agencies")
     .select("id, name, display_name, slug, subdomain, support_email, logo_url, primary_color, storefront_show_prices, storefront_booking, storefront_production, is_active")
     .ilike("slug", slug).eq("is_active", true).maybeSingle();
@@ -195,7 +197,7 @@ async function create(body: Record<string, unknown>) {
 
 async function filesAdded(row: BookingRow, body: Record<string, unknown>) {
   if (row.status === "done" || row.status === "cancelled") return fail("This booking is closed.");
-  const files = readFiles(body.files).map((f, n) => ({ ...f, path: String(((body.files as Record<string, unknown>[])[n] ?? {}).path ?? "") }));
+  const files = readUploaded(body.files);
   const folder = `${row.agency_id}/${row.ref}/`;
   const { data: listed } = await sb.storage.from(BUCKET).list(`${row.agency_id}/${row.ref}`, { limit: 100 });
   const present = new Set(((listed ?? []) as { name: string }[]).map((o) => `${folder}${o.name}`));

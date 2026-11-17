@@ -31,3 +31,12 @@ describe("the house's list", () => {
     expect(tiles(listRows(bookings, [], today, now), bookings, today)).toMatchObject({ paidThisMonth: 456000, live: 1 });
   });
 });
+
+describe("what the house reads about each material", () => {
+  it("gives the day the ad is due, two working days before the start", async () => {
+    const { materialNote } = await import("@/lib/storefrontBookings");
+    expect(materialNote({ mode: "later" }, "2026-11-24")).toBe("coming later, due 20 Nov");
+    expect(materialNote({ mode: "make" }, "2026-11-24")).toBe("make it for them");
+    expect(materialNote({ mode: "have" }, "2026-11-24")).toBe("given");
+  });
+});

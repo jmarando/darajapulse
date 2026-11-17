@@ -194,3 +194,12 @@ export function priceBooking(
     },
   };
 }
+
+/** Files the page says it uploaded, each with its own storage path; entries missing a name, slot or path are dropped. */
+export function readUploaded(raw: unknown): (FileInput & { path: string })[] {
+  return (Array.isArray(raw) ? raw : []).slice(0, BOOKING_LIMITS.files).flatMap((f): (FileInput & { path: string })[] => {
+    const x = obj(f);
+    if (typeof x.name !== "string" || typeof x.path !== "string" || !SLOTS.includes(x.slot as FileSlot)) return [];
+    return [{ slot: x.slot as FileSlot, name: x.name.slice(0, 200), type: String(x.type ?? ""), size: Number(x.size) || 0, path: x.path }];
+  });
+}
