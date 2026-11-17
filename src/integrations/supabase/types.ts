@@ -35,6 +35,7 @@ export type Database = {
           name: string
           primary_color: string | null
           slug: string
+          storefront_show_prices: boolean
           subdomain: string | null
           support_email: string | null
           suspended_at: string | null
@@ -61,6 +62,7 @@ export type Database = {
           name: string
           primary_color?: string | null
           slug: string
+          storefront_show_prices?: boolean
           subdomain?: string | null
           support_email?: string | null
           suspended_at?: string | null
@@ -87,6 +89,7 @@ export type Database = {
           name?: string
           primary_color?: string | null
           slug?: string
+          storefront_show_prices?: boolean
           subdomain?: string | null
           support_email?: string | null
           suspended_at?: string | null
@@ -3472,7 +3475,9 @@ export type Database = {
           id: string
           is_active: boolean
           kind: Database["public"]["Enums"]["inventory_kind"]
+          options: Json | null
           platform: string | null
+          price_unit: string | null
           revisions: number | null
           sort_order: number
           subtitle: string | null
@@ -3496,7 +3501,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           kind: Database["public"]["Enums"]["inventory_kind"]
+          options?: Json | null
           platform?: string | null
+          price_unit?: string | null
           revisions?: number | null
           sort_order?: number
           subtitle?: string | null
@@ -3520,7 +3527,9 @@ export type Database = {
           id?: string
           is_active?: boolean
           kind?: Database["public"]["Enums"]["inventory_kind"]
+          options?: Json | null
           platform?: string | null
+          price_unit?: string | null
           revisions?: number | null
           sort_order?: number
           subtitle?: string | null
