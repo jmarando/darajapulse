@@ -1,8 +1,8 @@
-import { Facebook, Globe, Instagram, Layers, Music2, Radio, Tv, Twitter, Youtube, type LucideIcon } from "lucide-react";
+import { CalendarDays, Facebook, Globe, Headphones, Instagram, Layers, Music2, Newspaper, Radio, Tv, Twitter, Youtube, type LucideIcon } from "lucide-react";
 
 export const PLATFORM_ICON: Record<string, LucideIcon> = {
   instagram: Instagram, tiktok: Music2, youtube: Youtube, twitter: Twitter, facebook: Facebook,
-  tv: Tv, radio: Radio, web: Globe, mixed: Layers,
+  tv: Tv, radio: Radio, web: Globe, mixed: Layers, print: Newspaper, podcast: Headphones, event: CalendarDays,
 };
 
 export const PLATFORM_TILE: Record<string, string> = {
@@ -15,4 +15,7 @@ export const PLATFORM_TILE: Record<string, string> = {
   radio: "linear-gradient(135deg, hsl(190,70%,40%), hsl(210,70%,50%))",
   web: "linear-gradient(135deg, hsl(200,20%,25%), hsl(215,25%,40%))",
   mixed: "linear-gradient(135deg, hsl(200,20%,25%), hsl(215,25%,40%))",
+  print: "linear-gradient(135deg, hsl(30,8%,28%), hsl(30,8%,42%))",
+  podcast: "linear-gradient(135deg, hsl(265,45%,32%), hsl(285,50%,44%))",
+  event: "linear-gradient(135deg, hsl(345,50%,36%), hsl(10,60%,46%))",
 };

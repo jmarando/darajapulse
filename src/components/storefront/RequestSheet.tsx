@@ -1,20 +1,22 @@
 import { useState } from "react";
-import { CheckCircle2, Loader2, X } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import ListingCover from "@/components/storefront/ListingCover";
+import { PlanLines, PlanTotal, type PlanEdits } from "@/components/storefront/PlanPanel";
 import { EMPTY_REQUEST, type Listing, type RequestForm } from "@/lib/storefront";
+import type { PlanLine } from "@/lib/storefrontPlan";
 
 /**
- * The buyer's request, in a side panel: what they picked (removable), who they are, budget and dates, then one send.
- * After sending it says what happens next instead of closing on a toast.
+ * The buyer's request, in a side panel: their plan (choices and numbers still changeable), who they are, budget and
+ * dates, then one send. After sending it says what happens next instead of closing on a toast.
  */
-export default function RequestSheet({ open, onOpenChange, houseName, accent, items, onRemove, onSend, sending, sentTo, onDone }: {
-  open: boolean; onOpenChange: (open: boolean) => void; houseName: string; accent: string; items: Listing[];
-  onRemove: (id: string) => void; onSend: (form: RequestForm, website: string) => void; sending: boolean;
+export default function RequestSheet({ open, onOpenChange, houseName, accent, lines, byId, showPrices, edits, onSend, sending, sentTo, onDone }: {
+  open: boolean; onOpenChange: (open: boolean) => void; houseName: string; accent: string;
+  lines: PlanLine[]; byId: Map<string, Listing>; showPrices: boolean; edits: PlanEdits;
+  onSend: (form: RequestForm, website: string) => void; sending: boolean;
   sentTo: { email: string; count: number } | null; onDone: () => void;
 }) {
   const [form, setForm] = useState<RequestForm>(EMPTY_REQUEST);
@@ -46,24 +48,18 @@ export default function RequestSheet({ open, onOpenChange, houseName, accent, it
             </SheetHeader>
 
             <div>
-              <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Your picks ({items.length})</div>
-              {items.length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">Nothing picked yet. Add listings from the storefront, or build a plan from your brief.</p>
+              <div className="text-sm font-semibold">Your plan{lines.length ? ` (${lines.length})` : ""}</div>
+              {lines.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">Nothing picked yet. Add from the storefront, or ask for a suggested plan from your brief.</p>
               ) : (
-                <ul className="mt-2 max-h-56 space-y-2 overflow-y-auto pr-1">
-                  {items.map((i) => (
-                    <li key={i.id} className="flex items-center gap-3 rounded-xl border border-border p-2">
-                      <ListingCover item={i} className="h-11 w-11 shrink-0 rounded-lg" badge={false} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">{i.title}</div>
-                        {i.deliverable_type && <div className="truncate text-xs text-muted-foreground">{i.deliverable_type}</div>}
-                      </div>
-                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`Remove ${i.title}`} onClick={() => onRemove(i.id)}>
-                        <X className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <div className="mt-1 max-h-72 overflow-y-auto pr-1">
+                    <PlanLines lines={lines} byId={byId} showPrices={showPrices} {...edits} />
+                  </div>
+                  <div className="mt-2 border-t border-border pt-3">
+                    <PlanTotal lines={lines} byId={byId} showPrices={showPrices} houseName={houseName} />
+                  </div>
+                </>
               )}
             </div>
 
@@ -89,7 +85,7 @@ export default function RequestSheet({ open, onOpenChange, houseName, accent, it
               <label htmlFor="rq-website">Website</label>
               <input id="rq-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
             </div>
-            <Button type="submit" size="lg" disabled={sending || items.length === 0} className="w-full text-white" style={{ background: accent }}>
+            <Button type="submit" size="lg" disabled={sending || lines.length === 0} className="w-full text-white" style={{ background: accent }}>
               {sending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Sending…</> : `Send request to ${houseName}`}
             </Button>
           </form>

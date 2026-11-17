@@ -7,7 +7,7 @@ import { sendAppEmail } from "../_shared/app-email.ts";
 import { CANONICAL_APP_ORIGIN } from "../_shared/app-url.ts";
 import { TEMPLATES } from "../_shared/transactional-email-templates/registry.ts";
 import {
-  bookingRow, checkRequest, emailData, houseRecipients, pickItems, RATE_LIMITS, type StorefrontItem,
+  bookingRow, checkRequest, emailData, houseRecipients, pickLines, RATE_LIMITS, type StorefrontItem,
 } from "../_shared/storefront-request.ts";
 
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
   const { data: storefront, error: sfError } = await supabase.rpc("get_public_storefront", { _agency_slug: r.agencySlug });
   const agency = (storefront as { agency?: Record<string, string | null> } | null)?.agency;
   if (sfError || !agency?.id) return json({ error: "This storefront isn't available." }, 404);
-  const items = pickItems(r.itemIds, ((storefront as { items?: StorefrontItem[] }).items ?? []));
-  if (!items.length) return json({ error: "Those items are no longer offered. Refresh the page and pick again." }, 400);
+  const picked = pickLines(r.lines, ((storefront as { items?: StorefrontItem[] }).items ?? []));
+  if (!picked.length) return json({ error: "Those items are no longer offered. Refresh the page and pick again." }, 400);
 
   const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
   const tenMinutesAgo = new Date(Date.now() - 600_000).toISOString();
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
   }
 
   const { data: booking, error } = await supabase.from("inventory_bookings")
-    .insert(bookingRow(agency.id, r, items)).select("id").single();
+    .insert(bookingRow(agency.id, r, picked)).select("id").single();
   if (error || !booking) {
     console.error("storefront-request: insert failed", error?.code, error?.message);
     return json({ error: "Your request could not be saved. Try again." }, 500);
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
 
   // Emails are best effort: the request is saved and shows in the media house's Requests tab either way.
   const houseName = agency.display_name || agency.name || "the media house";
-  const data = emailData(houseName, r, items, `${CANONICAL_APP_ORIGIN}/app/inventory?tab=requests&agency=${encodeURIComponent(agency.slug ?? r.agencySlug)}`);
+  const data = emailData(houseName, r, picked, `${CANONICAL_APP_ORIGIN}/app/inventory?tab=requests&agency=${encodeURIComponent(agency.slug ?? r.agencySlug)}`);
   const to = houseRecipients(agency.support_email, await adminEmails(agency.id), PLATFORM_INBOX);
   const results = await Promise.allSettled([
     ...to.map((email) => sendAppEmail({

@@ -10,9 +10,14 @@ import {
   bestTypicalViews, fmtCompact, fmtEngagement, groupReach, KIND_LABEL, platformLabel, profileUrl, reachLabel, READABLE_PLATFORMS, whatYouGet,
   type Listing, type ListingGroup, type PlanMatch,
 } from "@/lib/storefront";
+import { perUnit, priceSummary, type PickApi } from "@/lib/storefrontPlan";
+import { kes } from "@/lib/storefrontRequests";
 
 /** Whether the storefront can show this listing's latest posts: a real account on a platform whose posts are read. */
 const readable = (i: Listing) => READABLE_PLATFORMS.includes(i.platform ?? "") && profileUrl(i.platform, i.handle) !== null;
+
+/** Social accounts and talent show followers and engagement; everything else is bought by format and price. */
+const isPeopleOrChannel = (i: Listing) => i.kind === "owned_account" || i.kind === "influencer";
 
 function ProfileLink({ item, accent }: { item: Listing; accent: string }) {
   const url = profileUrl(item.platform, item.handle);
@@ -25,12 +30,12 @@ function ProfileLink({ item, accent }: { item: Listing; accent: string }) {
 }
 
 /** One account of a group: its platform, handle and following, with its latest posts when opened. */
-function AccountRow({ item, accent, open, inCart, onOpen, onToggle }: {
-  item: Listing; accent: string; open: boolean; inCart: boolean; onOpen: () => void; onToggle: () => void;
-}) {
+function AccountRow({ item, pick, open, onOpen }: { item: Listing; pick: PickApi; open: boolean; onOpen: () => void }) {
   const Icon = PLATFORM_ICON[item.platform ?? ""] || Globe;
   const followers = Number(item.follower_count) || 0;
   const typical = item.insights_summary?.median_views;
+  const inPlan = pick.isPicked(item.id);
+  const price = typeof item.price_kes === "number" && item.price_kes > 0 ? priceSummary(item, pick.showPrices) : null;
   return (
     <li className="overflow-hidden rounded-xl border border-border">
       <div className="flex items-center gap-2 p-2.5 pl-3">
@@ -38,7 +43,7 @@ function AccountRow({ item, accent, open, inCart, onOpen, onToggle }: {
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary"><Icon className="h-4 w-4" aria-hidden /></span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium">{platformLabel(item.platform)}</span>
-            <span className="block truncate text-xs text-muted-foreground">{[item.handle, item.deliverable_type].filter(Boolean).join(" · ")}</span>
+            <span className="block truncate text-xs text-muted-foreground">{[item.handle, item.deliverable_type, price].filter(Boolean).join(" · ")}</span>
           </span>
           <span className="shrink-0 text-right">
             <span className="block text-sm font-semibold tabular-nums">{followers > 0 ? fmtCompact(followers) : "—"}</span>
@@ -47,16 +52,17 @@ function AccountRow({ item, accent, open, inCart, onOpen, onToggle }: {
           <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
         </button>
         <Button
-          type="button" size="sm" variant={inCart ? "default" : "outline"} className={`h-8 shrink-0 px-2.5 text-xs ${inCart ? "text-white" : ""}`}
-          style={inCart ? { background: accent } : undefined} aria-pressed={inCart} aria-label={`${inCart ? "Remove" : "Add"} ${item.title}`} onClick={onToggle}
+          type="button" size="sm" variant={inPlan ? "default" : "outline"} className={`h-8 shrink-0 px-2.5 text-xs ${inPlan ? "text-white" : ""}`}
+          style={inPlan ? { background: pick.accent } : undefined} aria-pressed={inPlan} aria-label={`${inPlan ? "Remove" : "Add"} ${item.title}`}
+          onClick={() => pick.onToggleItem(item)}
         >
-          {inCart ? <><Check className="mr-1 h-3 w-3" aria-hidden /> Added</> : "Add"}
+          {inPlan ? <><Check className="mr-1 h-3 w-3" aria-hidden /> Added</> : "Add"}
         </Button>
       </div>
       {open && (
         <div className="space-y-3 border-t border-border bg-secondary/20 p-3">
-          <ProfileLink item={item} accent={accent} />
-          {readable(item) ? <ChannelInsights item={item} accent={accent} /> : (
+          <ProfileLink item={item} accent={pick.accent} />
+          {readable(item) ? <ChannelInsights item={item} accent={pick.accent} /> : (
             <p className="text-xs text-muted-foreground">Post-by-post numbers aren't read for {platformLabel(item.platform)} accounts yet.</p>
           )}
         </div>
@@ -65,14 +71,47 @@ function AccountRow({ item, accent, open, inCart, onOpen, onToggle }: {
   );
 }
 
+/** A listing's choices, one row each: what it is, its price, and Add. */
+function Choices({ item, pick }: { item: Listing; pick: PickApi }) {
+  return (
+    <section aria-labelledby="choices">
+      <h3 id="choices" className="text-sm font-semibold">Choose</h3>
+      <p className="mt-0.5 text-xs text-muted-foreground">Add one or more. Set how many in your plan.</p>
+      <ul className="mt-2.5 divide-y divide-border overflow-hidden rounded-xl border border-border">
+        {(item.options ?? []).map((o) => {
+          const qty = pick.qtyOf(item.id, o.label);
+          const on = qty > 0;
+          const unit = o.unit ?? item.price_unit ?? null;
+          const price = pick.showPrices ? (typeof o.price_kes === "number" && o.price_kes > 0 ? `${kes(o.price_kes)}${unit ? ` ${perUnit(unit)}` : ""}` : "Price on request") : null;
+          return (
+            <li key={o.label} className="flex items-center gap-3 px-3 py-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm">{o.label}</div>
+                {price && <div className="text-xs tabular-nums text-muted-foreground">{price}</div>}
+              </div>
+              <Button
+                type="button" size="sm" variant={on ? "default" : "outline"} className={`h-8 shrink-0 px-2.5 text-xs ${on ? "text-white" : ""}`}
+                style={on ? { background: pick.accent } : undefined} aria-pressed={on} aria-label={`${on ? "Remove" : "Add"} ${o.label}`}
+                onClick={() => pick.onPick(item.id, o.label)}
+              >
+                {on ? <><Check className="mr-1 h-3 w-3" aria-hidden /> {qty > 1 ? `× ${qty}` : "Added"}</> : "Add"}
+              </Button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 /**
- * A storefront card opened up: its picture, what it reaches, why it fits the buyer's brief, what they get, and for a
- * social account what its latest posts did. A station's or person's accounts are listed one by one, each with its
- * own numbers and its own Add.
+ * A storefront card opened up: its picture, what it reaches, its price and choices, why it fits the buyer's brief,
+ * what they get, and for a social account what its latest posts did. A station's or person's accounts are listed one
+ * by one, each with its own numbers and its own Add.
  */
-export default function ListingSheet({ group, focusId, matches, accent, cart, onClose, onToggle, onAddMany, onRequest }: {
-  group: ListingGroup | null; focusId: string | null; matches: Map<string, PlanMatch>; accent: string; cart: string[];
-  onClose: () => void; onToggle: (id: string) => void; onAddMany: (ids: string[], add: boolean) => void; onRequest: () => void;
+export default function ListingSheet({ group, focusId, matches, pick, onClose, onRequest }: {
+  group: ListingGroup | null; focusId: string | null; matches: Map<string, PlanMatch>; pick: PickApi;
+  onClose: () => void; onRequest: () => void;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   useEffect(() => {
@@ -81,15 +120,20 @@ export default function ListingSheet({ group, focusId, matches, accent, cart, on
     setOpenId(focus?.id ?? (readable(group.lead) ? group.lead.id : null));
   }, [group, focusId]);
 
+  const { accent } = pick;
   const item = group?.lead ?? null;
   const single = (group?.items.length ?? 0) === 1;
+  const social = item ? isPeopleOrChannel(item) : false;
+  const hasOptions = single && (item?.options?.length ?? 0) > 0;
   const match = group ? group.items.map((i) => matches.get(i.id)).find(Boolean) ?? null : null;
   const { lines, note } = item ? whatYouGet(single ? item : { ...item, deliverable_type: null }) : { lines: [], note: null };
   const tags = group ? Array.from(new Set(group.items.flatMap((i) => i.tags ?? []))) : [];
   const ids = group?.items.map((i) => i.id) ?? [];
-  const added = ids.filter((id) => cart.includes(id)).length;
+  const added = ids.filter((id) => pick.isPicked(id)).length;
   const tint = `color-mix(in srgb, ${accent} 8%, transparent)`;
   const platforms = group ? Array.from(new Set(group.items.map((i) => i.platform ?? "").filter(Boolean))) : [];
+  const reach = item ? (single ? Number(item.follower_count) || 0 : groupReach(group!)) : 0;
+  const price = item && single && !social ? priceSummary(item, pick.showPrices) : null;
 
   return (
     <Sheet open={!!group} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -99,37 +143,60 @@ export default function ListingSheet({ group, focusId, matches, accent, cart, on
             <ListingCover item={{ ...item, cover_url: group.cover }} className="aspect-[16/10] shrink-0" platforms={platforms} />
             <div className="flex-1 space-y-6 p-6">
               <SheetHeader className="space-y-1.5 text-left">
-                <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{KIND_LABEL[item.kind] ?? item.kind}</div>
+                <div className="text-xs text-muted-foreground">{social ? KIND_LABEL[item.kind] ?? item.kind : platformLabel(item.platform)}</div>
                 <SheetTitle className="font-display text-2xl leading-tight">{group.name}</SheetTitle>
                 {item.subtitle && <SheetDescription className="text-[14px]">{item.subtitle}</SheetDescription>}
               </SheetHeader>
 
               {single && <ProfileLink item={item} accent={accent} />}
 
-              <dl className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border">
-                <div className="p-3">
-                  <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">{single ? reachLabel(item.kind, item.platform) : "Total followers"}</dt>
-                  <dd className="mt-1 text-lg font-semibold tabular-nums">{(single ? Number(item.follower_count) || 0 : groupReach(group)) > 0 ? fmtCompact(single ? item.follower_count : groupReach(group)) : "—"}</dd>
-                </div>
-                <div className="p-3">
-                  <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">{single ? "Engagement" : "Accounts"}</dt>
-                  <dd className="mt-1 text-lg font-semibold tabular-nums">{single ? fmtEngagement(item.engagement_rate) : group.items.length}</dd>
-                </div>
-                <div className="p-3">
-                  <dt className="text-[10px] uppercase tracking-widest text-muted-foreground">{single ? "Where" : "Best typical views"}</dt>
-                  <dd className="mt-1 truncate text-lg font-semibold">
-                    {single ? platformLabel(item.platform) : bestTypicalViews(group.items) ? fmtCompact(bestTypicalViews(group.items)) : "—"}
-                  </dd>
-                </div>
-              </dl>
+              {social ? (
+                <dl className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border">
+                  <div className="p-3">
+                    <dt className="text-[11px] text-muted-foreground">{single ? reachLabel(item.kind, item.platform) : "Total followers"}</dt>
+                    <dd className="mt-1 text-lg font-semibold tabular-nums">{reach > 0 ? fmtCompact(reach) : "—"}</dd>
+                  </div>
+                  <div className="p-3">
+                    <dt className="text-[11px] text-muted-foreground">{single ? "Engagement" : "Accounts"}</dt>
+                    <dd className="mt-1 text-lg font-semibold tabular-nums">{single ? fmtEngagement(item.engagement_rate) : group.items.length}</dd>
+                  </div>
+                  <div className="p-3">
+                    <dt className="text-[11px] text-muted-foreground">{single ? "Where" : "Best typical views"}</dt>
+                    <dd className="mt-1 truncate text-lg font-semibold">
+                      {single ? platformLabel(item.platform) : bestTypicalViews(group.items) ? fmtCompact(bestTypicalViews(group.items)) : "—"}
+                    </dd>
+                  </div>
+                </dl>
+              ) : (price || reach > 0) && (
+                <dl className="flex flex-wrap gap-x-8 gap-y-3">
+                  {price && (
+                    <div>
+                      <dt className="text-[11px] text-muted-foreground">Price</dt>
+                      <dd className="mt-0.5 text-lg font-semibold tabular-nums">{price}</dd>
+                    </div>
+                  )}
+                  {reach > 0 && (
+                    <div>
+                      <dt className="text-[11px] text-muted-foreground">Reach</dt>
+                      <dd className="mt-0.5 text-lg font-semibold tabular-nums">{fmtCompact(reach)} <span className="text-sm font-normal text-muted-foreground">{reachLabel(item.kind, item.platform)}</span></dd>
+                    </div>
+                  )}
+                </dl>
+              )}
+
+              {single && social && typeof item.price_kes === "number" && item.price_kes > 0 && pick.showPrices && (
+                <p className="text-sm"><span className="text-muted-foreground">Price: </span><span className="font-semibold tabular-nums">{priceSummary(item, true)}</span></p>
+              )}
 
               {match && (
                 <div className="rounded-xl border p-4" style={{ borderColor: accent, background: tint }}>
-                  <div className="text-[11px] font-medium uppercase tracking-widest" style={{ color: accent }}>Why it fits your brief</div>
+                  <div className="text-xs font-medium" style={{ color: accent }}>Why it fits your brief</div>
                   <p className="mt-1.5 text-sm leading-relaxed">{match.reason}</p>
                   {match.angle && <p className="mt-1.5 text-sm text-muted-foreground">Content angle: {match.angle}</p>}
                 </div>
               )}
+
+              {hasOptions && <Choices item={item} pick={pick} />}
 
               {single && readable(item) && (
                 <section aria-labelledby="recent-posts">
@@ -144,8 +211,7 @@ export default function ListingSheet({ group, focusId, matches, accent, cart, on
                   <p className="mt-0.5 text-xs text-muted-foreground">Open one to see what its latest posts did. Add the ones you want.</p>
                   <ul className="mt-2.5 space-y-2">
                     {group.items.map((i) => (
-                      <AccountRow key={i.id} item={i} accent={accent} open={openId === i.id} inCart={cart.includes(i.id)}
-                        onOpen={() => setOpenId(openId === i.id ? null : i.id)} onToggle={() => onToggle(i.id)} />
+                      <AccountRow key={i.id} item={i} pick={pick} open={openId === i.id} onOpen={() => setOpenId(openId === i.id ? null : i.id)} />
                     ))}
                   </ul>
                 </section>
@@ -175,12 +241,14 @@ export default function ListingSheet({ group, focusId, matches, accent, cart, on
             </div>
 
             <div className="sticky bottom-0 flex gap-2 border-t border-border bg-background/95 p-4 backdrop-blur">
-              {single ? (
-                <Button type="button" variant="outline" className="flex-1" onClick={() => onToggle(item.id)}>
-                  {added ? "Remove from request" : "Add to request"}
+              {hasOptions ? (
+                <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Done</Button>
+              ) : single ? (
+                <Button type="button" variant="outline" className="flex-1" onClick={() => pick.onToggleItem(item)}>
+                  {added ? "Remove from plan" : "Add to plan"}
                 </Button>
               ) : (
-                <Button type="button" variant="outline" className="flex-1" onClick={() => onAddMany(ids, added < ids.length)}>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => pick.onAddMany(group.items, added < ids.length)}>
                   {added < ids.length ? `Add all ${ids.length}` : "Remove all"}
                 </Button>
               )}
@@ -188,7 +256,7 @@ export default function ListingSheet({ group, focusId, matches, accent, cart, on
                 type="button"
                 className="flex-1 text-white"
                 style={{ background: accent }}
-                onClick={() => { if (!added) onAddMany(single ? [item.id] : ids, true); onRequest(); }}
+                onClick={() => { if (!added) pick.onAddMany(single ? [item] : group.items, true); onRequest(); }}
               >
                 Request a quote
               </Button>
