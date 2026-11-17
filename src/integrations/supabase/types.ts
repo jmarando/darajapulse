@@ -35,6 +35,8 @@ export type Database = {
           name: string
           primary_color: string | null
           slug: string
+          storefront_booking: string
+          storefront_production: Json
           storefront_show_prices: boolean
           subdomain: string | null
           support_email: string | null
@@ -62,6 +64,8 @@ export type Database = {
           name: string
           primary_color?: string | null
           slug: string
+          storefront_booking?: string
+          storefront_production?: Json
           storefront_show_prices?: boolean
           subdomain?: string | null
           support_email?: string | null
@@ -89,6 +93,8 @@ export type Database = {
           name?: string
           primary_color?: string | null
           slug?: string
+          storefront_booking?: string
+          storefront_production?: Json
           storefront_show_prices?: boolean
           subdomain?: string | null
           support_email?: string | null
@@ -3461,9 +3467,11 @@ export type Database = {
       }
       inventory_items: {
         Row: {
+          ad_format: string | null
           agency_id: string
           audience_demo: Json | null
           base_rate_kes: number | null
+          bookable: boolean
           cover_url: string | null
           created_at: string
           deliverable_type: string | null
@@ -3475,8 +3483,10 @@ export type Database = {
           id: string
           is_active: boolean
           kind: Database["public"]["Enums"]["inventory_kind"]
+          min_spend_kes: number | null
           options: Json | null
           platform: string | null
+          price_model: string
           price_unit: string | null
           revisions: number | null
           sort_order: number
@@ -3487,9 +3497,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ad_format?: string | null
           agency_id: string
           audience_demo?: Json | null
           base_rate_kes?: number | null
+          bookable?: boolean
           cover_url?: string | null
           created_at?: string
           deliverable_type?: string | null
@@ -3501,8 +3513,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           kind: Database["public"]["Enums"]["inventory_kind"]
+          min_spend_kes?: number | null
           options?: Json | null
           platform?: string | null
+          price_model?: string
           price_unit?: string | null
           revisions?: number | null
           sort_order?: number
@@ -3513,9 +3527,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ad_format?: string | null
           agency_id?: string
           audience_demo?: Json | null
           base_rate_kes?: number | null
+          bookable?: boolean
           cover_url?: string | null
           created_at?: string
           deliverable_type?: string | null
@@ -3527,8 +3543,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           kind?: Database["public"]["Enums"]["inventory_kind"]
+          min_spend_kes?: number | null
           options?: Json | null
           platform?: string | null
+          price_model?: string
           price_unit?: string | null
           revisions?: number | null
           sort_order?: number
@@ -4559,6 +4577,226 @@ export type Database = {
             foreignKeyName: "shows_agency_id_fkey"
             columns: ["agency_id"]
             isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storefront_booking_events: {
+        Row: {
+          actor: string
+          actor_user: string | null
+          at: string
+          booking_id: string
+          detail: Json
+          id: string
+          kind: string
+        }
+        Insert: {
+          actor: string
+          actor_user?: string | null
+          at?: string
+          booking_id: string
+          detail?: Json
+          id?: string
+          kind: string
+        }
+        Update: {
+          actor?: string
+          actor_user?: string | null
+          at?: string
+          booking_id?: string
+          detail?: Json
+          id?: string
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storefront_booking_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "storefront_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storefront_bookings: {
+        Row: {
+          agency_id: string
+          client_name: string | null
+          company: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          created_at: string
+          end_date: string | null
+          files: Json
+          final_files: Json
+          final_state: string
+          id: string
+          internal_notes: string | null
+          kit: Json
+          kra_pin: string | null
+          lines: Json
+          materials: Json
+          media_kes: number
+          paid_at: string | null
+          pay_method: string
+          payment_claimed_at: string | null
+          payment_claimed_ref: string | null
+          payment_ref: string | null
+          pesapal_attempt: number
+          pesapal_status: string | null
+          pesapal_tracking_id: string | null
+          production_kes: number
+          proof: Json
+          ref: string
+          refund_ref: string | null
+          refunded: boolean
+          request_id: string | null
+          schedule_note: string | null
+          start_date: string
+          status: string
+          token: string
+          total_kes: number
+          updated_at: string
+          vat_kes: number
+        }
+        Insert: {
+          agency_id: string
+          client_name?: string | null
+          company?: string | null
+          contact_email: string
+          contact_name: string
+          contact_phone?: string | null
+          created_at?: string
+          end_date?: string | null
+          files?: Json
+          final_files?: Json
+          final_state?: string
+          id?: string
+          internal_notes?: string | null
+          kit?: Json
+          kra_pin?: string | null
+          lines: Json
+          materials?: Json
+          media_kes: number
+          paid_at?: string | null
+          pay_method: string
+          payment_claimed_at?: string | null
+          payment_claimed_ref?: string | null
+          payment_ref?: string | null
+          pesapal_attempt?: number
+          pesapal_status?: string | null
+          pesapal_tracking_id?: string | null
+          production_kes?: number
+          proof?: Json
+          ref: string
+          refund_ref?: string | null
+          refunded?: boolean
+          request_id?: string | null
+          schedule_note?: string | null
+          start_date: string
+          status?: string
+          token: string
+          total_kes: number
+          updated_at?: string
+          vat_kes: number
+        }
+        Update: {
+          agency_id?: string
+          client_name?: string | null
+          company?: string | null
+          contact_email?: string
+          contact_name?: string
+          contact_phone?: string | null
+          created_at?: string
+          end_date?: string | null
+          files?: Json
+          final_files?: Json
+          final_state?: string
+          id?: string
+          internal_notes?: string | null
+          kit?: Json
+          kra_pin?: string | null
+          lines?: Json
+          materials?: Json
+          media_kes?: number
+          paid_at?: string | null
+          pay_method?: string
+          payment_claimed_at?: string | null
+          payment_claimed_ref?: string | null
+          payment_ref?: string | null
+          pesapal_attempt?: number
+          pesapal_status?: string | null
+          pesapal_tracking_id?: string | null
+          production_kes?: number
+          proof?: Json
+          ref?: string
+          refund_ref?: string | null
+          refunded?: boolean
+          request_id?: string | null
+          schedule_note?: string | null
+          start_date?: string
+          status?: string
+          token?: string
+          total_kes?: number
+          updated_at?: string
+          vat_kes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storefront_bookings_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storefront_bookings_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storefront_payment_details: {
+        Row: {
+          account_name: string | null
+          account_number: string | null
+          agency_id: string
+          bank_branch: string | null
+          bank_name: string | null
+          paybill: string | null
+          paybill_account: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_number?: string | null
+          agency_id: string
+          bank_branch?: string | null
+          bank_name?: string | null
+          paybill?: string | null
+          paybill_account?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string | null
+          account_number?: string | null
+          agency_id?: string
+          bank_branch?: string | null
+          bank_name?: string | null
+          paybill?: string | null
+          paybill_account?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storefront_payment_details_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: true
             referencedRelation: "agencies"
             referencedColumns: ["id"]
           },
