@@ -2,9 +2,13 @@
 // to at the house's published prices.
 import { wayOf, type Listing, type WayKey } from "@/lib/storefront";
 import { kes } from "@/lib/storefrontRequests";
+import type { OfferedItem } from "@/lib/storefrontBooking";
 
-/** One pick: a listing, the choice taken on it (null when it offers none), and how many. */
-export type PlanLine = { id: string; option: string | null; qty: number };
+/**
+ * One pick: a listing, the choice taken on it (null when it offers none), and how many. A listing sold per 1,000 views
+ * (CPM) is bought by budget instead: `budget` is what the buyer spends, and its quantity stays 1.
+ */
+export type PlanLine = { id: string; option: string | null; qty: number; budget?: number };
 
 export const MAX_QTY = 999;
 
@@ -82,6 +86,27 @@ export function unitPrice(item: Pick<Listing, "options" | "price_kes">, option: 
 export const unitOf = (item: Pick<Listing, "options" | "price_unit">, option: string | null): string | null =>
   item.options?.find((x) => x.label === option)?.unit ?? item.price_unit ?? null;
 
+/** Whether a listing is bought by budget at a price per 1,000 views or listens. */
+export const isCpm = (item: Pick<Listing, "price_model"> | null | undefined): boolean => item?.price_model === "cpm";
+
+/** A CPM listing's starting budget: its minimum, else 50,000 views at its lowest price. */
+export function defaultBudget(item: Pick<Listing, "min_spend_kes" | "price_kes" | "options">): number {
+  if (typeof item.min_spend_kes === "number" && item.min_spend_kes > 0) return item.min_spend_kes;
+  const prices = (item.options?.length ? item.options.map((o) => o.price_kes) : [item.price_kes])
+    .filter((p): p is number => typeof p === "number" && p > 0);
+  return prices.length ? Math.min(...prices) * 50 : 10000;
+}
+
+export const setBudget = (lines: PlanLine[], key: string, budget: number): PlanLine[] =>
+  lines.map((l) => (keyOf(l) === key ? { ...l, budget: Math.max(0, Math.round(Number(budget) || 0)) } : l));
+
+/** What a line costs at the shown prices: its budget when sold per 1,000 views, else price × quantity. Null on request. */
+export function lineCost(line: PlanLine, item: Listing): number | null {
+  const price = unitPrice(item, line.option);
+  if (price === null) return null;
+  return isCpm(item) ? line.budget ?? defaultBudget(item) : price * line.qty;
+}
+
 /** The plan's total at the shown prices, how many lines it counts, and how many are on request. */
 export function planTotals(lines: PlanLine[], byId: Map<string, Listing>) {
   let total = 0, priced = 0, onRequest = 0, count = 0;
@@ -89,11 +114,39 @@ export function planTotals(lines: PlanLine[], byId: Map<string, Listing>) {
     const item = byId.get(line.id);
     if (!item) continue;
     count += 1;
-    const price = unitPrice(item, line.option);
-    if (price === null) onRequest += 1;
-    else { total += price * line.qty; priced += 1; }
+    const cost = lineCost(line, item);
+    if (cost === null) onRequest += 1;
+    else { total += cost; priced += 1; }
   }
   return { total, priced, onRequest, count };
+}
+
+/** The plan as a quote request sends it: a CPM line's budget becomes thousands of views, so the request prices it. */
+export function requestLines(lines: PlanLine[], byId: Map<string, Listing>): { id: string; option: string | null; qty: number }[] {
+  return lines.map((l) => {
+    const item = byId.get(l.id);
+    if (!item || !isCpm(item)) return { id: l.id, option: l.option, qty: l.qty };
+    const cpm = unitPrice(item, l.option);
+    return { id: l.id, option: l.option, qty: cpm ? Math.max(1, Math.round((l.budget ?? defaultBudget(item)) / cpm)) : 1 };
+  });
+}
+
+/** A listing as the booking maths prices it. */
+export function toOffered(item: Listing): OfferedItem {
+  return {
+    id: item.id, title: item.title, kind: item.kind, platform: item.platform ?? null,
+    price_kes: item.price_kes ?? null, price_unit: item.price_unit ?? null, options: item.options ?? null,
+    bookable: Boolean(item.bookable), price_model: isCpm(item) ? "cpm" : "unit", min_spend_kes: item.min_spend_kes ?? null,
+    ad_format: item.ad_format ?? null, handle: item.handle ?? null, deliverable_type: item.deliverable_type ?? null,
+    follower_count: item.follower_count ?? null,
+  };
+}
+
+/** Whether Book now shows: the house shows prices and booking is on, or in test mode on the ?book=test link. */
+export function bookingMode(agency: { booking?: string | null; show_prices?: boolean | null }, search: URLSearchParams): "on" | "off" {
+  if (!agency.show_prices) return "off";
+  if (agency.booking === "on") return "on";
+  return agency.booking === "test" && search.get("book") === "test" ? "on" : "off";
 }
 
 const startsWithNumber = (unit: string) => /^\d/.test(unit);
@@ -128,9 +181,20 @@ export function qtyLabel(qty: number, unit: string | null | undefined): string {
  * A card's price line: "KES 60,000 a mention", "From KES 14,000 a spot", "Price on request", or null when the house
  * doesn't show prices.
  */
-export function priceSummary(item: Pick<Listing, "options" | "price_kes" | "price_unit">, showPrices: boolean): string | null {
+export function priceSummary(
+  item: Pick<Listing, "options" | "price_kes" | "price_unit"> & Partial<Pick<Listing, "price_model" | "min_spend_kes">>,
+  showPrices: boolean,
+): string | null {
   if (!showPrices) return null;
   const options = item.options ?? [];
+  if (item.price_model === "cpm") {
+    const prices = (options.length ? options.map((o) => o.price_kes) : [item.price_kes]).filter((p): p is number => typeof p === "number" && p > 0);
+    if (!prices.length) return "Price on request";
+    const per = /listen/i.test(item.price_unit ?? "") ? "per 1,000 listens" : "per 1,000 views";
+    const lead = new Set(prices).size > 1 ? `From ${kes(Math.min(...prices))}` : kes(prices[0]);
+    const min = typeof item.min_spend_kes === "number" && item.min_spend_kes > 0 ? `, minimum ${kes(item.min_spend_kes)}` : "";
+    return `${lead} ${per}${min}`;
+  }
   if (options.length) {
     const prices = options.map((o) => o.price_kes).filter((p): p is number => typeof p === "number" && p > 0);
     if (!prices.length) return "Price on request";

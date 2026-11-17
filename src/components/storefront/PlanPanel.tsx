@@ -2,7 +2,8 @@ import { Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ListingCover from "@/components/storefront/ListingCover";
 import type { Listing } from "@/lib/storefront";
-import { lineKey, MAX_QTY, planTotals, unitOf, unitPrice, unitWord, type PlanLine } from "@/lib/storefrontPlan";
+import { defaultBudget, isCpm, lineKey, MAX_QTY, planTotals, unitOf, unitPrice, unitWord, type PlanLine } from "@/lib/storefrontPlan";
+import { cpmViews } from "@/lib/storefrontBooking";
 import { kes } from "@/lib/storefrontRequests";
 
 /** What changes a plan's lines, each addressed by its lineKey. */
@@ -10,12 +11,14 @@ export type PlanEdits = {
   onQty: (key: string, qty: number) => void;
   onOption: (key: string, option: string) => void;
   onRemove: (key: string) => void;
+  /** A CPM line's budget. */
+  onBudget: (key: string, budget: number) => void;
 };
 
-type LinesProps = { lines: PlanLine[]; byId: Map<string, Listing>; showPrices: boolean } & PlanEdits;
+type LinesProps = { lines: PlanLine[]; byId: Map<string, Listing>; showPrices: boolean; canBook?: boolean } & PlanEdits;
 
 /** The plan's lines: each pick with its choice (changeable), how many, and what it comes to at the shown prices. */
-export function PlanLines({ lines, byId, showPrices, onQty, onOption, onRemove }: LinesProps) {
+export function PlanLines({ lines, byId, showPrices, canBook = false, onQty, onOption, onRemove, onBudget }: LinesProps) {
   return (
     <ul className="divide-y divide-border">
       {lines.map((line) => {
@@ -31,7 +34,12 @@ export function PlanLines({ lines, byId, showPrices, onQty, onOption, onRemove }
             <ListingCover item={item} className="h-10 w-10 shrink-0 rounded-md" badge={false} />
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-1">
-                <div className="min-w-0 flex-1 text-[13px] font-medium leading-snug">{item.title}</div>
+                <div className="min-w-0 flex-1 text-[13px] font-medium leading-snug">
+                  {item.title}
+                  {canBook && !item.bookable && (
+                    <span className="ml-1.5 rounded bg-secondary px-1.5 py-px align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Quote</span>
+                  )}
+                </div>
                 <button
                   type="button"
                   aria-label={`Remove ${what}`}
@@ -57,6 +65,28 @@ export function PlanLines({ lines, byId, showPrices, onQty, onOption, onRemove }
               ) : (line.option || item.deliverable_type) ? (
                 <div className="mt-0.5 truncate text-xs text-muted-foreground">{line.option ?? item.deliverable_type}</div>
               ) : null}
+              {isCpm(item) ? (
+                <div className="mt-2">
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    Budget
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      step={1000}
+                      value={line.budget ?? defaultBudget(item)}
+                      aria-label={`Budget: ${what}`}
+                      onChange={(e) => onBudget(key, Number(e.target.value))}
+                      className="h-7 w-24 rounded-md border border-input bg-transparent px-2 text-right text-xs tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </label>
+                  {price !== null && (
+                    <span className="mt-1 block text-xs tabular-nums text-muted-foreground">
+                      about {cpmViews(line.budget ?? defaultBudget(item), price).toLocaleString("en-KE")} {/listen/i.test(unit ?? "") ? "listens" : "views"}
+                    </span>
+                  )}
+                </div>
+              ) : (
               <div className="mt-2 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <div className="inline-flex items-center rounded-md border border-input">
@@ -87,6 +117,7 @@ export function PlanLines({ lines, byId, showPrices, onQty, onOption, onRemove }
                   </span>
                 )}
               </div>
+              )}
             </div>
           </li>
         );
@@ -114,8 +145,8 @@ export function PlanTotal({ lines, byId, showPrices, houseName }: { lines: PlanL
 }
 
 /** The plan beside the storefront on wide screens: always in view, so every pick and the total show as they change. */
-export function PlanPanel({ lines, byId, showPrices, houseName, accent, onRequest, ...edits }: LinesProps & {
-  houseName: string; accent: string; onRequest: () => void;
+export function PlanPanel({ lines, byId, showPrices, houseName, accent, onRequest, canBook = false, onBook, ...edits }: LinesProps & {
+  houseName: string; accent: string; onRequest: () => void; onBook?: () => void;
 }) {
   return (
     <div className="flex max-h-[calc(100vh-2rem)] flex-col rounded-2xl border border-border bg-card shadow-sm">
@@ -125,16 +156,25 @@ export function PlanPanel({ lines, byId, showPrices, houseName, accent, onReques
       </div>
       {lines.length === 0 ? (
         <p className="px-4 py-5 text-sm leading-relaxed text-muted-foreground">
-          Nothing picked yet. Tap a price on the rate card or press Add on anything you want. Nothing is booked until you send a request.
+          {canBook
+            ? "Nothing picked yet. Tap a price on the rate card or press Add on anything you want, then book and pay online or ask for a quote."
+            : "Nothing picked yet. Tap a price on the rate card or press Add on anything you want. Nothing is booked until you send a request."}
         </p>
       ) : (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto px-4">
-            <PlanLines lines={lines} byId={byId} showPrices={showPrices} {...edits} />
+            <PlanLines lines={lines} byId={byId} showPrices={showPrices} canBook={canBook} {...edits} />
           </div>
           <div className="space-y-3 border-t border-border p-4">
             <PlanTotal lines={lines} byId={byId} showPrices={showPrices} houseName={houseName} />
-            <Button type="button" className="w-full text-white" style={{ background: accent }} onClick={onRequest}>Request a quote</Button>
+            {canBook && onBook ? (
+              <div className="space-y-2">
+                <Button type="button" className="w-full text-white" style={{ background: accent }} onClick={onBook}>Book now</Button>
+                <Button type="button" variant="outline" className="w-full" onClick={onRequest}>Request a quote</Button>
+              </div>
+            ) : (
+              <Button type="button" className="w-full text-white" style={{ background: accent }} onClick={onRequest}>Request a quote</Button>
+            )}
           </div>
         </>
       )}

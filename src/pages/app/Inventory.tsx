@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import RequestsBoard from "@/components/storefront/RequestsBoard";
+import BookingsList from "@/components/storefront/BookingsList";
+import PricesTab from "@/components/storefront/PricesTab";
+import StorefrontSettings from "@/components/storefront/StorefrontSettings";
+import { listRows, tiles } from "@/lib/storefrontBookings";
+import { localToday } from "@/lib/storefrontCheckout";
+import type { BookingRow } from "@/lib/storefrontBooking";
 import { refreshNavCounts } from "@/hooks/useNavCounts";
 import type { StorefrontRequest } from "@/lib/storefrontRequests";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +61,7 @@ export default function Inventory() {
   const [agencyId, setAgencyId] = useState<string>("");
   const [items, setItems] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [storefrontBookings, setStorefrontBookings] = useState<BookingRow[]>([]);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(blank);
@@ -64,10 +70,11 @@ export default function Inventory() {
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   // ?tab=requests opens the Requests tab and ?agency=<slug> picks the storefront: the request emails link here.
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get("tab") === "requests" ? "bookings" : "items";
+  const fromAddress = searchParams.get("tab");
+  const tab = fromAddress === "requests" ? "bookings" : fromAddress === "prices" || fromAddress === "settings" ? fromAddress : "items";
   const setTab = (v: string) => {
     const next = new URLSearchParams(searchParams);
-    if (v === "bookings") next.set("tab", "requests"); else next.delete("tab");
+    if (v === "bookings") next.set("tab", "requests"); else if (v === "items") next.delete("tab"); else next.set("tab", v);
     setSearchParams(next, { replace: true });
   };
 
@@ -88,12 +95,16 @@ export default function Inventory() {
 
   const load = async () => {
     if (!agencyId) return;
-    const [{ data: items }, { data: bks }] = await Promise.all([
+    const [{ data: items }, { data: bks }, { data: sfb }] = await Promise.all([
       supabase.from("inventory_items").select("*").eq("agency_id", agencyId).order("sort_order").order("title"),
       supabase.from("inventory_bookings").select("*").eq("agency_id", agencyId).order("created_at", { ascending: false }),
+      // storefront_bookings isn't in the generated types until the migration is applied and Lovable regenerates them.
+      (supabase as unknown as { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { order: (c: string, o: { ascending: boolean }) => Promise<{ data: BookingRow[] | null }> } } } })
+        .from("storefront_bookings").select("*").eq("agency_id", agencyId).order("created_at", { ascending: false }),
     ]);
     setItems(items ?? []);
     setBookings(bks ?? []);
+    setStorefrontBookings(sfb ?? []);
   };
   useEffect(() => { load(); }, [agencyId]);
 
@@ -212,7 +223,9 @@ export default function Inventory() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="items"><Megaphone className="w-3 h-3 mr-1.5" /> Inventory ({items.length})</TabsTrigger>
-          <TabsTrigger value="bookings"><Inbox className="w-3 h-3 mr-1.5" /> Requests ({bookings.filter(b => b.status === "new").length} new)</TabsTrigger>
+          <TabsTrigger value="bookings"><Inbox className="w-3 h-3 mr-1.5" /> Bookings ({tiles(listRows(storefrontBookings, bookings as StorefrontRequest[], localToday()), storefrontBookings, localToday()).todo} to do)</TabsTrigger>
+          <TabsTrigger value="prices">Prices</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="mt-6">
@@ -363,8 +376,16 @@ export default function Inventory() {
           )}
         </TabsContent>
 
+        <TabsContent value="prices" className="mt-6">
+          <PricesTab items={items} onSaved={load} />
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-6">
+          {agencyId && <StorefrontSettings agencyId={agencyId} />}
+        </TabsContent>
+
         <TabsContent value="bookings" className="mt-6">
-          <RequestsBoard requests={bookings as StorefrontRequest[]} onChanged={() => { load(); refreshNavCounts(); }} />
+          <BookingsList bookings={storefrontBookings} requests={bookings as StorefrontRequest[]} today={localToday()} onChanged={() => { load(); refreshNavCounts(); }} />
         </TabsContent>
       </Tabs>
     </div>

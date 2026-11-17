@@ -15,7 +15,7 @@ import {
   type Listing, type ListingGroup, type PlanMatch, type RequestForm, type Section, type WayKey,
 } from "@/lib/storefront";
 import {
-  addItems, changeOption, countByWay, planTotals, removeItems, removeLine, setQty, toggleItem, toggleLine,
+  addItems, bookingMode, changeOption, countByWay, planTotals, removeItems, removeLine, requestLines, setBudget, setQty, toggleItem, toggleLine,
   type PickApi, type PlanLine,
 } from "@/lib/storefrontPlan";
 import { kes } from "@/lib/storefrontRequests";
@@ -28,6 +28,7 @@ import RateCard from "@/components/storefront/RateCard";
 import OfferList from "@/components/storefront/OfferList";
 import PackageCard from "@/components/storefront/PackageCard";
 import { PlanPanel, type PlanEdits } from "@/components/storefront/PlanPanel";
+import Checkout from "@/components/storefront/booking/Checkout";
 
 const AGE_BANDS = ["18-24", "25-34", "35-44", "45+"];
 /** Social accounts and talent can run to dozens of cards: show this many until the buyer asks for all. */
@@ -36,6 +37,10 @@ const CARD_LIMIT = 12;
 type Agency = {
   id: string; name: string; slug: string; display_name?: string | null; logo_url?: string | null; primary_color?: string | null;
   support_email?: string | null; show_prices?: boolean | null;
+  /** Online booking: "off", "test" (only on the ?book=test link) or "on". */
+  booking?: string | null;
+  /** The house's fees for making audio, banners and print. */
+  production?: Record<string, number> | null;
 };
 
 /** The message a failed function call carries, read from its response body when there is one. */
@@ -64,6 +69,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   // Detail panel and request panel
   const [detail, setDetail] = useState<{ group: ListingGroup; focusId: string | null } | null>(null);
   const [requestOpen, setRequestOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [sentTo, setSentTo] = useState<{ email: string; count: number } | null>(null);
 
@@ -127,7 +133,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
 
   // Title the page after the storefront once it loads, and keep unknown slugs out of
   // search. Runs on path changes too, so the slug-casing redirect above can't reset it.
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   useEffect(() => {
     if (loading) return;
     const name = agency?.display_name || agency?.name;
@@ -141,6 +147,9 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   }, [loading, agency, pathname]);
 
   const showPrices = Boolean(agency?.show_prices);
+  // Book now: the house books online (or this is its test link) and something in the plan can be booked.
+  const canBook = Boolean(agency) && bookingMode(agency ?? {}, new URLSearchParams(search)) === "on"
+    && lines.some((l) => items.find((i) => i.id === l.id)?.bookable);
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
   const platforms = useMemo(() => Array.from(new Set(items.map(i => i.platform).filter(Boolean))) as string[], [items]);
   const categories = useMemo(() => Array.from(new Set(items.flatMap(i => i.tags || []))).sort(), [items]);
@@ -230,7 +239,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
     setSending(true);
     // item_ids too, so the page works with the request function from before choices and numbers.
     const { error } = await supabase.functions.invoke("storefront-request", {
-      body: { agency_slug: agencySlug, item_ids: Array.from(new Set(lines.map(l => l.id))), lines, ...form, brief: matches ? brief : null, website },
+      body: { agency_slug: agencySlug, item_ids: Array.from(new Set(lines.map(l => l.id))), lines: requestLines(lines, byId), ...form, brief: matches ? brief : null, website },
     });
     setSending(false);
     if (error) return toast.error(await functionError(error, "Your request couldn't be sent. Try again."));
@@ -258,6 +267,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
     onQty: (key, qty) => setLines(ls => setQty(ls, key, qty)),
     onOption: (key, option) => setLines(ls => changeOption(ls, key, option)),
     onRemove: (key) => setLines(ls => removeLine(ls, key)),
+    onBudget: (key, budget) => setLines(ls => setBudget(ls, key, budget)),
   };
 
   const offer = naturalList(allSections.map(s => lowerFirst(s.title)));
@@ -459,7 +469,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
 
           <aside className="hidden lg:sticky lg:top-4 lg:block" aria-label="Your plan">
             <PlanPanel lines={lines} byId={byId} showPrices={showPrices} houseName={houseName} accent={accent}
-              onRequest={() => setRequestOpen(true)} {...edits} />
+              onRequest={() => setRequestOpen(true)} canBook={canBook} onBook={() => setCheckoutOpen(true)} {...edits} />
           </aside>
         </div>
       </main>
@@ -475,7 +485,14 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
                 </div>
               )}
             </div>
-            <Button size="sm" className="shrink-0 text-white" style={{ background: accent }} onClick={() => setRequestOpen(true)}>Review and send</Button>
+            {canBook ? (
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" variant="outline" onClick={() => setRequestOpen(true)}>Quote</Button>
+                <Button size="sm" className="text-white" style={{ background: accent }} onClick={() => setCheckoutOpen(true)}>Book now</Button>
+              </div>
+            ) : (
+              <Button size="sm" className="shrink-0 text-white" style={{ background: accent }} onClick={() => setRequestOpen(true)}>Review and send</Button>
+            )}
           </div>
         </div>
       )}
@@ -502,6 +519,17 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
         sending={sending}
         sentTo={sentTo}
         onDone={() => { setRequestOpen(false); setSentTo(null); }}
+      />
+
+      <Checkout
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        agencySlug={agency.slug}
+        houseName={houseName}
+        accent={accent}
+        lines={lines}
+        byId={byId}
+        production={agency.production ?? {}}
       />
 
       <PublicFooter />
