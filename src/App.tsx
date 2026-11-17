@@ -66,6 +66,7 @@ const PortalListening = lazy(() => import("./pages/portal/PortalListening"));
 const PortalChannels = lazy(() => import("./pages/portal/PortalChannels"));
 const PublicStorefront = lazy(() => import("./pages/PublicStorefront"));
 const PublicInvoice = lazy(() => import("./pages/PublicInvoice"));
+const PublicBooking = lazy(() => import("./pages/PublicBooking"));
 const PayInvoice = lazy(() => import("./pages/PayInvoice"));
 const Inventory = lazy(() => import("./pages/app/Inventory"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
@@ -145,6 +146,7 @@ const App = () => (
             <Route path="/connect/brand/:token" element={<ConnectBrand />} />
             <Route path="/shop/:agencySlug" element={<PublicStorefront />} />
             <Route path="/invoice/:token" element={<PublicInvoice />} />
+            <Route path="/booking/:token" element={<PublicBooking />} />
             <Route path="/pay/:token" element={<PayInvoice />} />
             <Route path="/portal" element={<PortalShell />}>
               <Route index element={<PortalOverview />} />

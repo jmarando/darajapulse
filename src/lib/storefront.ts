@@ -24,6 +24,14 @@ export type Listing = {
   price_unit?: string | null;
   /** The choices a listing offers (time of day, pack size, station), each with its own price when prices are shown. */
   options?: PriceOption[] | null;
+  /** Whether a buyer can book and pay for it online (only when the house shows prices). */
+  bookable?: boolean | null;
+  /** "cpm": the price is per 1,000 views or listens and the buyer sets a budget. */
+  price_model?: "unit" | "cpm" | null;
+  /** The least a CPM listing can be booked for. */
+  min_spend_kes?: number | null;
+  /** What material the listing needs and how its preview is drawn (see AD_FORMATS in storefrontBooking). */
+  ad_format?: string | null;
 };
 
 /** One choice on a listing. No price means on request, or that the house doesn't show prices. */
@@ -300,11 +308,16 @@ export function filterGrid(grid: RateGrid, station: string | null): RateGrid {
 /** A way to buy as the page shows it: its listings, a picture, and the price it starts from when prices show. */
 export type Section = { key: WayKey; title: string; blurb: string; items: Listing[]; cover: string | null; fromPrice: number | null };
 
-/** What a listing sells for at the least: its cheapest priced choice, else its own price. Null when on request. */
-function lowestPrice(item: Pick<Listing, "options" | "price_kes">): number | null {
+/**
+ * What a listing sells for at the least: its cheapest priced choice, else its own price; for one sold per 1,000 views,
+ * its minimum spend (its rate per 1,000 isn't something a buyer can buy). Null when on request.
+ */
+function lowestPrice(item: Pick<Listing, "options" | "price_kes" | "price_model" | "min_spend_kes">): number | null {
   const prices = (item.options?.length ? item.options.map((o) => o.price_kes) : [item.price_kes])
     .filter((p): p is number => typeof p === "number" && p > 0);
-  return prices.length ? Math.min(...prices) : null;
+  if (!prices.length) return null;
+  if (item.price_model === "cpm") return typeof item.min_spend_kes === "number" && item.min_spend_kes > 0 ? item.min_spend_kes : null;
+  return Math.min(...prices);
 }
 
 /**

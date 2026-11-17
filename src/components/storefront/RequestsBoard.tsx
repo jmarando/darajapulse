@@ -89,7 +89,7 @@ export default function RequestsBoard({ requests, onChanged }: { requests: Store
   );
 }
 
-function RequestPanel({ request, onClose, onChanged }: { request: StorefrontRequest | null; onClose: () => void; onChanged: () => void }) {
+export function RequestPanel({ request, onClose, onChanged }: { request: StorefrontRequest | null; onClose: () => void; onChanged: () => void }) {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   useEffect(() => { setNotes(request?.internal_notes ?? ""); }, [request?.id, request?.internal_notes]);

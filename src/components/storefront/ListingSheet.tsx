@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import ChannelInsights from "@/components/storefront/ChannelInsights";
+import AdPreview from "@/components/storefront/booking/AdPreview";
+import { isBannerFormat } from "@/lib/adPreview";
 import ListingCover from "@/components/storefront/ListingCover";
 import { PLATFORM_ICON } from "@/components/storefront/platformIcons";
 import {
@@ -231,6 +233,8 @@ export default function ListingSheet({ group, focusId, matches, pick, onClose, o
                 </div>
               )}
 
+              {item.ad_format && <InPlace item={item} accent={accent} />}
+
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {tags.map((t) => <Badge key={t} variant="secondary" className="text-[11px] font-normal">{t}</Badge>)}
@@ -265,5 +269,29 @@ export default function ListingSheet({ group, focusId, matches, pick, onClose, o
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+/** "See it in place": where the ad runs, on a computer or a phone for website ads. */
+function InPlace({ item, accent }: { item: Listing; accent: string }) {
+  const [device, setDevice] = useState<"computer" | "phone">("computer");
+  const web = isBannerFormat(item.ad_format);
+  return (
+    <section aria-labelledby={`in-place-${item.id}`}>
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <h3 id={`in-place-${item.id}`} className="text-sm font-semibold">See it in place</h3>
+        {web && (
+          <div role="group" aria-label="Device" className="inline-flex rounded-full border border-border p-0.5 text-xs">
+            {(["computer", "phone"] as const).map((d) => (
+              <button key={d} type="button" aria-pressed={device === d} onClick={() => setDevice(d)}
+                className={`rounded-full px-2.5 py-1 capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${device === d ? "bg-foreground text-background" : "text-muted-foreground"}`}>
+                {d}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <AdPreview item={item} option={item.options?.[0]?.label ?? null} device={device} accent={accent} />
+    </section>
   );
 }

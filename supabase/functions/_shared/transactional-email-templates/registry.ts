@@ -29,6 +29,8 @@ import { template as brandChannelsCredits } from './brand-channels-credits.tsx'
 import { template as brandOrganicReport } from './brand-organic-report.tsx'
 import { template as storefrontRequest } from './storefront-request.tsx'
 import { template as storefrontRequestReceived } from './storefront-request-received.tsx'
+import { template as storefrontBookingBuyer } from './storefront-booking-buyer.tsx'
+import { template as storefrontBookingHouse } from './storefront-booking-house.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'royco-agreement-amended': roycoAgreementAmended,
@@ -51,4 +53,6 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'brand-organic-report': brandOrganicReport,
   'storefront-request': storefrontRequest,
   'storefront-request-received': storefrontRequestReceived,
+  'storefront-booking-buyer': storefrontBookingBuyer,
+  'storefront-booking-house': storefrontBookingHouse,
 }

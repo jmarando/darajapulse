@@ -127,3 +127,30 @@ describe("the storefront, every way to buy", () => {
     expect(plan().getByText("Radio Africa Group replies with prices and dates within a day.")).toBeInTheDocument();
   });
 });
+
+describe("booking online", () => {
+  const withBooking = (booking: string) => {
+    const s = storefront(true);
+    return {
+      ...s,
+      agency: { ...s.agency, booking },
+      items: s.items.map((i) => (i.id === KISS || i.id === CLASSIC ? { ...i, bookable: true, ad_format: "radio_spot" } : i)),
+    };
+  };
+
+  it("offers Book now beside the quote request when the house books online", async () => {
+    mocks.rpc.mockResolvedValue({ data: withBooking("on"), error: null });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /^Kiss 100, Spot adverts, 6–9 AM/ }));
+    expect(plan().getByRole("button", { name: "Book now" })).toBeInTheDocument();
+    expect(plan().getByRole("button", { name: "Request a quote" })).toBeInTheDocument();
+  });
+
+  it("keeps to quote requests when online booking is off", async () => {
+    mocks.rpc.mockResolvedValue({ data: withBooking("off"), error: null });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /^Kiss 100, Spot adverts, 6–9 AM/ }));
+    expect(plan().queryByRole("button", { name: "Book now" })).toBeNull();
+    expect(plan().getByRole("button", { name: "Request a quote" })).toBeInTheDocument();
+  });
+});
