@@ -1,6 +1,6 @@
 // The media house's list: bookings and quote requests as one plain list, what each needs next and from whom, and the
 // tiles above it.
-import { nextStep, stateOf, type BookingRow, type NextStep } from "@/lib/storefrontBooking";
+import { adDue, nextStep, shortDate, stateOf, type BookingRow, type NextStep } from "@/lib/storefrontBooking";
 import { savedEstimate } from "@/lib/storefrontPlan";
 import type { RequestStage, StorefrontRequest } from "@/lib/storefrontRequests";
 
@@ -53,4 +53,11 @@ export function tiles(rows: ListRow[], bookings: BookingRow[], today: string) {
       .filter((b) => b.paid_at && b.paid_at.slice(0, 7) === month && b.status !== "cancelled")
       .reduce((sum, b) => sum + b.total_kes, 0),
   };
+}
+
+/** How the house's panel describes a material: made by the house, given, or coming later with the day it's due. */
+export function materialNote(m: { mode?: string | null }, startDate: string): string {
+  if (m.mode === "make") return "make it for them";
+  if (m.mode === "later") return `coming later, due ${shortDate(adDue(startDate))}`;
+  return "given";
 }

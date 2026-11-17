@@ -76,7 +76,13 @@ export default function WhenStep({ lines, byId, errors, priced, today, accent, h
 
             {kind === "spread" && (
               <div className="mt-3 space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`qty-${l.key}`}>How many {unitWord(2, unitOf(item, l.option)) || "times"}</Label>
+                    <Input id={`qty-${l.key}`} type="number" inputMode="numeric" min={1} max={999} value={l.qty}
+                      aria-label={`How many: ${item.title}`}
+                      onChange={(e) => set(l.key, { qty: Math.min(999, Math.max(1, Math.round(Number(e.target.value) || 1))) })} />
+                  </div>
                   <DateField id={`start-${l.key}`} label="First day" value={l.start} min={earliest} onChange={(v) => set(l.key, { start: v })} />
                   <DateField id={`end-${l.key}`} label="Last day" value={l.end} min={l.start ?? earliest} onChange={(v) => set(l.key, { end: v })} />
                 </div>

@@ -86,3 +86,12 @@ describe("booking online", () => {
     await waitFor(() => expect(screen.getByRole("heading", { name: "When should it run?" })).toBeInTheDocument());
   });
 });
+
+describe("changing how many spots", () => {
+  it("lets the buyer change the spots in the first step, and the total follows", async () => {
+    renderCheckout();
+    await screen.findByRole("heading", { name: "When should it run?" });
+    fireEvent.change(screen.getByLabelText("How many: Kiss 100: Spot adverts"), { target: { value: "5" } });
+    expect(await screen.findByText("KES 220,400")).toBeInTheDocument();
+  });
+});

@@ -13,6 +13,7 @@ import {
 } from "@/lib/storefrontBooking";
 import { functionError, uploadAll } from "@/lib/storefrontCheckout";
 import { ago, kes, whatsappUrl } from "@/lib/storefrontRequests";
+import { materialNote } from "@/lib/storefrontBookings";
 
 type HouseView = { booking: BookingRow; urls: Record<string, string>; events: { at: string; actor: string; kind: string; detail: Record<string, unknown> }[] };
 
@@ -124,7 +125,7 @@ export default function BookingPanel({ id, today, onClose, onChanged }: { id: st
                 <ul className="space-y-1">
                   {Object.entries(b.materials ?? {}).map(([m, s]) => (
                     <li key={m}>
-                      <span className="font-medium capitalize">{m}</span>: {s.mode === "make" ? "make it for them" : s.mode === "later" ? `coming later (due ${shortDate(b.start_date)})` : "given"}
+                      <span className="font-medium capitalize">{m}</span>: {materialNote(s, b.start_date)}
                       {s.script && <span className="block whitespace-pre-wrap text-muted-foreground">"{s.script}"</span>}
                       {s.topic && <span className="block text-muted-foreground">Topic: {s.topic}{s.guest ? ` · ${s.guest}` : ""}{s.guest_phone ? ` · ${s.guest_phone}` : ""}</span>}
                       {s.notes && <span className="block whitespace-pre-wrap text-muted-foreground">{s.notes}</span>}

@@ -80,3 +80,17 @@ describe("checking files", () => {
     expect(checkFiles([{ slot: "kit_logo", name: "logo.png", type: "image/png", size: 10 }], ["audio"])).toBeNull();
   });
 });
+
+describe("reading files the buyer uploaded", () => {
+  it("keeps each file with its own path, dropping ones that aren't whole", async () => {
+    const { readUploaded } = await import("@/lib/storefrontBooking");
+    expect(readUploaded([
+      { slot: "audio", name: "a.mp3", type: "audio/mpeg", size: 10, path: "x/BK-1/1-a.mp3" },
+      { slot: "audio", name: "broken.mp3" },
+      { slot: "banner", name: "b.png", type: "image/png", size: 20, path: "x/BK-1/2-b.png" },
+    ])).toEqual([
+      { slot: "audio", name: "a.mp3", type: "audio/mpeg", size: 10, path: "x/BK-1/1-a.mp3" },
+      { slot: "banner", name: "b.png", type: "image/png", size: 20, path: "x/BK-1/2-b.png" },
+    ]);
+  });
+});
