@@ -5,7 +5,11 @@ export type RequestStage = "new" | "reviewing" | "quoted" | "won" | "lost";
 export type StorefrontRequest = {
   id: string;
   agency_id: string;
-  items: { title?: string; kind?: string; deliverable_type?: string | null; platform?: string | null; handle?: string | null }[] | null;
+  /** What was picked. Requests since 16 Nov 2026 also carry the choice, how many, the unit and the price it was sent at. */
+  items: {
+    title?: string; kind?: string; deliverable_type?: string | null; platform?: string | null; handle?: string | null;
+    option?: string | null; qty?: number | null; unit?: string | null; price_kes?: number | null;
+  }[] | null;
   contact_name: string;
   contact_email: string;
   contact_phone: string | null;

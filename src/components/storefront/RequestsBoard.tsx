@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ago, kes, pipelineSummary, STAGES, whatsappUrl, type RequestStage, type StorefrontRequest } from "@/lib/storefrontRequests";
+import { savedEstimate, savedLineText } from "@/lib/storefrontPlan";
 
 const STAGE_DOT: Record<RequestStage, string> = {
   new: "bg-sky-500", reviewing: "bg-amber-500", quoted: "bg-violet-500", won: "bg-emerald-500", lost: "bg-muted-foreground/40",
@@ -104,6 +105,7 @@ function RequestPanel({ request, onClose, onChanged }: { request: StorefrontRequ
   };
 
   const wa = whatsappUrl(request?.contact_phone);
+  const estimate = savedEstimate(request?.items ?? []);
   return (
     <Sheet open={!!request} onOpenChange={(o) => { if (!o) onClose(); }}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
@@ -142,13 +144,25 @@ function RequestPanel({ request, onClose, onChanged }: { request: StorefrontRequ
             <div>
               <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground">What they picked</div>
               <ul className="mt-2 space-y-1.5">
-                {(request.items ?? []).map((i, n) => (
-                  <li key={n} className="rounded-lg border border-border px-3 py-2 text-sm">
-                    <div className="font-medium">{i.title}</div>
-                    {(i.deliverable_type || i.handle) && <div className="text-xs text-muted-foreground">{[i.deliverable_type, i.handle].filter(Boolean).join(" · ")}</div>}
-                  </li>
-                ))}
+                {(request.items ?? []).map((i, n) => {
+                  const detail = savedLineText(i);
+                  const price = typeof i.price_kes === "number" && i.price_kes > 0 ? i.price_kes * (Number(i.qty) || 1) : null;
+                  return (
+                    <li key={n} className="flex items-start justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <div className="font-medium">{i.title}</div>
+                        {detail && <div className="text-xs text-muted-foreground">{detail}</div>}
+                      </div>
+                      {price !== null && <div className="shrink-0 tabular-nums">{kes(price)}</div>}
+                    </li>
+                  );
+                })}
               </ul>
+              {estimate && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {kes(estimate.total)} at the prices shown when they sent it{estimate.onRequest ? `, plus ${estimate.onRequest} item${estimate.onRequest === 1 ? "" : "s"} priced on request` : ""}.
+                </p>
+              )}
             </div>
 
             {request.message && (

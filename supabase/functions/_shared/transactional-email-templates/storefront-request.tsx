@@ -47,6 +47,7 @@ const StorefrontRequest = (d: Partial<RequestEmail>) => {
                 </Text>
               ))}
 
+              {d.estimate && <Text style={item}><span style={quiet}>{d.estimate}</span></Text>}
               {d.budget && (<><Text style={label}>Budget</Text><Text style={value}>{d.budget}</Text></>)}
               {d.dates && (<><Text style={label}>Dates</Text><Text style={value}>{d.dates}</Text></>)}
 
