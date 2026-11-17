@@ -37,7 +37,7 @@ export function ToneList({ items, className }: { items: ToneItem[]; className?: 
             </span>
             <div className="min-w-0 flex-1">
               <div className="text-[13.5px] font-medium leading-snug">{n.title}</div>
-              {n.detail && <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">{n.detail}</p>}
+              {n.detail && <p className="mt-0.5 break-words text-[12.5px] leading-relaxed text-muted-foreground">{n.detail}</p>}
             </div>
             {n.to && <ChevronRight className="mt-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />}
           </>
