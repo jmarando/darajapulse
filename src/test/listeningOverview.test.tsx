@@ -48,15 +48,102 @@ const renderPage = (props: Partial<React.ComponentProps<typeof ListeningOverview
   );
 };
 
+const panel = (title: string) => within(screen.getByText(title).closest("section") as HTMLElement);
+
 describe("ListeningOverview", () => {
-  it("leads with the conversation, the finding, coverage and the breakdowns", () => {
+  it("shows the key metrics, sentiment, phrases, voices and the breakdowns", () => {
     renderPage();
-    for (const title of ["The conversation", "Coverage", "Mood over time", "Share of voice", "Where it's happening", "What people talk about", "Most seen in this period"]) {
+    for (const title of [
+      "Key metrics", "Sentiment score", "Sentiment over time", "Share of voice", "Sources", "Most popular phrases", "Top voices",
+      "What people talk about", "Coverage", "Most seen in this period",
+    ]) {
       expect(screen.getByText(title)).toBeInTheDocument();
     }
     expect(screen.getByText("Nuru Coffee is leading")).toBeInTheDocument();
     expect(screen.getByText("Nothing needs attention")).toBeInTheDocument();
     expect(screen.getByText("Watching")).toBeInTheDocument();
+  });
+
+  it("compares each headline number with the period before", () => {
+    renderPage({
+      mentions: [
+        mention("b", { author: "@a", reach: 1_000, shares: 10 }),
+        mention("b", { author: "@b", reach: 1_000, shares: 10 }),
+        mention("b", { author: "@c", reach: 1_000, shares: 10 }),
+        mention("b", { author: "@d", reach: null, shares: 10 }),
+      ],
+      previousMentions: [
+        mention("b", { author: "@a", reach: 2_000, shares: 25 }),
+        mention("b", { author: "@a", reach: 2_000, shares: 25 }),
+      ],
+    });
+    const tile = (label: string) => within(panel("Key metrics").getByText(label).closest("div") as HTMLElement);
+    expect(tile("Mentions").getByText("4")).toBeInTheDocument();
+    expect(tile("Mentions").getByText("+100%")).toBeInTheDocument();
+    expect(tile("Views").getByText("3.0k")).toBeInTheDocument();
+    expect(tile("Views").getByText("-25%")).toBeInTheDocument();
+    expect(tile("Shares").getByText("-20%")).toBeInTheDocument();
+    expect(tile("Creators").getByText("+300%")).toBeInTheDocument();
+  });
+
+  it("calls a number new when the period before had none, and hides the changes when not comparing", () => {
+    const { unmount } = renderPage({ previousMentions: [] });
+    expect(within(panel("Key metrics").getByText("Mentions").closest("div") as HTMLElement).getByText("New")).toBeInTheDocument();
+    unmount();
+    renderPage({ compare: false, previousMentions: [mention("b")] });
+    expect(panel("Key metrics").queryByText(/%$/)).not.toBeInTheDocument();
+    expect(panel("Key metrics").queryByText("New")).not.toBeInTheDocument();
+  });
+
+  it("gives the net sentiment, its change, the split and the verdict", () => {
+    renderPage({
+      mentions: [mention("b"), mention("b"), mention("b"), mention("b", { sentiment: "neutral" }), mention("r")],
+      previousMentions: [mention("b"), mention("b", { sentiment: "negative" })],
+    });
+    const score = panel("Sentiment score");
+    expect(score.getByText("+75")).toBeInTheDocument();
+    expect(score.getByText("+75 pts")).toBeInTheDocument();
+    expect(score.getByText("Mostly positive")).toBeInTheDocument();
+    expect(score.getByRole("img", { name: "75% positive, 25% neutral, 0% negative" })).toBeInTheDocument();
+  });
+
+  it("names the most positive and the most negative day under the chart", () => {
+    renderPage({
+      mentions: [mention("b"), mention("b"), mention("b", { sentiment: "negative" })],
+    });
+    const chart = panel("Sentiment over time");
+    expect(chart.getByText(/Most positive day/)).toHaveTextContent(/2 posts/);
+    expect(chart.getByText(/Most negative day/)).toHaveTextContent(/1 post\b/);
+  });
+
+  it("lists the phrases and hashtags people use, against the period before", () => {
+    renderPage({
+      mentions: [
+        mention("b", { snippet: "Masala chai magic #NuruMorning" }),
+        mention("b", { snippet: "masala chai magic #nurumorning" }),
+        mention("b", { snippet: "Masala chai magic! #NuruMorning" }),
+      ],
+      previousMentions: [mention("b", { snippet: "masala chai" })],
+    });
+    const phrases = panel("Most popular phrases");
+    const row = (text: string) => within(phrases.getAllByText(text).at(-1)!.closest("li") as HTMLElement);
+    expect(row("masala chai").getByText("+200%")).toBeInTheDocument();
+    expect(row("chai magic").getByText("New")).toBeInTheDocument();
+    expect(row("#nurumorning").getByText("New")).toBeInTheDocument();
+  });
+
+  it("ranks the top voices by views and links each to their most-seen post", () => {
+    renderPage({
+      mentions: [
+        mention("b", { author: "@ama", reach: 50_000, url: "https://x/ama-big" }),
+        mention("b", { author: "@ama", reach: 1_000 }),
+        mention("b", { author: "@baraka", reach: 5_000 }),
+      ],
+    });
+    const links = panel("Top voices").getAllByRole("link");
+    expect(links.map((a) => a.textContent)).toEqual([expect.stringContaining("@ama"), expect.stringContaining("@baraka")]);
+    expect(links[0]).toHaveAttribute("href", "https://x/ama-big");
+    expect(within(links[0]).getByText("51.0k views")).toBeInTheDocument();
   });
 
   it("asks for keywords before anything has been set up", () => {
@@ -123,13 +210,13 @@ describe("ListeningOverview", () => {
     unmount();
     renderPage({ period: previousPeriod(lastDays(7)) });
     expect(screen.queryByText("Morning view")).not.toBeInTheDocument();
-    expect(screen.getByText("The conversation")).toBeInTheDocument();
+    expect(screen.getByText("Key metrics")).toBeInTheDocument();
   });
 
   it("leaves the morning view out for a period that ended yesterday, whose posts stop before this morning's", () => {
     const yesterday = new Date(Date.now() - 86_400_000);
     renderPage({ period: dayPeriod(yesterday, yesterday) });
     expect(screen.queryByText("Morning view")).not.toBeInTheDocument();
-    expect(screen.getByText("The conversation")).toBeInTheDocument();
+    expect(screen.getByText("Key metrics")).toBeInTheDocument();
   });
 });

@@ -1,34 +1,23 @@
 import { useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowUpRight, CheckCircle2, Ear } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/dash/Panel";
 import { PatternCard, type Finding } from "@/components/dash/PatternCard";
-import { DeltaChip, StatusChip } from "@/components/dash/chips";
+import { StatusChip } from "@/components/dash/chips";
 import { ToneList, type ToneItem } from "@/components/dash/ToneList";
-import { cn } from "@/lib/utils";
 import {
-  CREDITS_PER_SEARCH, DAILY_CREDITS, KIND_LABEL, SOURCE_LABEL, brandMentions, changeBetween, mentionDate, moodByPeriod,
+  CREDITS_PER_SEARCH, DAILY_CREDITS, KIND_LABEL, SOURCE_LABEL, brandMentions, mentionDate, moodByPeriod,
   moodShare, needsAttention, netMood, onTopic, platformMix, previousPeriod, shareOfVoice, sweepStatus, themes, topMentions, totals,
   type ListeningMention, type ListeningTopic, type Period,
 } from "@/lib/listening";
+import { keyMetrics, popularPhrases, topVoices } from "@/lib/listeningAnalytics";
 import { fmtShort } from "@/lib/reporting";
 import { morningView } from "../../../supabase/functions/_shared/listening-brief";
+import { KeyMetrics, PopularPhrases, SentimentOverTime, SentimentScore, Sources, TopVoices } from "./ListeningAnalytics";
 import MorningViewCard from "./MorningView";
 
-const AXIS = { stroke: "hsl(var(--muted-foreground))", fontSize: 11, tickLine: false, axisLine: false } as const;
-const MOOD_COLOR = {
-  positive: "hsl(var(--status-good))",
-  neutral: "hsl(var(--muted-foreground) / 0.35)",
-  negative: "hsl(var(--status-bad))",
-};
 const MOOD_TONE = { positive: "good", neutral: "neutral", negative: "bad" } as const;
-
-const shortDay = (key: string) => {
-  const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-KE", { day: "numeric", month: "short" });
-};
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString("en-KE", { day: "numeric", month: "short" });
 
@@ -80,11 +69,12 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
   const own = useMemo(() => brandMentions(topics, mentions), [topics, mentions]);
   const ownBefore = useMemo(() => brandMentions(topics, previousMentions), [topics, previousMentions]);
   const ownTotals = useMemo(() => totals(own), [own]);
-  const change = useMemo(() => changeBetween(own, ownBefore), [own, ownBefore]);
-  const creators = useMemo(
-    () => new Set(own.map((m) => m.author?.trim().toLowerCase()).filter((a): a is string => !!a)).size,
-    [own],
-  );
+  const beforeTotals = useMemo(() => totals(ownBefore), [ownBefore]);
+  const metrics = useMemo(() => keyMetrics(own, ownBefore), [own, ownBefore]);
+  const phrases = useMemo(() => popularPhrases(own), [own]);
+  // Every phrase of the period before, even one used once, so a phrase isn't called new when it was there.
+  const phrasesBefore = useMemo(() => popularPhrases(ownBefore, 1), [ownBefore]);
+  const loudest = useMemo(() => topVoices(own), [own]);
   const platforms = useMemo(() => platformMix(own), [own]);
   const allThemes = useMemo(() => themes(own), [own]);
   const themeRows = allThemes.slice(0, 6);
@@ -167,7 +157,6 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
   const hasBrand = topics.some((t) => t.kind === "brand");
   const lead = platforms[0];
   const positive = moodShare(ownTotals, "positive");
-  const neutral = moodShare(ownTotals, "neutral");
   const negative = moodShare(ownTotals, "negative");
   const net = netMood(ownTotals);
   const unread = ownTotals.mentions - ownTotals.rated;
@@ -179,12 +168,6 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
     next.set("tab", tab);
     return `${pathname}?${next.toString()}`;
   };
-
-  const sentence = ownTotals.mentions === 0
-    ? "No on-topic posts about your brand in this period."
-    : `${count(ownTotals.mentions, "post")} in this period${creators ? ` from ${count(creators, "creator")}` : ""}` +
-      `${lead ? `, ${lead.share}% of them on ${lead.label}` : ""}. ` +
-      (positive == null ? "The AI hasn't read their mood yet." : `${positive}% of the posts it read are positive.`);
 
   const findings: Finding[] = [];
   if (voices.length > 1) {
@@ -292,7 +275,6 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
         ? `${leader.label} holds ${leader.share}% of the conversation; ${brandName} has ${brandVoice.share}%.`
         : `${leader.label} holds ${leader.share}% of the conversation.`;
   const themedTotal = allThemes.reduce((n, t) => n + t.mentions, 0);
-  const ratedDays = days.some((d) => d.positive + d.neutral + d.negative > 0);
   // The morning view describes the last day up to now, so it needs a period that reaches now: one that stopped
   // yesterday holds none of this morning's posts and could call it clear.
   const morning = period.end >= now
@@ -302,142 +284,28 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
   return (
     <div className="space-y-4">
       {morning && <MorningViewCard view={morning} brandName={brandName} now={now} />}
-      <div className="grid min-w-0 gap-4 lg:grid-cols-12">
-        <Panel
-          className={cn("flex flex-col", findings.length ? "lg:col-span-4" : "lg:col-span-6")}
-          title="The conversation"
-          subtitle={`Posts about ${brandName}, ${rangeLabel}`}
-          action={<Link to={hrefFor("mentions")} className="whitespace-nowrap text-[12.5px] text-muted-foreground hover:text-foreground">See posts</Link>}
-        >
-          <div className="flex flex-1 flex-col">
-            <div className="text-[56px] font-light leading-none tracking-[-0.035em] tabular-nums">{fmtShort(change.current)}</div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {compare && change.previous > 0 ? (
-                <DeltaChip delta={change.delta}>{change.delta === 0 ? "No change" : `${change.delta > 0 ? "+" : ""}${change.delta} vs the period before`}</DeltaChip>
-              ) : (
-                <StatusChip tone="neutral">{count(change.current, "post")} this period</StatusChip>
-              )}
-              {compare && (
-                <span className="text-[12px] text-muted-foreground">
-                  {change.previous > 0 ? `${fmtShort(change.previous)} in the period before` : "Nothing in the period before"}
-                </span>
-              )}
-            </div>
-            <p className="mt-4 max-w-[42ch] text-[13.5px] leading-relaxed text-muted-foreground">{sentence}</p>
-            <dl className="mt-auto divide-y divide-border/70 pt-4">
-              {[
-                { label: "Posts in this period", value: fmtShort(ownTotals.mentions) },
-                { label: "Read for mood", value: ownTotals.rated ? `${fmtShort(ownTotals.rated)} of ${fmtShort(ownTotals.mentions)}` : "Not read yet" },
-                { label: "Creators", value: creators ? String(creators) : "—" },
-                { label: "Views, where reported", value: ownTotals.reach ? fmtShort(ownTotals.reach) : "—" },
-              ].map((r) => (
-                <div key={r.label} className="flex items-center justify-between gap-3 py-2.5 text-[13.5px]">
-                  <dt className="text-muted-foreground">{r.label}</dt>
-                  <dd className="font-medium tabular-nums">{r.value}</dd>
-                </div>
-              ))}
-            </dl>
-            {ownTotals.rated > 0 && (
-              <div className="mt-4">
-                <div
-                  className="flex h-2.5 overflow-hidden rounded-full bg-secondary"
-                  role="img"
-                  aria-label={`Mood: ${positive}% positive, ${neutral}% neutral, ${negative}% negative`}
-                >
-                  <span className="h-full bg-status-good" style={{ width: `${positive}%` }} />
-                  <span className="h-full bg-muted-foreground/30" style={{ width: `${neutral}%` }} />
-                  <span className="h-full bg-status-bad" style={{ width: `${negative}%` }} />
-                </div>
-                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
-                  <span>{positive}% positive</span>
-                  <span>{neutral}% neutral</span>
-                  <span>{negative}% negative</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </Panel>
-
-        {findings.length > 0 && <PatternCard findings={findings} label="Worth knowing" className="lg:col-span-4" />}
-
-        <Panel
-          className={findings.length ? "lg:col-span-4" : "lg:col-span-6"}
-          title="Coverage"
-          subtitle="How current the listening is"
-          action={<Button variant="ghost" size="sm" className="-mr-2 h-8 px-2 text-[12.5px] text-muted-foreground" onClick={onAddKeywords}>Keywords</Button>}
-        >
-          <ToneList items={coverage} />
-          {sweep.active > 0 && (
-            <div className="mt-4 border-t border-border/70 pt-3.5">
-              <p className="text-[12px] text-muted-foreground">Watching</p>
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {topics.filter((t) => t.active).slice(0, 6).map((t) => (
-                  <li key={t.id}>
-                    <StatusChip tone={t.kind === "brand" ? "info" : "neutral"} className="max-w-full">
-                      <span className="block max-w-[13rem] truncate">{t.label}</span>
-                    </StatusChip>
-                  </li>
-                ))}
-                {sweep.active > 6 && (
-                  <li className="self-center text-[12px] text-muted-foreground">+{sweep.active - 6} more</li>
-                )}
-              </ul>
-            </div>
-          )}
-        </Panel>
-      </div>
+      <KeyMetrics metrics={metrics} compare={compare} brandName={brandName} rangeLabel={rangeLabel} postsHref={hrefFor("mentions")} />
 
       {!hasBrand && (
         <p className="px-1 text-[13px] text-muted-foreground">Add a keyword marked “Your brand” to see your own mood and mentions here.</p>
       )}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-12">
-        <Panel
-          className="lg:col-span-8"
-          title="Mood over time"
-          subtitle={`Rated posts about your brand per day, ${rangeLabel}`}
-          action={
-            <div className="hidden shrink-0 text-right sm:block">
-              <div className="text-[20px] font-light leading-none tracking-[-0.02em] tabular-nums">{fmtShort(ownTotals.rated)}</div>
-              <div className="mt-1 text-[12px] text-muted-foreground">posts read for mood</div>
-            </div>
-          }
-        >
-          <div className="mb-3 flex flex-wrap gap-3 text-[12px] text-muted-foreground">
-            {(["positive", "neutral", "negative"] as const).map((k) => (
-              <span key={k} className="inline-flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-[3px]" style={{ background: MOOD_COLOR[k] }} aria-hidden />
-                {k[0].toUpperCase() + k.slice(1)}
-              </span>
-            ))}
-          </div>
-          {ratedDays ? (
-            <div className="h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={days} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" tickFormatter={shortDay} interval={Math.max(0, Math.floor(days.length / 8))} {...AXIS} />
-                  <YAxis allowDecimals={false} {...AXIS} />
-                  <Tooltip
-                    cursor={{ fill: "hsl(var(--secondary))" }}
-                    labelFormatter={(v) => shortDay(String(v))}
-                    contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 12 }}
-                  />
-                  <Bar dataKey="positive" name="Positive" stackId="m" fill={MOOD_COLOR.positive} maxBarSize={24} isAnimationActive={false} />
-                  <Bar dataKey="neutral" name="Neutral" stackId="m" fill={MOOD_COLOR.neutral} maxBarSize={24} isAnimationActive={false} />
-                  <Bar dataKey="negative" name="Negative" stackId="m" fill={MOOD_COLOR.negative} maxBarSize={24} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <p className="py-10 text-[13px] text-muted-foreground">No posts have been read for mood yet. New posts are read within the hour.</p>
-          )}
-          {unread > 0 && (
-            <p className="mt-2 text-[12px] text-muted-foreground">{count(unread, "post")} not read yet.</p>
-          )}
-        </Panel>
+        <SentimentScore
+          className={findings.length ? "lg:col-span-8" : "lg:col-span-12"}
+          now={ownTotals}
+          before={beforeTotals}
+          compare={compare}
+          brandName={brandName}
+          rangeLabel={rangeLabel}
+        />
+        {findings.length > 0 && <PatternCard findings={findings} label="Worth knowing" className="lg:col-span-4" />}
+      </div>
 
-        <Panel className="lg:col-span-4" title="Share of voice" subtitle={`On-topic mentions, ${rangeLabel}`}>
+      <SentimentOverTime days={days} rated={ownTotals.rated} unread={unread} brandName={brandName} rangeLabel={rangeLabel} />
+
+      <div className="grid min-w-0 gap-4 lg:grid-cols-12">
+        <Panel className="lg:col-span-6" title="Share of voice" subtitle={`On-topic mentions, ${rangeLabel}`}>
           {voices.length ? (
             <ul className="space-y-4">
               {voices.map((v) => (
@@ -470,36 +338,16 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
             <p className="mt-3 text-[12.5px] text-muted-foreground">Add a competitor keyword to compare against.</p>
           )}
         </Panel>
+
+        <Sources className="lg:col-span-6" platforms={platforms} brandName={brandName} rangeLabel={rangeLabel} />
       </div>
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-12">
-        <Panel className="lg:col-span-4" title="Where it's happening" subtitle={`Posts about your brand, ${rangeLabel}`}>
-          {platforms.length ? (
-            <ul className="-my-1 divide-y divide-border/70">
-              {platforms.map((p) => (
-                <li key={p.key} className="py-3.5">
-                  <div className="flex items-baseline justify-between gap-3 text-[13.5px]">
-                    <span className="font-medium">{p.label}</span>
-                    <span className="tabular-nums text-muted-foreground">{p.mentions} · {p.share}%</span>
-                  </div>
-                  <div className="mt-2 h-1.5 rounded-full bg-secondary/70" aria-hidden>
-                    <div className="bar-hatch h-full rounded-full" style={{ width: `${Math.max(p.share, p.mentions ? 2 : 0)}%` }} />
-                  </div>
-                  <div className="mt-1.5 text-[12px] text-muted-foreground">
-                    {p.viewsKnown ? `${fmtShort(p.reach)} views` : "No views reported"}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[13px] text-muted-foreground">No posts about your brand yet.</p>
-          )}
-          {platforms.some((p) => p.key === "reddit" || p.key === "instagram") && (
-            <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">Reddit and Instagram don't report views, so those posts count in mentions only.</p>
-          )}
-        </Panel>
+      <PopularPhrases phrases={phrases} previous={phrasesBefore} compare={compare} brandName={brandName} rangeLabel={rangeLabel} />
 
-        <Panel className="lg:col-span-4" title="What people talk about" subtitle={`Themes in posts about your brand, ${rangeLabel}`}>
+      <div className="grid min-w-0 gap-4 lg:grid-cols-12">
+        <TopVoices className="lg:col-span-7" voices={loudest} brandName={brandName} rangeLabel={rangeLabel} />
+
+        <Panel className="lg:col-span-5" title="What people talk about" subtitle={`Themes in posts about your brand, ${rangeLabel}`}>
           {themeRows.length ? (
             <ul className="-my-1 divide-y divide-border/70">
               {themeRows.map((t) => (
@@ -527,8 +375,10 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
             <p className="text-[13px] text-muted-foreground">Themes appear once posts about your brand have been read.</p>
           )}
         </Panel>
+      </div>
 
-        <Panel className="lg:col-span-4" title="Needs attention" subtitle={`Negative posts about your brand, ${rangeLabel}`}>
+      <div className="grid min-w-0 gap-4 lg:grid-cols-12">
+        <Panel className="lg:col-span-6" title="Needs attention" subtitle={`Negative posts about your brand, ${rangeLabel}`}>
           {attention.length ? (
             <ul className="-my-1 divide-y divide-border/70">
               {attention.map((m) => (
@@ -590,6 +440,32 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
                 </a>
               )}
             </>
+          )}
+        </Panel>
+
+        <Panel
+          className="lg:col-span-6"
+          title="Coverage"
+          subtitle="How current the listening is"
+          action={<Button variant="ghost" size="sm" className="-mr-2 h-8 px-2 text-[12.5px] text-muted-foreground" onClick={onAddKeywords}>Keywords</Button>}
+        >
+          <ToneList items={coverage} />
+          {sweep.active > 0 && (
+            <div className="mt-4 border-t border-border/70 pt-3.5">
+              <p className="text-[12px] text-muted-foreground">Watching</p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {topics.filter((t) => t.active).slice(0, 6).map((t) => (
+                  <li key={t.id}>
+                    <StatusChip tone={t.kind === "brand" ? "info" : "neutral"} className="max-w-full">
+                      <span className="block max-w-[13rem] truncate">{t.label}</span>
+                    </StatusChip>
+                  </li>
+                ))}
+                {sweep.active > 6 && (
+                  <li className="self-center text-[12px] text-muted-foreground">+{sweep.active - 6} more</li>
+                )}
+              </ul>
+            </div>
           )}
         </Panel>
       </div>
