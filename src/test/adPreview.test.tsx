@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import AdPreview from "@/components/storefront/booking/AdPreview";
-import { printBox, propertyName } from "@/lib/adPreview";
+import { printBox, propertyName, radioScript } from "@/lib/adPreview";
 import type { Listing } from "@/lib/storefront";
 
 const leaderboard: Listing = {
@@ -52,5 +52,21 @@ describe("sizes and names", () => {
     expect(propertyName({ title: "The Star online: Leaderboard" })).toBe("The Star");
     expect(propertyName({ title: "Mpasho: Side box (MPU)" })).toBe("Mpasho");
     expect(propertyName({ title: "Kiss 100 on Instagram" })).toBe("Kiss 100");
+  });
+});
+
+describe("a rough radio script from the brand kit", () => {
+  it("reads the headline, the offer and the call to action, and says how long it runs", () => {
+    const s = radioScript({ headline: "Kiss Breakfast Bundle", message: "Two eggs and a coffee for KES 300", cta: "Visit yehtu.com" }, 30);
+    expect(s.lines).toEqual(["[Music up]", "Kiss Breakfast Bundle!", "Two eggs and a coffee for KES 300.", "Visit yehtu.com.", "Kiss Breakfast Bundle.", "[Music out]"]);
+    expect(s.words).toBe(16);
+    expect(s.seconds).toBe(6);
+    expect(s.target).toBe(30);
+  });
+
+  it("keeps the buyer's own punctuation and leaves out what they haven't written", () => {
+    expect(radioScript({ headline: "Fresh bread?", cta: "Call 0712 345 678!" }, 15).lines)
+      .toEqual(["[Music up]", "Fresh bread?", "Call 0712 345 678!", "Fresh bread?", "[Music out]"]);
+    expect(radioScript({}, 30).lines).toEqual([]);
   });
 });

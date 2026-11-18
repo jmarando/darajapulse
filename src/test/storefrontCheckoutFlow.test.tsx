@@ -95,3 +95,32 @@ describe("changing how many spots", () => {
     expect(await screen.findByText("KES 220,400")).toBeInTheDocument();
   });
 });
+
+describe("booking before the house has added its bank details", () => {
+  it("books it and says an invoice with how to pay follows", async () => {
+    mocks.invoke.mockImplementation(async (_name: string, options: { body: { action: string } }) => {
+      if (options.body.action === "options") return { data: { booking: "on", pesapal: false, bank: true, bank_details: false, production: { audio: 50000 }, earliest: "2026-11-20" }, error: null };
+      if (options.body.action === "create") return { data: { token: "tok999", ref: "BK-AAAAAA", total: 1, uploads: [] }, error: null };
+      return { data: {}, error: null };
+    });
+    renderCheckout();
+    await screen.findByRole("heading", { name: "When should it run?" });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByRole("heading", { name: "Your ad" });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByRole("heading", { name: "Your details" });
+    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "Wanjiku Kamau" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "wanjiku@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    await screen.findByRole("heading", { name: "Pay" });
+    expect(screen.queryByText(/can't be paid online/)).not.toBeInTheDocument();
+    expect(screen.getByText(/emails you an invoice/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /If they can't run your booking/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Book now" }));
+
+    expect(await screen.findByText("Booking page")).toBeInTheDocument();
+    const creates = mocks.invoke.mock.calls.filter(([, o]) => (o as { body: { action: string } }).body.action === "create");
+    expect((creates[0][1] as { body: Record<string, unknown> }).body).toMatchObject({ method: "bank" });
+  });
+});

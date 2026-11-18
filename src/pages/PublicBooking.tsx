@@ -144,21 +144,15 @@ export default function PublicBooking() {
                   <dt className="text-muted-foreground">Reason or reference</dt><dd className="font-mono font-semibold">{view.bank.reference}</dd>
                 </dl>
                 <p className="text-sm text-muted-foreground">Send it by PesaLink from your bank app (it lands within minutes), or by M-Pesa. Put {view.ref} as the reason.</p>
-                {view.payment_claimed_ref ? (
-                  <p className="text-sm">You told us the code {view.payment_claimed_ref}. {view.house.name} confirms your booking once the money lands.</p>
-                ) : (
-                  <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => {
-                    e.preventDefault();
-                    const reference = String(new FormData(e.currentTarget).get("reference") ?? "");
-                    act("claim", "claim", { reference }, `Thanks. ${view.house.name} will confirm once the money lands.`);
-                  }}>
-                    <div className="min-w-[200px] flex-1 space-y-1.5">
-                      <Label htmlFor="claim-ref">Transaction code</Label>
-                      <Input id="claim-ref" name="reference" placeholder="From your bank or M-Pesa message" />
-                    </div>
-                    <Button type="submit" disabled={busy !== null}>Sent it? Tell {view.house.name} I've paid</Button>
-                  </form>
-                )}
+                <ClaimPayment view={view} busy={busy !== null} onClaim={(reference) => act("claim", "claim", { reference }, `Thanks. ${view.house.name} will confirm once the money lands.`)} />
+              </div>
+            )}
+            {view.invoice_pending && (
+              <div className="mt-3 space-y-3">
+                <p className="text-sm">
+                  {view.house.name} will email you an invoice with how to pay, usually within a working day. Pay it by PesaLink from your bank app or by M-Pesa, with {view.ref} as the reason.
+                </p>
+                <ClaimPayment view={view} busy={busy !== null} onClaim={(reference) => act("claim", "claim", { reference }, `Thanks. ${view.house.name} will confirm once the money lands.`)} />
               </div>
             )}
             <div className="mt-3 flex flex-wrap gap-2">
@@ -280,6 +274,25 @@ export default function PublicBooking() {
         )}
       </main>
     </div>
+  );
+}
+
+/** "I've paid": the code from the buyer's bank or M-Pesa message, so the house knows what to look for. */
+function ClaimPayment({ view, busy, onClaim }: { view: PublicBookingView; busy: boolean; onClaim: (reference: string) => void }) {
+  if (view.payment_claimed_ref) {
+    return <p className="text-sm">You told us the code {view.payment_claimed_ref}. {view.house.name} confirms your booking once the money lands.</p>;
+  }
+  return (
+    <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => {
+      e.preventDefault();
+      onClaim(String(new FormData(e.currentTarget).get("reference") ?? ""));
+    }}>
+      <div className="min-w-[200px] flex-1 space-y-1.5">
+        <Label htmlFor="claim-ref">Transaction code</Label>
+        <Input id="claim-ref" name="reference" placeholder="From your bank or M-Pesa message" />
+      </div>
+      <Button type="submit" disabled={busy}>Sent it? Tell {view.house.name} I've paid</Button>
+    </form>
   );
 }
 

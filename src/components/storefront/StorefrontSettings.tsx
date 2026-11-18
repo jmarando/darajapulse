@@ -98,6 +98,7 @@ export default function StorefrontSettings({ agencyId }: { agencyId: string }) {
         <h2 className="text-lg font-semibold">Where buyers pay</h2>
         <p className="text-sm text-muted-foreground">
           Shown to a buyer who pays by PesaLink or M-Pesa paybill, with their booking number as the reason. You confirm each payment in Bookings.
+          Until you add them, buyers can still book: they're told you'll email an invoice, and the booking email asks you to send it.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5"><Label htmlFor="st-acname">Account name</Label><Input id="st-acname" value={form.account_name} onChange={set("account_name")} /></div>

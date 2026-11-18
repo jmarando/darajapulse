@@ -7,12 +7,15 @@ const METHOD_LABEL: Record<PayMethod, { title: string; text: string }> = {
   pesapal: { title: "M-Pesa or card", text: "Pay now on Pesapal's secure page; your booking is confirmed straight away." },
   bank: { title: "PesaLink or M-Pesa paybill", text: "We show you the account and your booking number; send it from your bank app or M-Pesa." },
 };
+/** The bank choice when the house hasn't saved its account yet: it sends an invoice with how to pay. */
+const invoiceText = (houseName: string) =>
+  `Book now and ${houseName} emails you an invoice with the account and your booking number; pay it from your bank app or M-Pesa.`;
 
 /** Step 4: the summary, the promise, and how to pay. The Pay button sits in the bar below. */
-export default function PayStep({ priced, totals, quoteLines, byId, houseName, accent, methods, method, onMethod, agreed, onAgreed, error }: {
+export default function PayStep({ priced, totals, quoteLines, byId, houseName, accent, methods, method, onMethod, bankDetails = true, agreed, onAgreed, error }: {
   priced: PricedLine[]; totals: Totals; quoteLines: PlanLine[]; byId: Map<string, Listing>; houseName: string; accent: string;
   methods: { method: PayMethod; note: string | null }[]; method: PayMethod | null; onMethod: (m: PayMethod) => void;
-  agreed: boolean; onAgreed: (v: boolean) => void; error: string | null;
+  bankDetails?: boolean; agreed: boolean; onAgreed: (v: boolean) => void; error: string | null;
 }) {
   return (
     <div className="mt-4 space-y-5">
@@ -51,7 +54,7 @@ export default function PayStep({ priced, totals, quoteLines, byId, houseName, a
             <input type="radio" name="pay-method" checked={method === m} onChange={() => onMethod(m)} className="mt-1" style={{ accentColor: accent }} />
             <span>
               <span className="block text-sm font-medium">{METHOD_LABEL[m].title}</span>
-              <span className="block text-xs text-muted-foreground">{METHOD_LABEL[m].text}</span>
+              <span className="block text-xs text-muted-foreground">{m === "bank" && !bankDetails ? invoiceText(houseName) : METHOD_LABEL[m].text}</span>
               {note && <span className="mt-1 block text-xs font-medium text-amber-700 dark:text-amber-400">{note}</span>}
             </span>
           </label>

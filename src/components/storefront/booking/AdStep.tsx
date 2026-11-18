@@ -4,7 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import AdPreview from "@/components/storefront/booking/AdPreview";
 import type { PreviewKit } from "@/components/storefront/booking/BannerDraft";
-import { adDue, MADE_FOR_A_FEE, shortDate, type Material, type PricedLine, type ProductionFees } from "@/lib/storefrontBooking";
+import { hasPreview, radioScript, secondsOf } from "@/lib/adPreview";
+import { adDue, datesBetween, MADE_FOR_A_FEE, shortDate, spreadSpots, type Material, type PricedLine, type ProductionFees } from "@/lib/storefrontBooking";
 import type { KitState, MaterialState } from "@/lib/storefrontCheckout";
 import { kes } from "@/lib/storefrontRequests";
 import type { Listing } from "@/lib/storefront";
@@ -26,6 +27,12 @@ const useObjectUrls = (files: File[]) => {
   useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls]);
   return urls;
 };
+
+const isAudio = (f: File) => f.type.startsWith("audio/") || /\.(mp3|wav|m4a)$/i.test(f.name);
+/** The days a line's spots fall on, for the week on air; null for lines that aren't spread over a run. */
+const scheduleOf = (p: PricedLine) => (p.kind === "spread" && p.start ? spreadSpots(p.qty, datesBetween(p.start, p.end ?? p.start)) : null);
+const fitNote = (seconds: number, target: number) =>
+  seconds > target ? ": more than fits, so the studio will cut it down" : seconds < target / 2 ? ": room to say more about the offer" : "";
 
 /** Step 2: the material for each kind of ad booked: a file, "make it for me" from a brand kit, words, or later. */
 export default function AdStep({ needed, priced, byId, materials, onMaterials, kit, onKit, fees, accent, houseName }: {
@@ -50,7 +57,11 @@ export default function AdStep({ needed, priced, byId, materials, onMaterials, k
   const bannerFile = get("banner").mode === "have" ? get("banner").files.find((f) => f.type.startsWith("image/")) : undefined;
   const printFile = get("print").mode === "have" ? get("print").files.find((f) => f.type.startsWith("image/")) : undefined;
   const [bannerUrl, printUrl] = useObjectUrls(useMemo(() => [bannerFile, printFile].filter((f): f is File => Boolean(f)), [bannerFile, printFile]));
-  const drafts = priced.filter((p) => /^(web_|print_|social_)/.test(p.adFormat ?? ""));
+  const audioFile = get("audio").mode === "have" ? get("audio").files.find(isAudio) : undefined;
+  const [audioUrl] = useObjectUrls(useMemo(() => (audioFile ? [audioFile] : []), [audioFile]));
+  const previews = priced.filter((p) => hasPreview(p.adFormat));
+  const audioLine = priced.find((p) => p.materials.includes("audio"));
+  const script = needed.includes("audio") && get("audio").mode === "make" ? radioScript(kit, secondsOf(audioLine?.option)) : null;
 
   return (
     <div className="mt-2 space-y-4">
@@ -85,6 +96,7 @@ export default function AdStep({ needed, priced, byId, materials, onMaterials, k
                   <Input type="file" multiple accept={SPECS[m]?.accept} aria-label={`Files: ${LABEL[m]}`}
                     onChange={(e) => set(m, { files: Array.from(e.target.files ?? []).slice(0, 4) })} />
                   <p className="text-xs text-muted-foreground">{SPECS[m]?.text}</p>
+                  {m === "audio" && audioUrl && <audio controls src={audioUrl} aria-label={`Listen to ${audioFile?.name ?? "your advert"}`} className="mt-1 w-full" />}
                 </div>
               )}
               {s.mode === "make" && <p className="mt-3 text-sm text-muted-foreground">{houseName}'s studio makes it from your brand kit below and sends it to you to approve before it runs.</p>}
@@ -151,17 +163,37 @@ export default function AdStep({ needed, priced, byId, materials, onMaterials, k
         </section>
       )}
 
-      {drafts.length > 0 && (usesKit || bannerUrl || printUrl) && (
+      {script && (
+        <section aria-labelledby="script-title" className="rounded-xl border border-border bg-card p-4">
+          <h3 id="script-title" className="text-[15px] font-semibold">Rough script</h3>
+          {script.lines.length ? (
+            <>
+              <div className="mt-2 space-y-1 text-sm">
+                {script.lines.map((l, i) => (
+                  <p key={i} className={l.startsWith("[") ? "text-xs text-muted-foreground" : "font-medium"}>{l}</p>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                About {script.seconds} seconds of {script.target}{fitNote(script.seconds, script.target)}. {houseName}'s studio writes and records the real advert and sends it to you to approve.
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">Add a headline, the offer and a call to action above to see a rough script.</p>
+          )}
+        </section>
+      )}
+
+      {previews.length > 0 && (
         <section aria-labelledby="drafts-title">
           <h3 id="drafts-title" className="text-[15px] font-semibold">See it in place</h3>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
-            {drafts.map((p) => {
+            {previews.map((p, i) => {
               const item = byId.get(p.id);
               if (!item) return null;
               const fileUrl = p.adFormat?.startsWith("print") ? printUrl : p.adFormat?.startsWith("web_") ? bannerUrl : null;
               return (
-                <figure key={`${p.id}-${p.option}`} className="space-y-1.5">
-                  <AdPreview item={item} option={p.option} kit={previewKit} fileUrl={fileUrl ?? null} accent={accent} />
+                <figure key={`${p.id}-${p.option}-${i}`} className="space-y-1.5">
+                  <AdPreview item={item} option={p.option} kit={previewKit} fileUrl={fileUrl ?? null} schedule={scheduleOf(p)} accent={accent} />
                   <figcaption className="text-xs text-muted-foreground">{item.title}{p.option ? `, ${p.option}` : ""}</figcaption>
                 </figure>
               );

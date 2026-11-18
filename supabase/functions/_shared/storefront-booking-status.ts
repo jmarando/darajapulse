@@ -145,7 +145,8 @@ export const houseScope = (caller: { isSuperAdmin: boolean }, hasAccess: boolean
 
 export type BuyerEvent = "created_bank" | "paid" | "changes_requested" | "final_ready" | "approved" | "live" | "done" | "cancelled";
 export type HouseEvent = "new_booking" | "payment_claimed" | "paid" | "files_added" | "final_approved" | "final_changes";
-export type CopyData = { house: string; ref: string; total: string; buyer: string; note?: string | null; start?: string | null };
+/** details: whether the house has saved the account buyers pay into (false: it sends an invoice instead). */
+export type CopyData = { house: string; ref: string; total: string; buyer: string; note?: string | null; start?: string | null; details?: boolean | null };
 export type Copy = { subject: string; heading: string; body: string; button: string };
 
 const said = (who: string, note?: string | null) => (note?.trim() ? ` ${who} says: "${note.trim()}"` : "");
@@ -154,7 +155,10 @@ export function buyerCopy(event: BuyerEvent, d: CopyData): Copy {
   const button = "Open your booking";
   const note = said(d.house, d.note);
   switch (event) {
-    case "created_bank": return {
+    case "created_bank": return d.details === false ? {
+      subject: `Booking ${d.ref}: ${d.house} will send how to pay`, heading: "Your booking is in", button,
+      body: `${d.house} will email you an invoice for ${d.total} with the account to pay by PesaLink or M-Pesa. Use ${d.ref} as the reason when you pay. ${d.house} confirms your booking once the money lands.`,
+    } : {
       subject: `Booking ${d.ref}: how to pay ${d.total}`, heading: "Your booking is in", button,
       body: `Pay ${d.total} by PesaLink from your bank app, or by M-Pesa, to the account below, with ${d.ref} as the reason. ${d.house} confirms your booking once the money lands.`,
     };
@@ -195,7 +199,9 @@ export function houseCopy(event: HouseEvent, d: CopyData): Copy {
   switch (event) {
     case "new_booking": return {
       subject: `New booking ${d.ref} from ${d.buyer}: ${d.total}`, heading: "A new booking", button,
-      body: `${d.buyer} booked ${d.total} and is paying by bank transfer. Confirm it in Bookings once the money lands.`,
+      body: d.details === false
+        ? `${d.buyer} booked ${d.total} and will pay by bank transfer. Send ${d.buyer} an invoice with your account and ${d.ref} as the reason, then confirm the booking in Bookings once the money lands. Save your account under Storefront & bookings, Settings, and buyers see it straight away.`
+        : `${d.buyer} booked ${d.total} and is paying by bank transfer. Confirm it in Bookings once the money lands.`,
     };
     case "payment_claimed": return {
       subject: `${d.buyer} says they've paid booking ${d.ref}`, heading: "Check for a payment", button,

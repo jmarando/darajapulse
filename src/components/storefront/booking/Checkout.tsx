@@ -22,7 +22,7 @@ const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 /**
  * Booking online, over the storefront: when it runs, the ad, who's booking, and paying. Prices come from the same code
  * the server charges with; the server recomputes them all. Pesapal sends the buyer to its own page; a bank transfer
- * goes straight to the booking page with the account details.
+ * goes straight to the booking page with the account details, or word that the house emails an invoice.
  */
 export default function Checkout({ open, onClose, agencySlug, houseName, accent, lines, byId, production, today = localToday() }: {
   open: boolean; onClose: () => void; agencySlug: string; houseName: string; accent: string;
@@ -34,7 +34,7 @@ export default function Checkout({ open, onClose, agencySlug, houseName, accent,
   const [materials, setMaterials] = useState<Partial<Record<Material, MaterialState>>>({});
   const [kit, setKit] = useState<KitState>(emptyKit);
   const [buyer, setBuyer] = useState<BuyerState>(emptyBuyer);
-  const [ready, setReady] = useState<{ pesapal: boolean; bank: boolean } | null>(null);
+  const [ready, setReady] = useState<{ pesapal: boolean; bank: boolean; bank_details: boolean } | null>(null);
   const [fees, setFees] = useState<ProductionFees>(production);
   const [method, setMethod] = useState<PayMethod | null>(null);
   const [agreed, setAgreed] = useState(false);
@@ -50,8 +50,9 @@ export default function Checkout({ open, onClose, agencySlug, houseName, accent,
     setSched(initialSchedule(lines, byId, today));
     setError(null);
     supabase.functions.invoke("storefront-booking", { body: { action: "options", agency_slug: agencySlug } }).then(({ data }) => {
-      const d = (data ?? {}) as { pesapal?: boolean; bank?: boolean; production?: ProductionFees };
-      setReady({ pesapal: Boolean(d.pesapal), bank: Boolean(d.bank) });
+      const d = (data ?? {}) as { pesapal?: boolean; bank?: boolean; bank_details?: boolean; production?: ProductionFees };
+      // An older function only says "bank" when the account is saved.
+      setReady({ pesapal: Boolean(d.pesapal), bank: Boolean(d.bank), bank_details: d.bank_details ?? Boolean(d.bank) });
       if (d.production) setFees(d.production);
     });
     // Only on opening: later plan edits happen inside the checkout.
@@ -109,7 +110,8 @@ export default function Checkout({ open, onClose, agencySlug, houseName, accent,
   };
 
   if (!open) return null;
-  const payLabel = method === "pesapal" ? `Pay ${kes(totals.total)}` : "Book and get bank details";
+  const bankDetails = ready?.bank_details ?? true;
+  const payLabel = method === "pesapal" ? `Pay ${kes(totals.total)}` : bankDetails ? "Book and get bank details" : "Book now";
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-modal="true" aria-label={`Book with ${houseName}`}>
@@ -141,7 +143,7 @@ export default function Checkout({ open, onClose, agencySlug, houseName, accent,
           {step === 2 && <DetailsStep buyer={buyer} onChange={setBuyer} />}
           {step === 3 && (
             <PayStep priced={priced} totals={totals} quoteLines={quoteLines} byId={byId} houseName={houseName} accent={accent}
-              methods={methods} method={method} onMethod={setMethod} agreed={agreed} onAgreed={setAgreed} error={error} />
+              methods={methods} method={method} onMethod={setMethod} bankDetails={bankDetails} agreed={agreed} onAgreed={setAgreed} error={error} />
           )}
           {/* Hidden from people; bots fill it in. */}
           <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden opacity-0">
