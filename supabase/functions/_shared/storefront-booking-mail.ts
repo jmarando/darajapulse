@@ -6,6 +6,7 @@ import { TEMPLATES } from "./transactional-email-templates/registry.ts";
 import { shortDate } from "./storefront-booking.ts";
 import { buyerCopy, houseCopy, lineWhat, type BuyerEvent, type HouseEvent, type LineLike } from "./storefront-booking-status.ts";
 import { bookingUrl, houseRecipientsFor, type Db, type House, type Mailer } from "./storefront-booking-actions.ts";
+import { bankReady } from "./storefront-booking-view.ts";
 
 // A house with no contact address and no admins yet routes to the inbox that already takes demo requests.
 const PLATFORM_INBOX = TEMPLATES["demo-request"]?.to ?? "justin@glab.africa";
@@ -35,9 +36,10 @@ export function mailerFor(sb: Db, booking: MailBooking, house: House, bank: Bank
     lines: (booking.lines ?? []).map((l) => ({ title: l.title, what: lineWhat(l), amount: kes(l.total) })),
     totals: { media: kes(booking.media_kes), production: booking.production_kes ? kes(booking.production_kes) : null, vat: kes(booking.vat_kes), total: kes(booking.total_kes) },
   });
+  const details = bankReady(bank);
   const copyData = (note?: string | null) => ({
     house: house.name, ref: booking.ref, total: kes(booking.total_kes), buyer: booking.company || booking.contact_name,
-    note: note ?? null, start: booking.start_date ? shortDate(booking.start_date) : null,
+    note: note ?? null, start: booking.start_date ? shortDate(booking.start_date) : null, details,
   });
   const send = async (templateName: string, to: string, event: string, templateData: Record<string, unknown>) => {
     const key = `storefront-booking:${event}:${booking.id}:${to}${REPEATS.has(event) ? `:${Date.now()}` : ""}`;
@@ -52,7 +54,7 @@ export function mailerFor(sb: Db, booking: MailBooking, house: House, bank: Bank
       const data = {
         ...base(buyerCopy(event, copyData(note))),
         url: bookingUrl(house, booking.token),
-        bank: event === "created_bank" && bank ? { ...bank, reference: booking.ref } : null,
+        bank: event === "created_bank" && details && bank ? { ...bank, reference: booking.ref } : null,
       };
       await send("storefront-booking-buyer", booking.contact_email, event, data);
     },

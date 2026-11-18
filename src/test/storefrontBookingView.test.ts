@@ -42,6 +42,15 @@ describe("what a buyer's booking link shows", () => {
     expect(publicView(row, ctx({ payment: null })).bank).toBeNull();
   });
 
+  it("tells a bank buyer an invoice is coming when the house has no bank details yet", () => {
+    const view = publicView(row, ctx({ payment: null, ready: { pesapal: false, bank: true, bank_details: false } }));
+    expect(view.bank).toBeNull();
+    expect(view.invoice_pending).toBe(true);
+    expect(publicView(row, ctx()).invoice_pending).toBe(false);
+    expect(publicView({ ...row, status: "paid" }, ctx({ payment: null })).invoice_pending).toBe(false);
+    expect(publicView({ ...row, pay_method: "pesapal" }, ctx({ payment: null })).invoice_pending).toBe(false);
+  });
+
   it("links the files it has a signed address for, and drops the rest", () => {
     expect(publicView(row, ctx()).files).toEqual([{ slot: "audio", name: "spot.mp3", url: "https://files.example/spot" }]);
   });

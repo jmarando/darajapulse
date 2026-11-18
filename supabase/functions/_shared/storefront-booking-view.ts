@@ -29,14 +29,22 @@ export type PaymentDetails = {
 
 export type ViewHouse = { name: string; logo_url: string | null; primary_color: string | null; support_email: string | null };
 
+/**
+ * The ways a storefront takes payment. Bank transfer is always offered: with the house's account saved (bank_details),
+ * the buyer sees it straight away; without it, the house emails an invoice with how to pay.
+ */
+export type PayReady = { pesapal: boolean; bank: boolean; bank_details?: boolean };
+
 export type PublicBookingView = {
   ref: string; status: BookingStatus; final_state: FinalState; timeline: number; next: NextStep;
   house: ViewHouse;
   buyer: { name: string; company: string | null; email: string; phone: string | null; client: string | null };
   lines: Record<string, unknown>[]; totals: Totals;
   pay_method: PayMethod; paid_at: string | null; payment_ref: string | null; payment_claimed_ref: string | null;
-  pesapal_status: string | null; refunded: boolean; ready: { pesapal: boolean; bank: boolean };
+  pesapal_status: string | null; refunded: boolean; ready: PayReady;
   bank: (PaymentDetails & { reference: string }) | null; paid_to: string | null;
+  /** A bank transfer is awaited but the house hasn't saved its account yet, so it emails an invoice with how to pay. */
+  invoice_pending: boolean;
   materials: BookingRow["materials"]; kit: Record<string, unknown>;
   files: { slot: string | null; name: string; url: string }[];
   final_files: { name: string; url: string }[];
@@ -50,12 +58,13 @@ export const bankReady = (p: PaymentDetails | null): boolean =>
 
 export function publicView(
   row: BookingRow,
-  ctx: { house: ViewHouse; payment: PaymentDetails | null; urls: Record<string, string>; ready: { pesapal: boolean; bank: boolean }; today: string },
+  ctx: { house: ViewHouse; payment: PaymentDetails | null; urls: Record<string, string>; ready: PayReady; today: string },
 ): PublicBookingView {
   const state = stateOf(row);
   const linked = (files: SavedFile[] | null | undefined) =>
     (files ?? []).filter((f) => ctx.urls[f.path]).map((f) => ({ slot: f.slot ?? null, name: f.name, url: ctx.urls[f.path] }));
-  const awaitingTransfer = row.status === "awaiting_payment" && row.pay_method === "bank" && bankReady(ctx.payment);
+  const awaitingBank = row.status === "awaiting_payment" && row.pay_method === "bank";
+  const awaitingTransfer = awaitingBank && bankReady(ctx.payment);
   const proof = row.proof && (row.proof.note || row.proof.views || row.proof.spots || row.proof.files?.length)
     ? {
         note: row.proof.note ?? null, views: row.proof.views ?? null, spots: row.proof.spots ?? null,
@@ -81,6 +90,7 @@ export function publicView(
     ready: ctx.ready,
     bank: awaitingTransfer && ctx.payment ? { ...ctx.payment, reference: row.ref } : null,
     paid_to: ctx.payment?.account_name ?? null,
+    invoice_pending: awaitingBank && !awaitingTransfer,
     materials: row.materials ?? {},
     kit: row.kit ?? {},
     files: linked(row.files),

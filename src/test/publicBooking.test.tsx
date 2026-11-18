@@ -22,7 +22,7 @@ const view = (over: Partial<PublicBookingView> = {}): PublicBookingView => ({
   pay_method: "bank", paid_at: null, payment_ref: null, payment_claimed_ref: null, pesapal_status: null, refunded: false,
   ready: { pesapal: false, bank: true },
   bank: { account_name: "Example Account Ltd", bank_name: "Example Bank", bank_branch: "Westlands", account_number: "0011223344", paybill: null, paybill_account: null, reference: "BK-7F3K2Q" },
-  paid_to: "Example Account Ltd", materials: { audio: { mode: "have" } }, kit: {}, files: [], final_files: [], proof: null,
+  paid_to: "Example Account Ltd", invoice_pending: false, materials: { audio: { mode: "have" } }, kit: {}, files: [], final_files: [], proof: null,
   schedule_note: null, created_at: "2026-11-18T08:00:00Z", start_date: "2026-11-24", end_date: "2026-11-28", ad_due: "2026-11-20",
   ...over,
 });
@@ -45,6 +45,13 @@ describe("the booking page", () => {
     fireEvent.change(screen.getByLabelText("Transaction code"), { target: { value: "FT12345" } });
     fireEvent.click(screen.getByRole("button", { name: /I've paid/ }));
     await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("storefront-booking", { body: { action: "claim", token: "tok123abcdefghijklmnopqrs", reference: "FT12345" } }));
+  });
+
+  it("says an invoice is coming when the house hasn't added its bank details", async () => {
+    mocks.invoke.mockResolvedValue({ data: view({ bank: null, invoice_pending: true, ready: { pesapal: false, bank: true, bank_details: false } }), error: null });
+    renderPage();
+    expect(await screen.findByText(/Radio Africa Group will email you an invoice with how to pay/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Transaction code")).toBeInTheDocument();
   });
 
   it("marks a paid booking on its timeline and gives a receipt", async () => {

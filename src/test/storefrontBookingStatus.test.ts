@@ -104,3 +104,18 @@ describe("who may work a house's booking", () => {
     expect(houseScope({ isSuperAdmin: false }, true)).toBe(true);
   });
 });
+
+describe("booking before the house adds its bank details", () => {
+  const d = { house: "Radio Africa Group", ref: "BK-7F3K2Q", total: "KES 98,600", buyer: "Wanjiku Foods" };
+
+  it("tells the buyer an invoice is coming, and the house to send it", () => {
+    const buyer = buyerCopy("created_bank", { ...d, details: false });
+    expect(buyer.subject).toBe("Booking BK-7F3K2Q: Radio Africa Group will send how to pay");
+    expect(buyer.body).toContain("invoice");
+    expect(buyer.body).not.toContain("account below");
+    expect(buyerCopy("created_bank", d).body).toContain("to the account below");
+    const house = houseCopy("new_booking", { ...d, details: false });
+    expect(house.body).toContain("Send Wanjiku Foods an invoice");
+    expect(houseCopy("new_booking", d).body).not.toContain("invoice");
+  });
+});

@@ -11,7 +11,7 @@ import { checkFiles, priceBooking, readCreate, readUploaded, type FileInput } fr
 import { bookingRow, pickLines, type StorefrontItem } from "../_shared/storefront-request.ts";
 import { bookingUrl, houseById, logEvent, settleFromPesapal, type House } from "../_shared/storefront-booking-actions.ts";
 import { mailerFor, type MailBooking } from "../_shared/storefront-booking-mail.ts";
-import { bankReady, publicView, type BookingRow, type PaymentDetails, type SavedFile } from "../_shared/storefront-booking-view.ts";
+import { bankReady, publicView, type BookingRow, type PaymentDetails, type PayReady, type SavedFile } from "../_shared/storefront-booking-view.ts";
 import { pesapalGetStatus, pesapalIpnId, pesapalSubmitOrder, pesapalTokenFor, storefrontPesapalKeys } from "../_shared/pesapal.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -64,7 +64,11 @@ async function paymentDetails(agencyId: string): Promise<PaymentDetails | null> 
   return (data as PaymentDetails | null) ?? null;
 }
 
-const readyFor = (payment: PaymentDetails | null) => ({ pesapal: Boolean(storefrontPesapalKeys()), bank: bankReady(payment) });
+// Bank transfer is always offered: with the house's account saved the buyer sees it straight away, without it the
+// house emails an invoice (the emails and the booking page say which).
+const readyFor = (payment: PaymentDetails | null): PayReady => ({
+  pesapal: Boolean(storefrontPesapalKeys()), bank: true, bank_details: bankReady(payment),
+});
 
 async function bookingByToken(token: unknown): Promise<BookingRow | null> {
   if (typeof token !== "string" || !TOKEN_RE.test(token)) return null;
@@ -250,8 +254,6 @@ async function pay(row: BookingRow) {
 
 async function useBank(row: BookingRow) {
   if (row.status !== "awaiting_payment") return fail("This booking is already paid.");
-  const payment = await paymentDetails(row.agency_id);
-  if (!bankReady(payment)) return fail("Paying by bank transfer isn't set up on this storefront.");
   const switched = row.pay_method !== "bank";
   const next = switched ? await guardedUpdate(row, { pay_method: "bank" }) : row;
   if (!next) return fail("This booking changed just now. Refresh and try again.", 409);
