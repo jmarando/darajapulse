@@ -76,6 +76,15 @@ describe("the storefront showcase", () => {
     expect(showcaseSlides(items.map((i) => ({ ...i, cover_url: null })), true)).toEqual([]);
   });
 
+  it("leaves out listings not named \"Property: Format\", so a house named otherwise keeps its plain headline", () => {
+    const mediamax: Listing[] = [
+      { id: "kameme", kind: "ad_slot", platform: "radio", title: "Kameme Breakfast Show — Live Read", subtitle: "Drive-time live read with Man Saimo na Katta", cover_url: "/kameme.webp" },
+      { id: "k24", kind: "ad_slot", platform: "tv", title: "K24 Prime-time Bulletin Sponsorship", subtitle: "Billboard + bumpers around prime-time bulletin", cover_url: "/k24.webp" },
+    ];
+    expect(showcaseSlides(mediamax, false)).toEqual([]);
+    expect(headlineNames(showcaseSlides(mediamax, false))).toEqual([]);
+  });
+
   it("builds the headline from the first two slides and the first from another way", () => {
     expect(headlineNames(showcaseSlides(items, true))).toEqual(["Classic 105", "Radio Jambo", "The Star"]);
     expect(headlineNames(showcaseSlides(items, true).slice(0, 1))).toEqual([]);

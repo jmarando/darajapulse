@@ -51,12 +51,14 @@ type Property = { name: string; way: WayKey; reach: number; items: Listing[] };
  * Up to `max` slides, one per property: first the properties with the most reach (no more than three from one way to
  * buy), then a property from each way not shown yet, then the rest. Only properties with a picture, and with a price
  * when the house shows prices. Each slide stands for the property's most typical listing and gets a picture no earlier
- * slide uses.
+ * slide uses. Only listings named "Property: Format", as the rate card reads them: without that, a listing's name is a
+ * show or a deal ("Kameme Breakfast Show — Live Read"), not a station a headline can name, so such a house keeps its
+ * plain headline.
  */
 export function showcaseSlides(items: Listing[], showPrices: boolean, max = 5): ShowcaseSlide[] {
   const byName = new Map<string, Listing[]>();
   for (const item of items) {
-    if (!SHOWN.includes(wayOf(item))) continue;
+    if (!SHOWN.includes(wayOf(item)) || !item.title.includes(": ")) continue;
     const name = propertyOf(item);
     byName.set(name, [...(byName.get(name) ?? []), item]);
   }

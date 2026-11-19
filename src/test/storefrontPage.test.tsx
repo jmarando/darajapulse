@@ -183,6 +183,19 @@ describe("the top of the storefront", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Classic 105. Kiss 100. One plan. One booking." })).toBeInTheDocument();
   });
 
+  it("keeps the plain headline, and browses everything, for a house that names its listings otherwise and hides prices", async () => {
+    const s = storefront(false);
+    mocks.rpc.mockResolvedValue({
+      data: { ...s, items: s.items.map((i) => (i.id === KISS ? { ...i, title: "Kiss Breakfast Show — Live Read", cover_url: "/kiss.webp" }
+        : i.id === CLASSIC ? { ...i, title: "Classic Drive Show Sponsorship", cover_url: "/classic.webp" } : i)) },
+      error: null,
+    });
+    renderPage();
+    expect(await screen.findByRole("heading", { level: 1, name: "Every way to advertise with Radio Africa Group" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "What you can book" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Browse everything" })).toBeInTheDocument();
+  });
+
   it("opens the planner, ready to type in, from Plan my campaign", async () => {
     mocks.rpc.mockResolvedValue({ data: withPictures(), error: null });
     renderPage();
