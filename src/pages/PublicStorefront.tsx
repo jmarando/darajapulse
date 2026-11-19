@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, ShoppingCart, SlidersHorizontal, Sparkles } from "lucide-react";
+import { ArrowRight, Search, ShoppingCart, SlidersHorizontal, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import PublicFooter from "@/components/PublicFooter";
 import { applyPageMeta, metaForPath } from "@/lib/seo";
@@ -19,7 +19,10 @@ import {
   type PickApi, type PlanLine,
 } from "@/lib/storefrontPlan";
 import { kes } from "@/lib/storefrontRequests";
+import { fromLine, headlineNames, showcaseSlides } from "@/lib/storefrontShowcase";
+import { readableShade } from "@/lib/houseColor";
 import ListingCard from "@/components/storefront/ListingCard";
+import Showcase from "@/components/storefront/Showcase";
 import ListingSheet from "@/components/storefront/ListingSheet";
 import RequestSheet from "@/components/storefront/RequestSheet";
 import { BriefStudio, PlanResults } from "@/components/storefront/BriefStudio";
@@ -188,6 +191,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   }, [items, q, platformFilter, categoryFilter, minFollowers, maxFollowers, minER, ageBands, genderPref, cityFilter]);
 
   const allSections = useMemo(() => sectionsOf(items, showPrices), [items, showPrices]);
+  const slides = useMemo(() => showcaseSlides(items, showPrices), [items, showPrices]);
   const sections = useMemo(() => sectionsOf(filtered, showPrices), [filtered, showPrices]);
   const picksByWay = useMemo(() => countByWay(lines, byId), [lines, byId]);
   const totals = useMemo(() => planTotals(lines, byId), [lines, byId]);
@@ -251,7 +255,20 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   if (!agency) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Storefront not found</div>;
 
   const accent = agency.primary_color || "hsl(var(--primary))";
+  /** The house colour, darkened when needed so white text on filled buttons reads. */
+  const strong = readableShade(accent);
   const houseName = agency.display_name || agency.name;
+  const bookingOn = bookingMode(agency, new URLSearchParams(search)) === "on";
+  const names = headlineNames(slides);
+  const startPrices = fromLine(allSections, showPrices);
+  const firstWay = allSections.find(s => s.key === "radio")?.key ?? allSections[0]?.key ?? null;
+
+  // The planner, in view and ready to type in.
+  const toPlanner = () => {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById("plan-with-ai")?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    document.getElementById("brief-studio-text")?.focus({ preventScroll: true });
+  };
 
   const pick: PickApi = {
     showPrices,
@@ -271,9 +288,11 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   };
 
   const offer = naturalList(allSections.map(s => lowerFirst(s.title)));
-  const intro = `${offer.charAt(0).toUpperCase()}${offer.slice(1)}. ${showPrices
-    ? "Pick what you need, see the rate-card price as you go, and send one request."
-    : `Pick what you need and send one request. ${houseName} replies with prices within a day.`}`;
+  const intro = `${offer.charAt(0).toUpperCase()}${offer.slice(1)}. ${!showPrices
+    ? `Pick what you need and send one request. ${houseName} replies with prices within a day.`
+    : bookingOn
+      ? "See the rate-card price as you go, then book online or ask for a quote."
+      : "Pick what you need, see the rate-card price as you go, and send one request."}`;
 
   const cards = (s: Section) => {
     const groups = groupListings(s.items);
@@ -311,35 +330,76 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border bg-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
-          {agency.logo_url && <img src={agency.logo_url} alt={houseName} className="h-11 w-auto max-w-[180px] rounded-lg object-contain" />}
-          <div className="flex-1 min-w-0">
-            <div className="text-xs text-muted-foreground">Media kit</div>
-            <div className="font-display text-xl font-semibold truncate">{houseName}</div>
+    // The Daraja Pulse homepage's look (index.css `.daylight`): white, cool greys, the house colour for big type.
+    <div className="daylight min-h-screen bg-background flex flex-col">
+      <header className="bg-background">
+        <div className="max-w-7xl mx-auto flex items-center gap-3 px-4 py-3 sm:px-6 md:min-h-[72px]">
+          {agency.logo_url && <img src={agency.logo_url} alt="" data-no-outline className="h-10 w-auto max-w-[160px] object-contain" />}
+          <div className="flex-1 min-w-0 leading-tight">
+            <div className="text-xs text-muted-foreground">Advertise with</div>
+            <div className="font-display text-[17px] font-semibold truncate">{houseName}</div>
           </div>
-          {agency.support_email && <a className="text-sm text-muted-foreground hover:text-foreground hidden sm:inline" href={`mailto:${agency.support_email}`}>{agency.support_email}</a>}
+          {agency.support_email && <a className="text-sm text-muted-foreground hover:text-foreground hidden md:inline" href={`mailto:${agency.support_email}`}>{agency.support_email}</a>}
           {lines.length > 0 && (
-            <Button size="sm" variant="outline" className="lg:hidden" onClick={() => setRequestOpen(true)}>
+            <Button size="sm" variant="outline" className="rounded-full lg:hidden" onClick={() => setRequestOpen(true)}>
               <ShoppingCart className="w-3.5 h-3.5 mr-1.5" aria-hidden /> Your plan ({lines.length})
             </Button>
           )}
+          <button type="button" onClick={toPlanner}
+            className={`${lines.length ? "hidden sm:inline-flex" : "inline-flex"} h-11 shrink-0 items-center rounded-full px-4 text-sm font-semibold text-white transition-[filter,transform] hover:brightness-110 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+            style={{ background: strong }}>
+            Plan a campaign
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8">
-        <section aria-labelledby="storefront-title">
-          <h1 id="storefront-title" className="max-w-3xl font-display text-3xl font-semibold leading-[1.1] tracking-tight sm:text-[2.5rem]">
-            Every way to advertise with {houseName}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 pb-8">
+        <section aria-labelledby="storefront-title" className="pt-8 text-center md:pt-12 lg:pt-14">
+          <h1 id="storefront-title" className="mx-auto max-w-[1180px] font-display text-[clamp(2.4rem,5.4vw,4.75rem)] font-semibold leading-[0.98] tracking-[-0.05em]">
+            {names.length >= 2 ? (
+              <>
+                {names.map((n, i) => <span key={`${n}-${i}`}>{i > 0 && " "}<span className="inline-block">{n}.</span></span>)}{" "}
+                <span className="block" style={{ color: accent }}>{bookingOn ? "One plan. One booking." : "One plan. One request."}</span>
+              </>
+            ) : (
+              <>Every way to advertise with {houseName}</>
+            )}
           </h1>
-          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{intro}</p>
-          <div className="mt-6">
-            <WaysIndex sections={allSections} showPrices={showPrices} picks={picksByWay} accent={accent} onJump={jump} />
+          <p className="mx-auto mt-6 max-w-[640px] text-[17px] leading-[1.55] text-muted-foreground md:text-xl md:leading-[1.55]">{intro}</p>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <button type="button" onClick={toPlanner}
+              className="group inline-flex h-[54px] items-center justify-center gap-2 rounded-full px-7 text-[15px] font-semibold text-white transition-[filter,transform] hover:brightness-110 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              style={{ background: strong }}>
+              Plan my campaign
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </button>
+            {firstWay && (
+              <button type="button" onClick={() => jump(firstWay)}
+                className="inline-flex h-[54px] items-center justify-center gap-2 rounded-full border border-input bg-background px-7 text-[15px] font-medium transition-[background-color,transform] hover:bg-secondary active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                {firstWay === "radio" ? "Browse the rate card" : "Browse everything"}
+              </button>
+            )}
           </div>
+          {startPrices && <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{startPrices}</p>}
         </section>
 
-        <div className="mt-8">
+        {slides.length >= 2 && (
+          <div className="mt-9 md:mt-12">
+            <Showcase
+              slides={slides} accent={accent} strong={strong}
+              picked={(s) => lines.some(l => l.id === s.item.id && l.option === s.option)}
+              onAdd={(s) => setLines(ls => toggleLine(ls, s.item.id, s.option))}
+              onMore={(s) => jump(s.way)}
+            />
+          </div>
+        )}
+
+        <section aria-labelledby="ways-title" className="mt-10 md:mt-12">
+          <h2 id="ways-title" className="mb-4 font-mono text-[11px] font-normal uppercase tracking-[0.18em] text-muted-foreground">Every way to buy</h2>
+          <WaysIndex sections={allSections} showPrices={showPrices} picks={picksByWay} accent={accent} onJump={jump} />
+        </section>
+
+        <div id="plan-with-ai" className="mt-8 scroll-mt-4">
           <BriefStudio accent={accent} houseName={houseName} brief={brief} setBrief={setBrief} running={matching} onRun={runMatch} />
         </div>
 

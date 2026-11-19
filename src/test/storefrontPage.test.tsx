@@ -154,3 +154,39 @@ describe("booking online", () => {
     expect(plan().getByRole("button", { name: "Request a quote" })).toBeInTheDocument();
   });
 });
+
+describe("the top of the storefront", () => {
+  // With pictures, the biggest stations lead the headline and the showcase.
+  const withPictures = (booking = "off") => {
+    const s = storefront(true);
+    return {
+      ...s,
+      agency: { ...s.agency, booking },
+      items: s.items.map((i) => (i.id === KISS || i.id === CLASSIC ? { ...i, cover_url: `/${i.id}.webp`, bookable: true, ad_format: "radio_spot" } : i)),
+    };
+  };
+
+  it("names the biggest stations, says it takes one request, and adds a station from the showcase", async () => {
+    mocks.rpc.mockResolvedValue({ data: withPictures(), error: null });
+    renderPage();
+    expect(await screen.findByRole("heading", { level: 1, name: "Classic 105. Kiss 100. One plan. One request." })).toBeInTheDocument();
+    expect(screen.getByText("Radio from KES 14,000 · Talent from KES 60,000")).toBeInTheDocument();
+    const showcase = within(screen.getByRole("region", { name: "What you can book" }));
+    fireEvent.click(showcase.getByRole("button", { name: "Add Classic 105, 6–9 AM to your plan" }));
+    expect(plan().getByText("Classic 105: Spot adverts")).toBeInTheDocument();
+    expect(showcase.getByRole("button", { name: "Classic 105: in your plan. Take it out" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("says one booking when the house books online", async () => {
+    mocks.rpc.mockResolvedValue({ data: withPictures("on"), error: null });
+    renderPage();
+    expect(await screen.findByRole("heading", { level: 1, name: "Classic 105. Kiss 100. One plan. One booking." })).toBeInTheDocument();
+  });
+
+  it("opens the planner, ready to type in, from Plan my campaign", async () => {
+    mocks.rpc.mockResolvedValue({ data: withPictures(), error: null });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Plan my campaign" }));
+    expect(document.activeElement).toBe(document.getElementById("brief-studio-text"));
+  });
+});

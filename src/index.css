@@ -305,6 +305,12 @@
     80%, 100% { transform: scale(2.6); opacity: 0; }
   }
   .animate-ping-soft { animation: ping-soft 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+  /* The storefront showcase: the current tab's bar fills while its slide is shown. */
+  @keyframes showcase-fill {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

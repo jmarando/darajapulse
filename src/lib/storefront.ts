@@ -312,7 +312,7 @@ export type Section = { key: WayKey; title: string; blurb: string; items: Listin
  * What a listing sells for at the least: its cheapest priced choice, else its own price; for one sold per 1,000 views,
  * its minimum spend (its rate per 1,000 isn't something a buyer can buy). Null when on request.
  */
-function lowestPrice(item: Pick<Listing, "options" | "price_kes" | "price_model" | "min_spend_kes">): number | null {
+export function lowestPrice(item: Pick<Listing, "options" | "price_kes" | "price_model" | "min_spend_kes">): number | null {
   const prices = (item.options?.length ? item.options.map((o) => o.price_kes) : [item.price_kes])
     .filter((p): p is number => typeof p === "number" && p > 0);
   if (!prices.length) return null;
