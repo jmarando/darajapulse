@@ -376,7 +376,7 @@ export default function PublicStorefront({ slug }: { slug?: string } = {}) {
             {firstWay && (
               <button type="button" onClick={() => jump(firstWay)}
                 className="inline-flex h-[54px] items-center justify-center gap-2 rounded-full border border-input bg-background px-7 text-[15px] font-medium transition-[background-color,transform] hover:bg-secondary active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                {firstWay === "radio" ? "Browse the rate card" : "Browse everything"}
+                {firstWay === "radio" && showPrices ? "Browse the rate card" : "Browse everything"}
               </button>
             )}
           </div>
