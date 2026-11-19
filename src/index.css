@@ -30,6 +30,8 @@
     /* Daraja accent — warm Kenyan ochre */
     --accent: 0 99% 57%;
     --accent-foreground: 36 30% 97%;
+    /* The accent deepened: white text on it, and small text in it on white, pass 4.5:1. */
+    --accent-strong: 0 78% 47%;
 
     --highlight: 38 92% 56%;
     --success: 142 55% 38%;
@@ -185,6 +187,24 @@
     --series: 3 81% 60%;
     --series-2: 225 90% 67%;
   }
+
+  /* Homepage theme: a white page, cool neutral greys and the brand red. Set on the
+     homepage's own root, so the shared footer inside it follows, and dialogs
+     rendered in portals keep the public theme. */
+  .daylight {
+    --background: 0 0% 100%;
+    --foreground: 240 6% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 6% 10%;
+    --secondary: 240 6% 97%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 6% 97%;
+    --muted-foreground: 240 4% 40%;
+    --border: 240 6% 90%;
+    --input: 240 5% 84%;
+    /* Deepened so small green text, and white text on green, pass 4.5:1. */
+    --success: 141 61% 30%;
+  }
 }
 
 @layer base {
@@ -258,11 +278,6 @@
   }
   .animate-pulse-counter { animation: pulse-counter 2.4s ease-in-out infinite; }
 
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-  }
-
   /* Make-interfaces-feel-better: split & stagger enter.
      Combines opacity, translateY, and a brief blur. Apply with
      `animate-enter` + inline `animation-delay` per chunk. */
@@ -277,13 +292,6 @@
   }
 
   /* Homepage motion. Each one has a reduced-motion fallback at the end of this file. */
-  .animate-float { animation: float 6s ease-in-out infinite; }
-
-  @keyframes marquee {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
-  }
-  .animate-marquee { animation: marquee 45s linear infinite; }
 
   /* A bright segment travelling along a pulse path drawn with pathLength="1000". */
   @keyframes pulse-trace {
@@ -297,18 +305,11 @@
     80%, 100% { transform: scale(2.6); opacity: 0; }
   }
   .animate-ping-soft { animation: ping-soft 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; }
-
-  /* Matches STAGE_MS in the homepage lifecycle tabs. */
-  @keyframes progress-fill {
-    from { transform: scaleX(0); }
-    to   { transform: scaleX(1); }
-  }
-  .animate-progress { animation: progress-fill 6s linear forwards; transform-origin: left; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-enter { animation: none; opacity: 1; }
-  .animate-float, .animate-marquee, .animate-ping-soft, .animate-progress { animation: none; }
+  .animate-ping-soft { animation: none; }
   .animate-pulse-trace { animation: none; stroke-dasharray: none; opacity: 0.8; }
 }
 
