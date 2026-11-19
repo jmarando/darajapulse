@@ -6,7 +6,7 @@ import { isRootHost } from "@/lib/appUrl";
 export const SITE_URL = "https://darajapulse.com";
 
 export const DEFAULT_DESCRIPTION =
-  "Brief, sign, approve, measure and pay creators across TikTok, Instagram, YouTube, Facebook and X. 3,200+ creators in Kenya, Uganda and Tanzania.";
+  "Brief, measure and pay creators across TikTok, Instagram, YouTube, Facebook and X, plus social listening. 3,200+ creators in Kenya, Uganda and Tanzania.";
 
 export type PageMeta = {
   title: string;

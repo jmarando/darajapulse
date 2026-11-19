@@ -10,7 +10,7 @@ const PublicFooter = () => (
         </div>
         <p className="font-display italic text-muted-foreground mt-3 text-sm">Influence, measured.</p>
         <p className="text-muted-foreground mt-3 text-xs leading-relaxed max-w-sm">
-          Brief, publish, measure & pay creators across TikTok, Instagram, YouTube & X. Built in Nairobi.
+          Run creator campaigns from brief to payout, and hear what people are saying about your brand. Built in Nairobi.
         </p>
       </div>
 
