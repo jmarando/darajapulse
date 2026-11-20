@@ -3824,6 +3824,7 @@ export type Database = {
           label: string
           last_note: string | null
           last_scanned_at: string | null
+          news_searched_at: string | null
           query: string
         }
         Insert: {
@@ -3837,6 +3838,7 @@ export type Database = {
           label: string
           last_note?: string | null
           last_scanned_at?: string | null
+          news_searched_at?: string | null
           query: string
         }
         Update: {
@@ -3850,6 +3852,7 @@ export type Database = {
           label?: string
           last_note?: string | null
           last_scanned_at?: string | null
+          news_searched_at?: string | null
           query?: string
         }
         Relationships: [
