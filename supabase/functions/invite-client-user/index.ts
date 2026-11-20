@@ -29,6 +29,11 @@ Deno.serve(async (req) => {
 
     const { client_id, email, campaign_ids } = await req.json();
     if (!client_id || !email) return new Response(JSON.stringify({ error: "client_id and email required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // The client must belong to an agency the caller works for; super admins pass (public.agency_staff_on_agency).
+    const { data: target } = await admin.from("clients").select("agency_id").eq("id", client_id).maybeSingle();
+    if (!target) return new Response(JSON.stringify({ error: "client not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const { data: isStaff } = await admin.rpc("agency_staff_on_agency", { _user_id: u.user.id, _agency_id: target.agency_id });
+    if (isStaff !== true) return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const campaignIds: string[] = Array.isArray(campaign_ids) ? campaign_ids.filter((x) => typeof x === "string") : [];
 
     const cleanEmail = String(email).trim().toLowerCase();
