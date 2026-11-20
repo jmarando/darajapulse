@@ -15,7 +15,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { denied, requireCaller } from "../_shared/auth.ts";
 import { clip } from "../_shared/clip.ts";
-import type { ListeningCountry } from "../_shared/listening-country.ts";
+import { type ListeningCountry, countryOf } from "../_shared/listening-country.ts";
 import { THEMES, byCountry, moodPrompt } from "../_shared/listening-moods.ts";
 import { type MentionRow, storeMentions } from "../_shared/listening-store.ts";
 import { type Found, OutOfCreditsError, SEARCHES, SOCIAL_SEARCH_ENABLED } from "../_shared/social-search.ts";
@@ -42,7 +42,7 @@ const json = (body: unknown, status = 200) =>
 
 type Topic = {
   id: string; client_id: string; kind: string; label: string; query: string; exclude_terms: string[];
-  clients: { name: string; agency_id: string } | null;
+  clients: { name: string; agency_id: string; country: string | null } | null;
 };
 
 /** The exclude terms drop a post when any of them appears in its text. */
@@ -66,7 +66,9 @@ async function sweepTopic(topic: Topic, credits: { blocked: Set<string>; used: M
   }
   credits.used.set(agency, (credits.used.get(agency) ?? 0) + CREDITS_PER_SEARCH);
 
-  const settled = await Promise.allSettled(SEARCHES.map((search) => search(topic.query, 10)));
+  // A Ugandan brand searches TikTok and YouTube from Uganda; a Kenyan brand as it always has (no region).
+  const region = countryOf(topic.clients?.country).searchRegion;
+  const settled = await Promise.allSettled(SEARCHES.map((search) => search(topic.query, 10, region)));
   const hits: Found[] = [];
   const problems: string[] = [];
   for (const r of settled) {
@@ -197,7 +199,7 @@ Deno.serve(async (req) => {
       const since = new Date(Date.now() - gapHours * 3600_000).toISOString();
       let q = supabase
         .from("listening_topics")
-        .select("id, client_id, kind, label, query, exclude_terms, clients(name, agency_id)")
+        .select("id, client_id, kind, label, query, exclude_terms, clients(name, agency_id, country)")
         .eq("active", true)
         .or(`last_scanned_at.is.null,last_scanned_at.lt.${since}`)
         .order("last_scanned_at", { ascending: true, nullsFirst: true })

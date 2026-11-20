@@ -112,3 +112,28 @@ describe("listening-sweep reading moods", () => {
     expect(db.state.moods).toHaveLength(4);
   });
 });
+
+describe("listening-sweep searching", () => {
+  const topic = (country: string | null) => ({
+    id: "t1", client_id: "c1", kind: "brand", label: "Nile Crisps", query: "Nile Crisps", exclude_terms: [],
+    clients: { name: "Nile Crisps", agency_id: "a1", country },
+  });
+
+  it("searches TikTok and YouTube from Uganda for a Ugandan brand", async () => {
+    db.state.topics = [topic("Uganda")];
+    await sweep();
+    expect(asked.searches.map((u) => [u.pathname, u.searchParams.get("region")])).toEqual([
+      ["/v1/tiktok/search/keyword", "UG"],
+      ["/v1/youtube/search", "UG"],
+      ["/v1/reddit/search", null],
+      ["/v2/instagram/reels/search", null],
+    ]);
+  });
+
+  it("searches for a Kenyan brand exactly as before, with no region", async () => {
+    db.state.topics = [topic("Kenya")];
+    await sweep();
+    expect(asked.searches).toHaveLength(4);
+    expect(asked.searches.every((u) => !u.searchParams.has("region"))).toBe(true);
+  });
+});
