@@ -15,7 +15,8 @@ export const OUTLETS: { name: string; domains: string[]; feeds: string[] }[] = [
   { name: "Business Daily", domains: ["businessdailyafrica.com"], feeds: ["https://www.businessdailyafrica.com/bd/rss.xml"] },
   {
     name: "Capital FM",
-    domains: ["capitalfm.co.ke"],
+    // Its lifestyle feed links to capitalfm.africa.
+    domains: ["capitalfm.co.ke", "capitalfm.africa"],
     feeds: ["https://www.capitalfm.co.ke/news/feed/", "https://www.capitalfm.co.ke/business/feed/", "https://www.capitalfm.co.ke/lifestyle/feed/"],
   },
   { name: "Kenyans.co.ke", domains: ["kenyans.co.ke"], feeds: ["https://www.kenyans.co.ke/feeds/news"] },
@@ -187,13 +188,18 @@ export const fold = (s: string) =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
-/** How a keyword reads: its search as written ("quoted phrases", OR, -left out) and its exclude words. */
+/**
+ * How a keyword reads: its search as written ("quoted phrases", OR, -left out) and its exclude words. A leading "The"
+ * stays with the word after it ("The Star" reads as the phrase "the star"), because dropping it as filler can leave
+ * one common word that matches anything ("The Star Kenya" once read as just "star").
+ */
 export function searchFor(topic: { query: string; exclude_terms?: string[] | null }): Search {
   const all: string[][] = [];
   const none: string[] = [];
   let or = false;
   let kept = false;
-  for (const m of String(topic.query || "").matchAll(/(-?)"([^"]*)"|(\S+)/g)) {
+  const query = String(topic.query || "").replace(/^\s*the\s+([^\s"-][^\s"]*)/i, '"the $1"');
+  for (const m of query.matchAll(/(-?)"([^"]*)"|(\S+)/g)) {
     const quoted = m[2] !== undefined;
     const word = m[3] ?? "";
     if (!quoted && word === "OR") {
