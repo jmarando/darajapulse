@@ -16,20 +16,36 @@ afterEach(() => {
 });
 
 describe("readFeeds", () => {
-  it("reads every feed side by side, keeps a story found twice once, and names the sites with no feed that answered", async () => {
-    const first = OUTLETS.find((o) => o.feeds.length)!;
+  const feedsOf = (country: "KE" | "UG") => [
+    ...OUTLETS.filter((o) => o.country === country).flatMap((o) => o.feeds),
+    ...BLOG_FEEDS.filter((b) => b.country === country).map((b) => b.url),
+  ];
+
+  it("reads every Kenyan feed side by side, keeps a story found twice once, and names the sites with no feed that answered", async () => {
+    const first = OUTLETS.find((o) => o.country === "KE" && o.feeds.length)!;
     const fetch = vi.fn(async (url: string, _init?: RequestInit) => {
       if (url === first.feeds[0]) return new Response("nope", { status: 503 });
       return new Response(rss("https://example.com/same-story", "A story"), { status: 200 });
     });
     vi.stubGlobal("fetch", fetch);
-    const out = await readFeeds();
-    const feeds = OUTLETS.flatMap((o) => o.feeds).length + BLOG_FEEDS.length;
-    expect(fetch).toHaveBeenCalledTimes(feeds);
+    const out = await readFeeds(["KE"]);
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(feedsOf("KE"));
     expect(fetch.mock.calls.every(([, init]) => (init as RequestInit).signal instanceof AbortSignal)).toBe(true);
-    expect(out.stories).toHaveLength(1);
+    expect(out.stories).toEqual([expect.objectContaining({ url: "https://example.com/same-story", country: "KE" })]);
     // An outlet with a second feed that answered is not counted as failed.
     expect(out.failed).toEqual(first.feeds.length > 1 ? [] : [first.name]);
+  });
+
+  it("reads only the countries asked for, and tags each story with its feed's country", async () => {
+    const fetch = vi.fn(async (url: string) => new Response(rss(`${url}#story`, "A story"), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const out = await readFeeds(["UG"]);
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(feedsOf("UG"));
+    expect(out.stories).toHaveLength(feedsOf("UG").length);
+    expect(out.stories.every((s) => s.country === "UG")).toBe(true);
+    fetch.mockClear();
+    expect((await readFeeds([])).stories).toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 
@@ -53,6 +69,13 @@ describe("serperSearch", () => {
     expect((init.headers as Record<string, string>)["X-API-KEY"]).toBe("k-1");
     expect(init.signal).toBeInstanceOf(AbortSignal);
     expect(pages.map((p) => p.url)).toEqual(["https://example.com/a"]);
+  });
+
+  it("asks for Uganda when the brand is Ugandan", async () => {
+    const fetch = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ news: [] })));
+    vi.stubGlobal("fetch", fetch);
+    await serperSearch("news", "Nile Crisps", "k-1", "ug");
+    expect(JSON.parse(String((fetch.mock.calls[0][1] as RequestInit).body))).toEqual({ q: "Nile Crisps", gl: "ug", hl: "en", tbs: "qdr:w", num: 10 });
   });
 
   it("uses the web search for web pages", async () => {

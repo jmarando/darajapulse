@@ -1,7 +1,8 @@
-// Listening's news and the web: every hour, the Kenyan outlets' and blogs' own feeds, and a Serper news and web search
-// for up to eight keywords (each about once a day). Pages that match a keyword strictly are stored as News (a named
-// outlet) or Web (any other site or blog); the hourly listening-sweep reads their mood like any other post. The
-// decisions are in _shared/news-sweep.ts and _shared/news-feeds.ts; this reads the data and stores.
+// Listening's news and the web: every hour, the outlets' and blogs' own feeds for each country with brands listening
+// (Kenya, Uganda), and a Serper news and web search in the brand's country for up to eight keywords (each about once a
+// day). Pages that match a keyword strictly are stored as News (a named outlet) or Web (any other site or blog); the
+// hourly listening-sweep reads their mood like any other post. The decisions are in _shared/news-sweep.ts and
+// _shared/news-feeds.ts; this reads the data and stores.
 //
 // Caller: the hourly job only (x-job-key "listening-news", minute 50).
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -9,7 +10,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { denied, requireCaller } from "../_shared/auth.ts";
 import { titleKey } from "../_shared/news-feeds.ts";
 import { readFeeds, serperKey, serperSearch } from "../_shared/news-sources.ts";
-import { type NewsTopic, runNewsSweep } from "../_shared/news-sweep.ts";
+import { type NewsTopicRow, feedCountries, newsTopic, runNewsSweep } from "../_shared/news-sweep.ts";
 
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
@@ -61,18 +62,19 @@ Deno.serve(async (req) => {
     if (!locked) return json({ ran: false, note: "Another news run is going. The next one is in an hour." });
 
     try {
-      const { data: topics, error } = await supabase
+      const { data: rows, error } = await supabase
         .from("listening_topics")
-        .select("id, client_id, query, exclude_terms, news_searched_at")
+        .select("id, client_id, query, exclude_terms, news_searched_at, clients(country)")
         .eq("active", true);
       if (error) throw error;
+      const topics = ((rows ?? []) as unknown as NewsTopicRow[]).map(newsTopic);
 
-      const [{ stories, failed }, titles] = await Promise.all([readFeeds(), heldTitles()]);
+      const [{ stories, failed }, titles] = await Promise.all([readFeeds(feedCountries(topics)), heldTitles()]);
       const key = serperKey();
       const run = await runNewsSweep({
-        topics: (topics ?? []) as NewsTopic[],
+        topics,
         stories,
-        search: key ? (kind, query) => serperSearch(kind, query, key) : null,
+        search: key ? (kind, query, gl) => serperSearch(kind, query, key, gl) : null,
         titles,
         save: async (batch) => {
           const { data, error } = await supabase
@@ -94,7 +96,7 @@ Deno.serve(async (req) => {
 
       return json({
         ran: true,
-        keywords: (topics ?? []).length,
+        keywords: topics.length,
         feed_stories: stories.length,
         feeds_failed: failed,
         search: key ? "on" : "off: no SERPER_API_KEY",

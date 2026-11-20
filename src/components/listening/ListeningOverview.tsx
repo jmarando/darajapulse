@@ -14,6 +14,7 @@ import {
 import { keyMetrics, popularPhrases, topVoices } from "@/lib/listeningAnalytics";
 import { fmtShort } from "@/lib/reporting";
 import { morningView } from "../../../supabase/functions/_shared/listening-brief";
+import { LISTENING_COUNTRIES, type ListeningCountry } from "../../../supabase/functions/_shared/listening-country";
 import { KeyMetrics, PopularPhrases, SentimentOverTime, SentimentScore, Sources, TopVoices } from "./ListeningAnalytics";
 import MorningViewCard from "./MorningView";
 
@@ -43,7 +44,7 @@ function Figure({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function ListeningOverview({ brandName, topics, mentions, previousMentions, period, rangeLabel, compare, hasAnyPosts, onResetPeriod, creditsToday, showCredits, onAddKeywords }: {
+export default function ListeningOverview({ brandName, topics, mentions, previousMentions, period, rangeLabel, compare, hasAnyPosts, onResetPeriod, creditsToday, showCredits, onAddKeywords, country = LISTENING_COUNTRIES.KE }: {
   brandName: string;
   topics: ListeningTopic[];
   /** The chosen period's mentions only. */
@@ -61,6 +62,8 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
   /** Agency staff see the day's credit use. */
   showCredits: boolean;
   onAddKeywords: () => void;
+  /** The brand's country, which names the news sites searched. */
+  country?: ListeningCountry;
 }) {
   const { search, pathname } = useLocation();
   const now = Date.now();
@@ -101,7 +104,7 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
           <h2 className="text-[17px] font-medium">Start listening</h2>
           <p className="max-w-lg text-[14px] text-muted-foreground">
             Add your brand name, your competitors and the category you sell in. We search TikTok, Instagram, YouTube and Reddit for them
-            twice a day, and Kenyan news sites and blogs every day, and read the mood of every post.
+            twice a day, and {country.adjective} news sites and blogs every day, and read the mood of every post.
           </p>
           <ul className="grid w-full gap-3 pt-1 text-[13px] text-muted-foreground sm:grid-cols-3">
             <li><span className="font-medium text-foreground">1. Your brand</span><br />The name, product or campaign hashtag you want to watch.</li>
@@ -140,7 +143,7 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
           <h2 className="text-[17px] font-medium">{sweep.active ? `Listening is on for ${brandName}` : "Listening is paused"}</h2>
           <p className="max-w-xl text-[14px] text-muted-foreground">
             {sweep.active
-              ? `We search ${count(sweep.active, "keyword")} on TikTok, Instagram, YouTube and Reddit twice a day, and on Kenyan news sites and blogs every day. Nothing on-topic has come back yet.`
+              ? `We search ${count(sweep.active, "keyword")} on TikTok, Instagram, YouTube and Reddit twice a day, and on ${country.adjective} news sites and blogs every day. Nothing on-topic has come back yet.`
               : "Every keyword is paused, so nothing is being searched. Turn one on to start listening again."}
           </p>
           {failing && <p className="text-[12.5px] text-status-warn">{failing.last_note}</p>}

@@ -10,9 +10,13 @@
 //     searched in the last hour
 // Credits: 4 per keyword search, out of 300 per agency per Nairobi day
 // (LISTENING_DAILY_CREDITS overrides), logged to scraper_credit_log.
+// A brand's country (clients.country) sets the mood prompt's languages and where TikTok and YouTube search from; see
+// _shared/listening-country.ts. Kenyan brands run exactly as before.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { denied, requireCaller } from "../_shared/auth.ts";
 import { clip } from "../_shared/clip.ts";
+import { type ListeningCountry, countryOf } from "../_shared/listening-country.ts";
+import { THEMES, byCountry, moodPrompt } from "../_shared/listening-moods.ts";
 import { type MentionRow, storeMentions } from "../_shared/listening-store.ts";
 import { type Found, OutOfCreditsError, SEARCHES, SOCIAL_SEARCH_ENABLED } from "../_shared/social-search.ts";
 
@@ -32,15 +36,13 @@ const DAILY_CREDITS = (() => {
 })();
 const CREDITS_PER_SEARCH = SEARCHES.length;
 const LOCK = "listening-sweep";
-const OFF_TOPIC = "off-topic";
-const THEMES = ["price", "quality", "taste", "availability", "service", "delivery", "packaging", "advert", "promotion", "health", "safety", "competitor", "general", OFF_TOPIC];
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 type Topic = {
   id: string; client_id: string; kind: string; label: string; query: string; exclude_terms: string[];
-  clients: { name: string; agency_id: string } | null;
+  clients: { name: string; agency_id: string; country: string | null } | null;
 };
 
 /** The exclude terms drop a post when any of them appears in its text. */
@@ -64,7 +66,9 @@ async function sweepTopic(topic: Topic, credits: { blocked: Set<string>; used: M
   }
   credits.used.set(agency, (credits.used.get(agency) ?? 0) + CREDITS_PER_SEARCH);
 
-  const settled = await Promise.allSettled(SEARCHES.map((search) => search(topic.query, 10)));
+  // A Ugandan brand searches TikTok and YouTube from Uganda; a Kenyan brand as it always has (no region).
+  const region = countryOf(topic.clients?.country).searchRegion;
+  const settled = await Promise.allSettled(SEARCHES.map((search) => search(topic.query, 10, region)));
   const hits: Found[] = [];
   const problems: string[] = [];
   for (const r of settled) {
@@ -111,8 +115,8 @@ async function sweepTopic(topic: Topic, credits: { blocked: Set<string>; used: M
 
 type Verdict = { id: string; sentiment: "positive" | "neutral" | "negative"; theme: string; score: number };
 
-/** The AI reads mood and theme for a batch of mentions, each against its brand and keyword. */
-async function readMoods(items: { id: string; brand: string; keyword: string; kind: string; text: string }[]): Promise<Verdict[]> {
+/** The AI reads mood and theme for a batch of one country's mentions, each against its brand and keyword. */
+async function readMoods(country: ListeningCountry, items: { id: string; brand: string; keyword: string; kind: string; text: string }[]): Promise<Verdict[]> {
   if (!LOVABLE_API_KEY || !items.length) return [];
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -122,20 +126,7 @@ async function readMoods(items: { id: string; brand: string; keyword: string; ki
       model: "google/gemini-3-flash-preview",
       response_format: { type: "json_object" },
       messages: [
-        {
-          role: "system",
-          content: [
-            "You monitor Kenyan social media for consumer brands. Text may mix English, Kiswahili and Sheng.",
-            "Each item names the brand that is listening, the keyword that found the post, and whether that keyword is",
-            "the brand itself, a competitor, or a category the brand sells in.",
-            "For each item give the mood of the post towards the keyword's subject (the competitor, for a competitor keyword):",
-            "positive, neutral or negative, and a score from -1 (furious) to 1 (delighted).",
-            `Give one theme from: ${THEMES.join(", ")}.`,
-            `Use "${OFF_TOPIC}" when the post is not about the keyword's subject at all (a different meaning of the word,`,
-            "another country's unrelated news, spam).",
-            'Reply as JSON: {"results":[{"id":"…","sentiment":"positive|neutral|negative","theme":"…","score":0}]}, keeping each id.',
-          ].join(" "),
-        },
+        { role: "system", content: moodPrompt(country) },
         { role: "user", content: JSON.stringify(items) },
       ],
     }),
@@ -150,7 +141,7 @@ async function readMoods(items: { id: string; brand: string; keyword: string; ki
 async function classifyPending(clientId: string | null, limit: number) {
   let q = supabase
     .from("listening_mentions")
-    .select("id, title, snippet, topic_id, listening_topics(label, query, kind), clients(name)")
+    .select("id, title, snippet, topic_id, listening_topics(label, query, kind), clients(name, country)")
     .is("sentiment", null)
     .order("found_at", { ascending: false })
     .limit(limit);
@@ -158,23 +149,25 @@ async function classifyPending(clientId: string | null, limit: number) {
   const { data: pending, error } = await q;
   if (error) throw error;
   let classified = 0;
-  const list = (pending ?? []) as any[];
-  for (let i = 0; i < list.length; i += 30) {
-    const batch = list.slice(i, i + 30).map((m) => ({
-      id: m.id as string,
-      brand: m.clients?.name ?? "",
-      keyword: m.listening_topics ? `${m.listening_topics.label} (${m.listening_topics.query})` : "",
-      kind: m.listening_topics?.kind ?? "brand",
-      text: clip(`${m.title ?? ""} — ${m.snippet ?? ""}`, 600) ?? "",
-    }));
-    const known = new Set(batch.map((b) => b.id));
-    for (const v of await readMoods(batch)) {
-      if (!known.has(v?.id) || !["positive", "neutral", "negative"].includes(v.sentiment)) continue;
-      const theme = THEMES.includes(String(v.theme).toLowerCase()) ? String(v.theme).toLowerCase() : "general";
-      const score = Math.max(-1, Math.min(1, Number(v.score) || 0));
-      const { error: upErr } = await supabase.from("listening_mentions")
-        .update({ sentiment: v.sentiment, sentiment_score: score, theme }).eq("id", v.id);
-      if (!upErr) classified++;
+  // Each country's posts are read with that country's prompt.
+  for (const { country, items } of byCountry((pending ?? []) as any[], (m) => m.clients?.country)) {
+    for (let i = 0; i < items.length; i += 30) {
+      const batch = items.slice(i, i + 30).map((m) => ({
+        id: m.id as string,
+        brand: m.clients?.name ?? "",
+        keyword: m.listening_topics ? `${m.listening_topics.label} (${m.listening_topics.query})` : "",
+        kind: m.listening_topics?.kind ?? "brand",
+        text: clip(`${m.title ?? ""} — ${m.snippet ?? ""}`, 600) ?? "",
+      }));
+      const known = new Set(batch.map((b) => b.id));
+      for (const v of await readMoods(country, batch)) {
+        if (!known.has(v?.id) || !["positive", "neutral", "negative"].includes(v.sentiment)) continue;
+        const theme = THEMES.includes(String(v.theme).toLowerCase()) ? String(v.theme).toLowerCase() : "general";
+        const score = Math.max(-1, Math.min(1, Number(v.score) || 0));
+        const { error: upErr } = await supabase.from("listening_mentions")
+          .update({ sentiment: v.sentiment, sentiment_score: score, theme }).eq("id", v.id);
+        if (!upErr) classified++;
+      }
     }
   }
   return classified;
@@ -206,7 +199,7 @@ Deno.serve(async (req) => {
       const since = new Date(Date.now() - gapHours * 3600_000).toISOString();
       let q = supabase
         .from("listening_topics")
-        .select("id, client_id, kind, label, query, exclude_terms, clients(name, agency_id)")
+        .select("id, client_id, kind, label, query, exclude_terms, clients(name, agency_id, country)")
         .eq("active", true)
         .or(`last_scanned_at.is.null,last_scanned_at.lt.${since}`)
         .order("last_scanned_at", { ascending: true, nullsFirst: true })

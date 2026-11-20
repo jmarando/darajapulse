@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Found } from "../../supabase/functions/_shared/news-feeds";
+import type { FeedStory, Found } from "../../supabase/functions/_shared/news-feeds";
 import type { MentionRow } from "../../supabase/functions/_shared/listening-store";
-import { type NewsTopic, SearchRefused, dueForSearch, runNewsSweep, searchQuery } from "../../supabase/functions/_shared/news-sweep";
+import { type NewsTopic, SearchRefused, dueForSearch, feedCountries, newsTopic, runNewsSweep, searchQuery } from "../../supabase/functions/_shared/news-sweep";
 
 // What the hourly news run decides: which keywords get a news and web search this run, which pages count for a keyword
 // (strict matches, fresh, not a story the keyword already holds), and how they are stored. Invented brands only.
@@ -15,14 +15,17 @@ const topic = (o: Partial<NewsTopic> = {}): NewsTopic => ({
   query: "Nuru Coffee",
   exclude_terms: [],
   news_searched_at: null,
+  country: null,
   ...o,
 });
-const page = (o: Partial<Found> = {}): Found => ({
+/** A page from a feed (Kenyan unless told) or a search. */
+const page = (o: Partial<FeedStory> = {}): FeedStory => ({
   url: "https://www.nation.africa/business/nuru-coffee-plant",
   title: "Nuru Coffee opens a plant in Thika",
   snippet: "The plant employs 200",
   publishedAt: new Date(NOW - 5 * HOUR).toISOString(),
   site: null,
+  country: "KE",
   ...o,
 });
 
@@ -116,7 +119,7 @@ describe("runNewsSweep", () => {
         : [page({ url: "https://www.foodblog.example.com/nuru", title: "Nuru Coffee taste test" })],
     );
     const out = await runNewsSweep({ topics: [topic()], stories: [], search, titles: new Map(), save, now: NOW });
-    expect(search.mock.calls).toEqual([["news", "Nuru Coffee"], ["web", "Nuru Coffee"]]);
+    expect(search.mock.calls).toEqual([["news", "Nuru Coffee", "ke"], ["web", "Nuru Coffee", "ke"]]);
     expect(rows.map((r) => [r.source, r.author])).toEqual([
       ["news", "Business Daily"],
       ["web", "foodblog.example.com"],
@@ -184,5 +187,64 @@ describe("runNewsSweep", () => {
       now: NOW,
     });
     expect(rows.map((r) => r.topic_id)).toEqual(["t-nuru", "t-rival"]);
+  });
+});
+
+describe("by the brand's country", () => {
+  it("gives each keyword only its own country's feed stories", async () => {
+    const { rows, save } = saver();
+    await runNewsSweep({
+      topics: [topic(), topic({ id: "t-ug", client_id: "c-ug", query: "Nile Crisps", country: "Uganda" })],
+      stories: [
+        page({ title: "Nuru Coffee and Nile Crisps sign a deal" }),
+        page({ url: "https://www.monitor.co.ug/uganda/business/nile-crisps-deal", title: "Nile Crisps and Nuru Coffee sign a deal", country: "UG" }),
+      ],
+      search: null,
+      titles: new Map(),
+      save,
+      now: NOW,
+    });
+    expect(rows.map((r) => [r.topic_id, r.author])).toEqual([["t-nuru", "Nation"], ["t-ug", "Daily Monitor"]]);
+  });
+
+  it("searches a Ugandan brand's keyword in Uganda, and a Kenyan brand's in Kenya", async () => {
+    const search = vi.fn(async () => [] as Found[]);
+    await runNewsSweep({
+      topics: [topic(), topic({ id: "t-ug", query: "Nile Crisps", country: "Uganda" })],
+      stories: [],
+      search,
+      titles: new Map(),
+      save: saver().save,
+      now: NOW,
+    });
+    expect(search.mock.calls).toEqual([
+      ["news", "Nuru Coffee", "ke"], ["web", "Nuru Coffee", "ke"],
+      ["news", "Nile Crisps", "ug"], ["web", "Nile Crisps", "ug"],
+    ]);
+  });
+
+  it("leaves Uganda out of a Ugandan brand's keyword, as Kenya is for a Kenyan one", async () => {
+    const { rows, save } = saver();
+    await runNewsSweep({
+      topics: [topic({ id: "t-ug", query: "Nile Crisps Uganda", country: "Uganda" })],
+      stories: [page({ url: "https://nilepost.co.ug/business/1/nile-crisps", title: "Nile Crisps opens a plant in Jinja", country: "UG" })],
+      search: null,
+      titles: new Map(),
+      save,
+      now: NOW,
+    });
+    expect(rows.map((r) => r.url)).toEqual(["https://nilepost.co.ug/business/1/nile-crisps"]);
+  });
+
+  it("takes the brand's country from the keyword's joined client row", () => {
+    expect(newsTopic({ id: "t", client_id: "c", query: "Nile Crisps", exclude_terms: [], news_searched_at: null, clients: { country: "Uganda" } }))
+      .toEqual({ id: "t", client_id: "c", query: "Nile Crisps", exclude_terms: [], news_searched_at: null, country: "Uganda" });
+    expect(newsTopic({ id: "t", client_id: "c", query: "Nuru", exclude_terms: [], news_searched_at: null, clients: null }).country).toBeNull();
+  });
+
+  it("reads the feeds of the countries with keywords, Kenya alone while every brand is Kenyan", () => {
+    expect(feedCountries([topic(), topic({ country: "Kenya" })])).toEqual(["KE"]);
+    expect(feedCountries([topic(), topic({ country: "Uganda" })])).toEqual(["KE", "UG"]);
+    expect(feedCountries([])).toEqual([]);
   });
 });

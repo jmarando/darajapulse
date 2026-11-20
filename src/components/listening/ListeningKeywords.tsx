@@ -14,6 +14,7 @@ import ListeningAlerts from "./ListeningAlerts";
 import {
   CREDITS_PER_SEARCH, DAILY_CREDITS, KIND_LABEL, MAX_ACTIVE_TOPICS, parseTerms, type ListeningTopic, type TopicKind,
 } from "@/lib/listening";
+import { LISTENING_COUNTRIES, type ListeningCountry } from "../../../supabase/functions/_shared/listening-country";
 
 // The listening tables are newer than the generated database types.
 const db = supabase as unknown as SupabaseClient;
@@ -27,7 +28,7 @@ const KIND_HINT: Record<TopicKind, string> = {
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("en-KE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Not yet";
 
-export default function ListeningKeywords({ clientId, brandName, topics, creditsToday, showCredits, canEditAlerts, onChanged }: {
+export default function ListeningKeywords({ clientId, brandName, topics, creditsToday, showCredits, canEditAlerts, onChanged, country = LISTENING_COUNTRIES.KE }: {
   clientId: string;
   brandName: string;
   topics: ListeningTopic[];
@@ -35,6 +36,8 @@ export default function ListeningKeywords({ clientId, brandName, topics, credits
   showCredits: boolean;
   canEditAlerts: boolean;
   onChanged: () => void;
+  /** The brand's country, which names the news sites searched and the languages read. */
+  country?: ListeningCountry;
 }) {
   const [kind, setKind] = useState<TopicKind>(topics.some((t) => t.kind === "brand") ? "competitor" : "brand");
   const [label, setLabel] = useState("");
@@ -144,8 +147,8 @@ export default function ListeningKeywords({ clientId, brandName, topics, credits
 
         <Panel title="How it works">
           <ul className="space-y-2 text-[13px] text-muted-foreground">
-            <li>Each keyword is searched on TikTok, Instagram, YouTube and Reddit twice a day, and new keywords within the hour. Kenyan news sites and blogs are checked every hour, and searched for each keyword once a day.</li>
-            <li>AI reads every post for its mood and theme, in English, Kiswahili or Sheng, and sets aside posts that aren't about the keyword.</li>
+            <li>Each keyword is searched on TikTok, Instagram, YouTube and Reddit twice a day, and new keywords within the hour. {country.adjective} news sites and blogs are checked every hour, and searched for each keyword once a day.</li>
+            <li>AI reads every post for its mood and theme, in {country.languages}, and sets aside posts that aren't about the keyword.</li>
             {showCredits && (
               <li>
                 One search costs {CREDITS_PER_SEARCH} ScrapeCreators credits. Your agency's brands share {DAILY_CREDITS} a day

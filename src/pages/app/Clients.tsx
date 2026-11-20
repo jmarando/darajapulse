@@ -10,14 +10,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Building2, ArrowUpRight, UserPlus, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { AgencyTeamPicker } from "@/components/AgencyTeamPicker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { COUNTRY_NAMES, defaultCountry } from "../../../supabase/functions/_shared/listening-country";
 
 const Clients = () => {
   const { agencyIds, isSuperAdmin, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", industry: "", primary_contact_name: "", primary_contact_email: "", logo_url: "" });
+  const [form, setForm] = useState({ name: "", industry: "", country: "", primary_contact_name: "", primary_contact_email: "", logo_url: "" });
   const [autoInvite, setAutoInvite] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +52,7 @@ const Clients = () => {
   useEffect(() => { load(); }, [authLoading, isSuperAdmin, agencyIds.join(",")]);
 
   const reset = () => {
-    setForm({ name: "", industry: "", primary_contact_name: "", primary_contact_email: "", logo_url: "" });
+    setForm({ name: "", industry: "", country: "", primary_contact_name: "", primary_contact_email: "", logo_url: "" });
     setEditing(null);
     setAutoInvite(true);
   };
@@ -71,6 +73,8 @@ const Clients = () => {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Listening searches and reads posts for the brand's country, so it is never left to a default.
+    if (!form.country) return toast.error("Pick the brand's country");
     setSubmitting(true);
     if (editing) {
       const { error } = await supabase.from("clients").update(form).eq("id", editing.id);
@@ -104,6 +108,7 @@ const Clients = () => {
     setForm({
       name: r.name ?? "",
       industry: r.industry ?? "",
+      country: r.country ?? "",
       primary_contact_name: r.primary_contact_name ?? "",
       primary_contact_email: r.primary_contact_email ?? "",
       logo_url: r.logo_url ?? "",
@@ -178,13 +183,23 @@ const Clients = () => {
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Roster</div>
           <h1 className="font-display text-4xl font-semibold mt-1">Clients</h1>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (v && !editing) setForm((f) => ({ ...f, country: defaultCountry(rows) })); if (!v) reset(); }}>
           <DialogTrigger asChild><Button className="bg-primary"><Plus className="w-4 h-4 mr-2" /> New client</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle className="font-display text-2xl">{editing ? "Edit client" : "Add a client"}</DialogTitle></DialogHeader>
             <form onSubmit={submit} className="space-y-4">
               <div><Label>Brand name</Label><Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Unilever — Royco" /></div>
               <div><Label>Industry</Label><Input value={form.industry} onChange={e => setForm({ ...form, industry: e.target.value })} placeholder="FMCG / Foods" /></div>
+              <div>
+                <Label htmlFor="client-country">Country</Label>
+                <Select value={form.country} onValueChange={(v) => setForm({ ...form, country: v })}>
+                  <SelectTrigger id="client-country"><SelectValue placeholder="Pick a country" /></SelectTrigger>
+                  <SelectContent>
+                    {COUNTRY_NAMES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">Listening searches and reads posts for this country.</p>
+              </div>
               <div>
                 <Label>Logo</Label>
                 <div className="flex items-center gap-3">

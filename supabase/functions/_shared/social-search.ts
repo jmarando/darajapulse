@@ -66,9 +66,10 @@ async function scGet(path: string, params: Record<string, string>): Promise<any>
   return json;
 }
 
-export async function searchTikTok(query: string, limit = 10): Promise<Found[]> {
-  // Without date_posted TikTok returns videos of any age; YouTube and Reddit already ask for the last week.
-  const json = await scGet("/v1/tiktok/search/keyword", { query, date_posted: "this-week" });
+export async function searchTikTok(query: string, limit = 10, region: string | null = null): Promise<Found[]> {
+  // Without date_posted TikTok returns videos of any age; YouTube and Reddit already ask for the last week. A region runs
+  // the search from a proxy in that country (ScrapeCreators doesn't filter by it); none leaves it to ScrapeCreators.
+  const json = await scGet("/v1/tiktok/search/keyword", { query, date_posted: "this-week", ...(region ? { region } : {}) });
   const items: any[] = json?.search_item_list ?? [];
   const videos = items
     .map((item: any): Found => {
@@ -94,8 +95,9 @@ export async function searchTikTok(query: string, limit = 10): Promise<Found[]> 
   return videos.slice(0, limit);
 }
 
-export async function searchYouTube(query: string, limit = 10): Promise<Found[]> {
-  const json = await scGet("/v1/youtube/search", { query, uploadDate: "this_week" });
+export async function searchYouTube(query: string, limit = 10, region: string | null = null): Promise<Found[]> {
+  // A region runs the search from a proxy in that country, as for TikTok.
+  const json = await scGet("/v1/youtube/search", { query, uploadDate: "this_week", ...(region ? { region } : {}) });
   const items: any[] = [...(json?.videos ?? []), ...(json?.shorts ?? [])];
   return items
     .map((v: any): Found => {
@@ -168,5 +170,8 @@ export async function searchInstagram(query: string, limit = 10): Promise<Found[
   return reels.slice(0, limit);
 }
 
+/** One keyword search: the words, how many posts to keep, and the country to search from (TikTok and YouTube use it). */
+export type KeywordSearch = (query: string, limit: number, region: string | null) => Promise<Found[]>;
+
 /** The searches one keyword runs, each costing one credit. */
-export const SEARCHES = [searchTikTok, searchYouTube, searchReddit, searchInstagram];
+export const SEARCHES: KeywordSearch[] = [searchTikTok, searchYouTube, searchReddit, searchInstagram];

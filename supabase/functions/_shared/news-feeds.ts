@@ -3,43 +3,70 @@
 // tested off Deno; news-sources.ts fetches. Brought over from Groundwork's news-feeds.ts and alerts-feed.ts, with text
 // cut by clip() so half an emoji can never make the database refuse a store.
 import { clip } from "./clip.ts";
+import { type CountryCode, type ListeningCountry, LISTENING_COUNTRIES } from "./listening-country.ts";
 
 /**
- * The named Kenyan outlets: a page on one of their sites is News, any other site is Web. Feeds are read every hour;
- * each listed one answered with stories on 19 Nov 2026. An outlet with no feed that answers still counts as named
- * when a search finds its pages.
+ * The named outlets, by country: a page on one of their sites is News, any other site is Web. Feeds are read every hour
+ * for each country that has brands listening; each listed feed answered with stories when it was added (Kenya 19 Nov,
+ * Uganda 20 Nov 2026). An outlet with no feed that answers still counts as named when a search finds its pages.
  */
-export const OUTLETS: { name: string; domains: string[]; feeds: string[] }[] = [
-  { name: "The Standard", domains: ["standardmedia.co.ke"], feeds: ["https://www.standardmedia.co.ke/rss/headlines.php", "https://www.standardmedia.co.ke/rss/kenya.php"] },
-  { name: "Nation", domains: ["nation.africa"], feeds: ["https://nation.africa/kenya/rss.xml"] },
-  { name: "Business Daily", domains: ["businessdailyafrica.com"], feeds: ["https://www.businessdailyafrica.com/bd/rss.xml"] },
+export const OUTLETS: { name: string; country: CountryCode; domains: string[]; feeds: string[] }[] = [
+  { name: "The Standard", country: "KE", domains: ["standardmedia.co.ke"], feeds: ["https://www.standardmedia.co.ke/rss/headlines.php", "https://www.standardmedia.co.ke/rss/kenya.php"] },
+  { name: "Nation", country: "KE", domains: ["nation.africa"], feeds: ["https://nation.africa/kenya/rss.xml"] },
+  { name: "Business Daily", country: "KE", domains: ["businessdailyafrica.com"], feeds: ["https://www.businessdailyafrica.com/bd/rss.xml"] },
   {
     name: "Capital FM",
+    country: "KE",
     // Its lifestyle feed links to capitalfm.africa.
     domains: ["capitalfm.co.ke", "capitalfm.africa"],
     feeds: ["https://www.capitalfm.co.ke/news/feed/", "https://www.capitalfm.co.ke/business/feed/", "https://www.capitalfm.co.ke/lifestyle/feed/"],
   },
-  { name: "Kenyans.co.ke", domains: ["kenyans.co.ke"], feeds: ["https://www.kenyans.co.ke/feeds/news"] },
-  { name: "Tuko", domains: ["tuko.co.ke"], feeds: ["https://www.tuko.co.ke/rss/all.rss"] },
-  { name: "Kenya News Agency", domains: ["kenyanews.go.ke"], feeds: ["https://www.kenyanews.go.ke/feed/"] },
-  { name: "The Star", domains: ["the-star.co.ke"], feeds: [] },
-  { name: "Citizen Digital", domains: ["citizen.digital"], feeds: [] },
-  { name: "People Daily", domains: ["peopledaily.digital"], feeds: [] },
-  { name: "KBC", domains: ["kbc.co.ke"], feeds: [] },
-  { name: "The EastAfrican", domains: ["theeastafrican.co.ke"], feeds: [] },
+  { name: "Kenyans.co.ke", country: "KE", domains: ["kenyans.co.ke"], feeds: ["https://www.kenyans.co.ke/feeds/news"] },
+  { name: "Tuko", country: "KE", domains: ["tuko.co.ke"], feeds: ["https://www.tuko.co.ke/rss/all.rss"] },
+  { name: "Kenya News Agency", country: "KE", domains: ["kenyanews.go.ke"], feeds: ["https://www.kenyanews.go.ke/feed/"] },
+  { name: "The Star", country: "KE", domains: ["the-star.co.ke"], feeds: [] },
+  { name: "Citizen Digital", country: "KE", domains: ["citizen.digital"], feeds: [] },
+  { name: "People Daily", country: "KE", domains: ["peopledaily.digital"], feeds: [] },
+  { name: "KBC", country: "KE", domains: ["kbc.co.ke"], feeds: [] },
+  { name: "The EastAfrican", country: "KE", domains: ["theeastafrican.co.ke"], feeds: [] },
+  { name: "Daily Monitor", country: "UG", domains: ["monitor.co.ug"], feeds: ["https://www.monitor.co.ug/rss.xml"] },
+  { name: "Nile Post", country: "UG", domains: ["nilepost.co.ug"], feeds: ["https://nilepost.co.ug/feed"] },
+  { name: "The Observer", country: "UG", domains: ["observer.ug"], feeds: ["https://observer.ug/feed/"] },
+  { name: "The Independent", country: "UG", domains: ["independent.co.ug"], feeds: ["https://www.independent.co.ug/feed/"] },
+  { name: "NTV Uganda", country: "UG", domains: ["ntv.co.ug"], feeds: ["https://ntv.co.ug/feed"] },
+  { name: "SoftPower", country: "UG", domains: ["softpower.ug"], feeds: ["https://softpower.ug/feed/"] },
+  { name: "Daily Express", country: "UG", domains: ["dailyexpress.co.ug"], feeds: ["https://dailyexpress.co.ug/feed/"] },
+  { name: "Galaxy FM", country: "UG", domains: ["galaxyfm.co.ug"], feeds: ["https://www.galaxyfm.co.ug/feed/"] },
+  { name: "Eagle Online", country: "UG", domains: ["eagle.co.ug"], feeds: ["https://eagle.co.ug/feed/"] },
+  // No feed of theirs answered on 20 Nov 2026 (NBS's stopped in May 2025).
+  { name: "New Vision", country: "UG", domains: ["newvision.co.ug"], feeds: [] },
+  { name: "ChimpReports", country: "UG", domains: ["chimpreports.com"], feeds: [] },
+  { name: "PML Daily", country: "UG", domains: ["pmldaily.com"], feeds: [] },
+  { name: "Uganda Radio Network", country: "UG", domains: ["ugandaradionetwork.net"], feeds: [] },
+  { name: "NBS", country: "UG", domains: ["nbs.ug"], feeds: [] },
 ];
 
-/** Kenyan business, tech, lifestyle and food blogs read every hour; each answered with posts on 19 Nov 2026. */
-export const BLOG_FEEDS: { name: string; url: string }[] = [
-  { name: "TechCabal", url: "https://techcabal.com/feed/" },
-  { name: "Business Today", url: "https://businesstoday.co.ke/feed/" },
-  { name: "Ghafla", url: "https://www.ghafla.com/ke/feed/" },
-  { name: "HapaKenya", url: "https://www.hapakenya.com/feed/" },
-  { name: "Kaluhi's Kitchen", url: "https://www.kaluhiskitchen.com/feed/" },
+/** Business, tech, lifestyle and food blogs read every hour, by country; each answered with posts when it was added. */
+export const BLOG_FEEDS: { name: string; country: CountryCode; url: string }[] = [
+  { name: "TechCabal", country: "KE", url: "https://techcabal.com/feed/" },
+  { name: "Business Today", country: "KE", url: "https://businesstoday.co.ke/feed/" },
+  { name: "Ghafla", country: "KE", url: "https://www.ghafla.com/ke/feed/" },
+  { name: "HapaKenya", country: "KE", url: "https://www.hapakenya.com/feed/" },
+  { name: "Kaluhi's Kitchen", country: "KE", url: "https://www.kaluhiskitchen.com/feed/" },
+  { name: "Business Focus", country: "UG", url: "https://businessfocus.co.ug/feed/" },
+  { name: "CEO East Africa", country: "UG", url: "https://www.ceo.co.ug/feed/" },
+  { name: "Techjaja", country: "UG", url: "https://techjaja.com/feed/" },
+  { name: "Bigeye", country: "UG", url: "https://bigeye.ug/feed/" },
+  { name: "MBU", country: "UG", url: "https://mbu.ug/feed/" },
+  { name: "Sqoop", country: "UG", url: "https://www.sqoop.co.ug/feed" },
+  { name: "Matooke Republic", country: "UG", url: "https://www.matookerepublic.com/feed/" },
 ];
 
 /** A page found by a feed or a search. `site` is the outlet's or blog's name when the finder gave one. */
 export type Found = { url: string; title: string | null; snippet: string | null; publishedAt: string | null; site: string | null };
+
+/** A story from an outlet's or blog's feed, with the feed's country: a keyword is matched only against its own country's. */
+export type FeedStory = Found & { country: CountryCode };
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
@@ -168,9 +195,9 @@ export function sourceOf(url: string): { source: "news" | "web"; author: string 
 /** A keyword's search, read once: word groups that must all be in the page (any word of a group will do), and words that rule it out. */
 export type Search = { all: string[][]; none: string[] };
 
-/** Words that say little about what a page is about, and the country every brand here sells in. */
+/** Words that say little about what a page is about. The brand's own country's name is left out too (searchFor). */
 const FILLER = new Set([
-  "a", "an", "and", "at", "by", "constituency", "county", "for", "from", "government", "in", "kenya", "latest", "new", "news",
+  "a", "an", "and", "at", "by", "constituency", "county", "for", "from", "government", "in", "latest", "new", "news",
   "of", "on", "the", "to", "today", "update", "updates", "ward", "with",
 ]);
 
@@ -191,9 +218,10 @@ export const fold = (s: string) =>
 /**
  * How a keyword reads: its search as written ("quoted phrases", OR, -left out) and its exclude words. A leading "The"
  * stays with the word after it ("The Star" reads as the phrase "the star"), because dropping it as filler can leave
- * one common word that matches anything ("The Star Kenya" once read as just "star").
+ * one common word that matches anything ("The Star Kenya" once read as just "star"). The brand's own country is filler
+ * too, so a Ugandan brand's "MTN Uganda" reads as "mtn" while its "Kenya Airways" keeps both words.
  */
-export function searchFor(topic: { query: string; exclude_terms?: string[] | null }): Search {
+export function searchFor(topic: { query: string; exclude_terms?: string[] | null }, country: ListeningCountry = LISTENING_COUNTRIES.KE): Search {
   const all: string[][] = [];
   const none: string[] = [];
   let or = false;
@@ -213,7 +241,7 @@ export function searchFor(topic: { query: string; exclude_terms?: string[] | nul
       or = kept = false;
       continue;
     }
-    if (!quoted && !or && FILLER.has(term)) {
+    if (!quoted && !or && (FILLER.has(term) || term === country.countryWord)) {
       kept = false;
       continue;
     }

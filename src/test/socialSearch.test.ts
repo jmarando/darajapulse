@@ -122,6 +122,32 @@ describe("Instagram keyword search", () => {
   });
 });
 
+describe("searching from the brand's country", () => {
+  const answerEmpty = () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => new Response(JSON.stringify({ success: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  };
+
+  it("runs TikTok and YouTube from the country given, and Reddit and Instagram as they are", async () => {
+    const fetchMock = answerEmpty();
+    for (const search of SEARCHES) await search("Nile Crisps", 10, "UG");
+    expect(fetchMock.mock.calls.map(([u]) => [new URL(String(u)).pathname, new URL(String(u)).searchParams.get("region")])).toEqual([
+      ["/v1/tiktok/search/keyword", "UG"],
+      ["/v1/youtube/search", "UG"],
+      ["/v1/reddit/search", null],
+      ["/v2/instagram/reels/search", null],
+    ]);
+  });
+
+  it("sends no region at all when none is given, as Kenyan brands always have", async () => {
+    const fetchMock = answerEmpty();
+    for (const search of SEARCHES) await search("Nuru Coffee", 10, null);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls.every(([u]) => !new URL(String(u)).searchParams.has("region"))).toBe(true);
+  });
+});
+
 describe("search credits", () => {
   it("keeps the page's credits-per-search equal to the searches each keyword runs", async () => {
     const { CREDITS_PER_SEARCH } = await import("../../src/lib/listening");

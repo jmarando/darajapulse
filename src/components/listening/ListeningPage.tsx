@@ -18,8 +18,9 @@ import ListeningOverview from "./ListeningOverview";
 import ListeningMentions from "./ListeningMentions";
 import ListeningKeywords from "./ListeningKeywords";
 import ListeningPeriod, { type Preset } from "./ListeningPeriod";
+import { countryOf } from "../../../supabase/functions/_shared/listening-country";
 
-type Brand = { id: string; name: string };
+type Brand = { id: string; name: string; country?: string | null };
 
 // The listening tables are newer than the generated database types.
 const db = supabase as unknown as SupabaseClient;
@@ -75,6 +76,8 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
   const tab = params.get("tab") ?? "overview";
   const clientId = params.get("brand") ?? brands?.[0]?.id ?? null;
   const brand = brands?.find((b) => b.id === clientId) ?? null;
+  // The brand's country names the news sites and languages the page describes.
+  const country = countryOf(brand?.country);
 
   // The window the chosen period is compared with, and the earliest day either needs.
   const previous = useMemo(() => previousPeriod(period), [period]);
@@ -93,11 +96,11 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
     if (!user) return;
     (async () => {
       if (portal) {
-        const { data } = await supabase.from("client_members").select("client_id, clients(id, name)").eq("user_id", user.id);
+        const { data } = await supabase.from("client_members").select("client_id, clients(id, name, country)").eq("user_id", user.id);
         const list = ((data ?? []) as { clients: Brand | null }[]).map((r) => r.clients).filter((c): c is Brand => !!c);
         setBrands(list.sort((a, b) => a.name.localeCompare(b.name)));
       } else {
-        const { data } = await supabase.from("clients").select("id, name").order("name");
+        const { data } = await supabase.from("clients").select("id, name, country").order("name");
         setBrands((data ?? []) as Brand[]);
       }
     })();
@@ -274,6 +277,7 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
                 creditsToday={creditsToday}
                 showCredits={staff}
                 onAddKeywords={() => setParam("tab", "keywords")}
+                country={country}
               />
             </TabsContent>
             <TabsContent value="mentions" className="mt-0">
@@ -289,6 +293,7 @@ export default function ListeningPage({ portal = false }: { portal?: boolean }) 
                   showCredits={staff}
                   canEditAlerts={staff}
                   onChanged={load}
+                  country={country}
                 />
               )}
             </TabsContent>
