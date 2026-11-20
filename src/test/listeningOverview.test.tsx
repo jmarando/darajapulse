@@ -146,9 +146,38 @@ describe("ListeningOverview", () => {
     expect(within(links[0]).getByText("51.0k views")).toBeInTheDocument();
   });
 
+  it("lists the articles and blog posts about the brand, with the outlet and the mood", () => {
+    renderPage({
+      mentions: [
+        ...defaultMentions,
+        mention("b", { source: "news", author: "Example News", title: "Nuru Coffee opens a plant", url: "https://news.example.com/a", reach: null, published_at: at(30) }),
+        mention("b", { source: "web", author: "Example Blog", title: "My Nuru Coffee mornings", url: "https://blog.example.com/b", reach: null, sentiment: "negative", published_at: at(5) }),
+        mention("r", { source: "news", author: "Example News", title: "Java House news", url: "https://news.example.com/r", reach: null }),
+      ],
+    });
+    const news = panel("In the news");
+    const links = news.getAllByRole("link");
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["https://blog.example.com/b", "https://news.example.com/a"]);
+    expect(news.getByText("My Nuru Coffee mornings")).toBeInTheDocument();
+    expect(news.getByText(/Example Blog/)).toBeInTheDocument();
+    expect(news.getByText("Negative")).toBeInTheDocument();
+    expect(news.queryByText("Java House news")).toBeNull();
+  });
+
+  it("leaves the news list out when no article mentions the brand", () => {
+    renderPage();
+    expect(screen.queryByText("In the news")).toBeNull();
+  });
+
+  it("says which sources report no views", () => {
+    renderPage({ mentions: [...defaultMentions, mention("b", { source: "news", reach: null, url: "https://news.example.com/z" })] });
+    expect(panel("Sources").getByText("Views aren't reported for News, so those posts count in mentions only.")).toBeInTheDocument();
+  });
+
   it("asks for keywords before anything has been set up", () => {
     renderPage({ topics: [], mentions: [] });
     expect(screen.getByText("Start listening")).toBeInTheDocument();
+    expect(screen.getByText(/news sites and blogs/)).toBeInTheDocument();
   });
 
   it("says listening is on while the first sweep is still to return posts", () => {

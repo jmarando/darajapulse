@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  OFF_TOPIC, dayKey, moodByDay, moodShare, needsAttention, netMood, parseTerms, platformMix, shareOfVoice, sweepStatus,
-  themes, topMentions, totals, weekChange, withinDays,
+  OFF_TOPIC, SOURCE_LABEL, dayKey, moodByDay, moodShare, needsAttention, netMood, newsMentions, parseTerms, platformMix, shareOfVoice,
+  sweepStatus, themes, topMentions, totals, weekChange, withinDays,
   type ListeningMention, type ListeningTopic,
 } from "@/lib/listening";
 
@@ -144,6 +144,25 @@ describe("platform mix", () => {
       ["reddit", 1, 0, 25, false],
       ["youtube", 1, 400, 25, true],
     ]);
+  });
+});
+
+describe("news and the web", () => {
+  it("names the two new sources", () => {
+    expect(SOURCE_LABEL.news).toBe("News");
+    expect(SOURCE_LABEL.web).toBe("Websites and blogs");
+  });
+
+  it("lists on-topic articles and blog posts, newest first, each once", () => {
+    const rows = newsMentions([
+      mention("b", { source: "news", url: "a", published_at: "2026-11-10T08:00:00Z" }),
+      mention("b", { source: "web", url: "b", published_at: "2026-11-12T08:00:00Z" }),
+      mention("r", { source: "news", url: "a", published_at: "2026-11-10T08:00:00Z" }),
+      mention("b", { source: "news", url: "c", published_at: "2026-11-11T08:00:00Z", theme: OFF_TOPIC }),
+      mention("b", { source: "tiktok", url: "d", published_at: "2026-11-13T08:00:00Z" }),
+    ]);
+    expect(rows.map((m) => m.url)).toEqual(["b", "a"]);
+    expect(newsMentions([mention("b", { source: "news", url: "x" }), mention("b", { source: "web", url: "y" })], 1)).toHaveLength(1);
   });
 });
 

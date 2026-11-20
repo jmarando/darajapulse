@@ -301,6 +301,8 @@ export function Sources({ platforms, brandName, rangeLabel, className }: {
   rangeLabel: string;
   className?: string;
 }) {
+  // Platforms that give no view counts (Reddit, Instagram, news and the web), named so a zero isn't read as no audience.
+  const noViews = platforms.filter((p) => !p.viewsKnown).map((p) => p.label);
   return (
     <Panel className={className} title="Sources" subtitle={`Where posts about ${brandName} were found, ${rangeLabel}`}>
       {platforms.length ? (
@@ -323,8 +325,10 @@ export function Sources({ platforms, brandName, rangeLabel, className }: {
       ) : (
         <p className="text-[13px] text-muted-foreground">No posts about your brand yet.</p>
       )}
-      {platforms.some((p) => p.key === "reddit" || p.key === "instagram") && (
-        <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">Reddit and Instagram don't report views, so those posts count in mentions only.</p>
+      {noViews.length > 0 && (
+        <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
+          {`Views aren't reported for ${noViews.length === 1 ? noViews[0] : `${noViews.slice(0, -1).join(", ")} or ${noViews[noViews.length - 1]}`}, so those posts count in mentions only.`}
+        </p>
       )}
     </Panel>
   );
