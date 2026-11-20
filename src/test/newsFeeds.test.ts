@@ -11,6 +11,7 @@ import {
   titleKey,
   whenSaid,
 } from "../../supabase/functions/_shared/news-feeds";
+import { LISTENING_COUNTRIES } from "../../supabase/functions/_shared/listening-country";
 
 // News and web pages for Listening: outlets' and blogs' own feeds, Serper's news and web answers, and the strict rule a
 // page must pass before it counts as being about a keyword. Invented brands and pages only.
@@ -126,8 +127,36 @@ describe("sourceOf", () => {
   });
 });
 
+describe("Ugandan outlets and blogs", () => {
+  it("names Uganda's outlets, so their pages are news under the outlet's name", () => {
+    expect(sourceOf("https://www.monitor.co.ug/uganda/news/national/a-story-5678084")).toEqual({ source: "news", author: "Daily Monitor" });
+    expect(sourceOf("https://nilepost.co.ug/news/389138/a-story")).toEqual({ source: "news", author: "Nile Post" });
+    expect(sourceOf("https://www.newvision.co.ug/category/news/a-story")).toEqual({ source: "news", author: "New Vision" });
+  });
+
+  it("tags every outlet and blog with its country, Kenya's list as before", () => {
+    expect(OUTLETS.filter((o) => o.country === "KE").map((o) => o.name)).toEqual([
+      "The Standard", "Nation", "Business Daily", "Capital FM", "Kenyans.co.ke", "Tuko", "Kenya News Agency", "The Star",
+      "Citizen Digital", "People Daily", "KBC", "The EastAfrican",
+    ]);
+    expect(BLOG_FEEDS.filter((b) => b.country === "KE").map((b) => b.name)).toEqual(["TechCabal", "Business Today", "Ghafla", "HapaKenya", "Kaluhi's Kitchen"]);
+    expect(OUTLETS.filter((o) => o.country === "UG" && o.feeds.length)).toHaveLength(9);
+    expect(OUTLETS.filter((o) => o.country === "UG" && !o.feeds.length)).toHaveLength(5);
+    expect(BLOG_FEEDS.filter((b) => b.country === "UG")).toHaveLength(7);
+    expect([...OUTLETS, ...BLOG_FEEDS].every((s) => s.country === "KE" || s.country === "UG")).toBe(true);
+  });
+});
+
 describe("the strict rule a page must pass", () => {
   const ok = (query: string, text: string, exclude: string[] = []) => matchesSearch(text, searchFor({ query, exclude_terms: exclude }));
+
+  it("leaves out the brand's own country: Kenya for a Kenyan brand, Uganda for a Ugandan one", () => {
+    const ug = (query: string, text: string) => matchesSearch(text, searchFor({ query, exclude_terms: [] }, LISTENING_COUNTRIES.UG));
+    expect(ug("Nile Crisps Uganda", "Nile Crisps opens a plant in Jinja")).toBe(true);
+    expect(ug("Kenya Airways", "Airways news from Entebbe")).toBe(false);
+    expect(ug("Kenya Airways", "Kenya Airways adds a Kampala flight")).toBe(true);
+    expect(ok("Nuru Uganda", "Nuru opens a plant in Thika")).toBe(false);
+  });
 
   it("needs every word of the keyword, as whole words", () => {
     expect(ok("Nuru Coffee", "Nuru Coffee opens a plant")).toBe(true);
