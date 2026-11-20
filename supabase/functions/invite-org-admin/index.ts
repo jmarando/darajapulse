@@ -25,7 +25,9 @@ Deno.serve(async (req) => {
     const u = { user: { id: userId } };
     const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", u.user.id);
     const roleSet = new Set((roles ?? []).map((r: any) => r.role));
-    if (!roleSet.has("agency_admin") && !roleSet.has("super_admin")) {
+    // Super admins only: the Super Admin page is the only caller. Any agency admin could otherwise make any email an admin
+    // of any agency or brand org, themselves included.
+    if (!roleSet.has("super_admin")) {
       return json({ error: "forbidden" }, 403);
     }
 
