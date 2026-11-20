@@ -109,6 +109,11 @@ describe("sourceOf", () => {
     expect(sourceOf(`https://edition.${outlet.domains[0]}/x`)).toEqual({ source: "news", author: outlet.name });
   });
 
+  it("knows an outlet by every domain its feeds link to", () => {
+    // Capital FM's lifestyle feed links to capitalfm.africa, not capitalfm.co.ke (seen on the first live run).
+    expect(sourceOf("https://capitalfm.africa/some-story/?utm_source=rss")).toEqual({ source: "news", author: "Capital FM" });
+  });
+
   it("calls any other site web, with the site as the voice", () => {
     expect(sourceOf("https://www.blog.example.com/post")).toEqual({ source: "web", author: "blog.example.com" });
     expect(sourceOf("not a link")).toEqual({ source: "web", author: null });
@@ -138,6 +143,14 @@ describe("the strict rule a page must pass", () => {
   it("leaves out the country and filler words", () => {
     expect(ok("Nuru Kenya", "Nuru opens a plant in Thika")).toBe(true);
     expect(ok("Nuru news", "Nuru opens a plant")).toBe(true);
+  });
+
+  it("keeps a leading The with the name it starts, so the name doesn't shrink to one common word", () => {
+    // "The Star Kenya" once folded to just "star" and matched a story about a "Nigerian star".
+    expect(ok("The Star Kenya", "Nigerian star Joeboy brings the festive party to Nairobi")).toBe(false);
+    expect(ok("The Star Kenya", "The Star reported on Monday that prices rose")).toBe(true);
+    expect(ok("the Daily Brew", "The Daily Brew opens in Thika")).toBe(true);
+    expect(ok("the Daily Brew", "A daily brew of news")).toBe(false);
   });
 
   it("takes quoted phrases and OR as written", () => {
