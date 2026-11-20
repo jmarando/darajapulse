@@ -52,6 +52,8 @@ export const SOURCE_LABEL: Record<string, string> = {
   facebook: "Facebook",
   x: "X",
   reddit: "Reddit",
+  news: "News",
+  web: "Websites and blogs",
 };
 
 /** When a mention happened: the platform's date when it gives one, else when we found it. */
@@ -298,6 +300,19 @@ export function platformMix(mentions: ListeningMention[]): PlatformRow[] {
       share: total ? Math.round((r.mentions / total) * 1000) / 10 : 0,
     }))
     .sort((a, b) => b.mentions - a.mentions || a.label.localeCompare(b.label));
+}
+
+/**
+ * On-topic articles and blog posts (the listening-news function stores them as `news` from a named outlet and `web`
+ * from any other site), newest first, once each even when two keywords found the same page.
+ */
+export function newsMentions(mentions: ListeningMention[], limit = 6): ListeningMention[] {
+  const seen = new Set<string>();
+  return mentions
+    .filter((m) => (m.source === "news" || m.source === "web") && m.theme !== OFF_TOPIC)
+    .sort((a, b) => Date.parse(mentionDate(b)) - Date.parse(mentionDate(a)))
+    .filter((m) => !seen.has(m.url) && !!seen.add(m.url))
+    .slice(0, limit);
 }
 
 /** The on-topic posts with the most views, once each; recent posts first when views aren't reported. */

@@ -144,7 +144,7 @@ export default function ListeningKeywords({ clientId, brandName, topics, credits
 
         <Panel title="How it works">
           <ul className="space-y-2 text-[13px] text-muted-foreground">
-            <li>Each keyword is searched on TikTok, Instagram, YouTube and Reddit twice a day, and new keywords within the hour.</li>
+            <li>Each keyword is searched on TikTok, Instagram, YouTube and Reddit twice a day, and new keywords within the hour. Kenyan news sites and blogs are checked every hour, and searched for each keyword once a day.</li>
             <li>AI reads every post for its mood and theme, in English, Kiswahili or Sheng, and sets aside posts that aren't about the keyword.</li>
             {showCredits && (
               <li>

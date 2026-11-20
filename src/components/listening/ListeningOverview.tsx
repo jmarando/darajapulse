@@ -7,7 +7,7 @@ import { PatternCard, type Finding } from "@/components/dash/PatternCard";
 import { StatusChip } from "@/components/dash/chips";
 import { ToneList, type ToneItem } from "@/components/dash/ToneList";
 import {
-  CREDITS_PER_SEARCH, DAILY_CREDITS, KIND_LABEL, SOURCE_LABEL, brandMentions, mentionDate, moodByPeriod,
+  CREDITS_PER_SEARCH, DAILY_CREDITS, KIND_LABEL, SOURCE_LABEL, brandMentions, mentionDate, moodByPeriod, newsMentions,
   moodShare, needsAttention, netMood, onTopic, platformMix, previousPeriod, shareOfVoice, sweepStatus, themes, topMentions, totals,
   type ListeningMention, type ListeningTopic, type Period,
 } from "@/lib/listening";
@@ -82,6 +82,8 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
   const days = useMemo(() => moodByPeriod(own, period), [own, period]);
   const attention = useMemo(() => needsAttention(topics, own), [topics, own]);
   const top = useMemo(() => topMentions(relevant, 5), [relevant]);
+  // Articles and blog posts about the brand itself, newest first.
+  const articles = useMemo(() => newsMentions(own, 6), [own]);
   const latestNegative = useMemo(
     () => own
       .filter((m) => m.sentiment === "negative")
@@ -99,7 +101,7 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
           <h2 className="text-[17px] font-medium">Start listening</h2>
           <p className="max-w-lg text-[14px] text-muted-foreground">
             Add your brand name, your competitors and the category you sell in. We search TikTok, Instagram, YouTube and Reddit for them
-            twice a day and read the mood of every post.
+            twice a day, and Kenyan news sites and blogs every day, and read the mood of every post.
           </p>
           <ul className="grid w-full gap-3 pt-1 text-[13px] text-muted-foreground sm:grid-cols-3">
             <li><span className="font-medium text-foreground">1. Your brand</span><br />The name, product or campaign hashtag you want to watch.</li>
@@ -138,7 +140,7 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
           <h2 className="text-[17px] font-medium">{sweep.active ? `Listening is on for ${brandName}` : "Listening is paused"}</h2>
           <p className="max-w-xl text-[14px] text-muted-foreground">
             {sweep.active
-              ? `We search ${count(sweep.active, "keyword")} on TikTok, Instagram, YouTube and Reddit twice a day. Nothing on-topic has come back yet.`
+              ? `We search ${count(sweep.active, "keyword")} on TikTok, Instagram, YouTube and Reddit twice a day, and on Kenyan news sites and blogs every day. Nothing on-topic has come back yet.`
               : "Every keyword is paused, so nothing is being searched. Turn one on to start listening again."}
           </p>
           {failing && <p className="text-[12.5px] text-status-warn">{failing.last_note}</p>}
@@ -303,6 +305,29 @@ export default function ListeningOverview({ brandName, topics, mentions, previou
       </div>
 
       <SentimentOverTime days={days} rated={ownTotals.rated} unread={unread} brandName={brandName} rangeLabel={rangeLabel} />
+
+      {articles.length > 0 && (
+        <Panel title="In the news" subtitle={`Articles and blog posts about ${brandName}, ${rangeLabel}, newest first`}>
+          <ul className="-my-1 divide-y divide-border/70">
+            {articles.map((m) => (
+              <li key={m.id} className="py-2.5">
+                <a href={m.url} target="_blank" rel="noreferrer" className="group flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="line-clamp-2 text-[13.5px] group-hover:underline">{m.title || m.snippet || m.url}</span>
+                    <span className="mt-0.5 block text-[12px] text-muted-foreground">
+                      {m.author ?? SOURCE_LABEL[m.source]} · {shortDate(mentionDate(m))}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    {m.sentiment && <StatusChip tone={MOOD_TONE[m.sentiment]}>{m.sentiment[0].toUpperCase() + m.sentiment.slice(1)}</StatusChip>}
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-12">
         <Panel className="lg:col-span-6" title="Share of voice" subtitle={`On-topic mentions, ${rangeLabel}`}>
