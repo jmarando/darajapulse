@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import PublicFooter from "@/components/PublicFooter";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Wallet, BarChart3, Users, ShieldCheck, Zap, Sparkles } from "lucide-react";
+import { ArrowRight, Wallet, BarChart3, Users, ShieldCheck, Zap } from "lucide-react";
 import logo from "@/assets/logo-pulse-mark.png";
 
 const LandingBento = () => (
@@ -78,18 +78,12 @@ const LandingBento = () => (
         </div>
 
         {/* Speed */}
-        <div className="col-span-6 md:col-span-3 rounded-2xl bg-foreground text-background p-5 flex flex-col justify-between">
+        <div className="col-span-12 md:col-span-6 rounded-2xl bg-foreground text-background p-5 flex flex-col justify-between">
           <Zap className="w-5 h-5 text-accent" />
           <div>
             <div className="font-display text-3xl">60s</div>
             <div className="text-xs opacity-70">brief → published</div>
           </div>
-        </div>
-
-        {/* Tag */}
-        <div className="col-span-6 md:col-span-3 rounded-2xl border border-dashed border-border p-5 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-accent" />
-          <span className="text-xs uppercase tracking-widest text-muted-foreground">Built in Nairobi</span>
         </div>
       </div>
     </section>

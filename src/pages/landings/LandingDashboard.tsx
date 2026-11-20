@@ -253,10 +253,6 @@ function Hero({ onDemo }: { onDemo: () => void }) {
           <ArrowUpRight className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
         </Link>
       </div>
-      <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground text-balance animate-enter" style={{ animationDelay: "240ms" }}>
-        {/* Non-breaking spaces keep each dot at the end of a line, never the start. */}
-        Built in Nairobi{" "}· Kenya{" "}· Uganda{" "}· Tanzania
-      </p>
     </section>
   );
 }
