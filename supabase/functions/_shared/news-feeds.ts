@@ -65,6 +65,9 @@ export const BLOG_FEEDS: { name: string; country: CountryCode; url: string }[] =
 /** A page found by a feed or a search. `site` is the outlet's or blog's name when the finder gave one. */
 export type Found = { url: string; title: string | null; snippet: string | null; publishedAt: string | null; site: string | null };
 
+/** A story from an outlet's or blog's feed, with the feed's country: a keyword is matched only against its own country's. */
+export type FeedStory = Found & { country: CountryCode };
+
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
 function decode(s: string): string {

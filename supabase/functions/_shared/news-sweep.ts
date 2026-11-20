@@ -4,14 +4,34 @@
 //
 // A page counts for a keyword when every word of the keyword is in its headline or text (news-feeds.ts), it is no more
 // than a week old, and the keyword doesn't already hold a story under the same headline (the same story from two
-// outlets counts once). Each keyword is matched on its own, so a competitor keeps a story that names both brands.
+// outlets counts once). Each keyword is matched on its own, so a competitor keeps a story that names both brands. Each
+// keyword sees only its own country's feed stories and is searched in its country (the brand's clients.country;
+// _shared/listening-country.ts).
+import { type CountryCode, countryOf } from "./listening-country.ts";
 import { type MentionRow, type SaveMentions, storeMentions } from "./listening-store.ts";
-import { type Found, answers, haystack, searchFor, sourceOf, titleKey } from "./news-feeds.ts";
+import { type FeedStory, type Found, answers, haystack, searchFor, sourceOf, titleKey } from "./news-feeds.ts";
 
-export type NewsTopic = { id: string; client_id: string; query: string; exclude_terms: string[]; news_searched_at: string | null };
+export type NewsTopic = {
+  id: string;
+  client_id: string;
+  query: string;
+  exclude_terms: string[];
+  news_searched_at: string | null;
+  /** The brand's country (clients.country): its feeds, its search country and its filler word. */
+  country: string | null;
+};
 
-/** One search: Serper's news or web results for a query. */
-export type Search = (kind: "news" | "web", query: string) => Promise<Found[]>;
+/** One search: Serper's news or web results for a query, in a country (Serper's gl). */
+export type Search = (kind: "news" | "web", query: string, gl: string) => Promise<Found[]>;
+
+/** A keyword as the database gives it, with its brand's country joined in. */
+export type NewsTopicRow = Omit<NewsTopic, "country"> & { clients: { country: string | null } | null };
+
+/** A keyword row with its brand's country read out. */
+export const newsTopic = ({ clients, ...t }: NewsTopicRow): NewsTopic => ({ ...t, country: clients?.country ?? null });
+
+/** The countries whose feeds a run reads: those of the brands with active keywords. */
+export const feedCountries = (topics: NewsTopic[]): CountryCode[] => [...new Set(topics.map((t) => countryOf(t.country).code))];
 
 /** The search turned the request away (a wrong key, or no credits left): no more searching this run. */
 export class SearchRefused extends Error {}
@@ -49,8 +69,8 @@ export type NewsRun = {
 export async function runNewsSweep(input: {
   /** Active keywords. */
   topics: NewsTopic[];
-  /** Every story the outlets' and blogs' feeds gave this run. */
-  stories: Found[];
+  /** Every story the outlets' and blogs' feeds gave this run, each with its feed's country. */
+  stories: FeedStory[];
   /** Null when no search key is set: the feeds are still read. */
   search: Search | null;
   /** Headlines each keyword already holds from the last week (titleKey), by keyword id. */
@@ -62,18 +82,20 @@ export async function runNewsSweep(input: {
   const due = new Set(input.search ? dueForSearch(input.topics, input.now).map((t) => t.id) : []);
   // Every feed story is set against every keyword, so each is folded once (a few hundred stories, dozens of keywords).
   const hayOf = (p: Found) => haystack(`${p.title ?? ""} ${p.snippet ?? ""}`);
-  const feed = input.stories.map((p) => ({ p, hay: hayOf(p) }));
+  const feed = input.stories.map((p) => ({ p, hay: hayOf(p), country: p.country }));
   const note = (id: string, text: string) => {
     out.notes[id] = out.notes[id] ? `${out.notes[id]} · ${text}` : text;
   };
 
   for (const topic of input.topics) {
-    const pages = [...feed];
+    const country = countryOf(topic.country);
+    // A keyword sees only its own country's feeds.
+    const pages: { p: Found; hay: string }[] = feed.filter((f) => f.country === country.code);
     if (input.search && due.has(topic.id) && !out.refused) {
       let refused = false;
       for (const kind of ["news", "web"] as const) {
         try {
-          pages.push(...(await input.search(kind, searchQuery(topic))).map((p) => ({ p, hay: hayOf(p) })));
+          pages.push(...(await input.search(kind, searchQuery(topic), country.serperGl)).map((p) => ({ p, hay: hayOf(p) })));
         } catch (err) {
           if (err instanceof SearchRefused) {
             out.refused = err.message;
@@ -86,7 +108,7 @@ export async function runNewsSweep(input: {
       if (!refused) out.searched.push(topic.id);
     }
 
-    const search = searchFor(topic);
+    const search = searchFor(topic, country);
     const held = new Set(input.titles.get(topic.id) ?? []);
     const urls = new Set<string>();
     const rows: MentionRow[] = [];

@@ -3,7 +3,8 @@
 // news-feeds.ts. Every request is bounded and best effort: a feed that doesn't answer is counted, never fatal. The key
 // is read when a run asks for it, so a changed secret needs no redeploy and tests can stand Deno in.
 import { clip } from "./clip.ts";
-import { BLOG_FEEDS, type Found, OUTLETS, parseFeed, serperResults } from "./news-feeds.ts";
+import type { CountryCode } from "./listening-country.ts";
+import { BLOG_FEEDS, type FeedStory, type Found, OUTLETS, parseFeed, serperResults } from "./news-feeds.ts";
 import { SearchRefused } from "./news-sweep.ts";
 
 declare const Deno: { env: { get(name: string): string | undefined } };
@@ -11,9 +12,14 @@ declare const Deno: { env: { get(name: string): string | undefined } };
 const AGENT = "Mozilla/5.0 (compatible; DarajaPulseListening/1.0; +https://darajapulse.com)";
 const ACCEPT = "application/rss+xml, application/atom+xml, application/xml, text/xml, */*";
 
-/** Every feed, read side by side: their stories (a story in two feeds once) and the sites with no feed that answered. */
-export async function readFeeds(ms = 15_000): Promise<{ stories: Found[]; failed: string[] }> {
-  const list = [...OUTLETS.flatMap((o) => o.feeds.map((url) => ({ name: o.name, url }))), ...BLOG_FEEDS];
+/**
+ * The feeds of the countries asked for, read side by side: their stories, each tagged with its feed's country (a story
+ * in two feeds once), and the sites with no feed that answered.
+ */
+export async function readFeeds(countries: readonly CountryCode[], ms = 15_000): Promise<{ stories: FeedStory[]; failed: string[] }> {
+  const wanted = new Set(countries);
+  const list = [...OUTLETS.flatMap((o) => o.feeds.map((url) => ({ name: o.name, country: o.country, url }))), ...BLOG_FEEDS]
+    .filter((f) => wanted.has(f.country));
   const answers = await Promise.allSettled(
     list.map(async (f) => {
       const res = await fetch(f.url, { signal: AbortSignal.timeout(ms), headers: { "User-Agent": AGENT, Accept: ACCEPT } });
@@ -21,12 +27,12 @@ export async function readFeeds(ms = 15_000): Promise<{ stories: Found[]; failed
       return parseFeed(await res.text(), f.name);
     }),
   );
-  const byUrl = new Map<string, Found>();
+  const byUrl = new Map<string, FeedStory>();
   const answered = new Set<string>();
   answers.forEach((a, i) => {
     if (a.status !== "fulfilled" || !a.value.length) return;
     answered.add(list[i].name);
-    for (const s of a.value) if (!byUrl.has(s.url)) byUrl.set(s.url, s);
+    for (const s of a.value) if (!byUrl.has(s.url)) byUrl.set(s.url, { ...s, country: list[i].country });
   });
   return { stories: [...byUrl.values()], failed: [...new Set(list.map((f) => f.name))].filter((n) => !answered.has(n)) };
 }
@@ -38,13 +44,13 @@ export function serperKey(): string | null {
   return key || null;
 }
 
-/** One search: Google's news (`news`) or web (`web`) results for Kenya, in English, from the past week. */
-export async function serperSearch(kind: "news" | "web", query: string, key: string): Promise<Found[]> {
+/** One search: Google's news (`news`) or web (`web`) results for a country (Kenya unless told), in English, from the past week. */
+export async function serperSearch(kind: "news" | "web", query: string, key: string, gl = "ke"): Promise<Found[]> {
   const res = await fetch(`https://google.serper.dev/${kind === "news" ? "news" : "search"}`, {
     method: "POST",
     signal: AbortSignal.timeout(20_000),
     headers: { "X-API-KEY": key, "Content-Type": "application/json" },
-    body: JSON.stringify({ q: clip(query, 300) ?? "", gl: "ke", hl: "en", tbs: "qdr:w", num: 10 }),
+    body: JSON.stringify({ q: clip(query, 300) ?? "", gl, hl: "en", tbs: "qdr:w", num: 10 }),
   });
   const body = await res.text();
   if (res.status === 401 || res.status === 403 || (!res.ok && /credit|unauthori[sz]ed|api key/i.test(body))) {

@@ -87,3 +87,17 @@ describe("the listening_news migration", () => {
     expect(header).toContain("DROP COLUMN IF EXISTS news_searched_at");
   });
 });
+
+describe("listening-news: each brand's country", () => {
+  const fn = read("functions/listening-news/index.ts");
+
+  it("reads each keyword's brand country, and only those countries' feeds", () => {
+    expect(fn).toContain('.select("id, client_id, query, exclude_terms, news_searched_at, clients(country)")');
+    expect(fn).toContain(".map(newsTopic)");
+    expect(fn).toContain("readFeeds(feedCountries(topics))");
+  });
+
+  it("searches in the brand's country", () => {
+    expect(fn).toContain("(kind, query, gl) => serperSearch(kind, query, key, gl)");
+  });
+});
