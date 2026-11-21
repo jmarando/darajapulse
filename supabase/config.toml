@@ -19,6 +19,8 @@ project_id = "ucxlveehobmeywkiynpy"
     verify_jwt = false
   [functions.listening-alerts]
     verify_jwt = false
+  [functions.research-run]
+    verify_jwt = false
   [functions.groundwork-brief]
     verify_jwt = false
   [functions.groundwork-report]
