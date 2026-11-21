@@ -33,6 +33,7 @@ const Approvals = lazy(() => import("./pages/app/Approvals"));
 const Reports = lazy(() => import("./pages/app/Reports"));
 const Moderation = lazy(() => import("./pages/app/Moderation"));
 const Listening = lazy(() => import("./pages/app/Listening"));
+const Research = lazy(() => import("./pages/app/Research"));
 const Channels = lazy(() => import("./pages/app/Channels"));
 const Team = lazy(() => import("./pages/app/Team"));
 const AdminBilling = lazy(() => import("./pages/app/AdminBilling"));
@@ -63,6 +64,7 @@ const PortalShell = lazy(() => import("./components/PortalShell"));
 const PortalOverview = lazy(() => import("./pages/portal/PortalOverview"));
 const PortalCampaign = lazy(() => import("./pages/portal/PortalCampaign"));
 const PortalListening = lazy(() => import("./pages/portal/PortalListening"));
+const PortalResearch = lazy(() => import("./pages/portal/PortalResearch"));
 const PortalChannels = lazy(() => import("./pages/portal/PortalChannels"));
 const PublicStorefront = lazy(() => import("./pages/PublicStorefront"));
 const PublicInvoice = lazy(() => import("./pages/PublicInvoice"));
@@ -153,6 +155,7 @@ const App = () => (
               <Route path="campaigns" element={<PortalOverview />} />
               <Route path="campaigns/:id" element={<PortalCampaign />} />
               <Route path="listening" element={<PortalListening />} />
+              <Route path="research" element={<PortalResearch />} />
               <Route path="channels" element={<PortalChannels />} />
             </Route>
             <Route path="/app" element={<AppShell />}>
@@ -172,6 +175,7 @@ const App = () => (
               <Route path="reports" element={<Reports />} />
               <Route path="moderation" element={<Moderation />} />
               <Route path="listening" element={<Listening />} />
+              <Route path="research" element={<Research />} />
               <Route path="channels" element={<Channels />} />
               <Route path="team" element={<Team />} />
               <Route path="inventory" element={<Inventory />} />

@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Consumer research section (synthetic panels scored by semantic similarity): studies, panel builder, concepts/images/videos, custom questions with approved scales, monthly units per brand, results with segments and quotes; 76 research tests, build and Deno type-check pass
+- [ ] Run the first live consumer-research study after the migration is applied, and confirm the AI gateway's embedding and video request shapes (not documented; the client tries known shapes in order)
+
 - [x] Move storefront account refreshes to the current ScrapeCreators key; deployed inventory-refresh, 73 checks passed, MediaMax refreshed in two batches and saved numbers read back through the storefront
 - [ ] Refresh Radio Africa's storefront — blocked: no Radio Africa agency or inventory exists in the connected data; needs its storefront link
 - [ ] Complete MediaMax account coverage — blocked: remaining entries use display names rather than account handles, unsupported broadcast slots, or profiles the provider could not retrieve; needs confirmed account links
