@@ -1,13 +1,13 @@
 // Rank existing discovery_creators against a user brief using Lovable AI.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isPolitical, offTopicRule } from "../_shared/match-rules.ts";
+import { requireAiProvider } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -61,11 +61,11 @@ ${offTopicRule(isPolitical(brief))}
 
 Return STRICT JSON: {"matches":[{"creator_id":"uuid","score":0-100,"reason":"one sentence referencing the creator's actual handle","angle":"short content angle"}]} ordered by score desc.`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch(requireAiProvider().chatUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${LOVABLE_API_KEY}` },
+      headers: requireAiProvider().headers,
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: requireAiProvider().model("google/gemini-3-flash-preview"),
         messages: [
           { role: "system", content: "Output strict JSON only." },
           { role: "user", content: prompt },

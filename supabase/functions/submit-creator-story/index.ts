@@ -3,6 +3,7 @@
 // numbers the creator typed (if any) stay on the row, so staff can see both and
 // confirm. The row is source "creator" and verified false until staff confirm it.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { aiProvider, requireAiProvider } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +12,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const MODEL = "google/gemini-3-flash-preview";
@@ -45,7 +45,7 @@ function parseDataUrl(image: string): { mime: string; bytes: Uint8Array } | null
 /** Reads one screenshot's numbers with Lovable AI vision. Never throws: a bad read is {error} so the submission still saves. */
 async function readScreenshot(dataUrl: string): Promise<Record<string, unknown>> {
   const readAt = new Date().toISOString();
-  if (!LOVABLE_API_KEY) return { error: "AI is not configured", model: MODEL, read_at: readAt };
+  if (!aiProvider()) return { error: "AI is not configured", model: MODEL, read_at: readAt };
   const prompt = `Read the numbers in this Instagram/Facebook story insights screenshot. Return STRICT JSON only:
 {"reach": <integer|null>, "views": <integer|null>, "replies": <integer|null>, "link_taps": <integer|null>, "insights": <short string summarizing what is shown, or null>}
 Rules:
@@ -53,11 +53,11 @@ Rules:
 - "views" is the story views / impressions count. "link_taps" is link sticker clicks when shown.
 - Do not guess. If no insight numbers are visible, return all nulls and insights "No numbers visible".`;
   try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch(requireAiProvider().chatUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
+      headers: requireAiProvider().headers,
       body: JSON.stringify({
-        model: MODEL,
+        model: requireAiProvider().model(MODEL),
         messages: [
           { role: "system", content: "Output strict JSON only." },
           { role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: dataUrl } }] },

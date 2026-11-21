@@ -1,6 +1,7 @@
 // Parses a pasted text OR uploaded brief doc (PDF/DOCX/TXT) and returns
 // structured brief fields the UI can drop into the editor.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { requireAiProvider } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -88,12 +89,11 @@ Deno.serve(async (req) => {
     // Cap to keep prompts cheap
     if (text.length > 25000) text = text.slice(0, 25000);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch(requireAiProvider().chatUrl, {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: requireAiProvider().headers,
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: requireAiProvider().model("google/gemini-2.5-flash"),
         messages: [
           { role: "system", content: "You convert a raw influencer-marketing brief document into structured fields for a campaign brief library. Be faithful to the source — do NOT invent. If a field is not present, leave it empty/[]. Hashtags should keep the '#' prefix; mentions keep '@'. Lists must be short, action-oriented bullets (max ~12 words each). Tone & content_format should be one short line." },
           { role: "user", content: `Brief document:\n\n${text}` },

@@ -28,6 +28,7 @@ import {
   questionsText, spread, stimulusText, studyCost, type QuestionForRun, type StimulusKind, type VideoMode,
 } from "../_shared/research-run.ts";
 import { GatewayPause, GatewayRejected, dataUrl, gateway, type Part } from "../_shared/research-ai.ts";
+import { aiProvider } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,9 +37,10 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
-const ai = gateway(LOVABLE_API_KEY);
+const PROVIDER = aiProvider();
+// Used only after the handler has checked PROVIDER.
+const ai = gateway(PROVIDER ?? { kind: "lovable", apiKey: "", chatUrl: "", headers: {}, model: (m: string) => m });
 
 const LOCK = "research-run";
 /** Edge functions stop at 150 s; leave room to write what was done. */
@@ -304,7 +306,9 @@ async function runStudy(study: Study, deadline: number): Promise<boolean> {
     });
     if (paused) {
       await supabase.from("research_studies").update({
-        error: (paused as GatewayPause).status === 402 ? "Paused: the AI workspace is out of credits. It carries on once they're topped up." : null,
+        error: (paused as GatewayPause).status === 402
+          ? "Paused: the AI is out of credits. It carries on by itself once they're topped up."
+          : "Waiting: the AI is busy or at its quota for now. It carries on by itself.",
       }).eq("id", study.id);
       throw paused;
     }
@@ -547,7 +551,7 @@ Deno.serve(async (req) => {
     const caller = await requireCaller(req, { job: "research-run", anySignedIn: true });
     if (caller instanceof Response) return caller;
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    if (!LOVABLE_API_KEY) return json({ error: "The AI gateway is not connected." }, 503);
+    if (!PROVIDER) return json({ error: "No AI is connected: set GEMINI_API_KEY (or LOVABLE_API_KEY)." }, 503);
     if (caller.kind !== "user") return await runQueue(null);
 
     const action = String(body?.action ?? "");
@@ -572,7 +576,7 @@ Deno.serve(async (req) => {
     }
     return json({ error: "Unknown action." }, 400);
   } catch (e) {
-    if (e instanceof GatewayPause) return json({ error: e.status === 402 ? "The AI workspace is out of credits." : "The AI is busy; try again in a minute." }, e.status);
+    if (e instanceof GatewayPause) return json({ error: e.status === 402 ? "The AI is out of credits or quota." : "The AI is busy or out of quota; try again in a minute." }, e.status);
     console.error("research-run", e);
     return json({ error: (e as Error).message }, 500);
   }

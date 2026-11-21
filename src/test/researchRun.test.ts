@@ -3,7 +3,11 @@ import {
   DEFAULT_MONTHLY_UNITS, UNIT_PER_FULL_WATCH, UNIT_PER_VIDEO_ACCOUNT, allowanceMonth, parseAnchors, parseAnswers,
   parseAudience, parseSummary, questionsText, spread, stimulusText, studyCost,
 } from "../../supabase/functions/_shared/research-run";
-import { GatewayPause, GatewayRejected, dataUrl, gateway } from "../../supabase/functions/_shared/research-ai";
+import { GatewayPause, GatewayRejected, dataUrl, gateway, inlineData, nativeBody } from "../../supabase/functions/_shared/research-ai";
+import { aiProvider } from "../../supabase/functions/_shared/ai-provider";
+
+const lovable = aiProvider((n) => (n === "LOVABLE_API_KEY" ? "k" : undefined))!;
+const gemini = aiProvider((n) => (n === "GEMINI_API_KEY" ? "g" : n === "LOVABLE_API_KEY" ? "k" : undefined))!;
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -78,10 +82,10 @@ describe("reading replies", () => {
 const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
 const fail = (status: number) => new Response("nope", { status });
 
-describe("the gateway client", () => {
+describe("the gateway client through Lovable", () => {
   it("sends a video as video_url first and remembers the shape that worked", async () => {
     const fetcher = vi.fn().mockResolvedValue(ok({ choices: [{ message: { content: '{"account":"x"}' } }] }));
-    const g = gateway("k", fetcher as unknown as typeof fetch);
+    const g = gateway(lovable, fetcher as unknown as typeof fetch);
     await g.chatJson([{ role: "user", content: [{ type: "video", dataUrl: "data:video/mp4;base64,AA" }] }]);
     const sent = JSON.parse(fetcher.mock.calls[0][1].body);
     expect(sent.messages[0].content[0]).toEqual({ type: "video_url", video_url: { url: "data:video/mp4;base64,AA" } });
@@ -92,13 +96,13 @@ describe("the gateway client", () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(fail(400))
       .mockResolvedValueOnce(ok({ choices: [{ message: { content: "{}" } }] }));
-    const g = gateway("k", fetcher as unknown as typeof fetch);
+    const g = gateway(lovable, fetcher as unknown as typeof fetch);
     await g.chatJson([{ role: "user", content: [{ type: "video", dataUrl: "data:video/mp4;base64,AA" }] }]);
     expect(JSON.parse(fetcher.mock.calls[1][1].body).messages[0].content[0].type).toBe("image_url");
     expect(g.videoShape()).toBe("image_url");
 
     const never = vi.fn().mockResolvedValue(fail(400));
-    const g2 = gateway("k", never as unknown as typeof fetch);
+    const g2 = gateway(lovable, never as unknown as typeof fetch);
     await expect(g2.chatJson([{ role: "user", content: [{ type: "video", dataUrl: "d" }] }])).rejects.toBeInstanceOf(GatewayRejected);
     expect(g2.videoShape()).toBe("none");
     await expect(g2.chatJson([{ role: "user", content: [{ type: "video", dataUrl: "d" }] }])).rejects.toBeInstanceOf(GatewayRejected);
@@ -106,9 +110,9 @@ describe("the gateway client", () => {
   });
 
   it("stops on 402 and 429 instead of retrying", async () => {
-    const g = gateway("k", vi.fn().mockResolvedValue(fail(402)) as unknown as typeof fetch);
+    const g = gateway(lovable, vi.fn().mockResolvedValue(fail(402)) as unknown as typeof fetch);
     await expect(g.chatJson([{ role: "user", content: "hi" }])).rejects.toBeInstanceOf(GatewayPause);
-    const g2 = gateway("k", vi.fn().mockResolvedValue(fail(429)) as unknown as typeof fetch);
+    const g2 = gateway(lovable, vi.fn().mockResolvedValue(fail(429)) as unknown as typeof fetch);
     await expect(g2.embed(["a"])).rejects.toMatchObject({ status: 429 });
   });
 
@@ -116,7 +120,7 @@ describe("the gateway client", () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(fail(404))
       .mockResolvedValueOnce(ok({ data: [{ index: 1, embedding: [0, 1] }, { index: 0, embedding: [1, 0] }] }));
-    const g = gateway("k", fetcher as unknown as typeof fetch);
+    const g = gateway(lovable, fetcher as unknown as typeof fetch);
     const out = await g.embed(["first", "second"]);
     expect(out.model).toBe("google/gemini-embedding-001");
     expect(out.vectors).toEqual([[1, 0], [0, 1]]);
@@ -124,7 +128,7 @@ describe("the gateway client", () => {
   });
 
   it("refuses an embedding reply with the wrong number of vectors", async () => {
-    const g = gateway("k", vi.fn().mockResolvedValue(ok({ data: [{ embedding: [1] }] })) as unknown as typeof fetch);
+    const g = gateway(lovable, vi.fn().mockResolvedValue(ok({ data: [{ embedding: [1] }] })) as unknown as typeof fetch);
     await expect(g.embed(["a", "b"])).rejects.toThrow(/1 vectors for 2/);
   });
 
@@ -132,5 +136,58 @@ describe("the gateway client", () => {
     const bytes = new Uint8Array(200_000).fill(65);
     const url = dataUrl(bytes, "image/png");
     expect(url.startsWith("data:image/png;base64,QUFB")).toBe(true);
+  });
+});
+
+describe("the gateway client through Gemini directly", () => {
+  it("sends chat to Gemini's OpenAI-compatible endpoint with the key, without the google/ prefix", async () => {
+    const fetcher = vi.fn().mockResolvedValue(ok({ choices: [{ message: { content: '{"answers":{}}' } }] }));
+    await gateway(gemini, fetcher as unknown as typeof fetch).chatJson([{ role: "user", content: "hi" }]);
+    expect(fetcher.mock.calls[0][0]).toBe("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
+    expect(fetcher.mock.calls[0][1].headers.Authorization).toBe("Bearer g");
+    expect(JSON.parse(fetcher.mock.calls[0][1].body).model).toBe("gemini-3-flash-preview");
+  });
+
+  it("sends video to Gemini's own generateContent as inline data and reads the text back", async () => {
+    const fetcher = vi.fn().mockResolvedValue(ok({ candidates: [{ content: { parts: [{ text: '{"account":' }, { text: '"x"}' }] } }] }));
+    const g = gateway(gemini, fetcher as unknown as typeof fetch);
+    const out = await g.chatJson([
+      { role: "system", content: "Describe it." },
+      { role: "user", content: [{ type: "text", text: "Ad" }, { type: "video", dataUrl: "data:video/mp4;base64,AAAA" }] },
+    ]);
+    expect(out).toBe('{"account":"x"}');
+    expect(fetcher.mock.calls[0][0]).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent");
+    expect(fetcher.mock.calls[0][1].headers["x-goog-api-key"]).toBe("g");
+    const body = JSON.parse(fetcher.mock.calls[0][1].body);
+    expect(body.system_instruction.parts[0].text).toBe("Describe it.");
+    expect(body.contents[0].parts[1]).toEqual({ inline_data: { mime_type: "video/mp4", data: "AAAA" } });
+    expect(body.generationConfig.responseMimeType).toBe("application/json");
+    expect(g.videoShape()).toBe("native");
+  });
+
+  it("gives up on video for the run when Gemini refuses it, so the caller uses key frames", async () => {
+    const g = gateway(gemini, vi.fn().mockResolvedValue(fail(400)) as unknown as typeof fetch);
+    await expect(g.chatJson([{ role: "user", content: [{ type: "video", dataUrl: "data:video/mp4;base64,A" }] }])).rejects.toBeInstanceOf(GatewayRejected);
+    expect(g.videoShape()).toBe("none");
+  });
+
+  it("embeds with batchEmbedContents and gemini-embedding-001, one vector per text, in order", async () => {
+    const fetcher = vi.fn().mockResolvedValue(ok({ embeddings: [{ values: [1, 0] }, { values: [0, 1] }] }));
+    const out = await gateway(gemini, fetcher as unknown as typeof fetch).embed(["a", "b"]);
+    expect(out).toEqual({ model: "gemini-embedding-001", vectors: [[1, 0], [0, 1]] });
+    expect(fetcher.mock.calls[0][0]).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents");
+    expect(JSON.parse(fetcher.mock.calls[0][1].body).requests[1]).toEqual({ model: "models/gemini-embedding-001", content: { parts: [{ text: "b" }] } });
+  });
+
+  it("waits on Gemini's 429 (rate limit or quota) instead of retrying", async () => {
+    const g = gateway(gemini, vi.fn().mockResolvedValue(fail(429)) as unknown as typeof fetch);
+    await expect(g.embed(["a"])).rejects.toMatchObject({ status: 429 });
+  });
+
+  it("turns data URLs into inline data and images into parts", () => {
+    expect(inlineData("data:image/png;base64,QQ==")).toEqual({ inline_data: { mime_type: "image/png", data: "QQ==" } });
+    expect(inlineData("https://x")).toBeNull();
+    const b = nativeBody([{ role: "user", content: [{ type: "image_url", image_url: { url: "data:image/jpeg;base64,Z" } }] }]) as { contents: { parts: unknown[] }[] };
+    expect(b.contents[0].parts[0]).toEqual({ inline_data: { mime_type: "image/jpeg", data: "Z" } });
   });
 });
