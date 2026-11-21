@@ -4417,6 +4417,325 @@ export type Database = {
         }
         Relationships: []
       }
+      research_allowances: {
+        Row: {
+          client_id: string
+          monthly_units: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          client_id: string
+          monthly_units: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          monthly_units?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_allowances_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_questions: {
+        Row: {
+          anchor_embeddings: Json | null
+          anchors: Json
+          anchors_approved_at: string | null
+          created_at: string
+          id: string
+          key: string
+          kind: string
+          label: string
+          position: number
+          prompt: string
+          source: string
+          study_id: string
+        }
+        Insert: {
+          anchor_embeddings?: Json | null
+          anchors?: Json
+          anchors_approved_at?: string | null
+          created_at?: string
+          id?: string
+          key: string
+          kind?: string
+          label: string
+          position?: number
+          prompt: string
+          source?: string
+          study_id: string
+        }
+        Update: {
+          anchor_embeddings?: Json | null
+          anchors?: Json
+          anchors_approved_at?: string | null
+          created_at?: string
+          id?: string
+          key?: string
+          kind?: string
+          label?: string
+          position?: number
+          prompt?: string
+          source?: string
+          study_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_questions_study_id_fkey"
+            columns: ["study_id"]
+            isOneToOne: false
+            referencedRelation: "research_studies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_respondents: {
+        Row: {
+          id: string
+          idx: number
+          profile: Json
+          study_id: string
+        }
+        Insert: {
+          id?: string
+          idx: number
+          profile: Json
+          study_id: string
+        }
+        Update: {
+          id?: string
+          idx?: number
+          profile?: Json
+          study_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_respondents_study_id_fkey"
+            columns: ["study_id"]
+            isOneToOne: false
+            referencedRelation: "research_studies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_responses: {
+        Row: {
+          answers: Json | null
+          attempts: number
+          claimed_until: string | null
+          error: string | null
+          id: string
+          respondent_id: string
+          status: string
+          stimulus_id: string
+          study_id: string
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json | null
+          attempts?: number
+          claimed_until?: string | null
+          error?: string | null
+          id?: string
+          respondent_id: string
+          status?: string
+          stimulus_id: string
+          study_id: string
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json | null
+          attempts?: number
+          claimed_until?: string | null
+          error?: string | null
+          id?: string
+          respondent_id?: string
+          status?: string
+          stimulus_id?: string
+          study_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_responses_respondent_id_fkey"
+            columns: ["respondent_id"]
+            isOneToOne: false
+            referencedRelation: "research_respondents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_responses_stimulus_id_fkey"
+            columns: ["stimulus_id"]
+            isOneToOne: false
+            referencedRelation: "research_stimuli"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_responses_study_id_fkey"
+            columns: ["study_id"]
+            isOneToOne: false
+            referencedRelation: "research_studies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_stimuli: {
+        Row: {
+          account: string | null
+          account_source: string | null
+          body: string | null
+          created_at: string
+          frame_paths: string[]
+          id: string
+          kind: string
+          label: string
+          media_path: string | null
+          position: number
+          price: string | null
+          study_id: string
+        }
+        Insert: {
+          account?: string | null
+          account_source?: string | null
+          body?: string | null
+          created_at?: string
+          frame_paths?: string[]
+          id?: string
+          kind?: string
+          label: string
+          media_path?: string | null
+          position?: number
+          price?: string | null
+          study_id: string
+        }
+        Update: {
+          account?: string | null
+          account_source?: string | null
+          body?: string | null
+          created_at?: string
+          frame_paths?: string[]
+          id?: string
+          kind?: string
+          label?: string
+          media_path?: string | null
+          position?: number
+          price?: string | null
+          study_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_stimuli_study_id_fkey"
+            columns: ["study_id"]
+            isOneToOne: false
+            referencedRelation: "research_studies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_studies: {
+        Row: {
+          charged_month: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          panel: Json
+          started_at: string | null
+          status: string
+          summary: Json | null
+          template: string
+          title: string
+          units_charged: number
+          units_refunded: number
+          updated_at: string
+          video_mode: string
+        }
+        Insert: {
+          charged_month?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          panel?: Json
+          started_at?: string | null
+          status?: string
+          summary?: Json | null
+          template?: string
+          title: string
+          units_charged?: number
+          units_refunded?: number
+          updated_at?: string
+          video_mode?: string
+        }
+        Update: {
+          charged_month?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          panel?: Json
+          started_at?: string | null
+          status?: string
+          summary?: Json | null
+          template?: string
+          title?: string
+          units_charged?: number
+          units_refunded?: number
+          updated_at?: string
+          video_mode?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_studies_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_usage: {
+        Row: {
+          client_id: string
+          month: string
+          used: number
+        }
+        Insert: {
+          client_id: string
+          month: string
+          used?: number
+        }
+        Update: {
+          client_id?: string
+          month?: string
+          used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_usage_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scraper_credit_log: {
         Row: {
           campaign_id: string | null
@@ -5095,6 +5414,10 @@ export type Database = {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
       }
+      can_access_research: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_edit_listening_alerts: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
@@ -5303,6 +5626,10 @@ export type Database = {
           last_sign_in_at: string
         }[]
       }
+      give_back_research_units: {
+        Args: { _client_id: string; _month: string; _units: number }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -5400,6 +5727,17 @@ export type Database = {
           thumbnail_url: string
           views: number
         }[]
+      }
+      research_allowance: { Args: { _client_id: string }; Returns: Json }
+      research_media_client: { Args: { _object_name: string }; Returns: string }
+      research_monthly_units: { Args: { _client_id: string }; Returns: number }
+      research_study_editable: {
+        Args: { _study_id: string; _user_id: string }
+        Returns: boolean
+      }
+      research_study_readable: {
+        Args: { _study_id: string; _user_id: string }
+        Returns: boolean
       }
       review_contest_entry: {
         Args: { _decision: string; _entry_id: string }
@@ -5505,6 +5843,10 @@ export type Database = {
       take_listening_credits: {
         Args: { _agency_id: string; _cap: number; _n: number }
         Returns: boolean
+      }
+      take_research_units: {
+        Args: { _client_id: string; _units: number }
+        Returns: string
       }
       update_brief_status: {
         Args: { _status: string; _token: string }
