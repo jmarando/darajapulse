@@ -19,6 +19,7 @@ import { type ListeningCountry, countryOf } from "../_shared/listening-country.t
 import { THEMES, byCountry, moodPrompt } from "../_shared/listening-moods.ts";
 import { type MentionRow, storeMentions } from "../_shared/listening-store.ts";
 import { type Found, OutOfCreditsError, SEARCHES, SOCIAL_SEARCH_ENABLED } from "../_shared/social-search.ts";
+import { aiProvider, requireAiProvider } from "../_shared/ai-provider.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +28,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const DAILY_CREDITS = (() => {
@@ -117,13 +117,13 @@ type Verdict = { id: string; sentiment: "positive" | "neutral" | "negative"; the
 
 /** The AI reads mood and theme for a batch of one country's mentions, each against its brand and keyword. */
 async function readMoods(country: ListeningCountry, items: { id: string; brand: string; keyword: string; kind: string; text: string }[]): Promise<Verdict[]> {
-  if (!LOVABLE_API_KEY || !items.length) return [];
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  if (!aiProvider() || !items.length) return [];
+  const res = await fetch(requireAiProvider().chatUrl, {
     method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    headers: requireAiProvider().headers,
     signal: AbortSignal.timeout(60_000),
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: requireAiProvider().model("google/gemini-3-flash-preview"),
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: moodPrompt(country) },

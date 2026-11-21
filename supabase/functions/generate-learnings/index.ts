@@ -1,6 +1,7 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 import { canManageCampaign, denied, requireCaller } from "../_shared/auth.ts";
+import { requireAiProvider } from "../_shared/ai-provider.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -95,12 +96,11 @@ Deno.serve(async (req) => {
       creators: byCreator,
     };
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetch(requireAiProvider().chatUrl, {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: requireAiProvider().headers,
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: requireAiProvider().model("google/gemini-3-flash-preview"),
         messages: [
           { role: "system", content: "You are a senior influencer marketing strategist for the Kenyan market. Write a concise, client-ready 'Learnings & Recommendations' section based on campaign performance data. Use 2 short paragraphs OR 4-6 bullet points. Be specific: cite numbers, platforms, and top creators. End with 2-3 forward-looking recommendations. Tone: confident, data-driven, no fluff. Plain text only, no markdown headers." },
           { role: "user", content: `Campaign report:\n${JSON.stringify(reportContext, null, 2)}` },
